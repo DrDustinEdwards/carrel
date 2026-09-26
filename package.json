@@ -1,0 +1,39 @@
+{
+  "name": "carrel",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.1"
+  },
+  "scripts": {
+    "build": "react-router build",
+    "dev": "react-router dev",
+    "typecheck": "wrangler types --strict-vars=false && react-router typegen && tsc -b",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "seed:owner": "node scripts/seed-owner.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "postinstall": "node scripts/bootstrap-config.mjs && wrangler types --strict-vars=false"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.2",
+    "isbot": "^5.1.31",
+    "jose": "^6.1.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-router": "8.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.60.2",
+    "@cloudflare/vitest-plugin": "1.2.8",
+    "@react-router/dev": "8.3.1",
+    "@types/node": "22.20.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3",
+    "vite": "8.1.3",
+    "vitest": "4.1.11",
+    "wrangler": "4.141.0"
+  }
+}

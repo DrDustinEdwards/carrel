@@ -1,0 +1,58 @@
+/**
+ * Wrangler configuration template for Carrel.
+ *
+ * `scripts/bootstrap-config.mjs` copies this to wrangler.jsonc on install and never overwrites it.
+ * The real file is gitignored because it carries the D1 database id. Secrets are set with
+ * `wrangler secret put`, never here: ACCESS_AUD (the AUD tag of the Worker's Access application).
+ *
+ * NEVER PUBLIC, BY DEPLOY ORDER. Cloudflare Access is turned on at the Worker level
+ * (Workers & Pages > carrel > Access, "All traffic"), which covers every URL that reaches this
+ * Worker. So the first deploy has no route at all, workers_dev and preview_urls are false, Access
+ * is turned on, and only then is the custom domain added by uncommenting `routes` below. Setting
+ * workers_dev and preview_urls here, not in the dashboard, means a deploy cannot turn them back on.
+ *
+ * ACCESS_TEAM_DOMAIN is the Zero Trust team domain, the issuer of every Access token. It lives in
+ * config, not code, so a rename of the team is a config change.
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "carrel",
+	"compatibility_date": "2026-09-01",
+	"main": "./workers/app.ts",
+	"workers_dev": false,
+	"preview_urls": false,
+	// Uncomment only after Worker-level Access is on (setup step 7).
+	// "routes": [
+	// 	{
+	// 		"pattern": "carrel.dustinedwards.info",
+	// 		"custom_domain": true
+	// 	}
+	// ],
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"invocation_logs": false
+		}
+	},
+	"triggers": {
+		"crons": ["*/15 * * * *"]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "carrel",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"send_email": [
+		{
+			"name": "EMAIL"
+		}
+	],
+	"vars": {
+		"ACCESS_TEAM_DOMAIN": "https://gentle-hill-c80f.cloudflareaccess.com",
+		"ALERT_EMAIL": "alerts@example.com",
+		"ALERT_FROM": "carrel@dustinedwards.info"
+	}
+}
