@@ -1,0 +1,8 @@
+# Machine-local Claude Code config. .mcp.json carries the carrel driver key; never commit it.
+.mcp.json
+.claude/settings.local.json
+
+# Secrets and local environment.
+.dev.vars
+.env
+.env.*
