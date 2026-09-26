@@ -3,7 +3,8 @@
  *
  * `scripts/bootstrap-config.mjs` copies this to wrangler.jsonc on install and never overwrites it.
  * The real file is gitignored because it carries the D1 database id. Secrets are set with
- * `wrangler secret put`, never here: ACCESS_AUD (the AUD tag of the Worker's Access application).
+ * `wrangler secret put`, never here: ACCESS_AUD (the AUD tag of the Worker's Access application)
+ * and one key per site, SITE_DUSTINEDWARDS_KEY (absent until the site is connected).
  *
  * NEVER PUBLIC, BY DEPLOY ORDER. Cloudflare Access is turned on at the Worker level
  * (Workers & Pages > carrel > Access, "All traffic"), which covers every URL that reaches this
@@ -53,6 +54,8 @@
 	"vars": {
 		"ACCESS_TEAM_DOMAIN": "https://dustinedwards.cloudflareaccess.com",
 		"ALERT_EMAIL": "alerts@example.com",
-		"ALERT_FROM": "carrel@dustinedwards.info"
+		"ALERT_FROM": "carrel@dustinedwards.info",
+		// The site Carrel reaches through site-api. Its key is the secret SITE_DUSTINEDWARDS_KEY.
+		"SITE_DUSTINEDWARDS_ORIGIN": "https://dustinedwards.info"
 	}
 }
