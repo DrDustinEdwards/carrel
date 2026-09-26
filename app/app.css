@@ -83,3 +83,448 @@ h2 {
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--rule);
 }
+
+/* Stage 2: the one view, the editor and its preview. */
+
+:root {
+  --selection: #e3d9f0;
+  --alarm: #9b2c1f;
+  --ok: #2f6b3a;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --z-popover: 20;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --selection: #3d3350;
+    --alarm: #f09a8b;
+    --ok: #8fce9a;
+  }
+}
+
+:root[data-theme="dark"] {
+  --selection: #3d3350;
+  --alarm: #f09a8b;
+  --ok: #8fce9a;
+}
+
+a {
+  color: var(--focus);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.shell-wide {
+  max-width: 64rem;
+}
+
+.crumbs {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+}
+
+.notice,
+.alarm {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.375rem;
+}
+
+.alarm {
+  border-color: var(--alarm);
+  color: var(--alarm);
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.field-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+}
+
+input,
+select {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.375rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+/* WCAG 2.2 target size: 2rem is 32px, clear of the 24px minimum. */
+.btn,
+.btn-ghost,
+.btn-danger,
+.layout-option {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.375rem;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.875rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-ghost,
+.layout-option {
+  border-color: var(--rule);
+  background: transparent;
+  color: var(--ink);
+}
+
+.btn-danger {
+  border-color: var(--alarm);
+  background: transparent;
+  color: var(--alarm);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.layout-option[aria-checked="true"] {
+  border-color: var(--ink);
+  font-weight: 600;
+}
+
+.toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filters,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.items {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.items th,
+.items td {
+  padding: 0.5rem 0.5rem 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.items th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.item-id {
+  display: block;
+  font-size: 0.8125rem;
+}
+
+.status {
+  font-size: 0.8125rem;
+  text-transform: capitalize;
+}
+
+.status-published {
+  color: var(--ok);
+}
+
+/* The editor: one column of prose, chrome above and below that steps back while you type. */
+
+.editor-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.editor-chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--rule);
+  transition: opacity 200ms ease;
+}
+
+.editor-actions {
+  border-top: 1px solid var(--rule);
+  border-bottom: none;
+}
+
+.editor-title h1 {
+  font-size: 1.25rem;
+}
+
+.editor-title p {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.editor-layouts {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Hidden while typing, back on a mouse move or when focus enters it. */
+.editor-shell[data-typing] .editor-chrome:not(:focus-within) {
+  opacity: 0.08;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-chrome {
+    transition: none;
+  }
+}
+
+.editor-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+
+.editor-shell[data-layout="split"] .editor-body {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 48rem) {
+  .editor-shell[data-layout="split"] .editor-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
+.editor-pane,
+.preview-pane {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.preview-pane {
+  border-left: 1px solid var(--rule);
+}
+
+.preview-pane iframe {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.editor-loading {
+  padding: 1rem;
+}
+
+.confirm {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 40rem;
+}
+
+.schedule {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+/* Copied from dustinedwards-info@6e0f8c9 app/styles/admin-editor.css (the md-* rules), mapped onto
+   Carrel's tokens; the upload rules are gone with the upload. */
+
+.md-editor {
+  display: flex;
+  position: relative;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.md-toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.25rem 0.375rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+  overflow-x: auto;
+}
+
+.editor-shell[data-typing] .md-toolbar:not(:focus-within) {
+  opacity: 0.08;
+}
+
+.md-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.md-tool:hover {
+  border-color: var(--rule);
+  color: var(--ink);
+}
+
+.md-toolbar-sep {
+  width: 1px;
+  height: 1.25rem;
+  margin: 0 0.25rem;
+  background: var(--rule);
+}
+
+.md-toolbar-hint {
+  margin-left: auto;
+  padding-right: 0.375rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.md-surface {
+  flex: 1;
+  min-height: 0;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.md-surface .cm-editor {
+  height: 100%;
+}
+
+.md-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.75rem;
+}
+
+.md-stats {
+  margin: 0 0 0 auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.md-stats-sep {
+  margin: 0 0.375rem;
+}
+
+.md-slash,
+.md-link-palette {
+  position: absolute;
+  z-index: var(--z-popover);
+  border: 1px solid var(--ink);
+  border-radius: 0.5rem;
+  background: var(--paper);
+}
+
+.md-slash {
+  min-width: 15rem;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+}
+
+.md-link-palette {
+  width: min(26rem, 90%);
+  padding: 0.375rem;
+}
+
+.md-link-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.md-link-list {
+  max-height: 15rem;
+  margin: 0.375rem 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.md-link-item,
+.md-slash-item {
+  display: grid;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.md-link-item .muted {
+  font-size: 0.75rem;
+}
+
+/* One highlight, driven by data-active, which arrow keys and pointer both write. */
+.md-link-item[data-active],
+.md-link-item:focus-visible,
+.md-slash-item:hover,
+.md-slash-item:focus-visible {
+  background: var(--selection);
+}
+
+.md-link-state {
+  font-style: italic;
+}
+
+.md-link-note {
+  margin: 0.375rem 0 0;
+  padding: 0.25rem 0.5rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}

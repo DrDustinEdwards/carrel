@@ -1,8 +1,10 @@
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
-import { cloudflareContext, viewerContext } from "~/lib/context";
+import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { runHealth } from "~/lib/health.server";
+import { refreshAllSites } from "~/lib/refresh.server";
 
+import { newNonce, withPolicy } from "./csp";
 import { gate } from "./gate";
 
 const requestHandler = createRequestHandler(
@@ -12,15 +14,18 @@ const requestHandler = createRequestHandler(
 
 export default {
   fetch(request, env, ctx) {
-    return gate(request, env, (req, viewer) => {
+    return gate(request, env, async (req, viewer) => {
+      const nonce = newNonce();
       const context = new RouterContextProvider();
       context.set(cloudflareContext, { env, ctx });
       context.set(viewerContext, viewer);
-      return requestHandler(req, context);
+      context.set(nonceContext, nonce);
+      return withPolicy(await requestHandler(req, context), nonce);
     });
   },
 
   scheduled(_controller, env, ctx) {
     ctx.waitUntil(runHealth(env));
+    ctx.waitUntil(refreshAllSites(env));
   },
 } satisfies ExportedHandler<Env>;

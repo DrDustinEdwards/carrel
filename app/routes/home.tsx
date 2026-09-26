@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 import { getEnv, getViewer } from "~/lib/context";
 import { visibleProjects } from "~/lib/people.server";
 
@@ -28,7 +30,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <ul className="project-list">
             {projects.map((p) => (
               <li key={p.id}>
-                {p.name} <span className="muted">({p.role})</span>
+                <Link to={`/p/${p.slug}`}>{p.name}</Link> <span className="muted">({p.role})</span>
               </li>
             ))}
           </ul>

@@ -19,7 +19,10 @@ const PRIVATE_HEADERS: Record<string, string> = {
 
 function withPrivateHeaders(response: Response): Response {
   const out = new Response(response.body, response);
+  // The preview route alone may be framed, and only by Carrel itself; nothing can loosen it further.
+  const framedByCarrel = response.headers.get("X-Frame-Options")?.toUpperCase() === "SAMEORIGIN";
   for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(name, value);
+  if (framedByCarrel) out.headers.set("X-Frame-Options", "SAMEORIGIN");
   return out;
 }
 

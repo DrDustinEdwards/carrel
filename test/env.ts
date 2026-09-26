@@ -6,6 +6,10 @@ export const testEnv = env as unknown as Env & { TEST_D1_MIGRATIONS: D1Migration
 /** Clears every table, so each test states the people and projects it relies on. */
 export async function resetDb(): Promise<void> {
   await testEnv.DB.batch([
+    testEnv.DB.prepare("DELETE FROM changes"),
+    testEnv.DB.prepare("DELETE FROM drafts"),
+    testEnv.DB.prepare("DELETE FROM site_items"),
+    testEnv.DB.prepare("DELETE FROM site_items_fts"),
     testEnv.DB.prepare("DELETE FROM project_members"),
     testEnv.DB.prepare("DELETE FROM projects"),
     testEnv.DB.prepare("DELETE FROM people"),
@@ -22,9 +26,9 @@ export async function addPerson(email: string, opts: { owner?: boolean; disabled
   return row!.id;
 }
 
-export async function addProject(slug: string): Promise<number> {
-  const row = await testEnv.DB.prepare("INSERT INTO projects (slug, name) VALUES (?, ?) RETURNING id")
-    .bind(slug, slug)
+export async function addProject(slug: string, site: string | null = null): Promise<number> {
+  const row = await testEnv.DB.prepare("INSERT INTO projects (slug, name, site) VALUES (?, ?, ?) RETURNING id")
+    .bind(slug, slug, site)
     .first<{ id: number }>();
   return row!.id;
 }
