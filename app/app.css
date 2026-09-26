@@ -1,0 +1,85 @@
+/* Tokens only; no color outside :root. Light and dark follow data-theme, then the OS preference. */
+:root {
+  --paper: #f7f4ee;
+  --ink: #1d1a17;
+  --muted: #5f5850;
+  --rule: #d8d1c5;
+  --focus: #4f2d7f;
+  --font-prose: "Source Serif 4", Georgia, serif;
+  --font-ui: Inter, system-ui, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #181614;
+    --ink: #ece7df;
+    --muted: #a79f94;
+    --rule: #3a3530;
+    --focus: #b89be0;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #181614;
+  --ink: #ece7df;
+  --muted: #a79f94;
+  --rule: #3a3530;
+  --focus: #b89be0;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.shell {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.shell-header {
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 1.5rem;
+}
+
+h1,
+h2 {
+  font-family: var(--font-prose);
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 1.75rem;
+  margin: 0 0 0.25rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.project-list {
+  list-style: none;
+  padding: 0;
+}
+
+.project-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
