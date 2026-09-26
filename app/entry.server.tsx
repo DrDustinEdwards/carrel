@@ -1,21 +1,31 @@
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
-import type { EntryContext } from "react-router";
+import type { EntryContext, RouterContextProvider } from "react-router";
 import { ServerRouter } from "react-router";
+
+import { getNonce } from "~/lib/context";
 
 export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext,
+  loadContext: RouterContextProvider,
 ) {
+  // The ServerRouter prop nonces React Router's streaming scripts; react-dom's own inline scripts
+  // take it only from the render option. Without both, the policy blocks hydration.
+  const nonce = getNonce(loadContext);
   let shellRendered = false;
-  const body = await renderToReadableStream(<ServerRouter context={routerContext} url={request.url} />, {
-    onError(error: unknown) {
-      responseStatusCode = 500;
-      if (shellRendered) console.error(error);
+  const body = await renderToReadableStream(
+    <ServerRouter context={routerContext} url={request.url} nonce={nonce} />,
+    {
+      nonce,
+      onError(error: unknown) {
+        responseStatusCode = 500;
+        if (shellRendered) console.error(error);
+      },
     },
-  });
+  );
   shellRendered = true;
 
   if (isbot(request.headers.get("user-agent") || "")) await body.allReady;

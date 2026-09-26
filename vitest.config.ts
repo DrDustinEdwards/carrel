@@ -22,6 +22,7 @@ export default defineConfig({
           ACCESS_AUD: "test-audience-tag",
           ALERT_EMAIL: "owner@test.invalid",
           ALERT_FROM: "carrel@test.invalid",
+          SITE_DUSTINEDWARDS_ORIGIN: "https://site.test",
           TEST_D1_MIGRATIONS: D1_MIGRATIONS,
         },
       },

@@ -1,18 +1,21 @@
 // Carrel's own health check, run by the cron trigger. It emails Dustin only when a check changes
 // state, like the site's watchdog, so a standing failure sends one message, not one every 15 minutes.
 //
-// Stage 1 checks what stage 1 has: the settings the gate needs, the database and its Owner, and the
-// Access signing keys. Later stages add the Google key, site keys and the site APIs.
+// It checks the settings the gate needs, the database and its Owner, the Access signing keys, and
+// each site: its key, and whether the site still conforms to the site-api contract Carrel was built
+// against. Later stages add the Google key.
 
+import { runConformance } from "@dustinedwards/site-api/conformance";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { healthState, people } from "~/db/schema";
 import { teamIssuer } from "~/lib/access.server";
+import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
 
-type Fetch = (input: string) => Promise<Response>;
+type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 const PLACEHOLDER = /example\.(com|cloudflareaccess\.com)/i;
 
@@ -51,8 +54,41 @@ async function checkAccessKeys(env: Env, fetcher: Fetch): Promise<CheckResult> {
   }
 }
 
-export async function runChecks(env: Env, fetcher: Fetch = (url) => fetch(url)): Promise<CheckResult[]> {
-  return Promise.all([checkConfig(env), checkOwner(env), checkAccessKeys(env, fetcher)]);
+/**
+ * A site with no key is not connected yet, which is not a failure: its stage has not arrived. With a
+ * key, the conformance suite runs, including its one write, which a conforming site refuses.
+ */
+async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckResult> {
+  const name = `site-${id}`;
+  const site = siteEntry(id).name;
+  const connection = siteConnection(env, id);
+  if (connection.state === "not-connected") return { name, ok: true, detail: `Not connected: ${connection.detail}` };
+  if (connection.state === "misconfigured") return { name, ok: false, detail: connection.detail };
+  try {
+    const report = await runConformance({
+      baseUrl: connection.origin,
+      key: connection.key,
+      fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
+        fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch,
+    });
+    if (report.ok) return { name, ok: true, detail: `${site} conforms (${report.checks[0]?.detail ?? "meta ok"}).` };
+    const failed = report.checks.filter((c) => !c.ok).map((c) => `${c.name}: ${c.detail}`);
+    return { name, ok: false, detail: `${site} does not conform. ${failed.join(" | ")}` };
+  } catch (error) {
+    return { name, ok: false, detail: `${site} could not be checked: ${message(error)}` };
+  }
+}
+
+export async function runChecks(
+  env: Env,
+  fetcher: Fetch = (url, init) => fetch(url, init),
+): Promise<CheckResult[]> {
+  return Promise.all([
+    checkConfig(env),
+    checkOwner(env),
+    checkAccessKeys(env, fetcher),
+    ...SITE_IDS.map((id) => checkSite(env, id, fetcher)),
+  ]);
 }
 
 /**
