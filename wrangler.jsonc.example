@@ -51,7 +51,7 @@
 		}
 	],
 	"vars": {
-		"ACCESS_TEAM_DOMAIN": "https://gentle-hill-c80f.cloudflareaccess.com",
+		"ACCESS_TEAM_DOMAIN": "https://dustinedwards.cloudflareaccess.com",
 		"ALERT_EMAIL": "alerts@example.com",
 		"ALERT_FROM": "carrel@dustinedwards.info"
 	}
