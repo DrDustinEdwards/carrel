@@ -3,12 +3,16 @@
 
 export type Role = "reader" | "editor" | "owner";
 
-export type Action = "read" | "comment" | "edit" | "publish" | "send_external" | "manage";
+/**
+ * `delete_media` removes a file from a site's storage (stage 3). It is the Owner's alone: a file can
+ * be in use on pages the site's reference check cannot see, such as another site linking it.
+ */
+export type Action = "read" | "comment" | "edit" | "publish" | "send_external" | "manage" | "delete_media";
 
 const ALLOWED: Record<Role, ReadonlySet<Action>> = {
   reader: new Set(["read", "comment"]),
   editor: new Set(["read", "comment", "edit"]),
-  owner: new Set(["read", "comment", "edit", "publish", "send_external", "manage"]),
+  owner: new Set(["read", "comment", "edit", "publish", "send_external", "manage", "delete_media"]),
 };
 
 /** A person with no role on a project may do nothing on it, including read it. */

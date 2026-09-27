@@ -1,6 +1,8 @@
 // Copied from DrDustinEdwards/dustinedwards-info@6e0f8c9 (app/components/admin/markdown-editor.tsx).
-// Changed: image paste, drop and upload are gone until media arrives in stage 3; the house theme is
-// now a prose theme (serif, one column); `readOnly` shows a Reader the text without letting it change.
+// Changed: the house theme is now a prose theme (serif, one column); `readOnly` shows a Reader the
+// text without letting it change. Image paste, drop and upload came back with the media library in
+// stage 3 (from dustinedwards-info@f84b978): they go through Carrel to the site's own storage, only
+// when the editor is given `media` (an Editor or the Owner), and From library inserts a file already there.
 
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -10,6 +12,8 @@ import { EditorView, keymap, placeholder as cmPlaceholder } from "@codemirror/vi
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef, useState } from "react";
 
+import { MediaPicker } from "~/components/media/media-picker";
+import { useImageUpload, type EditorMedia } from "~/components/media/use-image-upload";
 import { countWords, minutesForWords } from "~/lib/reading-time.mjs";
 
 import { SCAFFOLDS, insertBlock, wrap, type ScaffoldName } from "./md-editor-commands";
@@ -83,6 +87,7 @@ export default function MarkdownEditor({
   placeholder,
   linkTargets = [],
   readOnly = false,
+  media,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -91,6 +96,8 @@ export default function MarkdownEditor({
   placeholder?: string;
   linkTargets?: LinkTarget[];
   readOnly?: boolean;
+  /** The project's media endpoint and the site's figure markup. Absent: no image upload or insert. */
+  media?: EditorMedia;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -104,6 +111,15 @@ export default function MarkdownEditor({
   const slashOpenRef = useRef(false);
   slashOpenRef.current = slashAt !== null;
   const slashRef = useRef<HTMLUListElement>(null);
+  // Never for a Reader, whatever the parent passes: a read-only editor inserts nothing.
+  const imageMedia = readOnly ? undefined : media;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const altRef = useRef<HTMLInputElement>(null);
+  const [picking, setPicking] = useState(false);
+  const { upload, setUpload, uploadError, alt, setAlt, uploadFile, pickExisting, insertFigure } = useImageUpload(viewRef, imageMedia);
+  // Read by the paste and drop handlers, which are built once.
+  const uploadRef = useRef(uploadFile);
+  uploadRef.current = uploadFile;
 
   const [stats, setStats] = useState(() => {
     const words = countWords(value);
@@ -167,6 +183,29 @@ export default function MarkdownEditor({
           }
         }
       }),
+      ...(imageMedia
+        ? [
+            EditorView.domEventHandlers({
+              paste(event, view) {
+                const item = [...(event.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
+                const file = item?.getAsFile();
+                if (!file) return false;
+                event.preventDefault();
+                viewRef.current = view;
+                void uploadRef.current(file);
+                return true;
+              },
+              drop(event, view) {
+                const file = [...(event.dataTransfer?.files ?? [])].find((f) => f.type.startsWith("image/"));
+                if (!file) return false;
+                event.preventDefault();
+                viewRef.current = view;
+                void uploadRef.current(file);
+                return true;
+              },
+            }),
+          ]
+        : []),
       keymap.of([
         { key: "Mod-b", run: (v) => (wrap(v, "**"), true) },
         { key: "Mod-i", run: (v) => (wrap(v, "_"), true) },
@@ -214,6 +253,13 @@ export default function MarkdownEditor({
     view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
   }, [value]);
 
+  // Focus goes to the alt field once the file is on the site: the prompt is otherwise silent, and the
+  // figure cannot be inserted until it is answered.
+  const uploadedUrl = upload?.url ?? "";
+  useEffect(() => {
+    if (uploadedUrl) altRef.current?.focus();
+  }, [uploadedUrl]);
+
   const run = (fn: (view: EditorView) => void) => () => {
     const view = viewRef.current;
     if (view) fn(view);
@@ -234,7 +280,41 @@ export default function MarkdownEditor({
   return (
     <div className="md-editor">
       {ready && !readOnly ? (
-        <EditorToolbar run={run} openLinkPalette={openLinkPalette} scaffold={scaffold} />
+        <EditorToolbar
+          run={run}
+          openLinkPalette={openLinkPalette}
+          scaffold={scaffold}
+          pickImage={imageMedia ? () => fileRef.current?.click() : undefined}
+          pickFromLibrary={imageMedia ? () => setPicking(true) : undefined}
+        />
+      ) : null}
+
+      {imageMedia ? (
+        <input
+          ref={fileRef}
+          type="file"
+          accept={imageMedia.accept}
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void uploadFile(file);
+          }}
+        />
+      ) : null}
+
+      {imageMedia && picking ? (
+        <MediaPicker
+          endpoint={imageMedia.endpoint}
+          onPick={(picked) => {
+            setPicking(false);
+            pickExisting(picked);
+          }}
+          onCancel={() => {
+            setPicking(false);
+            viewRef.current?.focus();
+          }}
+        />
       ) : null}
 
       <div className="md-surface" ref={host} />
@@ -377,6 +457,63 @@ export default function MarkdownEditor({
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {/* An alert, read on insertion: a failed upload is an event the author has to act on. */}
+      {uploadError ? (
+        <p className="alarm" role="alert">
+          {uploadError}
+        </p>
+      ) : null}
+
+      {/* Always in the DOM, so the region exists before its text does. */}
+      <p className="sr-only" role="status">
+        {upload && !upload.url ? `Uploading ${upload.name}` : ""}
+      </p>
+
+      {upload ? (
+        <div className="md-upload" role="group" aria-label="Describe the image">
+          {upload.url ? <img src={upload.src} alt="" className="md-upload-thumb" /> : <span className="muted">Uploading {upload.name}</span>}
+          <div className="md-upload-fields">
+            <label className="md-upload-label" htmlFor="md-upload-alt">
+              Alt text, required
+            </label>
+            <input
+              id="md-upload-alt"
+              ref={altRef}
+              value={alt}
+              onChange={(event) => setAlt(event.target.value)}
+              placeholder="What the image shows"
+              autoComplete="off"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  insertFigure();
+                }
+              }}
+            />
+            <div className="md-upload-actions">
+              {/* Blocked until alt exists: an image inserted without alt is the one that ships without it. */}
+              <button type="button" className="btn" disabled={!upload.url || alt.trim() === ""} onClick={insertFigure}>
+                Insert figure
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => {
+                  setUpload(null);
+                  setAlt("");
+                  viewRef.current?.focus();
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            {upload.url && alt.trim() === "" ? (
+              <p className="alarm">The image is on the site. It is not in the post until it has alt text.</p>
+            ) : null}
+          </div>
+        </div>
       ) : null}
 
       <p className="sr-only" aria-live="polite">

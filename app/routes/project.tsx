@@ -74,6 +74,9 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
         </p>
         <h1>{project.name}</h1>
         <p className="muted">Everything on {project.site}, from Carrel's index of the site.</p>
+        <p>
+          <Link to={`/p/${project.slug}/media`}>Media</Link>
+        </p>
       </header>
 
       {!connected ? (
