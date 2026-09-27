@@ -191,10 +191,17 @@ describe("the manuscripts index", () => {
   it("searches the text through Drive, and returns only files in the folder", async () => {
     await refreshManuscripts(env, google.fetch);
     const owner = await viewerFor("owner@test.invalid");
-    expect((await searchManuscripts(env, owner, "trackways", google.fetch)).map((m) => m.name)).toEqual(["Trackways paper"]);
-    expect(await searchManuscripts(env, owner, "no such words", google.fetch)).toEqual([]);
+    expect(await searchManuscripts(env, owner, "trackways", google.fetch)).toMatchObject({ searched: "text", files: [{ name: "Trackways paper" }] });
+    expect((await searchManuscripts(env, owner, "no such words", google.fetch)).files).toEqual([]);
     // Quotes in the search are escaped for Drive's query language, not injected into it.
-    expect(await searchManuscripts(env, owner, "x' or name contains 'a", google.fetch)).toEqual([]);
+    expect((await searchManuscripts(env, owner, "x' or name contains 'a", google.fetch)).files).toEqual([]);
+  });
+
+  it("falls back to titles, and says so, if Drive will not run a full-text query for this access", async () => {
+    await refreshManuscripts(env, google.fetch);
+    google.state.refuseFullText = true;
+    const owner = await viewerFor("owner@test.invalid");
+    expect(await searchManuscripts(env, owner, "grant", google.fetch)).toMatchObject({ searched: "titles", files: [{ name: "Grant proposal" }] });
   });
 
   it("PLANT: manuscripts are the Owner's alone", async () => {

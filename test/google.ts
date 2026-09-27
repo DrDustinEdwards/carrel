@@ -44,7 +44,7 @@ export function fakeGoogle(opts: { publicJwk: JWK; files?: FakeFile[]; scRows?: 
   const docs = new Map<string, { name: string; content: string }>();
   const requests: string[] = [];
   const assertions: Record<string, unknown>[] = [];
-  const state = { saRevoked: false, userRevoked: false, grantedScope: "https://www.googleapis.com/auth/drive.file", scStatus: 200, docEdits: new Map<string, string>() };
+  const state = { refuseFullText: false, saRevoked: false, userRevoked: false, grantedScope: "https://www.googleapis.com/auth/drive.file", scStatus: 200, docEdits: new Map<string, string>() };
 
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
@@ -86,7 +86,15 @@ export function fakeGoogle(opts: { publicJwk: JWK; files?: FakeFile[]; scRows?: 
       const q = url.searchParams.get("q") ?? "";
       const parent = /^'([^']+)' in parents and trashed = false$/.exec(q)?.[1];
       const words = /^fullText contains '((?:[^'\\]|\\.)*)'/.exec(q)?.[1]?.replace(/\\(.)/g, "$1");
-      const hits = parent ? files.filter((f) => f.parent === parent) : words !== undefined ? files.filter((f) => f.content?.toLowerCase().includes(words.toLowerCase())) : [];
+      const title = /^name contains '((?:[^'\\]|\\.)*)'/.exec(q)?.[1]?.replace(/\\(.)/g, "$1");
+      if (words !== undefined && state.refuseFullText) return json(403, { error: { code: 403, message: "Insufficient Permission" } });
+      const hits = parent
+        ? files.filter((f) => f.parent === parent)
+        : words !== undefined
+          ? files.filter((f) => f.content?.toLowerCase().includes(words.toLowerCase()))
+          : title !== undefined
+            ? files.filter((f) => f.mimeType !== "application/vnd.google-apps.folder" && f.name.toLowerCase().includes(title.toLowerCase()))
+            : [];
       return json(200, {
         files: hits.map((f) => ({
           id: f.id,

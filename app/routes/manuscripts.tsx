@@ -23,14 +23,17 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const setup = sa.state !== "connected" ? sa.detail : manuscriptsFolder(env) ? null : "GOOGLE_MANUSCRIPTS_FOLDER_ID is not set to the shared folder's id.";
   let error: string | null = null;
   let files = await listManuscripts(env.DB, viewer);
+  let titlesOnly = false;
   if (q && !setup) {
     try {
-      files = await searchManuscripts(env, viewer, q);
+      const result = await searchManuscripts(env, viewer, q);
+      files = result.files;
+      titlesOnly = result.searched === "titles";
     } catch (e) {
       error = e instanceof GoogleNotConnected ? e.detail : `Drive did not answer the search: ${e instanceof Error ? e.message : String(e)}`;
     }
   }
-  return { q, files, setup, error };
+  return { q, files, setup, error, titlesOnly };
 }
 
 export async function action({ context }: Route.ActionArgs) {
@@ -51,7 +54,7 @@ const KIND: Record<string, string> = {
 };
 
 export default function Manuscripts({ loaderData, actionData }: Route.ComponentProps) {
-  const { q, files, setup, error } = loaderData;
+  const { q, files, setup, error, titlesOnly } = loaderData;
   const refreshing = useNavigation().state === "submitting";
   return (
     <main className="shell shell-wide">
@@ -98,6 +101,11 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
         <p className="muted" role="status">
           {actionData.refreshed.files} files in {actionData.refreshed.folders} folders, {actionData.refreshed.removed} gone
           {actionData.refreshed.more ? "; more folders on the next refresh" : ""}.
+        </p>
+      ) : null}
+      {titlesOnly ? (
+        <p className="notice" role="status">
+          Drive would not search the text with the service account's metadata-only access, so these are title matches.
         </p>
       ) : null}
       {files.length === 0 ? (

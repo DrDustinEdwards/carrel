@@ -128,19 +128,32 @@ export async function listManuscripts(db: D1Database, viewer: Viewer): Promise<M
   return rows.map((r) => ({ fileId: r.fileId, name: r.name, mimeType: r.mimeType, webViewLink: r.webViewLink, folder: r.folder, people: JSON.parse(r.people) as string[], modifiedTime: r.modifiedTime }));
 }
 
+export type ManuscriptSearch = { files: Manuscript[]; searched: "text" | "titles" };
+
 /**
  * Full-text search through Drive, limited to the files in the index (the shared folder): the words
  * are matched by Google against the documents where they live, and only which files matched comes
- * back to Carrel.
+ * back to Carrel. Google's docs do not say whether a metadata-only scope may run a full-text query;
+ * if Drive refuses one, the search falls back to titles and says so.
  */
-export async function searchManuscripts(env: Env, viewer: Viewer, words: string, fetcher?: Fetch): Promise<Manuscript[]> {
+export async function searchManuscripts(env: Env, viewer: Viewer, words: string, fetcher?: Fetch): Promise<ManuscriptSearch> {
   requireOwner(viewer);
   const q = words.trim().slice(0, 200);
-  if (!q) return listManuscripts(env.DB, viewer);
+  const all = await listManuscripts(env.DB, viewer);
+  if (!q) return { files: all, searched: "text" };
   const sa = saClient(env, fetcher);
-  const hits = new Set((await listAll(sa, `fullText contains ${quote(q)} and trashed = false and mimeType != ${quote(FOLDER)}`)).map((h) => h.id));
+  const notFolder = `trashed = false and mimeType != ${quote(FOLDER)}`;
+  let searched: ManuscriptSearch["searched"] = "text";
+  let hits: DriveFile[];
+  try {
+    hits = await listAll(sa, `fullText contains ${quote(q)} and ${notFolder}`);
+  } catch {
+    searched = "titles";
+    hits = await listAll(sa, `name contains ${quote(q)} and ${notFolder}`);
+  }
+  const ids = new Set(hits.map((h) => h.id));
   // Anything else the service account can see is not a manuscript; only indexed files count.
-  return (await listManuscripts(env.DB, viewer)).filter((m) => hits.has(m.fileId));
+  return { files: all.filter((m) => ids.has(m.fileId)), searched };
 }
 
 // ---------- Send to Docs and Import, over drive.file
