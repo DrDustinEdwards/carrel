@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql to 0005_google.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0006_social.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -227,3 +227,63 @@ export const searchConsolePages = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.projectId, t.page] })],
 );
+
+export const socialAccounts = sqliteTable("social_accounts", {
+  id: integer("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  name: text("name").notNull(),
+  platform: text("platform", { enum: ["bluesky", "x"] }).notNull(),
+  kind: text("kind", { enum: ["personal", "brand"] }).notNull(),
+  handle: text("handle").notNull(),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  mode: text("mode", { enum: ["approval", "auto"] }).notNull().default("approval"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  dailyCap: integer("daily_cap").notNull().default(3),
+  minGapMinutes: integer("min_gap_minutes").notNull().default(60),
+  monthlyBudgetMills: integer("monthly_budget_mills").notNull().default(0),
+  template: text("template").notNull().default(""),
+  voiceGuide: text("voice_guide").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const socialRoutineRuns = sqliteTable("social_routine_runs", {
+  id: integer("id").primaryKey(),
+  kind: text("kind", { enum: ["batch", "nightly"] }).notNull(),
+  requestedAt: text("requested_at").notNull(),
+  events: text("events").notNull(),
+  status: text("status", { enum: ["fired", "failed"] }).notNull(),
+  sessionUrl: text("session_url"),
+  error: text("error"),
+});
+
+export const socialEvents = sqliteTable("social_events", {
+  id: integer("id").primaryKey(),
+  accountId: integer("account_id").notNull().references(() => socialAccounts.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  title: text("title").notNull().default(""),
+  url: text("url").notNull().default(""),
+  summary: text("summary").notNull().default(""),
+  publishedAt: text("published_at"),
+  state: text("state", { enum: ["waiting", "routine", "covered", "templated", "closed"] }).notNull().default("waiting"),
+  routineRunId: integer("routine_run_id").references(() => socialRoutineRuns.id),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const socialPosts = sqliteTable("social_posts", {
+  id: integer("id").primaryKey(),
+  accountId: integer("account_id").notNull().references(() => socialAccounts.id, { onDelete: "cascade" }),
+  eventId: integer("event_id").notNull().references(() => socialEvents.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  source: text("source", { enum: ["predrafted", "routine", "template"] }).notNull(),
+  status: text("status", { enum: ["drafted", "held", "awaiting", "queued", "sent", "by-hand", "failed", "rejected"] }).notNull(),
+  lint: text("lint").notNull().default("[]"),
+  createdBy: text("created_by").notNull(),
+  approvedBy: integer("approved_by").references(() => people.id),
+  costMills: integer("cost_mills").notNull().default(0),
+  platformPostId: text("platform_post_id"),
+  error: text("error"),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  sentAt: text("sent_at"),
+  acknowledgedAt: text("acknowledged_at"),
+});

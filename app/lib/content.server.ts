@@ -12,7 +12,8 @@ import { indexDoc } from "~/lib/index.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, type Action, type Role } from "~/lib/roles";
-import { siteClient } from "~/lib/sites.server";
+import { siteClient, siteConnection } from "~/lib/sites.server";
+import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
 
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
 
@@ -172,6 +173,12 @@ export async function writeToSite(
   try {
     const doc = await client.get(itemId);
     await indexDoc(env.DB, project.id, doc);
+    // A piece going live is the one event social posts may announce (design decision 5).
+    if (request.action === "publish" && doc.status === "published") {
+      const connection = siteConnection(env, project.site);
+      const url = connection.state === "connected" && doc.path ? new URL(doc.path, connection.origin).href : "";
+      await recordPublication(env.DB, project.id, { id: itemId, title: doc.title, url, summary: summaryFrom(doc.source) });
+    }
   } catch (error) {
     console.error(JSON.stringify({ index: "after-write-failed", itemId, error: String(error) }));
   }

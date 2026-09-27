@@ -4,8 +4,9 @@
 // It checks the settings the gate needs, the database and its Owner, the Access signing keys, and
 // each site: its key, and whether the site still conforms to the site-api contract Carrel was built
 // against, the GitHub App for the novels repository, that every AI publish reached Dustin's inbox,
-// and Google: the service account key (its age and whether Google still takes it) and Dustin's
-// drive.file grant.
+// Google (the service account key's age and whether Google still takes it, and Dustin's drive.file
+// grant), and any template social post that went out, which Dustin should know about (design
+// decision 5, third step).
 
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { eq, isNull } from "drizzle-orm";
@@ -17,6 +18,7 @@ import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
 import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
+import { unseenTemplates } from "~/lib/social/queue.server";
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
 
@@ -170,6 +172,23 @@ async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
   }
 }
 
+/** A template post went out: the routine failed or hit its cap. Fails until Dustin marks it seen. */
+async function checkSocialTemplates(env: Env): Promise<CheckResult> {
+  try {
+    const unseen = await unseenTemplates(env.DB);
+    if (unseen.length === 0) return { name: "social-templates", ok: true, detail: "No template post is waiting to be seen." };
+    return {
+      name: "social-templates",
+      ok: false,
+      detail: `${unseen.length} template post${unseen.length === 1 ? "" : "s"} went out because the routine did not draft ${unseen.length === 1 ? "it" : "them"}: ${unseen
+        .map((u) => `${u.accountKey}: "${u.text}"`)
+        .join("; ")}. Mark ${unseen.length === 1 ? "it" : "them"} seen in Carrel's social page.`,
+    };
+  } catch (error) {
+    return { name: "social-templates", ok: false, detail: `The social record could not be read: ${message(error)}` };
+  }
+}
+
 export async function runChecks(
   env: Env,
   fetcher: Fetch = (url, init) => fetch(url, init),
@@ -184,6 +203,7 @@ export async function runChecks(
     checkAiPublishEmails(env),
     checkServiceAccount(env, fetcher, now),
     checkDriveFile(env, fetcher),
+    checkSocialTemplates(env),
   ]);
 }
 

@@ -702,3 +702,36 @@ button:disabled {
   border-radius: 0.375rem;
   max-width: 44rem;
 }
+
+/* Stage 9: social. */
+
+.post-list {
+  list-style: none;
+  padding: 0;
+}
+
+.post-list > li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.account-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.account-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+textarea {
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.375rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
