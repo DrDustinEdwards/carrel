@@ -11,7 +11,7 @@ import { changes, drafts } from "~/db/schema";
 import { indexDoc } from "~/lib/index.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
-import { can, type Action } from "~/lib/roles";
+import { can, type Action, type Role } from "~/lib/roles";
 import { siteClient } from "~/lib/sites.server";
 
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
@@ -27,7 +27,10 @@ function forbid(): never {
   throw new Response("Forbidden", { status: 403 });
 }
 
-function requireCan(project: SiteProject, action: Action) {
+/** Enough of a project to check a role on it: a site or a book. Drafts are keyed by project and item either way. */
+export type ProjectRole = { id: number; role: Role };
+
+function requireCan(project: { role: Role }, action: Action) {
   if (!can(project.role, action)) forbid();
 }
 
@@ -42,7 +45,7 @@ export async function readDoc(env: Env, project: SiteProject, itemId: string, fe
   }
 }
 
-export async function readDraft(db: D1Database, project: SiteProject, viewer: Viewer, itemId: string) {
+export async function readDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string) {
   requireCan(project, "read");
   const row = await drizzle(db)
     .select({ source: drafts.source, baseVersion: drafts.baseVersion, updatedAt: drafts.updatedAt })
@@ -52,10 +55,10 @@ export async function readDraft(db: D1Database, project: SiteProject, viewer: Vi
   return row ?? null;
 }
 
-/** The working copy is private to the person: an Editor may autosave a live post, never send it. */
+/** The working copy is private to the person: an Editor may autosave a live post, never send it. The same for a book's files. */
 export async function autosave(
   db: D1Database,
-  project: SiteProject,
+  project: ProjectRole,
   viewer: Viewer,
   itemId: string,
   input: { source: string; baseVersion: string | null },
@@ -73,7 +76,7 @@ export async function autosave(
   return { source: input.source, baseVersion: input.baseVersion, updatedAt };
 }
 
-export async function discardDraft(db: D1Database, project: SiteProject, viewer: Viewer, itemId: string) {
+export async function discardDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string) {
   requireCan(project, "edit");
   await drizzle(db)
     .delete(drafts)
