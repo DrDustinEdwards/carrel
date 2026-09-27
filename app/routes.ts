@@ -14,4 +14,6 @@ export default [
   route("b/:project/authorship", "routes/book.authorship.ts"),
   route("p/:project/e/:item/unpublish", "routes/unpublish.tsx"),
   route("p/:project/e/:item/ai/:id", "routes/ai-draft.tsx"),
+  route("manuscripts", "routes/manuscripts.tsx"),
+  route("auth/google/:step", "routes/auth.google.ts"),
 ] satisfies RouteConfig;
