@@ -141,6 +141,18 @@ export async function draftSocialPost(db: D1Database, input: { accountKey: strin
   return { ok: true as const, postId: post!.id };
 }
 
+/** The routine is told each item by its event id; this stores its draft for that event. */
+export async function draftForEvent(db: D1Database, input: { eventId: number; text: string; createdBy: string }) {
+  const row = await drizzle(db)
+    .select({ event: socialEvents, key: socialAccounts.key })
+    .from(socialEvents)
+    .innerJoin(socialAccounts, eq(socialAccounts.id, socialEvents.accountId))
+    .where(eq(socialEvents.id, input.eventId))
+    .get();
+  if (!row) return { ok: false as const, error: `No social event ${input.eventId}.` };
+  return draftSocialPost(db, { accountKey: row.key, projectId: row.event.projectId, itemId: row.event.itemId, text: input.text, createdBy: input.createdBy });
+}
+
 function fillTemplate(template: string, event: { title: string; summary: string; url: string }): string {
   return (template || DEFAULT_TEMPLATE)
     .replaceAll("{title}", event.title)

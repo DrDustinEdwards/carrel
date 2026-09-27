@@ -101,7 +101,7 @@ describe("the MCP session", () => {
     const list = (await (await post("owner@test.invalid", { jsonrpc: "2.0", id: 2, method: "tools/list" }, session!)).json()) as {
       result: { tools: { name: string; description: string }[] };
     };
-    expect(list.result.tools.map((t) => t.name)).toEqual(["list_projects", "search_items", "read_item", "save_draft", "preview", "get_checks", "add_finding", "publish"]);
+    expect(list.result.tools.map((t) => t.name)).toEqual(["list_projects", "search_items", "read_item", "save_draft", "preview", "get_checks", "add_finding", "publish", "list_book_files", "read_book_file", "check_book_text", "save_book_draft", "add_book_finding", "draft_social_post"]);
     for (const tool of list.result.tools) expect(tool.description).toContain("AI never rewrites Dustin's prose unasked.");
   });
 

@@ -127,6 +127,10 @@ Carrel answers MCP at `/mcp` (Streamable HTTP, JSON replies, one session per cli
 | `save_draft` | Editor, Owner | a new AI draft beside the person's own; never over it, never to the site |
 | `add_finding` | anyone with a role, reviewers above all | a flag on a post, credited to the client |
 | `publish` | the Owner's own sessions | the post as saved on the site at `expected_version`; refused while any flag is open; recorded as "published by <client> on Dustin's instruction"; emails Dustin an unpublish link |
+| `list_book_files`, `read_book_file`, `check_book_text` | anyone with a role on the book | the book's files, a file with its version and flags, and the checks run on text without saving |
+| `save_book_draft` | Editor, Owner | a new AI draft of a book file beside the person's own; never committed to Git |
+| `add_book_finding` | anyone with a role, reviewers above all | a flag on a book file; a recheck never withdraws it, and it holds export |
+| `draft_social_post` | the Owner's own sessions | a post for the social queue, by event id or by account, project and item |
 
 A **reviewer** is a person row with `is_reviewer = 1` (another company's agent): it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
 
