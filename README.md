@@ -157,7 +157,7 @@ Each site's files stay in that site's own storage and are served by the site; Ca
 - **Images load from the site.** The page's image policy names each configured site origin, and nothing else.
 - **Health.** The conformance run includes the media checks, all of which a conforming site refuses. The suite's real upload round trip stays off, so the health check never stores a file.
 - **Not in v0.2.0:** bulk actions, trash, tags, folders and editing a file's alt text after upload. The site's own media screen keeps those until they have routes.
-- **Authorship:** an upload or delete carries a Carrel change id into the site's own history. Carrel's `changes` table records only content writes; widening it is a migration, left for later.
+- **Authorship:** an upload or delete writes one row in `changes` (migration 0007): the person, the AI client when it came through the AI door, the project, the site's media id, and the same change id Carrel sent the site, so the two histories join. A refused upload or delete writes nothing.
 
 ## Google
 
@@ -185,6 +185,15 @@ Every post is linted (the AI-habits list, the "not X, it's Y" construction, the 
 
 Credentials are secrets named for the account key, with dashes as underscores: `SOCIAL_<KEY>_BLUESKY_APP_PASSWORD`, or `SOCIAL_<KEY>_X_API_KEY`, `_X_API_SECRET`, `_X_ACCESS_TOKEN` and `_X_ACCESS_SECRET`. The routine is `SOCIAL_ROUTINE_URL` and `SOCIAL_ROUTINE_TOKEN`. No AI API key or subscription token is stored anywhere.
 
+## People and flags
+
+- **People** (`/people`, the Owner only; anyone else gets a 404): who is in Carrel, their kind (Owner, person, or reviewer), and their role on each project. The Owner adds a person, shares a project as Reader or Editor, removes a role, and disables or re-enables someone. Everything goes through `app/lib/people-admin.server.ts`, which checks the Owner. It refuses a second Owner (the database refuses one too), disabling or re-roling the Owner, and a reviewer as Editor (reviewers read and flag only).
+- **Access is outside Carrel.** Adding a person here does not let them past Cloudflare Access, and the page says so after each add, naming where to allow the same email:
+  - Carrel's pages: the Worker's Access policy. The Worker's Access tab offers only *Cloudflare account* and *Email domain*, so one extra address goes in an Emails rule in Zero Trust > Access controls > Policies, or on the Worker's application in Zero Trust.
+  - The AI door: the *Carrel people* policy of the *Carrel AI Door* application.
+  - Someone without a Cloudflare account signs in with an emailed code only if One-time PIN is set up, under Zero Trust > Integrations > Identity providers.
+- **Flags** (`/p/<project>/flags`): every flag on a site project, open first, from checks, AI sessions and reviewers, including flags on items the site does not have, which no editor page reaches. Anyone who can read the project sees them. Only the Owner dismisses, through the editor's own dismiss function, so a dismissal is recorded the same way.
+
 ## Who may do what
 
 | Action | Reader | Editor | Owner |
@@ -200,6 +209,9 @@ Credentials are secrets named for the account key, with dashes as underscores: `
 | Browse the media library | yes | yes | yes |
 | Upload media, insert an image into a post | | yes | yes |
 | Delete a media file from the site | | | yes |
+| See a project's flags list | yes | yes | yes |
+| Dismiss a flag | | | yes |
+| Manage people and their roles | | | yes |
 
 A person with no role on a project gets the same 404 as for a project that does not exist.
 
