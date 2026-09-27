@@ -17,8 +17,13 @@ import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
+import { draftForEvent, draftSocialPost } from "~/lib/social/queue.server";
 
-export type AiSession = { viewer: Viewer; client: string; sessionId: string };
+/**
+ * An AI client acting for a person, known by the door it came through: the person the OAuth grant
+ * belongs to, and the client that holds the grant (its CIMD name), credited on every change.
+ */
+export type AiSession = { viewer: Viewer; client: string };
 
 /** A refusal an AI tool reports back to the client as its answer, never a crash. */
 export class AiRefusal extends Error {
@@ -252,4 +257,24 @@ export async function lastAiPublication(db: D1Database, project: SiteProject, it
       .orderBy(desc(aiPublications.publishedAt))
       .get()) ?? null
   );
+}
+
+// ---------- social posts, drafted by the session that finished the piece (decision 5)
+
+/**
+ * Stores an AI session's drafted social post for the queue, by the event id the routine was given or
+ * by account and item. Social posts are Dustin's alone, so only his own sessions may draft them.
+ */
+export async function aiDraftSocialPost(
+  db: D1Database,
+  session: AiSession,
+  input: { eventId: number; text: string } | { accountKey: string; projectId: number; itemId: string; text: string },
+): Promise<{ postId: number }> {
+  if (session.viewer.isReviewer || !session.viewer.isOwner) throw new AiRefusal("Social posts are Dustin's: only his own sessions may draft them.");
+  const result =
+    "eventId" in input
+      ? await draftForEvent(db, { eventId: input.eventId, text: input.text, createdBy: session.client })
+      : await draftSocialPost(db, { ...input, createdBy: session.client });
+  if (!result.ok) throw new AiRefusal(result.error);
+  return { postId: result.postId };
 }

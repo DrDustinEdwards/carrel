@@ -8,11 +8,11 @@ import { exportGate, listFindings, refreshBook, requireBookProject, saveBookFile
 import { autosave, readDraft } from "~/lib/content.server";
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import type { Viewer } from "~/lib/people.server";
-import { handleMcp } from "~/lib/mcp/server";
 import { createAccount, recordPublication, setSwitches } from "~/lib/social/queue.server";
 import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
 
 import { addBook, addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { connectAs } from "./mcp-client";
 import { fakeNovels } from "./novels";
 import { viewerFor } from "./site";
 
@@ -45,22 +45,9 @@ beforeEach(async () => {
   await refreshBook(testEnv.DB, gh.repo, await requireBookProject(testEnv.DB, owner, SLUG, "read"));
 });
 
-async function post(email: string, body: unknown, session?: string) {
-  const request = new Request("https://carrel.test/mcp", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(session ? { "Mcp-Session-Id": session } : {}) },
-    body: JSON.stringify(body),
-  });
-  return handleMcp(request, testEnv, await viewerFor(email), { carrelOrigin: "https://carrel.test" });
-}
-
-async function connect(email: string, clientName = "Claude") {
-  const res = await post(email, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", clientInfo: { name: clientName, version: "1.0" } } });
-  const session = res.headers.get("Mcp-Session-Id")!;
-  return async (name: string, args: Record<string, unknown>) => {
-    const r = await post(email, { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name, arguments: args } }, session);
-    return ((await r.json()) as { result: { content: { text: string }[]; isError?: boolean; structuredContent?: Record<string, unknown> } }).result;
-  };
+async function connect(email: string, client = "Claude") {
+  const ai = await connectAs(email, client);
+  return ai.call;
 }
 
 describe("books through MCP", () => {
@@ -135,7 +122,7 @@ describe("AI drafts in the book editor", () => {
     context.set(nonceContext, "n");
     const params = { project: SLUG, "*": SCENE };
     const data = (await fileLoader({ request: new Request("https://carrel.test/"), params, context } as never)) as Awaited<ReturnType<typeof fileLoader>>;
-    expect(data.aiDrafts).toMatchObject([{ client: "Claude 1.0", source: `${HEADER}An AI version.\n` }]);
+    expect(data.aiDrafts).toMatchObject([{ client: "Claude", source: `${HEADER}An AI version.\n` }]);
 
     const body = new FormData();
     body.set("intent", "use-ai-draft");
@@ -178,7 +165,7 @@ describe("draft_social_post", () => {
     const eventId = await socialAccount();
     const result = await (await connect("owner@test.invalid", "Claude Code"))("draft_social_post", { event_id: eventId, text: "Episode 1 is out: https://site.test/ep-1" });
     expect(result.structuredContent).toMatchObject({ stored: true });
-    expect(await testEnv.DB.prepare("SELECT source, status, created_by FROM social_posts").first()).toEqual({ source: "predrafted", status: "drafted", created_by: "Claude Code 1.0" });
+    expect(await testEnv.DB.prepare("SELECT source, status, created_by FROM social_posts").first()).toEqual({ source: "predrafted", status: "drafted", created_by: "Claude Code" });
   });
 
   it("stores by account, project and item too", async () => {

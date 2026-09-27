@@ -1,16 +1,17 @@
-// The MCP endpoint and its tools, as an AI client meets them: sessions, the tools over posts, and the
-// planted refusals from design decision 2 (a shared user's session publishing, a reviewer
-// publishing, an Owner's publish with an open flag). The site is site-api's own handler over its
-// reference adapter; the email binding is a mailbox the tests read.
+// The MCP endpoint and its tools, as an AI client meets them: the protocol in both eras, the tools
+// over posts, and the planted refusals from design decision 2 (a shared user's session publishing, a
+// reviewer publishing, an Owner's publish with an open flag). The site is site-api's own handler over
+// its reference adapter; the email binding is a mailbox the tests read. The session is what the door
+// hands over from the OAuth grant: the person and the client, credited by the client's name.
 
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { autosave, readDraft } from "~/lib/content.server";
 import { runHealth } from "~/lib/health.server";
-import { handleMcp } from "~/lib/mcp/server";
 import { requireSiteProject } from "~/lib/projects.server";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { connectAs, legacyRequest, LEGACY, MCP_HOST, MCP_URL, modernRequest, readMessage } from "./mcp-client";
 import { connectedEnv, fakeSite, viewerFor } from "./site";
 
 const SLUG = "de-info";
@@ -50,32 +51,8 @@ beforeEach(async () => {
   env = { ...connectedEnv(), EMAIL: box.EMAIL };
 });
 
-async function post(email: string, body: unknown, session?: string, headers: Record<string, string> = {}, e: Env = env) {
-  const request = new Request(`${CARREL}/mcp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", ...(session ? { "Mcp-Session-Id": session } : {}), ...headers },
-    body: JSON.stringify(body),
-  });
-  return handleMcp(request, e, await viewerFor(email), { fetcher: site.fetch, carrelOrigin: CARREL });
-}
-
-async function connect(email: string, clientName = "Claude") {
-  const response = await post(email, {
-    jsonrpc: "2.0",
-    id: 1,
-    method: "initialize",
-    params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: clientName, version: "1.0" } },
-  });
-  const session = response.headers.get("Mcp-Session-Id")!;
-  expect((await post(email, { jsonrpc: "2.0", method: "notifications/initialized" }, session)).status).toBe(202);
-  return {
-    session,
-    call: async (name: string, args: Record<string, unknown> = {}) => {
-      const r = await post(email, { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name, arguments: args } }, session);
-      const body = (await r.json()) as { result: { content: { text: string }[]; isError?: boolean; structuredContent?: Record<string, unknown> } };
-      return body.result;
-    },
-  };
+async function connect(email: string, client = "Claude", e: Env = env) {
+  return connectAs(email, client, { env: e, deps: { fetcher: site.fetch, carrelOrigin: CARREL } });
 }
 
 /** A post the Owner saved on the site through the buttons' own function, returned with its version. */
@@ -85,51 +62,44 @@ async function seedPost(status: "draft" | "published" = "draft") {
   return (await site.adapter.content.publish("post-one", { expectedVersion: saved.version, changeId: "seed-publish" })).version;
 }
 
-describe("the MCP session", () => {
-  it("negotiates the protocol, names the client, and lists the tools", async () => {
-    const response = await post("owner@test.invalid", {
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "Claude", version: "1.0" } },
-    });
-    const body = (await response.json()) as { result: { protocolVersion: string; serverInfo: { name: string }; capabilities: unknown } };
-    expect(body.result).toMatchObject({ protocolVersion: "2025-06-18", serverInfo: { name: "carrel" }, capabilities: { tools: {} } });
-    const session = response.headers.get("Mcp-Session-Id");
-    expect(session).toMatch(/^[0-9a-f-]{36}$/);
-
-    const list = (await (await post("owner@test.invalid", { jsonrpc: "2.0", id: 2, method: "tools/list" }, session!)).json()) as {
-      result: { tools: { name: string; description: string }[] };
-    };
-    expect(list.result.tools.map((t) => t.name)).toEqual(["list_projects", "search_items", "read_item", "save_draft", "preview", "get_checks", "add_finding", "publish", "list_book_files", "read_book_file", "check_book_text", "save_book_draft", "add_book_finding", "draft_social_post"]);
-    for (const tool of list.result.tools) expect(tool.description).toContain("AI never rewrites Dustin's prose unasked.");
+describe("the protocol", () => {
+  it("lists the tools in the 2026-07-28 era, each carrying the rule", async () => {
+    const tools = await (await connect("owner@test.invalid")).list();
+    expect(tools.map((t) => t.name)).toEqual(["list_projects", "search_items", "read_item", "save_draft", "preview", "get_checks", "add_finding", "publish", "list_book_files", "read_book_file", "check_book_text", "save_book_draft", "add_book_finding", "draft_social_post"]);
+    for (const tool of tools) expect(tool.description).toContain("AI never rewrites Dustin's prose unasked.");
   });
 
-  it("answers an unknown protocol version with the latest it speaks", async () => {
-    const response = await post("owner@test.invalid", { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "1999-01-01", clientInfo: { name: "x" } } });
-    expect(((await response.json()) as { result: { protocolVersion: string } }).result.protocolVersion).toBe("2025-11-25");
+  it("answers a 2025-era client through the legacy shim: initialize, then calls with no session", async () => {
+    const ai = await connect("reader@test.invalid");
+    const init = await readMessage(
+      await ai.send(legacyRequest({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: LEGACY, capabilities: {}, clientInfo: { name: "Claude Code", version: "2.1" } } })),
+    );
+    expect(init.result).toMatchObject({ protocolVersion: LEGACY, serverInfo: { name: "carrel" }, capabilities: { tools: {} } });
+    const legacy = await connectAs("reader@test.invalid", "Claude", { env, deps: { fetcher: site.fetch, carrelOrigin: CARREL }, era: "legacy" });
+    expect((await legacy.list()).length).toBe(14);
+    expect((await legacy.call("list_projects")).structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "reader" }] });
   });
 
-  it("PLANT: a call with no session, or someone else's session, is refused", async () => {
-    expect((await post("owner@test.invalid", { jsonrpc: "2.0", id: 2, method: "tools/list" })).status).toBe(400);
-    const { session } = await connect("editor@test.invalid");
-    expect((await post("owner@test.invalid", { jsonrpc: "2.0", id: 2, method: "tools/list" }, session)).status).toBe(404);
+  it("answers an unknown protocol version at initialize with one it speaks", async () => {
+    const ai = await connect("owner@test.invalid");
+    const init = await readMessage(await ai.send(legacyRequest({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "1999-01-01", capabilities: {}, clientInfo: { name: "x", version: "1" } } })));
+    expect(["2025-11-25", "2025-06-18", "2025-03-26"]).toContain(init.result?.protocolVersion);
   });
 
-  it("PLANT: a page elsewhere cannot drive the tools, and GET, batches and bad JSON are refused", async () => {
-    const { session } = await connect("owner@test.invalid");
-    expect((await post("owner@test.invalid", { jsonrpc: "2.0", id: 2, method: "tools/list" }, session, { Origin: "https://evil.example" })).status).toBe(403);
-    expect((await handleMcp(new Request(`${CARREL}/mcp`), env, await viewerFor("owner@test.invalid"))).status).toBe(405);
-    expect((await post("owner@test.invalid", [{ jsonrpc: "2.0", id: 1, method: "ping" }], session)).status).toBe(400);
-    const bad = new Request(`${CARREL}/mcp`, { method: "POST", body: "{not json", headers: { "Mcp-Session-Id": session } });
-    expect((await handleMcp(bad, env, await viewerFor("owner@test.invalid"))).status).toBe(400);
-  });
-
-  it("ends a session on DELETE", async () => {
-    const { session } = await connect("owner@test.invalid");
-    const del = new Request(`${CARREL}/mcp`, { method: "DELETE", headers: { "Mcp-Session-Id": session } });
-    expect((await handleMcp(del, env, await viewerFor("owner@test.invalid"))).status).toBe(204);
-    expect((await post("owner@test.invalid", { jsonrpc: "2.0", id: 2, method: "ping" }, session)).status).toBe(404);
+  it("PLANT: a page elsewhere cannot drive the tools, a rebinding host is refused, and GET, DELETE, 2026-era batches and bad JSON are refused", async () => {
+    const ai = await connect("owner@test.invalid");
+    expect((await ai.send(modernRequest(2, "tools/list", {}, { Origin: "https://evil.example" }))).status).toBe(403);
+    expect((await ai.send(modernRequest(2, "tools/list", {}, { Host: "evil.example" }))).status).toBe(403);
+    expect((await ai.send(new Request(MCP_URL, { headers: { Host: MCP_HOST, Accept: "text/event-stream" } }))).status).toBe(405);
+    expect((await ai.send(new Request(MCP_URL, { method: "DELETE", headers: { Host: MCP_HOST } }))).status).toBe(405);
+    const one = modernRequest(1, "tools/list");
+    const body = [JSON.parse(await one.clone().text()), JSON.parse(await one.clone().text())];
+    const batch = await ai.send(new Request(one, { body: JSON.stringify(body) }));
+    // Refused in the design-center era. The legacy shim answers 2025-era batches as that era allowed;
+    // each message in one still runs as this same session, so a batch widens nothing.
+    expect(batch.status).toBe(400);
+    const bad = new Request(MCP_URL, { method: "POST", body: "{not json", headers: { Host: MCP_HOST, "Content-Type": "application/json", Accept: "application/json, text/event-stream" } });
+    expect((await ai.send(bad)).status).toBe(400);
   });
 });
 
@@ -162,7 +132,7 @@ describe("reading, drafting, flagging", () => {
     expect((await site.adapter.content.get("post-one"))?.source).toBe("---\ntitle: Post one\n---\nDustin's words.\n");
     expect(site.requests.filter((r) => !r.startsWith("GET"))).toEqual([]);
     const read = await ai.call("read_item", { project: SLUG, item: "post-one" });
-    expect(read.structuredContent).toMatchObject({ aiDrafts: [{ client: "Claude 1.0", note: "Tightened the opening." }] });
+    expect(read.structuredContent).toMatchObject({ aiDrafts: [{ client: "Claude", note: "Tightened the opening." }] });
   });
 
   it("PLANT: a Reader's session and a reviewer's cannot save a draft", async () => {
@@ -184,7 +154,7 @@ describe("reading, drafting, flagging", () => {
     expect((await reviewer.call("add_finding", args)).structuredContent).toMatchObject({ flagged: true, alreadyFlagged: false });
     expect((await reviewer.call("add_finding", args)).structuredContent).toMatchObject({ alreadyFlagged: true });
     const checks = await (await connect("owner@test.invalid")).call("get_checks", { project: SLUG, item: "post-one" });
-    expect(checks.structuredContent).toMatchObject({ open: 1, flags: [{ check: "review", message: "This number has no source. (from Grok Build 1.0)" }] });
+    expect(checks.structuredContent).toMatchObject({ open: 1, flags: [{ check: "review", message: "This number has no source. (from Grok Build)" }] });
   });
 
   it("previews through the site's own renderer", async () => {
@@ -218,7 +188,7 @@ describe("publish by instruction (decision 2)", () => {
     const result = await (await connect("owner@test.invalid")).call("publish", { project: SLUG, item: "post-one", expected_version: version });
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toBe(
-      "Publish is refused while 1 flag is open on this post: Unsourced claim. (from Grok Build 1.0) Dustin fixes the text or dismisses each flag in Carrel first.",
+      "Publish is refused while 1 flag is open on this post: Unsourced claim. (from Grok Build) Dustin fixes the text or dismisses each flag in Carrel first.",
     );
     expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
     expect(box.sent).toEqual([]);
@@ -231,14 +201,14 @@ describe("publish by instruction (decision 2)", () => {
     expect((await site.adapter.content.get("post-one"))?.status).toBe("published");
 
     const change = await testEnv.DB.prepare("SELECT action, client FROM changes WHERE item_id = 'post-one'").first();
-    expect(change).toEqual({ action: "publish", client: "Claude 1.0" });
+    expect(change).toEqual({ action: "publish", client: "Claude" });
     const record = await testEnv.DB.prepare("SELECT client, emailed_at, email_error FROM ai_publications").first<{ client: string; emailed_at: string | null; email_error: string | null }>();
-    expect(record).toMatchObject({ client: "Claude 1.0", email_error: null });
+    expect(record).toMatchObject({ client: "Claude", email_error: null });
     expect(record!.emailed_at).not.toBeNull();
 
     expect(box.sent).toHaveLength(1);
-    expect(box.sent[0]).toMatchObject({ to: "owner@test.invalid", subject: 'Carrel: Claude 1.0 published "Post one"' });
-    expect(box.sent[0]!.text).toContain("Published by Claude 1.0 on Dustin's instruction.");
+    expect(box.sent[0]).toMatchObject({ to: "owner@test.invalid", subject: 'Carrel: Claude published "Post one"' });
+    expect(box.sent[0]!.text).toContain("Published by Claude on Dustin's instruction.");
     expect(box.sent[0]!.text).toContain(`Unpublish it: ${CARREL}/p/${SLUG}/e/post-one/unpublish`);
   });
 
@@ -261,10 +231,8 @@ describe("publish by instruction (decision 2)", () => {
     const version = await seedPost();
     const failing = mailbox(true);
     const e = { ...env, EMAIL: failing.EMAIL };
-    const response = await post("owner@test.invalid", { jsonrpc: "2.0", id: 1, method: "initialize", params: { clientInfo: { name: "Claude" } } }, undefined, {}, e);
-    const session = response.headers.get("Mcp-Session-Id")!;
-    const call = await post("owner@test.invalid", { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "publish", arguments: { project: SLUG, item: "post-one", expected_version: version } } }, session, {}, e);
-    expect(((await call.json()) as { result: { structuredContent: unknown } }).result.structuredContent).toMatchObject({ published: true, dustinEmailed: false });
+    const result = await (await connect("owner@test.invalid", "Claude", e)).call("publish", { project: SLUG, item: "post-one", expected_version: version });
+    expect(result.structuredContent).toMatchObject({ published: true, dustinEmailed: false });
 
     const health = mailbox();
     const { results } = await runHealth({ ...testEnv, EMAIL: health.EMAIL }, async () => Response.json({ keys: [{ kid: "k" }] }));

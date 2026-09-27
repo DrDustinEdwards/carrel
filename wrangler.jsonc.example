@@ -3,8 +3,9 @@
  *
  * `scripts/bootstrap-config.mjs` copies this to wrangler.jsonc on install and never overwrites it.
  * The real file is gitignored because it carries the D1 database id. Secrets are set with
- * `wrangler secret put`, never here: ACCESS_AUD (the AUD tag of the Worker's Access application)
- * and one key per site, SITE_DUSTINEDWARDS_KEY (absent until the site is connected).
+ * `wrangler secret put`, never here: ACCESS_AUD (the AUD tag of the Worker's Access application),
+ * ACCESS_SAAS_CLIENT_ID and ACCESS_SAAS_CLIENT_SECRET (the AI door's Access for SaaS login), and one
+ * key per site, SITE_DUSTINEDWARDS_KEY (absent until the site is connected).
  *
  * NEVER PUBLIC, BY DEPLOY ORDER. Cloudflare Access is turned on at the Worker level
  * (Workers & Pages > carrel > Access, "All traffic"), which covers every URL that reaches this
@@ -14,15 +15,26 @@
  *
  * ACCESS_TEAM_DOMAIN is the Zero Trust team domain, the issuer of every Access token. It lives in
  * config, not code, so a rename of the team is a config change.
+ *
+ * THE AI DOOR IS THE ONE EXCEPTION, by hostname. carrel-mcp.dustinedwards.info must be reachable
+ * before anyone signs in, because an MCP client fetches the OAuth metadata and token endpoints there.
+ * So it gets a hostname Access application with a Bypass policy, which Cloudflare applies before the
+ * Worker-level application. Carrel's own OAuth provider guards /mcp there instead, with Access for
+ * SaaS as its login. Add that Bypass app BEFORE uncommenting the second route below.
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "carrel",
 	"compatibility_date": "2026-09-01",
 	"main": "./workers/app.ts",
+	// global_fetch_strictly_public: the AI door's OAuth provider refuses to fetch a client's metadata
+	// document (CIMD) without it, as SSRF protection. It also sends same-zone fetches (the site API on
+	// dustinedwards.info) through the public front door, as a browser's would go.
+	"compatibility_flags": ["global_fetch_strictly_public"],
 	"workers_dev": false,
 	"preview_urls": false,
-	// Uncomment only after Worker-level Access is on (setup step 7).
+	// Uncomment only after Worker-level Access is on (setup step 7), and the second route only after
+	// the carrel-mcp hostname's Bypass application exists.
 	// "routes": [
 	// 	{
 	// 		"pattern": "carrel.dustinedwards.info",
@@ -50,6 +62,14 @@
 			"migrations_dir": "drizzle"
 		}
 	],
+	// Grants and tokens for the AI door's OAuth provider: `npx wrangler kv namespace create OAUTH_KV`,
+	// then its id here.
+	"kv_namespaces": [
+		{
+			"binding": "OAUTH_KV",
+			"id": "00000000000000000000000000000000"
+		}
+	],
 	"send_email": [
 		{
 			"name": "EMAIL"
@@ -59,8 +79,10 @@
 		"ACCESS_TEAM_DOMAIN": "https://dustinedwards.cloudflareaccess.com",
 		"ALERT_EMAIL": "alerts@example.com",
 		"ALERT_FROM": "carrel@dustinedwards.info",
-		// Where Carrel's pages live, for links in email. The AI door (/mcp) is on its own hostname.
+		// Where Carrel's pages live, for links in email.
 		"CARREL_ORIGIN": "https://carrel.dustinedwards.info",
+		// The AI door: OAuth and /mcp, and nothing else. Its hostname alone marks a request as AI.
+		"CARREL_MCP_ORIGIN": "https://carrel-mcp.dustinedwards.info",
 		// The Drive folder Dustin shares with the service account (the id in its URL). Stage 6.
 		"GOOGLE_MANUSCRIPTS_FOLDER_ID": "",
 		// The Search Console property for dustinedwards.info, if it is not the domain property.

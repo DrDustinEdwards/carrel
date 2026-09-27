@@ -83,6 +83,8 @@ export const changes = sqliteTable("changes", {
   client: text("client"),
 });
 
+// No longer written: the MCP endpoint is stateless since the SDK v2 rebuild, and the client is known
+// from the OAuth grant. Kept until a migration drops it, since dropping a table is a migration.
 export const mcpSessions = sqliteTable("mcp_sessions", {
   id: text("id").primaryKey(),
   personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
