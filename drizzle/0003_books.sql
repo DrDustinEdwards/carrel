@@ -33,8 +33,9 @@ CREATE TABLE novels_shared (
 );
 
 -- What the checks on save found. A flag never blocks a save; an open flag blocks export until the
--- Owner fixes the text or dismisses the flag. The fingerprint keeps a dismissal across saves.
-CREATE TABLE findings (
+-- Owner fixes the text or dismisses the flag. The fingerprint keeps a dismissal across saves. Stage 5
+-- (0004) defines the same table for flags on posts, so both say IF NOT EXISTS and apply in either order.
+CREATE TABLE IF NOT EXISTS findings (
   id INTEGER PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
   path TEXT NOT NULL,
@@ -50,7 +51,7 @@ CREATE TABLE findings (
   UNIQUE (project_id, path, fingerprint)
 );
 
-CREATE INDEX findings_open ON findings (project_id, status, path);
+CREATE INDEX IF NOT EXISTS findings_open ON findings (project_id, status, path);
 
 -- The authorship record (design decision 11): one row per change Carrel committed, with who made it.
 -- client names the AI client for changes made through MCP (stage 5); null for a person in the UI.
