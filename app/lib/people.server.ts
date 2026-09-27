@@ -16,7 +16,13 @@ export type VisibleProject = {
   slug: string;
   name: string;
   role: Role;
+  /** A site's projects open at /p/, a book's at /b/. A project that is neither has no view yet. */
+  kind: "site" | "book" | null;
 };
+
+function kindOf(row: { site: string | null; book: string | null }): VisibleProject["kind"] {
+  return row.site ? "site" : row.book ? "book" : null;
+}
 
 /** The active person with this email, or null. Email matching is case-insensitive, as the column is. */
 export async function findViewer(db: D1Database, email: string): Promise<Viewer | null> {
@@ -43,19 +49,20 @@ export async function visibleProjects(db: D1Database, viewer: Viewer): Promise<V
   const d = drizzle(db);
   if (viewer.isOwner) {
     const rows = await d
-      .select({ id: projects.id, slug: projects.slug, name: projects.name })
+      .select({ id: projects.id, slug: projects.slug, name: projects.name, site: projects.site, book: projects.book })
       .from(projects)
       .orderBy(asc(projects.name))
       .all();
-    return rows.map((r) => ({ ...r, role: "owner" as const }));
+    return rows.map(({ site, book, ...r }) => ({ ...r, role: "owner" as const, kind: kindOf({ site, book }) }));
   }
-  return d
-    .select({ id: projects.id, slug: projects.slug, name: projects.name, role: projectMembers.role })
+  const rows = await d
+    .select({ id: projects.id, slug: projects.slug, name: projects.name, role: projectMembers.role, site: projects.site, book: projects.book })
     .from(projectMembers)
     .innerJoin(projects, eq(projects.id, projectMembers.projectId))
     .where(eq(projectMembers.personId, viewer.id))
     .orderBy(asc(projects.name))
     .all();
+  return rows.map(({ site, book, ...r }) => ({ ...r, kind: kindOf({ site, book }) }));
 }
 
 /**

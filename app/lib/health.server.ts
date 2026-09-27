@@ -3,7 +3,7 @@
 //
 // It checks the settings the gate needs, the database and its Owner, the Access signing keys, and
 // each site: its key, and whether the site still conforms to the site-api contract Carrel was built
-// against. Later stages add the Google key.
+// against, and the GitHub App for the novels repository. Later stages add the Google key.
 
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { eq } from "drizzle-orm";
@@ -11,6 +11,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { healthState, people } from "~/db/schema";
 import { teamIssuer } from "~/lib/access.server";
+import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
@@ -79,6 +80,23 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
   }
 }
 
+/** Not set up yet is not a failure, as with a site; set up, the App must still get a token for the repository. */
+async function checkNovels(env: Env, fetcher: Fetch): Promise<CheckResult> {
+  const connection = novelsConnection(env);
+  if (connection.state !== "connected") {
+    return connection.state === "not-connected"
+      ? { name: "novels", ok: true, detail: `Not connected: ${connection.detail}` }
+      : { name: "novels", ok: false, detail: connection.detail };
+  }
+  try {
+    await installationToken(connection.appId, connection.privateKey, ((input: RequestInfo | URL, init?: RequestInit) =>
+      fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch);
+    return { name: "novels", ok: true, detail: `The GitHub App can write to ${NOVELS_REPO}.` };
+  } catch (error) {
+    return { name: "novels", ok: false, detail: `The GitHub App could not reach ${NOVELS_REPO}: ${message(error)}` };
+  }
+}
+
 export async function runChecks(
   env: Env,
   fetcher: Fetch = (url, init) => fetch(url, init),
@@ -88,6 +106,7 @@ export async function runChecks(
     checkOwner(env),
     checkAccessKeys(env, fetcher),
     ...SITE_IDS.map((id) => checkSite(env, id, fetcher)),
+    checkNovels(env, fetcher),
   ]);
 }
 
