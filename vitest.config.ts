@@ -16,13 +16,17 @@ export default defineConfig({
       main: "./test/entry.ts",
       miniflare: {
         compatibilityDate: "2026-09-01",
+        // As wrangler.jsonc: the AI door's OAuth provider needs the flag to fetch CIMD documents.
+        compatibilityFlags: ["global_fetch_strictly_public"],
         d1Databases: ["DB"],
+        kvNamespaces: ["OAUTH_KV"],
         bindings: {
           ACCESS_TEAM_DOMAIN: "https://test-team.cloudflareaccess.com",
           ACCESS_AUD: "test-audience-tag",
           ALERT_EMAIL: "owner@test.invalid",
           ALERT_FROM: "carrel@test.invalid",
           SITE_DUSTINEDWARDS_ORIGIN: "https://site.test",
+          CARREL_MCP_ORIGIN: "https://carrel-mcp.test",
           TEST_D1_MIGRATIONS: D1_MIGRATIONS,
         },
       },

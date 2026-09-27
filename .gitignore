@@ -16,4 +16,4 @@ worker-configuration.d.ts
 *.tsbuildinfo
 
 # The real Worker config carries the live D1 id; the example is committed.
-wrangler.jsonc
+/wrangler.jsonc

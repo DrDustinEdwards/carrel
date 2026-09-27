@@ -7,7 +7,7 @@ import { and, asc, desc, eq, inArray, like, notInArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { aiDrafts, authorship, bookFiles, drafts, findings, novelsShared, people, projects } from "~/db/schema";
-import type { AiSession } from "~/lib/ai.server";
+import { AiRefusal, type AiSession } from "~/lib/ai.server";
 import { requireAction, type Viewer } from "~/lib/people.server";
 import { can, type Action, type Role } from "~/lib/roles";
 import { checkFile, fingerprints, readHabits, type BookContext, type Finding } from "~/lib/novels/checks";
@@ -538,7 +538,7 @@ export async function draftPaths(db: D1Database, project: BookProject, viewer: V
  * rewrites Dustin's prose unasked). The same table as posts' AI drafts, keyed by the file's path.
  */
 export async function saveBookAiDraft(db: D1Database, project: BookProject, session: AiSession, path: string, input: { source: string; note?: string }) {
-  if (session.viewer.isReviewer) throw new Response("A reviewer flags; it does not write text.", { status: 403 });
+  if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use add_book_finding.");
   requireCan(project, "edit");
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
   if (!input.source.trim()) throw new Response("The draft is empty.", { status: 400 });
