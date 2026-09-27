@@ -146,6 +146,19 @@ The AI door is its own hostname, `carrel-mcp.dustinedwards.info` (design decisio
 
 A **reviewer** is a person row with `is_reviewer = 1` (another company's agent), signed in through the same door with its own email: it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
 
+## Media
+
+Each site's files stay in that site's own storage and are served by the site; Carrel is only the screen, over the site API's media group (site-api v0.2.0). Nothing about serving an image depends on Carrel.
+
+- **The library** (`/p/<project>/media`): browse and search the site's files, see each one's details and every place the site's reference check finds it used, upload, and delete.
+- **In the editor:** paste or drop an image, or use Insert image, and it uploads to the site; From library inserts a file already there. Either way the alt text is asked for before anything goes into the post, and the post gets the site's own figure markup (`app/lib/site-markdown.ts`), pointing at the site's own address for the file.
+- **Limits are the site's.** Carrel reads the accepted types and the size limit from the site's meta and refuses anything else before sending it. The site API checks again, bytes included.
+- **Deletes are the site's to decide.** A file a post uses is refused, with every post named. Delete asks once more before it acts, because nothing brings the file back.
+- **Images load from the site.** The page's image policy names each configured site origin, and nothing else.
+- **Health.** The conformance run includes the media checks, all of which a conforming site refuses. The suite's real upload round trip stays off, so the health check never stores a file.
+- **Not in v0.2.0:** bulk actions, trash, tags, folders and editing a file's alt text after upload. The site's own media screen keeps those until they have routes.
+- **Authorship:** an upload or delete carries a Carrel change id into the site's own history. Carrel's `changes` table records only content writes; widening it is a migration, left for later.
+
 ## Google
 
 Two separate accesses (design decision 6), and no `drive.readonly` anywhere:
@@ -184,6 +197,9 @@ Credentials are secrets named for the account key, with dashes as underscores: `
 | Save a book's file to Git (it changes nothing public) | | yes | yes |
 | Read a book's flags and authorship record | yes | yes | yes |
 | Dismiss a flag, export a book | | | yes |
+| Browse the media library | yes | yes | yes |
+| Upload media, insert an image into a post | | yes | yes |
+| Delete a media file from the site | | | yes |
 
 A person with no role on a project gets the same 404 as for a project that does not exist.
 

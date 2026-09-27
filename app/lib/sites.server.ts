@@ -66,6 +66,29 @@ export function siteConnection(env: Env, id: SiteId): SiteConnection {
   return { state: "connected", origin: url.origin, key };
 }
 
+/**
+ * Where a browser loads a site's file from. The site gives a path on itself (/media/...) or a full
+ * https URL; a path is made absolute on the site's origin, since Carrel is a different host. The
+ * Markdown keeps the site's own form, which is what the site serves and its reference check reads.
+ */
+export function absoluteMediaUrl(origin: string, url: string): string {
+  return url.startsWith("/") ? `${origin.replace(/\/+$/, "")}${url}` : url;
+}
+
+/** Every configured site origin, for the image policy: a thumbnail loads from the site that serves it. */
+export function siteOrigins(env: Env): string[] {
+  const origins: string[] = [];
+  for (const id of SITE_IDS) {
+    try {
+      const url = new URL(SITES[id].origin(env)?.trim() ?? "");
+      if (url.protocol === "https:") origins.push(url.origin);
+    } catch {
+      // Not configured: nothing of it is loaded.
+    }
+  }
+  return origins;
+}
+
 export class SiteNotConnected extends Error {
   constructor(readonly detail: string) {
     super(detail);
