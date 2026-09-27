@@ -4,7 +4,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { runHealth } from "~/lib/health.server";
+import { clearTokenCache } from "~/lib/novels/repo.server";
 import { addPerson, resetDb, testEnv } from "./env";
+import { fakeNovels, githubStyleKey } from "./novels";
 import { connectedEnv, fakeSite, SITE_ORIGIN } from "./site";
 
 type Sent = { subject: string; text: string; to: string };
@@ -137,5 +139,42 @@ describe("site health", () => {
     const box = mailbox();
     await runHealth({ ...connectedEnv({ SITE_DUSTINEDWARDS_KEY: "another-key-of-the-right-length-0123456789" }), EMAIL: box.EMAIL }, through(site));
     expect(box.sent[0]!.text).toContain("FAIL site-dustinedwards");
+  });
+});
+
+// Stage 4: the GitHub App for the novels repository (design section 5, "Health": the GitHub App token).
+describe("novels health", () => {
+  beforeEach(() => clearTokenCache());
+
+  function through(gh: ReturnType<typeof fakeNovels>) {
+    return async (url: string, init?: RequestInit) => (url.startsWith("https://api.github.com") ? gh.fetch(url, init) : certsOk());
+  }
+
+  it("counts an App not set up yet as not connected, which is not a failure", async () => {
+    const { results } = await runHealth({ ...testEnv, EMAIL: mailbox().EMAIL }, certsOk);
+    expect(results.find((r) => r.name === "novels")).toMatchObject({ ok: true, detail: expect.stringMatching(/^Not connected: /) });
+  });
+
+  it("PLANT: flags half a setup, an App id with no key", async () => {
+    const box = mailbox();
+    await runHealth({ ...testEnv, NOVELS_APP_ID: "123", EMAIL: box.EMAIL }, certsOk);
+    expect(box.sent[0]!.text).toContain("FAIL novels: NOVELS_APP_PRIVATE_KEY is missing");
+  });
+
+  it("passes when the App gets a token for the repository", async () => {
+    const key = await githubStyleKey();
+    const { results } = await runHealth(
+      { ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem, EMAIL: mailbox().EMAIL },
+      through(fakeNovels()),
+    );
+    expect(results.find((r) => r.name === "novels")).toEqual({ name: "novels", ok: true, detail: "The GitHub App can write to DrDustinEdwards/novels." });
+  });
+
+  it("PLANT: flags an App GitHub will not answer for", async () => {
+    const key = await githubStyleKey();
+    const box = mailbox();
+    const refused = async (url: string) => (url.startsWith("https://api.github.com") ? new Response("{}", { status: 404 }) : certsOk());
+    await runHealth({ ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem, EMAIL: box.EMAIL }, refused);
+    expect(box.sent[0]!.text).toContain("FAIL novels: The GitHub App could not reach DrDustinEdwards/novels: GitHub did not find the App's installation");
   });
 });

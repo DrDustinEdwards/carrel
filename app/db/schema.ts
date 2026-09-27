@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql and 0002_site_content.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql, 0002_site_content.sql and 0003_books.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -19,6 +19,7 @@ export const projects = sqliteTable("projects", {
   name: text("name").notNull(),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   site: text("site"),
+  book: text("book"),
 });
 
 export const projectMembers = sqliteTable(
@@ -77,5 +78,56 @@ export const changes = sqliteTable("changes", {
   action: text("action", { enum: ["save", "publish", "schedule", "unpublish"] }).notNull(),
   versionBefore: text("version_before"),
   versionAfter: text("version_after").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const bookFiles = sqliteTable(
+  "book_files",
+  {
+    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    kind: text("kind", { enum: ["scene", "character", "place", "rule", "outline", "book", "note"] }).notNull(),
+    sha: text("sha").notNull(),
+    source: text("source").notNull(),
+    meta: text("meta").notNull().default("{}"),
+    words: integer("words").notNull().default(0),
+    syncedAt: text("synced_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.path] })],
+);
+
+export const novelsShared = sqliteTable("novels_shared", {
+  path: text("path").primaryKey(),
+  sha: text("sha").notNull(),
+  source: text("source").notNull(),
+  syncedAt: text("synced_at").notNull(),
+});
+
+export const findings = sqliteTable("findings", {
+  id: integer("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  path: text("path").notNull(),
+  checkName: text("check_name").notNull(),
+  message: text("message").notNull(),
+  line: integer("line"),
+  excerpt: text("excerpt"),
+  fingerprint: text("fingerprint").notNull(),
+  status: text("status", { enum: ["open", "dismissed"] }).notNull().default("open"),
+  dismissedBy: integer("dismissed_by").references(() => people.id),
+  dismissedAt: text("dismissed_at"),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const authorship = sqliteTable("authorship", {
+  id: text("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  path: text("path").notNull(),
+  personId: integer("person_id").notNull().references(() => people.id),
+  client: text("client"),
+  wordsAdded: integer("words_added").notNull(),
+  wordsRemoved: integer("words_removed").notNull(),
+  versionBefore: text("version_before"),
+  versionAfter: text("version_after").notNull(),
+  commitSha: text("commit_sha").notNull(),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
