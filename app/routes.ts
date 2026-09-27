@@ -12,4 +12,6 @@ export default [
   route("b/:project/f/*", "routes/book.file.tsx"),
   route("b/:project/export/:format", "routes/book.export.ts"),
   route("b/:project/authorship", "routes/book.authorship.ts"),
+  route("p/:project/e/:item/unpublish", "routes/unpublish.tsx"),
+  route("p/:project/e/:item/ai/:id", "routes/ai-draft.tsx"),
 ] satisfies RouteConfig;

@@ -31,7 +31,7 @@ export function accessKeys(teamDomain: string): JWTVerifyGetKey {
 }
 
 /**
- * Verifies the request's Access token. Every failure is a refusal: a missing setting, a missing
+ * Verifies the request's Access token against one Access application's audience. Every failure is a refusal: a missing setting, a missing
  * header, a bad signature, the wrong issuer or audience, an expired token, or a token with no email.
  */
 export async function verifyAccess(

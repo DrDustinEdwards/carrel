@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
 
 import type { LinkTarget } from "~/components/editor/markdown-editor";
+import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { searchItems } from "~/lib/index.server";
@@ -41,7 +42,12 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   }
   if (!doc && !draft && !siteError) throw new Response("Not found", { status: 404 });
 
-  const targets = await searchItems(env.DB, project.id, {});
+  const [targets, flags, aiDrafts, aiPublished] = await Promise.all([
+    searchItems(env.DB, project.id, {}),
+    itemFindings(env.DB, project, itemId),
+    listAiDrafts(env.DB, project, viewer, itemId),
+    lastAiPublication(env.DB, project, itemId),
+  ]);
   const linkTargets: LinkTarget[] = targets
     .filter((t) => t.itemId !== itemId)
     .map((t) => ({ slug: t.itemId, title: t.title || t.itemId, state: t.status }));
@@ -64,6 +70,9 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     behind: Boolean(draft && doc && draft.baseVersion !== doc.version),
     siteError,
     linkTargets,
+    flags,
+    aiDrafts,
+    aiPublished: aiPublished ? { line: publishedByLine(aiPublished.client), at: aiPublished.publishedAt } : null,
   };
 }
 
@@ -71,6 +80,7 @@ type ActionResult =
   | { intent: "autosave"; updatedAt: string }
   | { intent: "discard"; discarded: true }
   | { intent: "publish"; needsConfirm: true }
+  | { intent: "dismiss-flag"; dismissed: number }
   | { intent: "write"; outcome: WriteOutcome };
 
 export async function action({ params, request, context }: Route.ActionArgs): Promise<ActionResult> {
@@ -91,6 +101,12 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
     case "discard":
       await discardDraft(env.DB, project, viewer, itemId);
       return { intent, discarded: true };
+    case "dismiss-flag": {
+      const id = Number(form.get("flag"));
+      if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
+      await dismissItemFinding(env.DB, project, viewer, itemId, id);
+      return { intent, dismissed: id };
+    }
     case "save":
       return { intent: "write", outcome: await writeToSite(env, project, viewer, itemId, { action: "save", source, expectedVersion: version }) };
     case "publish": {
@@ -145,6 +161,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const writer = useFetcher<ActionResult>();
 
   const readOnly = !data.canEdit;
+  const openFlags = data.flags.filter((f) => f.status === "open").length;
   const live = data.status === "published" || data.status === "scheduled";
   const onSite = data.version !== null;
   // Changes to a live post change the public site, which is the Owner's to do.
@@ -272,6 +289,43 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         <p className="notice" role="status">
           The site's copy changed after this draft was started, so saving it will be refused. Discard the draft to load the site's version, then reapply your changes.
         </p>
+      ) : null}
+      {data.aiPublished && data.status === "published" ? (
+        <p className="notice" role="status">
+          {data.aiPublished.line} <span className="muted">({new Date(data.aiPublished.at).toLocaleString()})</span>
+        </p>
+      ) : null}
+      {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
+        <details className="editor-extras" open={openFlags > 0}>
+          <summary>
+            {openFlags} open flag{openFlags === 1 ? "" : "s"}, {data.aiDrafts.length} AI draft{data.aiDrafts.length === 1 ? "" : "s"}
+          </summary>
+          {data.flags.length > 0 ? (
+            <ul className="flag-list" aria-label="Flags">
+              {data.flags.map((f) => (
+                <li key={f.id}>
+                  <span className={f.status === "open" ? "flag-open" : "muted"}>{f.status === "open" ? "Open" : "Dismissed"}</span> {f.message}
+                  {f.excerpt ? <q className="muted"> {f.excerpt}</q> : null}
+                  {f.status === "open" && data.canPublish ? (
+                    <button type="button" className="btn-ghost" onClick={() => writer.submit({ intent: "dismiss-flag", flag: String(f.id) }, { method: "post" })}>
+                      Dismiss
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {data.aiDrafts.length > 0 ? (
+            <ul className="flag-list" aria-label="AI drafts beside yours">
+              {data.aiDrafts.map((d) => (
+                <li key={d.id}>
+                  <Link to={`ai/${d.id}`}>AI draft from {d.client}</Link> <span className="muted">{new Date(d.createdAt).toLocaleString()} · {d.words} words</span>
+                  {d.note ? <span> · {d.note}</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </details>
       ) : null}
       {data.canEdit && live && !data.canPublish ? (
         <p className="notice" role="status">
