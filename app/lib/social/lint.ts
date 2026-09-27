@@ -2,16 +2,12 @@
 // it can go: it fits the platform, it is not a reply in disguise, it is not empty. A post with any
 // finding is held for Dustin; the lint flags and he decides.
 //
-// The word list is the AI-tells list in capsid/conventions.md, as stage 4's checks seed it. Once
-// stage 4 is merged, this and its checkAiHabits become one.
+// The word list is stage 4's (SEED_WORDS, the AI-tells list in capsid/conventions.md): one list for
+// books and posts.
+
+import { SEED_WORDS } from "~/lib/novels/checks";
 
 import { graphemes, type Platform } from "./platforms.server";
-
-export const HABIT_WORDS = [
-  "delve", "tapestry", "spans", "landscape", "realm", "navigate", "testament to", "boasts", "stands as",
-  "compelling", "must-read", "journey", "explore", "dive into", "discover", "it's worth noting",
-  "importantly", "furthermore",
-];
 
 const NOT_JUST = [
   /(?:\bnot|n['\u2019]t)\s+(?:just|only|merely|simply)\s+[^.!?;:,]{1,60}[,;:]\s*(?:it|this|that|he|she|they|we|you)(?:['\u2019](?:s|re)|\s+(?:is|was|are|were))\b/iu,
@@ -34,7 +30,7 @@ export function lintPost(text: string, platform: Platform): string[] {
   if (n > LIMIT[platform]) out.push(`${n} characters, over ${platform === "x" ? "X" : "Bluesky"}'s ${LIMIT[platform]}.`);
   // A post that opens on a handle is threaded as a reply by readers, and replies are never Carrel's.
   if (/^[.\s]*@\w/.test(t)) out.push("It opens with an @handle, which reads as a reply.");
-  for (const word of HABIT_WORDS) {
+  for (const word of SEED_WORDS) {
     const re = new RegExp(`(?<![\\p{L}'\u2019])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/'/g, "['\u2019]")}(?![\\p{L}])`, "iu");
     if (re.test(t)) out.push(`"${word}" is on the AI-habits list.`);
   }
