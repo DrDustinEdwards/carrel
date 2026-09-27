@@ -16,6 +16,7 @@ import {
   saveBookFile,
   type BookWrite,
 } from "~/lib/books.server";
+import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { autosave, discardDraft, readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import type { Finding } from "~/lib/novels/checks";
@@ -118,6 +119,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     findings: await listFindings(env.DB, project, { path }),
     problems: parseFile(source).problems,
     bible,
+    // AI drafts an AI session saved beside this person's own, with their text: never committed.
+    aiDrafts: await Promise.all(
+      (await listAiDrafts(env.DB, project, viewer, path)).map(async (d) => ({ ...d, source: (await readAiDraft(env.DB, project, viewer, path, d.id)).source })),
+    ),
   };
 }
 
@@ -126,6 +131,7 @@ type ActionResult =
   | { intent: "discard"; discarded: true }
   | { intent: "check"; findings: Finding[] }
   | { intent: "dismiss"; dismissed: number }
+  | { intent: "use-ai-draft"; used: number }
   | { intent: "save"; outcome: BookWrite };
 
 export async function action({ params, request, context }: Route.ActionArgs): Promise<ActionResult> {
@@ -154,6 +160,14 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       await dismissFinding(env.DB, project, viewer, id);
       return { intent, dismissed: id };
+    }
+    case "use-ai-draft": {
+      // The person's decision: the AI draft's text becomes their working draft, to edit and save.
+      const id = Number(form.get("draft"));
+      if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
+      const ai = await readAiDraft(env.DB, project, viewer, path, id);
+      await autosave(env.DB, project, viewer, path, { source: ai.source, baseVersion: ai.baseVersion });
+      return { intent, used: id };
     }
     case "save": {
       const { repo, detail } = bookRepo(env);
@@ -215,6 +229,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       setSavedAt(null);
     }
   }, [discarded, data.source]);
+
+  // After Use as my draft, the loader has the AI draft as the working copy, which replaces the local one.
+  const usedAi = writer.data?.intent === "use-ai-draft" && writer.state === "idle";
+  useEffect(() => {
+    if (usedAi) {
+      setSource(data.source);
+      setSavedSource(data.source);
+      setSavedAt(data.draftAt);
+    }
+  }, [usedAi, data.source, data.draftAt]);
 
   const outcome = writer.data?.intent === "save" ? writer.data.outcome : null;
   useEffect(() => {
@@ -339,6 +363,27 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               </div>
             ) : null}
           </section>
+
+          {data.aiDrafts.length > 0 ? (
+            <section aria-labelledby="ai-drafts-heading">
+              <h2 id="ai-drafts-heading">AI drafts beside yours</h2>
+              <p className="muted">Written by an AI session. None has touched your draft or Git.</p>
+              {data.aiDrafts.map((d) => (
+                <details key={d.id} className="bible-entry">
+                  <summary>
+                    {d.client} <span className="muted">{new Date(d.createdAt).toLocaleString()} · {d.words} words</span>
+                  </summary>
+                  {d.note ? <p>{d.note}</p> : null}
+                  <p className="bible-body">{d.source}</p>
+                  {data.canEdit ? (
+                    <button type="button" className="btn-ghost" disabled={busy} onClick={() => writer.submit({ intent: "use-ai-draft", draft: String(d.id) }, { method: "post" })}>
+                      Use as my draft
+                    </button>
+                  ) : null}
+                </details>
+              ))}
+            </section>
+          ) : null}
 
           {data.kind === "scene" ? (
             <section aria-labelledby="bible-heading">
