@@ -13,9 +13,11 @@ import { isConnected } from "~/lib/google/oauth.server";
 import { pageStats } from "~/lib/google/search-console.server";
 import { GoogleNotConnected } from "~/lib/google/service-account.server";
 import { searchItems } from "~/lib/index.server";
+import { mediaLimits } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { FIRST_PUBLICATION_NOTE, transitionsFor } from "~/lib/publish-transition.mjs";
 import { can } from "~/lib/roles";
+import { figureMarkup } from "~/lib/site-markdown";
 import { siteEntry, SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/editor";
@@ -55,14 +57,25 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
     pageStats(env, project, doc?.path ?? null),
   ]);
+  // Images go in only for someone who may edit, and only on a site with a media library. A site that
+  // does not answer leaves the editor without them rather than failing the page.
+  let mediaAccept: string | null = null;
+  if (can(project.role, "edit") && !siteError) {
+    try {
+      mediaAccept = (await mediaLimits(env, project))?.types.join(",") ?? null;
+    } catch {
+      mediaAccept = null;
+    }
+  }
   const linkTargets: LinkTarget[] = targets
     .filter((t) => t.itemId !== itemId)
     .map((t) => ({ slug: t.itemId, title: t.title || t.itemId, state: t.status }));
 
   return {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
+    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, siteId: project.site },
     itemId,
     canEdit: can(project.role, "edit"),
+    media: mediaAccept ? { endpoint: `/p/${encodeURIComponent(project.slug)}/media/api`, accept: mediaAccept } : null,
     canPublish: can(project.role, "publish"),
     title: doc?.title ?? "",
     status: doc?.status ?? null,
@@ -390,6 +403,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 slug={data.itemId}
                 linkTargets={data.linkTargets}
                 readOnly={readOnly}
+                media={
+                  data.media
+                    ? { ...data.media, figure: (url: string, alt: string) => figureMarkup(data.project.siteId, url, alt) }
+                    : undefined
+                }
               />
             </Suspense>
           </section>

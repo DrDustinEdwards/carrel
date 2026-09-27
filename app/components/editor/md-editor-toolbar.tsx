@@ -1,5 +1,6 @@
 // Copied from DrDustinEdwards/dustinedwards-info@6e0f8c9 (app/components/admin/md-editor-toolbar.tsx).
-// Changed: the Insert image button is gone until media arrives in stage 3.
+// Changed: the Insert image button returns with the media library (stage 3), shown only when the
+// editor has media, and a From library button beside it inserts a file already in the library.
 
 import type { EditorView } from "@codemirror/view";
 import { useState } from "react";
@@ -47,11 +48,17 @@ export function EditorToolbar({
   run,
   openLinkPalette,
   scaffold,
+  pickImage,
+  pickFromLibrary,
 }: {
   /** Wraps a command so it runs against the mounted view, and does nothing before there is one. */
   run: (fn: (view: EditorView) => void) => () => void;
   openLinkPalette: (view: EditorView) => void;
   scaffold: (name: ScaffoldName) => void;
+  /** Opens the file chooser: the path to an image that needs neither a drag nor a paste. Absent without media. */
+  pickImage?: () => void;
+  /** Opens the library picker. Absent without media. */
+  pickFromLibrary?: () => void;
 }) {
   const [active, setActive] = useState(0);
 
@@ -102,6 +109,38 @@ export function EditorToolbar({
         </>
       ),
     },
+    ...(pickImage
+      ? [
+          {
+            label: "Insert image",
+            hint: "Uploads a file, then asks for alt text",
+            onClick: pickImage,
+            glyph: (
+              <>
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="m3 16 5-5 5 5" />
+                <circle cx="15.5" cy="9.5" r="1.5" />
+              </>
+            ),
+          },
+        ]
+      : []),
+    ...(pickFromLibrary
+      ? [
+          {
+            label: "From library",
+            hint: "An image already on the site, then its alt text",
+            onClick: pickFromLibrary,
+            glyph: (
+              <>
+                <rect x="7" y="3" width="14" height="14" rx="2" />
+                <path d="M3 7v12a2 2 0 0 0 2 2h12" />
+                <path d="m7 13 4-4 4 4" />
+              </>
+            ),
+          },
+        ]
+      : []),
   ];
   const scaffolds: Tool[] = (Object.keys(SCAFFOLDS) as ScaffoldName[]).map((name) => ({
     label: SCAFFOLDS[name].label,

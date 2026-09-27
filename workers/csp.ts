@@ -3,14 +3,18 @@
 // CodeMirror's inline <style>, which cannot be turned off. A route that sets its own policy (the
 // preview) keeps it.
 
-export function appPolicy(nonce: string): string {
+/**
+ * `imageOrigins` are the configured sites' origins: the media library and the editor show each file
+ * from the site that serves it (stage 3), and nothing else may load an image.
+ */
+export function appPolicy(nonce: string, imageOrigins: string[] = []): string {
   return [
     "default-src 'self'",
     `script-src 'nonce-${nonce}' 'strict-dynamic'`,
     `style-src 'self' 'nonce-${nonce}'`,
     // The editor's palettes are placed with style attributes, which nonces do not cover.
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data:",
+    ["img-src 'self' data:", ...imageOrigins.filter((o) => /^https:\/\/[^\s;,'"]+$/.test(o))].join(" "),
     "font-src 'self'",
     "connect-src 'self'",
     // The preview iframe, which is Carrel's own route serving the site's page under its own policy.
@@ -29,14 +33,14 @@ export function newNonce(): string {
 }
 
 /** Adds the app policy unless the route set its own. Rebuilds the response when its headers are immutable. */
-export function withPolicy(response: Response, nonce: string): Response {
+export function withPolicy(response: Response, nonce: string, imageOrigins: string[] = []): Response {
   if (response.headers.has("Content-Security-Policy")) return response;
   try {
-    response.headers.set("Content-Security-Policy", appPolicy(nonce));
+    response.headers.set("Content-Security-Policy", appPolicy(nonce, imageOrigins));
     return response;
   } catch {
     const headers = new Headers(response.headers);
-    headers.set("Content-Security-Policy", appPolicy(nonce));
+    headers.set("Content-Security-Policy", appPolicy(nonce, imageOrigins));
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   }
 }

@@ -63,7 +63,10 @@ async function checkAccessKeys(env: Env, fetcher: Fetch): Promise<CheckResult> {
 
 /**
  * A site with no key is not connected yet, which is not a failure: its stage has not arrived. With a
- * key, the conformance suite runs, including its one write, which a conforming site refuses.
+ * key, the conformance suite runs, including its writes, each of which a conforming site refuses. On
+ * a site that offers media (site-api v0.2.0) that includes the media checks: limits declared, list in
+ * shape, a delete of an unknown id and an upload of an undeclared type both refused. The suite's real
+ * upload round trip stays off: the health check never puts a file into a site's storage.
  */
 async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckResult> {
   const name = `site-${id}`;
@@ -75,6 +78,7 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
     const report = await runConformance({
       baseUrl: connection.origin,
       key: connection.key,
+      probeMediaUpload: false,
       fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
         fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch,
     });

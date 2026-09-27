@@ -5,6 +5,8 @@ export default [
   route("p/:project", "routes/project.tsx"),
   route("p/:project/new", "routes/project.new.tsx"),
   route("p/:project/e/:item", "routes/editor.tsx"),
+  route("p/:project/media", "routes/media.tsx"),
+  route("p/:project/media/api", "routes/media.api.ts"),
   route("p/:project/e/:item/preview", "routes/preview.ts"),
   route("books/new", "routes/book.new.tsx"),
   route("b/:project", "routes/book.tsx"),

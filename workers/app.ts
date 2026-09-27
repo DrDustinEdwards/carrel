@@ -5,6 +5,7 @@ import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
 import { aiDoor, isMcpHost } from "~/lib/mcp/door";
 import { refreshAllSites } from "~/lib/refresh.server";
+import { siteOrigins } from "~/lib/sites.server";
 import { processSocial } from "~/lib/social/queue.server";
 
 import { newNonce, withPolicy } from "./csp";
@@ -27,7 +28,7 @@ export default {
       context.set(cloudflareContext, { env, ctx });
       context.set(viewerContext, viewer);
       context.set(nonceContext, nonce);
-      return withPolicy(await requestHandler(req, context), nonce);
+      return withPolicy(await requestHandler(req, context), nonce, siteOrigins(env));
     });
   },
 
