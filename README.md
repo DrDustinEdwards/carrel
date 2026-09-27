@@ -16,6 +16,7 @@ The design is `carrel/design.md` in Capsid.
   - the checks on save: scene headers, continuity and timeline against the bible, world rules, the AI-habits lint and voice;
   - the authorship record, as a Markdown report;
   - export to ePub and Word, and a print page for PDF.
+- **Stage 5, AI work through MCP tools in the Worker:** read, search, preview, AI drafts beside yours, flags from checks and reviewers, and publish by instruction for the Owner's own sessions, refused while a flag is open and emailed with an unpublish link.
 
 ## Develop
 
@@ -113,6 +114,19 @@ npm run import:docx -- C:/path/to/manuscript-folder --book paluxy-portal --novel
 - It refuses to write into a book that already has `chapters/`.
 
 Then review the result in the clone, commit it, and open a pull request in the novels repository. The importer's tests (`test/import.test.ts`) run on a short test document built from `test/fixtures/import/test-manuscript.mjs`.
+
+## The AI door (MCP)
+
+Carrel answers MCP at `/mcp` (Streamable HTTP, JSON replies, one session per client). An AI session is known by the door it came through, never by email: `/mcp` accepts only tokens from the MCP Access application (the one with Managed OAuth on, whose AUD is the secret `ACCESS_MCP_AUD`), and every other path accepts only the Worker's own Access application (`ACCESS_AUD`). A browser session at `/mcp`, or an AI session anywhere else, gets the gate's bare 403. Until `ACCESS_MCP_AUD` is set, `/mcp` refuses everything.
+
+| Tool | Who | What |
+|---|---|---|
+| `list_projects`, `search_items`, `read_item`, `preview`, `get_checks` | anyone with a role | read through the same functions as the pages |
+| `save_draft` | Editor, Owner | a new AI draft beside the person's own; never over it, never to the site |
+| `add_finding` | anyone with a role, reviewers above all | a flag on a post, credited to the client |
+| `publish` | the Owner's own sessions | the post as saved on the site at `expected_version`; refused while any flag is open; recorded as "published by <client> on Dustin's instruction"; emails Dustin an unpublish link |
+
+A **reviewer** is a person row with `is_reviewer = 1` (another company's agent): it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
 
 ## Who may do what
 
