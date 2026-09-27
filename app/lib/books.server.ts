@@ -3,10 +3,11 @@
 // every save, their findings, and the authorship record. Roles are checked here, not only in the
 // routes, so every door (the UI now, MCP tools in stage 5) is held to the same rule.
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, notInArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { authorship, bookFiles, drafts, findings, novelsShared, people, projects } from "~/db/schema";
+import { aiDrafts, authorship, bookFiles, drafts, findings, novelsShared, people, projects } from "~/db/schema";
+import type { AiSession } from "~/lib/ai.server";
 import { requireAction, type Viewer } from "~/lib/people.server";
 import { can, type Action, type Role } from "~/lib/roles";
 import { checkFile, fingerprints, readHabits, type BookContext, type Finding } from "~/lib/novels/checks";
@@ -138,14 +139,18 @@ export async function bookContext(db: D1Database, projectId: number): Promise<Bo
  * Replaces the findings for each file with what the checks found now. A dismissed finding that is
  * found again stays dismissed; one that is no longer found is gone, whatever its state.
  */
+/** The check names of flags added through MCP (ai.server.ts addFinding), which a recheck leaves alone. */
+const SESSION_FLAGS = ["ai", "review"];
+
 async function recordFindings(db: D1Database, projectId: number, byPath: Map<string, Finding[]>) {
   const d = drizzle(db);
   for (const [path, found] of byPath) {
     const keys = await fingerprints(found);
+    // Flags a person's AI session or a reviewer added are not the checks' to withdraw.
     const existing = await d
       .select({ fingerprint: findings.fingerprint })
       .from(findings)
-      .where(and(eq(findings.projectId, projectId), eq(findings.path, path)))
+      .where(and(eq(findings.projectId, projectId), eq(findings.path, path), notInArray(findings.checkName, SESSION_FLAGS)))
       .all();
     const have = new Set(existing.map((e) => e.fingerprint));
     const keep = new Set(keys);
@@ -384,10 +389,28 @@ export async function checkDraft(db: D1Database, project: BookProject, path: str
 
 // ---------- export and the authorship record
 
+/** What scripts/import-docx.mjs writes where it could not convert something. */
+export const IMPORT_MARKER = "<!-- import:";
+
 /** Export sends a book out, so, like publish, it is the Owner's, and waits while any flag is open. */
 export async function exportGate(db: D1Database, project: BookProject): Promise<{ ok: true } | { ok: false; open: number; message: string }> {
   requireCan(project, "publish");
-  const open = await drizzle(db)
+  const d = drizzle(db);
+  // The manuscript importer marks what it could not convert with these; none may reach a reader.
+  const marked = await d
+    .select({ path: bookFiles.path })
+    .from(bookFiles)
+    .where(and(eq(bookFiles.projectId, project.id), like(bookFiles.source, `%${IMPORT_MARKER}%`)))
+    .all();
+  if (marked.length > 0) {
+    const paths = marked.map((m) => m.path).sort();
+    return {
+      ok: false,
+      open: marked.length,
+      message: `${paths.length} file${paths.length === 1 ? " still holds" : "s still hold"} an ${IMPORT_MARKER} ... --> marker from the Word import: ${paths.join(", ")}. Fix the text there and delete each marker before exporting.`,
+    };
+  }
+  const open = await d
     .select({ id: findings.id })
     .from(findings)
     .where(and(eq(findings.projectId, project.id), eq(findings.status, "open")))
@@ -508,4 +531,29 @@ export async function draftPaths(db: D1Database, project: BookProject, viewer: V
     .where(and(eq(drafts.projectId, project.id), eq(drafts.personId, viewer.id)))
     .all();
   return rows.map((r) => r.path).filter(isBookPath);
+}
+
+/**
+ * An AI draft of a book file, saved beside the person's own and never committed (design: AI never
+ * rewrites Dustin's prose unasked). The same table as posts' AI drafts, keyed by the file's path.
+ */
+export async function saveBookAiDraft(db: D1Database, project: BookProject, session: AiSession, path: string, input: { source: string; note?: string }) {
+  if (session.viewer.isReviewer) throw new Response("A reviewer flags; it does not write text.", { status: 403 });
+  requireCan(project, "edit");
+  if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
+  if (!input.source.trim()) throw new Response("The draft is empty.", { status: 400 });
+  const base = await indexedFile(db, project, path);
+  const [row] = await drizzle(db)
+    .insert(aiDrafts)
+    .values({
+      projectId: project.id,
+      itemId: path,
+      personId: session.viewer.id,
+      client: session.client,
+      source: input.source.replace(/\r\n/g, "\n"),
+      baseVersion: base?.sha ?? null,
+      note: (input.note ?? "").trim().slice(0, 500),
+    })
+    .returning({ id: aiDrafts.id });
+  return { id: row!.id, baseVersion: base?.sha ?? null };
 }

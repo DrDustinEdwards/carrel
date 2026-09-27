@@ -12,7 +12,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { aiDrafts, aiPublications, findings } from "~/db/schema";
-import { readDoc, writeToSite, type WriteOutcome } from "~/lib/content.server";
+import { readDoc, writeToSite, type ProjectRole, type WriteOutcome } from "~/lib/content.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
@@ -39,7 +39,7 @@ export type ItemFinding = {
   createdAt: string;
 };
 
-export async function itemFindings(db: D1Database, project: SiteProject, itemId: string): Promise<ItemFinding[]> {
+export async function itemFindings(db: D1Database, project: ProjectRole, itemId: string): Promise<ItemFinding[]> {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   return drizzle(db)
     .select({
@@ -67,7 +67,7 @@ async function fingerprint(parts: (string | null)[]): Promise<string> {
  */
 export async function addFinding(
   db: D1Database,
-  project: SiteProject,
+  project: ProjectRole,
   session: AiSession,
   itemId: string,
   input: { message: string; excerpt?: string | null },
@@ -95,7 +95,7 @@ export async function addFinding(
 }
 
 /** Checks and reviewers flag; a person decides. Dismissing clears a flag for publish, so it is the Owner's. */
-export async function dismissItemFinding(db: D1Database, project: SiteProject, viewer: Viewer, itemId: string, id: number, now = new Date()) {
+export async function dismissItemFinding(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string, id: number, now = new Date()) {
   if (!can(project.role, "publish")) throw new Response("Forbidden", { status: 403 });
   const result = await drizzle(db)
     .update(findings)
@@ -142,7 +142,7 @@ export async function saveAiDraft(
 export type AiDraftSummary = { id: number; client: string; note: string; createdAt: string; baseVersion: string | null; words: number };
 
 /** The AI drafts a person's own sessions saved for this item, newest first. Private to the person, as drafts are. */
-export async function listAiDrafts(db: D1Database, project: SiteProject, viewer: Viewer, itemId: string): Promise<AiDraftSummary[]> {
+export async function listAiDrafts(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string): Promise<AiDraftSummary[]> {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   const rows = await drizzle(db)
     .select({ id: aiDrafts.id, client: aiDrafts.client, note: aiDrafts.note, createdAt: aiDrafts.createdAt, baseVersion: aiDrafts.baseVersion, source: aiDrafts.source })
@@ -153,7 +153,7 @@ export async function listAiDrafts(db: D1Database, project: SiteProject, viewer:
   return rows.map(({ source, ...r }) => ({ ...r, words: source.split(/\s+/).filter(Boolean).length }));
 }
 
-export async function readAiDraft(db: D1Database, project: SiteProject, viewer: Viewer, itemId: string, id: number) {
+export async function readAiDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string, id: number) {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   const row = await drizzle(db)
     .select()
