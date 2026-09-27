@@ -17,6 +17,7 @@ The design is `carrel/design.md` in Capsid.
   - the authorship record, as a Markdown report;
   - export to ePub and Word, and a print page for PDF.
 - **Stage 5, AI work through MCP tools in the Worker:** read, search, preview, AI drafts beside yours, flags from checks and reviewers, and publish by instruction for the Owner's own sessions, refused while a flag is open and emailed with an unpublish link.
+- **Stage 6, Google:** the manuscripts index and search through a read-only service account, Send to Docs and Import through a `drive.file` grant, and Search Console per page.
 
 ## Develop
 
@@ -127,6 +128,20 @@ Carrel answers MCP at `/mcp` (Streamable HTTP, JSON replies, one session per cli
 | `publish` | the Owner's own sessions | the post as saved on the site at `expected_version`; refused while any flag is open; recorded as "published by <client> on Dustin's instruction"; emails Dustin an unpublish link |
 
 A **reviewer** is a person row with `is_reviewer = 1` (another company's agent): it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
+
+## Google
+
+Two separate accesses (design decision 6), and no `drive.readonly` anywhere:
+
+- **The service account** (`GOOGLE_SA_KEY`, the whole JSON key file) reads the manuscripts folder's metadata (`drive.metadata.readonly`) and Search Console (`webmasters.readonly`). Every request it makes passes an allowlist in `app/lib/google/service-account.server.ts`: listing files and the Search Console query. Anything else, a Drive write or a file's content, is refused in code before it is sent.
+- **Dustin's grant** (`drive.file` only) is for Send to Docs and Import. Its refresh token sits in D1, encrypted with AES-GCM under `GOOGLE_TOKEN_KEY`.
+
+What it gives:
+
+- **Manuscripts** (`/manuscripts`, the Owner's): the shared folder and its subfolders, as metadata (name, type, dates, owners and last editor), refreshed by the cron so files added later appear. Search runs in Drive's own full-text search, so manuscript text never enters Carrel. Open goes to Google.
+- **Send to Docs** copies a post's body into a new Doc. The frontmatter stays in Carrel. **Import** brings the Doc back as a new working draft under that frontmatter, and is refused while a working draft exists.
+- **Search Console** per page, 28 days of settled data, fetched at most daily, shown in the post's editor.
+- **Health:** the key's age (counted from the first time Carrel saw it; fails past 90 days), whether Google still takes it, and whether the `drive.file` grant still refreshes.
 
 ## Who may do what
 
