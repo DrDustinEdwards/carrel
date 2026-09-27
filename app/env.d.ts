@@ -8,6 +8,13 @@ interface CarrelSecrets {
    * connected (setup step 10). Set with `Get-Clipboard | npx wrangler secret put SITE_DUSTINEDWARDS_KEY`.
    */
   SITE_DUSTINEDWARDS_KEY?: string;
+  /**
+   * The GitHub App `carrel-writer`, installed on DrDustinEdwards/novels only (setup step 8). Absent
+   * until it exists; books then open read-only from Carrel's index. The key is the .pem GitHub
+   * downloads, as it is: `Get-Content <file>.pem -Raw | npx wrangler secret put NOVELS_APP_PRIVATE_KEY`.
+   */
+  NOVELS_APP_ID?: string;
+  NOVELS_APP_PRIVATE_KEY?: string;
 }
 
 interface Env extends CarrelSecrets {}
