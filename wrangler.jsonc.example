@@ -27,6 +27,10 @@
 	// 	{
 	// 		"pattern": "carrel.dustinedwards.info",
 	// 		"custom_domain": true
+	// 	},
+	// 	{
+	// 		"pattern": "carrel-mcp.dustinedwards.info",
+	// 		"custom_domain": true
 	// 	}
 	// ],
 	"observability": {
