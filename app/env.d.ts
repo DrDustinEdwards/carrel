@@ -21,6 +21,16 @@ interface CarrelSecrets {
    * `Get-Clipboard | npx wrangler secret put ACCESS_MCP_AUD`.
    */
   ACCESS_MCP_AUD?: string;
+  /**
+   * The service account's JSON key file, whole (setup step 9): it reads the manuscripts folder's
+   * metadata and Search Console, and nothing else. `Get-Content <key>.json -Raw | npx wrangler secret put GOOGLE_SA_KEY`.
+   */
+  GOOGLE_SA_KEY?: string;
+  /** The Web OAuth client for Dustin's drive.file grant (Send to Docs, Import). */
+  GOOGLE_OAUTH_CLIENT_ID?: string;
+  GOOGLE_OAUTH_CLIENT_SECRET?: string;
+  /** 32 random bytes, base64, that encrypt the drive.file refresh token in D1. */
+  GOOGLE_TOKEN_KEY?: string;
 }
 
 interface Env extends CarrelSecrets {}

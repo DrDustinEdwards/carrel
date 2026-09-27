@@ -8,6 +8,10 @@ import type { LinkTarget } from "~/components/editor/markdown-editor";
 import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
+import { importFromDocs, lastSentDoc, sendToDocs } from "~/lib/google/drive.server";
+import { isConnected } from "~/lib/google/oauth.server";
+import { pageStats } from "~/lib/google/search-console.server";
+import { GoogleNotConnected } from "~/lib/google/service-account.server";
 import { searchItems } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { FIRST_PUBLICATION_NOTE, transitionsFor } from "~/lib/publish-transition.mjs";
@@ -42,11 +46,14 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   }
   if (!doc && !draft && !siteError) throw new Response("Not found", { status: 404 });
 
-  const [targets, flags, aiDrafts, aiPublished] = await Promise.all([
+  const [targets, flags, aiDrafts, aiPublished, sentDoc, googleConnected, search] = await Promise.all([
     searchItems(env.DB, project.id, {}),
     itemFindings(env.DB, project, itemId),
     listAiDrafts(env.DB, project, viewer, itemId),
     lastAiPublication(env.DB, project, itemId),
+    lastSentDoc(env.DB, project, itemId),
+    can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
+    pageStats(env, project, doc?.path ?? null),
   ]);
   const linkTargets: LinkTarget[] = targets
     .filter((t) => t.itemId !== itemId)
@@ -73,6 +80,12 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     flags,
     aiDrafts,
     aiPublished: aiPublished ? { line: publishedByLine(aiPublished.client), at: aiPublished.publishedAt } : null,
+    canSend: can(project.role, "send_external"),
+    googleConnected,
+    sentDoc: sentDoc ? { url: sentDoc.url, at: sentDoc.createdAt } : null,
+    search: search
+      ? { clicks: search.clicks, impressions: search.impressions, position: Math.round(search.position * 10) / 10, start: search.startDate, end: search.endDate }
+      : null,
   };
 }
 
@@ -81,7 +94,8 @@ type ActionResult =
   | { intent: "discard"; discarded: true }
   | { intent: "publish"; needsConfirm: true }
   | { intent: "dismiss-flag"; dismissed: number }
-  | { intent: "write"; outcome: WriteOutcome };
+  | { intent: "write"; outcome: WriteOutcome }
+  | { intent: "google"; ok: boolean; message: string; url?: string; imported?: boolean };
 
 export async function action({ params, request, context }: Route.ActionArgs): Promise<ActionResult> {
   const env = getEnv(context);
@@ -106,6 +120,22 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       await dismissItemFinding(env.DB, project, viewer, itemId, id);
       return { intent, dismissed: id };
+    }
+    case "send-to-docs":
+    case "import-from-docs": {
+      try {
+        if (intent === "send-to-docs") {
+          const sent = await sendToDocs(env, project, viewer, itemId);
+          return sent.ok ? { intent: "google", ok: true, message: "Sent to Google Docs.", url: sent.url } : { intent: "google", ok: false, message: sent.message };
+        }
+        const imported = await importFromDocs(env, project, viewer, itemId);
+        return imported.ok
+          ? { intent: "google", ok: true, imported: true, message: `Imported ${imported.words} words from Google Docs as your draft.` }
+          : { intent: "google", ok: false, message: imported.message };
+      } catch (error) {
+        if (error instanceof GoogleNotConnected) return { intent: "google", ok: false, message: error.detail };
+        throw error;
+      }
     }
     case "save":
       return { intent: "write", outcome: await writeToSite(env, project, viewer, itemId, { action: "save", source, expectedVersion: version }) };
@@ -218,6 +248,16 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     }
   }, [discarded, data.source]);
 
+  // After an import, the loader has the imported draft, which replaces the local copy.
+  const imported = writer.data?.intent === "google" && writer.data.imported === true && writer.state === "idle";
+  useEffect(() => {
+    if (imported) {
+      setSource(data.source);
+      setSavedSource(data.source);
+      setSavedAt(data.draftAt);
+    }
+  }, [imported, data.source, data.draftAt]);
+
   // A write that reached the site clears the draft there, so the local copy counts as saved.
   const outcome = writer.data?.intent === "write" ? writer.data.outcome : null;
   useEffect(() => {
@@ -269,6 +309,12 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           <p className="muted">
             {data.status ? <span className={`status status-${data.status}`}>{data.status}</span> : <span className="status">not on the site yet</span>}{" "}
             {data.path ? <span>{data.path}</span> : null} <span role="status">{saveState}</span>
+            {data.search ? (
+              <span className="muted">
+                {" "}
+                · Search, {data.search.start} to {data.search.end}: {data.search.clicks} clicks, {data.search.impressions} impressions, position {data.search.position}
+              </span>
+            ) : null}
           </p>
         </div>
         <div className="editor-layouts" role="radiogroup" aria-label="Layout">
@@ -367,6 +413,17 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </p>
         ) : null}
 
+        {writer.data?.intent === "google" && !busy ? (
+          <p className={writer.data.ok ? "muted" : "alarm"} role={writer.data.ok ? "status" : "alert"}>
+            {writer.data.message}{" "}
+            {writer.data.url ? (
+              <a href={writer.data.url} target="_blank" rel="noreferrer">
+                Open the Doc
+              </a>
+            ) : null}
+          </p>
+        ) : null}
+
         {needsConfirm ? (
           <div className="confirm" role="group" aria-label="Confirm first publication">
             <p>{FIRST_PUBLICATION_NOTE}</p>
@@ -381,6 +438,19 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => send("discard")}>
               Discard my draft
             </button>
+          ) : null}
+
+          {data.canSend && data.googleConnected ? (
+            <>
+              <button type="button" className="btn-ghost" disabled={busy} onClick={() => send("send-to-docs")}>
+                Send to Google Docs
+              </button>
+              {data.sentDoc ? (
+                <button type="button" className="btn-ghost" disabled={busy} onClick={() => send("import-from-docs")}>
+                  Import from Docs
+                </button>
+              ) : null}
+            </>
           ) : null}
 
           {!onSite && maySave ? (

@@ -1,8 +1,8 @@
-// Mirrors drizzle/0001_init.sql to 0004_ai.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0005_google.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
-import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const people = sqliteTable("people", {
   id: integer("id").primaryKey(),
@@ -167,3 +167,63 @@ export const authorship = sqliteTable("authorship", {
   commitSha: text("commit_sha").notNull(),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
+
+export const googleKeysSeen = sqliteTable("google_keys_seen", {
+  privateKeyId: text("private_key_id").primaryKey(),
+  clientEmail: text("client_email").notNull(),
+  firstSeenAt: text("first_seen_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const googleTokens = sqliteTable("google_tokens", {
+  personId: integer("person_id").primaryKey().references(() => people.id, { onDelete: "cascade" }),
+  refreshToken: text("refresh_token").notNull(),
+  iv: text("iv").notNull(),
+  scope: text("scope").notNull(),
+  connectedAt: text("connected_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  lastError: text("last_error"),
+});
+
+export const googleOauthStates = sqliteTable("google_oauth_states", {
+  state: text("state").primaryKey(),
+  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const manuscripts = sqliteTable("manuscripts", {
+  fileId: text("file_id").primaryKey(),
+  name: text("name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  webViewLink: text("web_view_link").notNull(),
+  folder: text("folder").notNull().default(""),
+  people: text("people").notNull().default("[]"),
+  createdTime: text("created_time"),
+  modifiedTime: text("modified_time"),
+  syncedAt: text("synced_at").notNull(),
+});
+
+export const sentDocs = sqliteTable("sent_docs", {
+  id: integer("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  docId: text("doc_id").notNull(),
+  docUrl: text("doc_url").notNull(),
+  frontmatter: text("frontmatter").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const searchConsolePages = sqliteTable(
+  "search_console_pages",
+  {
+    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    page: text("page").notNull(),
+    clicks: integer("clicks").notNull(),
+    impressions: integer("impressions").notNull(),
+    ctr: real("ctr").notNull(),
+    position: real("position").notNull(),
+    startDate: text("start_date").notNull(),
+    endDate: text("end_date").notNull(),
+    fetchedAt: text("fetched_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.page] })],
+);

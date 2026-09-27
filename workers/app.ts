@@ -1,6 +1,7 @@
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
+import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
 import { handleMcp } from "~/lib/mcp/server";
 import { refreshAllSites } from "~/lib/refresh.server";
@@ -30,5 +31,6 @@ export default {
   scheduled(_controller, env, ctx) {
     ctx.waitUntil(runHealth(env));
     ctx.waitUntil(refreshAllSites(env));
+    ctx.waitUntil(refreshGoogle(env));
   },
 } satisfies ExportedHandler<Env>;
