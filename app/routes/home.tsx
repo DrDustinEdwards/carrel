@@ -54,27 +54,32 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         ) : null}
       </section>
       {isOwner ? (
-        <section aria-labelledby="google-heading">
-          <h2 id="google-heading">Google</h2>
-          {googleMessage ? (
-            <p className="notice" role="status">
-              {googleMessage}
-            </p>
-          ) : null}
-          <p>
-            <Link to="/manuscripts">Manuscripts</Link> <span className="muted">(the shared Drive folder, read-only)</span>
-          </p>
-          {google?.configured ? (
+        <>
+          <section aria-labelledby="google-heading">
+            <h2 id="google-heading">Google</h2>
+            {googleMessage ? (
+              <p className="notice" role="status">
+                {googleMessage}
+              </p>
+            ) : null}
             <p>
-              {google.connected ? "Send to Docs is connected (drive.file only). " : null}
-              <a href="/auth/google/start" className="btn-ghost">
-                {google.connected ? "Connect again" : "Connect Google for Send to Docs"}
-              </a>
+              <Link to="/manuscripts">Manuscripts</Link> <span className="muted">(the shared Drive folder, read-only)</span>
             </p>
-          ) : (
-            <p className="muted">Send to Docs is not set up yet.</p>
-          )}
-        </section>
+            {google?.configured ? (
+              <p>
+                {google.connected ? "Send to Docs is connected (drive.file only). " : null}
+                <a href="/auth/google/start" className="btn-ghost">
+                  {google.connected ? "Connect again" : "Connect Google for Send to Docs"}
+                </a>
+              </p>
+            ) : (
+              <p className="muted">Send to Docs is not set up yet.</p>
+            )}
+          </section>
+          <p>
+            <Link to="/social">Social</Link> <span className="muted">(posts announcing what went live)</span>
+          </p>
+        </>
       ) : null}
     </main>
   );

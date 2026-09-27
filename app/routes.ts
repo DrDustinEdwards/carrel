@@ -16,4 +16,5 @@ export default [
   route("p/:project/e/:item/ai/:id", "routes/ai-draft.tsx"),
   route("manuscripts", "routes/manuscripts.tsx"),
   route("auth/google/:step", "routes/auth.google.ts"),
+  route("social", "routes/social.tsx"),
 ] satisfies RouteConfig;
