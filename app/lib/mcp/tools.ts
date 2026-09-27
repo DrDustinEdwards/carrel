@@ -1,18 +1,21 @@
 // The MCP tools over posts (design section 5, "MCP tools"). Each calls the same functions the
 // buttons do (content.server.ts, projects.server.ts, index.server.ts) or the AI rules on top of them
 // (ai.server.ts), so a role that cannot do something in the browser cannot do it here. Each tool's
-// description carries the rule that AI never rewrites Dustin's prose unasked. Books tools follow once
-// stage 4 is merged.
+// description carries the rule that AI never rewrites Dustin's prose unasked. The books tools call
+// books.server.ts as the book pages do, and draft_social_post stores a post for the social queue.
 
 import { SiteApiError } from "@dustinedwards/site-api/client";
 
 import { addFinding, AiRefusal, aiPublish, itemFindings, listAiDrafts, saveAiDraft, type AiSession } from "~/lib/ai.server";
+import { checkDraft, indexedFile, listFiles, listFindings, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { searchItems } from "~/lib/index.server";
+import { isBookPath } from "~/lib/novels/layout";
 import { visibleProjects } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import type { Action } from "~/lib/roles";
 import { siteClient, SiteNotConnected } from "~/lib/sites.server";
+import { draftForEvent, draftSocialPost } from "~/lib/social/queue.server";
 
 export type ToolDeps = { fetcher?: typeof fetch; carrelOrigin: string };
 
@@ -37,6 +40,8 @@ const PREVIEW_LIMIT = 200_000;
 
 const PROJECT = { type: "string", description: "The project's slug, from list_projects." };
 const ITEM = { type: "string", description: "The post's id (its slug on the site), from search_items." };
+const BOOK = { type: "string", description: "The book's project slug, from list_projects (kind book)." };
+const BOOK_PATH = { type: "string", description: "The file's path in the book, such as chapters/01-arrival/01-the-gate.md, from list_book_files." };
 
 function str(args: Record<string, unknown>, key: string, opts: { optional?: boolean; max?: number } = {}): string {
   const value = args[key];
@@ -51,6 +56,10 @@ function str(args: Record<string, unknown>, key: string, opts: { optional?: bool
 
 async function project(ctx: ToolContext, args: Record<string, unknown>, action: Action) {
   return requireSiteProject(ctx.env.DB, ctx.session.viewer, str(args, "project"), action);
+}
+
+async function book(ctx: ToolContext, args: Record<string, unknown>, action: Action) {
+  return requireBookProject(ctx.env.DB, ctx.session.viewer, str(args, "project"), action);
 }
 
 export const TOOLS: Tool[] = [
@@ -211,6 +220,152 @@ export const TOOLS: Tool[] = [
       });
       if (!result.ok) throw new AiRefusal(result.message);
       return { published: true, version: result.version, changeId: result.changeId, dustinEmailed: result.emailed };
+    },
+  },
+
+  // ---------- books (stage 4), through the same functions as the book pages
+
+  {
+    name: "list_book_files",
+    title: "List a book's files",
+    description: `A book's chapters, scenes, bible and outline files from Carrel's index of the novels repository, with each scene's header and open flags. ${RULE}`,
+    inputSchema: { type: "object", properties: { project: BOOK }, required: ["project"], additionalProperties: false },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    run: async (args, ctx) => {
+      const b = await book(ctx, args, "read");
+      const [files, open] = await Promise.all([listFiles(ctx.env.DB, b), listFindings(ctx.env.DB, b, { status: "open" })]);
+      return {
+        files: files.map((f) => ({
+          path: f.path,
+          kind: f.kind,
+          words: f.words,
+          header: f.meta.kind === "scene" ? f.meta.header : undefined,
+          openFlags: open.filter((o) => o.path === f.path).length,
+        })),
+      };
+    },
+  },
+  {
+    name: "read_book_file",
+    title: "Read a book file",
+    description: `A scene, bible entry or outline file as the index last had it from Git, with its version, its flags and the AI drafts saved beside it. ${RULE}`,
+    inputSchema: { type: "object", properties: { project: BOOK, path: BOOK_PATH }, required: ["project", "path"], additionalProperties: false },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    run: async (args, ctx) => {
+      const b = await book(ctx, args, "read");
+      const path = str(args, "path", { max: 200 });
+      const [file, flags, aiDrafts] = await Promise.all([
+        indexedFile(ctx.env.DB, b, path),
+        listFindings(ctx.env.DB, b, { path }),
+        listAiDrafts(ctx.env.DB, b, ctx.session.viewer, path),
+      ]);
+      if (!file) throw new AiRefusal(`There is no ${path} in this book's index. List the files, or ask Dustin to refresh the book from Git.`);
+      return { path, source: file.source, version: file.sha, flags, aiDrafts };
+    },
+  },
+  {
+    name: "check_book_text",
+    title: "Run the checks on text",
+    description: `Runs the checks on save (header, continuity, timeline, world rules, AI habits, voice) on the given text for a book file, without saving or recording anything. The checks flag; Dustin decides. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: { project: BOOK, path: BOOK_PATH, source: { type: "string", description: "The whole file, header included." } },
+      required: ["project", "path", "source"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    run: async (args, ctx) => {
+      const b = await book(ctx, args, "read");
+      return { findings: await checkDraft(ctx.env.DB, b, str(args, "path", { max: 200 }), str(args, "source", { max: 500_000 })) };
+    },
+  },
+  {
+    name: "save_book_draft",
+    title: "Save an AI draft of a book file",
+    description: `Saves your version of a book file as a new AI draft beside Dustin's own. It never replaces his draft and is never committed to Git; he reads it in Carrel's editor and decides. ${RULE} Save one only when he asked for it.`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: BOOK,
+        path: BOOK_PATH,
+        source: { type: "string", description: "The whole file, header included." },
+        note: { type: "string", description: "One line for Dustin on what this draft changes and why." },
+      },
+      required: ["project", "path", "source"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    run: async (args, ctx) => {
+      if (ctx.session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use add_book_finding.");
+      const b = await book(ctx, args, "read");
+      const saved = await saveBookAiDraft(ctx.env.DB, b, ctx.session, str(args, "path", { max: 200 }), {
+        source: str(args, "source", { max: 500_000 }),
+        note: str(args, "note", { optional: true, max: 500 }),
+      });
+      return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in the book file's editor, under AI drafts." };
+    },
+  },
+  {
+    name: "add_book_finding",
+    title: "Flag a problem in a book file",
+    description: `Flags a problem in a book file for Dustin: a continuity slip, a timeline error, a sentence that says something other than it means. A flag is a question, never a decision; quote the words. It holds export until Dustin fixes the text or dismisses it. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: BOOK,
+        path: BOOK_PATH,
+        message: { type: "string", description: "What the problem is, in a sentence or two." },
+        excerpt: { type: "string", description: "The words the flag is about, quoted exactly." },
+      },
+      required: ["project", "path", "message"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: async (args, ctx) => {
+      const b = await book(ctx, args, "read");
+      const path = str(args, "path", { max: 200 });
+      if (!isBookPath(path)) throw new AiRefusal(`${path} is not a file in the novels layout.`);
+      const added = await addFinding(ctx.env.DB, b, ctx.session, path, {
+        message: str(args, "message", { max: 2000 }),
+        excerpt: str(args, "excerpt", { optional: true, max: 1000 }) || null,
+      });
+      return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };
+    },
+  },
+
+  // ---------- social (stage 9)
+
+  {
+    name: "draft_social_post",
+    title: "Draft a social post (Owner only)",
+    description: `Stores a drafted social post for one account and one piece, for Carrel to lint and send when the piece is live (or now, if it already is). Name the event id Carrel gave you, or the account key, project and item. It never posts anything itself, and there is no reply. Only Dustin's own sessions may draft posts. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        event_id: { type: "integer", description: "The event id from the routine's list of waiting items." },
+        account: { type: "string", description: "The account key, such as germomics-bluesky, when there is no event id." },
+        project: PROJECT,
+        item: { type: "string", description: "The piece's id in that project." },
+        text: { type: "string", description: "The post, in the account's voice, announcing the piece and linking it." },
+      },
+      required: ["text"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    run: async (args, ctx) => {
+      if (ctx.session.viewer.isReviewer || !ctx.session.viewer.isOwner) throw new AiRefusal("Social posts are Dustin's: only his own sessions may draft them.");
+      const text = str(args, "text", { max: 2000 });
+      const eventId = args.event_id;
+      let result;
+      if (eventId !== undefined) {
+        if (typeof eventId !== "number" || !Number.isInteger(eventId)) throw new AiRefusal("event_id must be a whole number.");
+        result = await draftForEvent(ctx.env.DB, { eventId, text, createdBy: ctx.session.client });
+      } else {
+        const p = await project(ctx, args, "read");
+        result = await draftSocialPost(ctx.env.DB, { accountKey: str(args, "account", { max: 80 }), projectId: p.id, itemId: str(args, "item", { max: 200 }), text, createdBy: ctx.session.client });
+      }
+      if (!result.ok) throw new AiRefusal(result.error);
+      return { stored: true, postId: result.postId, next: "Carrel lints it and, by the account's switch, queues it or holds it for Dustin's approval once the piece is live." };
     },
   },
 ];
