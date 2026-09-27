@@ -4,9 +4,17 @@
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { ftsQuery, MAX_BODY_FETCHES, refreshIndex, searchItems } from "~/lib/index.server";
+import {
+  ftsQuery,
+  MAX_BODY_FETCHES,
+  REFRESH_MAX_SUBREQUESTS,
+  REFRESH_SUBREQUEST_BUDGET,
+  refreshIndex,
+  searchItems,
+  SUBREQUEST_LIMIT,
+} from "~/lib/index.server";
 
-import { addProject, resetDb } from "./env";
+import { addProject, resetDb, testEnv } from "./env";
 import { connectedEnv, fakeSite } from "./site";
 
 let projectId: number;
@@ -74,6 +82,81 @@ describe("refresh", () => {
     expect(site.requests.filter((r) => r.startsWith("GET /api/carrel/v1/content/")).length).toBe(MAX_BODY_FETCHES);
     const second = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, site.fetch);
     expect(second).toMatchObject({ fetched: 5, pending: 0 });
+  });
+});
+
+/**
+ * D1 with every call counted, as the platform counts subrequests: each statement run and each batch
+ * is one. Statements are unwrapped before a batch, which D1 insists on.
+ */
+function countingD1(db: D1Database) {
+  let calls = 0;
+  const real = new WeakMap<object, D1PreparedStatement>();
+  const wrap = (stmt: D1PreparedStatement): D1PreparedStatement => {
+    const proxy = new Proxy(stmt, {
+      get(target, prop) {
+        if (prop === "bind") return (...args: unknown[]) => wrap(target.bind(...args));
+        if (prop === "first" || prop === "run" || prop === "all" || prop === "raw") {
+          return (...args: unknown[]) => {
+            calls++;
+            return (target[prop] as (...a: unknown[]) => unknown).apply(target, args);
+          };
+        }
+        const value = Reflect.get(target, prop, target);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    real.set(proxy, stmt);
+    return proxy;
+  };
+  const counted = new Proxy(db, {
+    get(target, prop) {
+      if (prop === "prepare") return (query: string) => wrap(target.prepare(query));
+      if (prop === "batch") {
+        return (stmts: D1PreparedStatement[]) => {
+          calls++;
+          return target.batch(stmts.map((s) => real.get(s) ?? s));
+        };
+      }
+      if (prop === "exec") {
+        return (query: string) => {
+          calls++;
+          return target.exec(query);
+        };
+      }
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  return { db: counted, calls: () => calls };
+}
+
+describe("the refresh's subrequests (Workers Paid)", () => {
+  it("keeps the cap's worst case inside its budget, and the budget a tenth of the plan's limit", () => {
+    expect(SUBREQUEST_LIMIT).toBe(10_000);
+    expect(REFRESH_SUBREQUEST_BUDGET).toBe(1_000);
+    expect(REFRESH_MAX_SUBREQUESTS).toBe(412);
+    expect(REFRESH_MAX_SUBREQUESTS).toBeLessThanOrEqual(REFRESH_SUBREQUEST_BUDGET);
+  });
+
+  it("stays under the limit when every post needs its body read: counted, not assumed", async () => {
+    const posts = Object.fromEntries(Array.from({ length: MAX_BODY_FETCHES + 50 }, (_, i) => [`p${String(i).padStart(3, "0")}`, `# P${i}
+`]));
+    const site = await seeded(posts);
+    const counting = countingD1(testEnv.DB);
+    const env = connectedEnv({ DB: counting.db });
+    const before = site.requests.length;
+
+    const result = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, site.fetch);
+    expect(result).toMatchObject({ listed: MAX_BODY_FETCHES + 50, fetched: MAX_BODY_FETCHES, pending: 50 });
+
+    const fetches = site.requests.length - before;
+    const used = fetches + counting.calls();
+    // Two list pages, one read per body; two D1 calls up front and one batch per body.
+    expect(fetches).toBe(2 + MAX_BODY_FETCHES);
+    expect(counting.calls()).toBe(2 + MAX_BODY_FETCHES);
+    expect(used).toBeLessThanOrEqual(REFRESH_MAX_SUBREQUESTS);
+    expect(used).toBeLessThan(SUBREQUEST_LIMIT);
   });
 });
 
