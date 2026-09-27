@@ -8,10 +8,31 @@ import { drizzle } from "drizzle-orm/d1";
 import { siteItems } from "~/db/schema";
 import { siteClient, type SiteId } from "~/lib/sites.server";
 
-/** Well inside the 50 subrequests a free-plan invocation allows, beside the health check's own. */
-export const MAX_BODY_FETCHES = 20;
+/**
+ * Workers Paid allows 10,000 subrequests per invocation by default, and a D1 call counts as one
+ * (developers.cloudflare.com/workers/platform/limits/#subrequests, checked 2026-09-27; Workers Free
+ * stays at 50). Carrel is on Workers Paid.
+ */
+export const SUBREQUEST_LIMIT = 10_000;
+
+/**
+ * What one site's refresh may spend: a tenth of the limit, so the cron's other work in the same
+ * invocation (the health check, other sites' refreshes) always has room.
+ */
+export const REFRESH_SUBREQUEST_BUDGET = SUBREQUEST_LIMIT / 10;
+
 const PAGE_SIZE = 200;
-const MAX_PAGES = 10;
+export const MAX_PAGES = 10;
+
+/**
+ * Bodies read per refresh. A refresh costs at most MAX_PAGES list calls, two D1 calls (the known
+ * rows and the summaries' batch), and two per body (its fetch and its batch): 12 + 2 x 200 = 412,
+ * inside REFRESH_SUBREQUEST_BUDGET. The rest are reported as pending and read on the next run.
+ */
+export const MAX_BODY_FETCHES = 200;
+
+/** The most subrequests one refresh can make, from the counts above. */
+export const REFRESH_MAX_SUBREQUESTS = MAX_PAGES + 2 + 2 * MAX_BODY_FETCHES;
 
 export type IndexedItem = {
   itemId: string;
