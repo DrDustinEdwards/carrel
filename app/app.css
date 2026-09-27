@@ -660,3 +660,45 @@ button:disabled {
   white-space: pre-wrap;
   font-family: var(--font-prose);
 }
+
+/* Stage 5: flags and AI drafts beside the editor, the AI draft page. */
+
+.editor-extras {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.875rem;
+}
+
+.editor-extras summary {
+  cursor: pointer;
+}
+
+.flag-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.flag-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.flag-open {
+  font-weight: 600;
+  color: var(--alarm);
+}
+
+.ai-draft-text {
+  white-space: pre-wrap;
+  font-family: var(--font-prose);
+  font-size: 1rem;
+  line-height: 1.7;
+  padding: 1rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.375rem;
+  max-width: 44rem;
+}
