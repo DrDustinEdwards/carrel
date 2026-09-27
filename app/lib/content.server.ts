@@ -11,7 +11,9 @@ import { changes, drafts } from "~/db/schema";
 import { indexDoc } from "~/lib/index.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
-import { can, type Action, type Role } from "~/lib/roles";\nimport { siteClient, siteConnection } from "~/lib/sites.server";\nimport { recordPublication, summaryFrom } from "~/lib/social/queue.server";
+import { can, type Action, type Role } from "~/lib/roles";
+import { siteClient, siteConnection } from "~/lib/sites.server";
+import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
 
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
 
