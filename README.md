@@ -11,6 +11,11 @@ The design is `carrel/design.md` in Capsid.
   - the site's own render in a sandboxed preview;
   - saving and publishing, by role;
   - a Content Security Policy on every page.
+- **Stage 4, books in the private novels repository:**
+  - the book view, chapter view and a file editor for scenes, bible entries and outlines (the same editor, autosave to D1, Save commits to Git with the version it expects to replace);
+  - the checks on save: scene headers, continuity and timeline against the bible, world rules, the AI-habits lint and voice;
+  - the authorship record, as a Markdown report;
+  - export to ePub and Word, and a print page for PDF.
 
 ## Develop
 
@@ -48,6 +53,48 @@ Until the key is set, the site shows as not connected, and the health check repo
 - the health check runs site-api's conformance suite against the site every 15 minutes and emails on a change of state;
 - the same cron refreshes the one view's index.
 
+## Connecting the novels repository
+
+A project is a book when its `book` column names a folder in `DrDustinEdwards/novels` (New book, on the home page, for the Owner). Carrel reaches the repository only through the GitHub App `carrel-writer` (design setup step 8), installed on `novels` alone with contents read and write. Each installation token Carrel asks for is narrowed again to that repository and to contents.
+
+```powershell
+Get-Clipboard | npx wrangler secret put NOVELS_APP_ID                        # the App's numeric id
+Get-Content <the-downloaded-key>.pem -Raw | npx wrangler secret put NOVELS_APP_PRIVATE_KEY
+```
+
+The key goes in as GitHub downloads it (PKCS#1, "BEGIN RSA PRIVATE KEY"); Carrel converts it. Until both are set, books open read-only from Carrel's index, Save explains why it is waiting, and the health check reports `novels` as not connected rather than failing. Once they are set, the health check asks GitHub for a token every 15 minutes.
+
+### The layout Carrel reads
+
+```text
+shared/voice/*.md              Dustin's own passages, which the voice check compares with
+shared/checks/ai-habits.md     words: [...] added to the AI-habits list, allow: [...] removed, conditions: false
+<book>/book.md                 title, author, language for export
+<book>/bible/characters/*.md   name, aliases, born, died
+<book>/bible/places/*.md       name, aliases
+<book>/bible/rules/*.md        name, forbidden: [patterns matched against every scene]
+<book>/outline/*.md
+<book>/chapters/NN-name/NN-scene.md
+<book>/build/                  ignored
+```
+
+Each scene opens with its header: `pov`, `date` (2031-04-12, or 2031-04-12 14:30), `location`, `characters`, Dustin's beats `goal`, `conflict`, `outcome`, and `flashback: true` for a scene out of order. The header is a narrow YAML subset (`key: value`, `key: [a, b]`, or one `- item` per line); a line outside it is reported in the editor, never guessed at.
+
+### The checks
+
+They run on every save, on the saved text, and after a refresh that finds changes; Check this text runs them on a draft without saving. They flag and never refuse: a flag never stops a save. An open flag holds export until the text is fixed or the Owner dismisses it, and a dismissal survives later saves of the same words.
+
+| Check | Flags |
+|---|---|
+| header | a missing header, point of view, date, location or beat; a date that is not a story date |
+| continuity | someone present who is not in the bible, dead at the scene's date or not yet born; a location not in the bible |
+| timeline | a scene dated before the scene it follows, unless it is marked flashback (a flashback does not move the clock) |
+| world-rules | a match for any rule's forbidden patterns; on the rule itself, a pattern that cannot compile |
+| ai-habits | a word from the AI-tells list in `capsid/conventions.md` (plus the book's additions); the "not X, it's Y" construction; a paragraph closing on a rule-of-three list |
+| voice | a scene of 250 words or more that reads unlike `shared/voice/`: sentence length, function words and punctuation, a Burrows' Delta-style distance |
+
+The voice threshold (`VOICE_THRESHOLD` in `app/lib/novels/voice.ts`) was set on test fixtures that stand in for Dustin's passages; it needs setting again once `shared/voice/` holds his own text. Every check has a planted problem that must be flagged and a clean twin that must not (`test/checks.test.ts`).
+
 ## Who may do what
 
 | Action | Reader | Editor | Owner |
@@ -57,10 +104,13 @@ Until the key is set, the site shows as not connected, and the health check repo
 | Save a draft post to the site | | yes | yes |
 | Save changes to a published or scheduled post | | | yes |
 | Publish, schedule, return to draft | | | yes |
+| Save a book's file to Git (it changes nothing public) | | yes | yes |
+| Read a book's flags and authorship record | yes | yes | yes |
+| Dismiss a flag, export a book | | | yes |
 
 A person with no role on a project gets the same 404 as for a project that does not exist.
 
-The roles are checked in `app/lib/content.server.ts`, not only in the routes, so the MCP tools in stage 5 meet the same rule. A first publish asks for confirmation, as the site's own editor does.
+The roles are checked in `app/lib/content.server.ts` and `app/lib/books.server.ts`, not only in the routes, so the MCP tools in stage 5 meet the same rule. A first publish asks for confirmation, as the site's own editor does.
 
 ## Copied code
 
