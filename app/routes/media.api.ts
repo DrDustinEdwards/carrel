@@ -40,7 +40,8 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   // Refused on the role before the body is read: a Reader's upload never reaches the site.
-  const project = await requireSiteProject(env.DB, getViewer(context), params.project, "edit");
+  const viewer = getViewer(context);
+  const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
   if (request.method !== "POST") return Response.json({ error: "Method not allowed." }, { status: 405 });
   const form = await request.formData();
   const file = form.get("file");
@@ -49,6 +50,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     const outcome = await uploadMedia(
       env,
       project,
+      { viewer },
       { name: file.name, type: file.type, size: file.size, bytes: () => file.arrayBuffer() },
       String(form.get("alt") ?? ""),
     );

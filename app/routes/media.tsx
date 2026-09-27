@@ -83,7 +83,7 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0) return { intent, ok: false, message: "No file was chosen." };
     try {
-      const outcome = await uploadMedia(env, project, { name: file.name, type: file.type, size: file.size, bytes: () => file.arrayBuffer() }, String(form.get("alt") ?? ""));
+      const outcome = await uploadMedia(env, project, { viewer }, { name: file.name, type: file.type, size: file.size, bytes: () => file.arrayBuffer() }, String(form.get("alt") ?? ""));
       return outcome.ok ? { intent, ok: true, id: outcome.item.id, name: outcome.item.filename ?? outcome.item.id } : { intent, ok: false, message: outcome.message };
     } catch (error) {
       const message = reason(error);
@@ -97,7 +97,7 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
     // Two steps, as a first publish is: the file leaves the site's storage, and no undo brings it back.
     if (form.get("confirm") !== "delete") return { intent, needsConfirm: true, id };
     try {
-      const outcome = await deleteMedia(env, project, id);
+      const outcome = await deleteMedia(env, project, { viewer }, id);
       return outcome.ok ? { intent, ok: true, id } : { intent, ok: false, id, message: outcome.message, usedBy: outcome.usedBy };
     } catch (error) {
       const message = reason(error);

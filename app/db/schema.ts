@@ -76,9 +76,10 @@ export const changes = sqliteTable("changes", {
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   itemId: text("item_id").notNull(),
   personId: integer("person_id").notNull().references(() => people.id),
-  action: text("action", { enum: ["save", "publish", "schedule", "unpublish"] }).notNull(),
+  // Media actions since migration 0007: item_id is then the site's media id, and a file has no version.
+  action: text("action", { enum: ["save", "publish", "schedule", "unpublish", "media-upload", "media-delete"] }).notNull(),
   versionBefore: text("version_before"),
-  versionAfter: text("version_after").notNull(),
+  versionAfter: text("version_after"),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   client: text("client"),
 });

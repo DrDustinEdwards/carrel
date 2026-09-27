@@ -47,6 +47,10 @@ async function project(email: string, action: Parameters<typeof requireSiteProje
   return requireSiteProject(env.DB, await viewerFor(email), SLUG, action);
 }
 
+async function actor(email: string) {
+  return { viewer: await viewerFor(email) };
+}
+
 function file(bytes: Uint8Array, name = "river.png", type = "image/png") {
   return { name, type, size: bytes.byteLength, bytes: async () => bytes.slice().buffer };
 }
@@ -87,14 +91,14 @@ describe("the library through the site API", () => {
   });
 
   it("uploads as an Editor into the site's own storage", async () => {
-    const outcome = await uploadMedia(env, await project("editor@test.invalid"), file(PNG), "The river at dusk");
+    const outcome = await uploadMedia(env, await project("editor@test.invalid"), await actor("editor@test.invalid"), file(PNG), "The river at dusk");
     expect(outcome).toMatchObject({ ok: true, item: { filename: "river.png", alt: "The river at dusk", src: expect.stringMatching(/^https:\/\/site\.test\/media\//) } });
     expect(site.adapter.mediaStore.size).toBe(1);
   });
 
   it("deletes as the Owner", async () => {
     const item = await seedFile();
-    expect(await deleteMedia(env, await project("owner@test.invalid"), item.id)).toEqual({ ok: true });
+    expect(await deleteMedia(env, await project("owner@test.invalid"), await actor("owner@test.invalid"), item.id)).toEqual({ ok: true });
     expect(site.adapter.deleted).toEqual([item.id]);
   });
 });
@@ -102,14 +106,14 @@ describe("the library through the site API", () => {
 describe("PLANT: roles", () => {
   it("refuses a Reader's upload, and the site hears nothing", async () => {
     const reader = await project("reader@test.invalid");
-    expect(await status(() => uploadMedia(env, reader, file(PNG), ""))).toBe(403);
+    expect(await status(async () => uploadMedia(env, reader, await actor("reader@test.invalid"), file(PNG), ""))).toBe(403);
     expect(site.requests.filter((r) => r.startsWith("POST"))).toEqual([]);
   });
 
   it("refuses an Editor's delete, and the file stays", async () => {
     const item = await seedFile();
     const editor = await project("editor@test.invalid");
-    expect(await status(() => deleteMedia(env, editor, item.id))).toBe(403);
+    expect(await status(async () => deleteMedia(env, editor, await actor("editor@test.invalid"), item.id))).toBe(403);
     expect(site.adapter.mediaStore.has(item.id)).toBe(true);
     expect(site.requests.filter((r) => r.startsWith("DELETE"))).toEqual([]);
   });
@@ -149,7 +153,7 @@ describe("PLANT: deleting a file a post uses", () => {
     const owner = await project("owner@test.invalid");
     expect(await mediaDetail(env, owner, item.id)).toMatchObject({ usedBy: [{ id: "river-post", title: "The river", detail: "line 6" }] });
 
-    const outcome = await deleteMedia(env, owner, item.id);
+    const outcome = await deleteMedia(env, owner, await actor("owner@test.invalid"), item.id);
     expect(outcome).toMatchObject({ ok: false, usedBy: [{ type: "post", id: "river-post", title: "The river", detail: "line 6" }] });
     expect(!outcome.ok && outcome.message).toContain("The river (line 6)");
     expect(site.adapter.mediaStore.has(item.id)).toBe(true);
@@ -178,7 +182,7 @@ describe("PLANT: deleting a file a post uses", () => {
 
 describe("PLANT: an upload the site does not accept", () => {
   it("refuses a type the site did not declare before sending anything", async () => {
-    const outcome = await uploadMedia(env, await project("editor@test.invalid"), file(new TextEncoder().encode("<script>x</script>"), "page.html", "text/html"), "");
+    const outcome = await uploadMedia(env, await project("editor@test.invalid"), await actor("editor@test.invalid"), file(new TextEncoder().encode("<script>x</script>"), "page.html", "text/html"), "");
     expect(outcome).toMatchObject({ ok: false, message: expect.stringContaining("this site accepts") });
     expect(site.requests.filter((r) => r.startsWith("POST"))).toEqual([]);
   });
@@ -188,14 +192,14 @@ describe("PLANT: an upload the site does not accept", () => {
     vi.stubGlobal("fetch", site.fetch);
     const big = new Uint8Array(65);
     big.set(PNG.subarray(0, 8));
-    const outcome = await uploadMedia(env, await project("editor@test.invalid"), file(big), "");
+    const outcome = await uploadMedia(env, await project("editor@test.invalid"), await actor("editor@test.invalid"), file(big), "");
     expect(outcome).toMatchObject({ ok: false, message: expect.stringContaining("accepts files up to") });
     expect(site.requests.filter((r) => r.startsWith("POST"))).toEqual([]);
     expect(site.adapter.mediaStore.size).toBe(0);
   });
 
   it("shows the site API's refusal of bytes that are not their type, and stores nothing", async () => {
-    const outcome = await uploadMedia(env, await project("editor@test.invalid"), file(new TextEncoder().encode("not a png at all"), "fake.png"), "");
+    const outcome = await uploadMedia(env, await project("editor@test.invalid"), await actor("editor@test.invalid"), file(new TextEncoder().encode("not a png at all"), "fake.png"), "");
     expect(outcome).toMatchObject({ ok: false, message: expect.stringContaining("The site refused fake.png") });
     expect(site.adapter.mediaStore.size).toBe(0);
   });
