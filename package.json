@@ -13,6 +13,7 @@
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "seed:owner": "node scripts/seed-owner.mjs",
+    "import:docx": "node scripts/import-docx.mjs",
     "deploy": "npm run build && wrangler deploy",
     "postinstall": "node scripts/bootstrap-config.mjs && wrangler types --strict-vars=false"
   },
