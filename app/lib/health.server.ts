@@ -3,15 +3,18 @@
 //
 // It checks the settings the gate needs, the database and its Owner, the Access signing keys, and
 // each site: its key, and whether the site still conforms to the site-api contract Carrel was built
-// against, the GitHub App for the novels repository, and that every AI publish reached Dustin's
-// inbox. Later stages add the Google key.
+// against, the GitHub App for the novels repository, that every AI publish reached Dustin's inbox,
+// and Google: the service account key (its age and whether Google still takes it) and Dustin's
+// drive.file grant.
 
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiPublications, healthState, people } from "~/db/schema";
+import { aiPublications, googleKeysSeen, googleTokens, healthState, people } from "~/db/schema";
 import { teamIssuer } from "~/lib/access.server";
+import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
+import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 
@@ -119,9 +122,58 @@ async function checkAiPublishEmails(env: Env): Promise<CheckResult> {
   }
 }
 
+/** Google recommends rotating service account keys at least every 90 days. */
+export const KEY_MAX_AGE_DAYS = 90;
+
+/**
+ * The service account key: absent is "not connected" (its stage's setup is Dustin's), a key Google
+ * refuses (deleted, disabled, expired) fails, and so does one older than KEY_MAX_AGE_DAYS. A key file
+ * carries no creation date, so age counts from the first time this check saw the key.
+ */
+async function checkServiceAccount(env: Env, fetcher: Fetch, now: Date): Promise<CheckResult> {
+  const connection = saConnection(env);
+  if (connection.state === "not-connected") return { name: "google-service-account", ok: true, detail: `Not connected: ${connection.detail}` };
+  if (connection.state === "misconfigured") return { name: "google-service-account", ok: false, detail: connection.detail };
+  const { key } = connection;
+  const d = drizzle(env.DB);
+  await d.insert(googleKeysSeen).values({ privateKeyId: key.privateKeyId, clientEmail: key.clientEmail, firstSeenAt: now.toISOString() }).onConflictDoNothing();
+  const seen = await d.select({ firstSeenAt: googleKeysSeen.firstSeenAt }).from(googleKeysSeen).where(eq(googleKeysSeen.privateKeyId, key.privateKeyId)).get();
+  const days = Math.floor((now.getTime() - Date.parse(seen!.firstSeenAt)) / 86_400_000);
+  const id = key.privateKeyId.slice(0, 8);
+  try {
+    await saAccessToken(key, ((input: RequestInfo | URL, init?: RequestInit) =>
+      fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch);
+  } catch (error) {
+    return { name: "google-service-account", ok: false, detail: `Key ${id} (${key.clientEmail}) no longer works: ${message(error)} Create a new key and set GOOGLE_SA_KEY.` };
+  }
+  if (days > KEY_MAX_AGE_DAYS) {
+    return { name: "google-service-account", ok: false, detail: `Key ${id} is ${days} days old, past ${KEY_MAX_AGE_DAYS}. Create a new key, set GOOGLE_SA_KEY, then delete the old one in Google Cloud.` };
+  }
+  return { name: "google-service-account", ok: true, detail: `Key ${id} (${key.clientEmail}) works; ${days} days old.` };
+}
+
+/** Dustin's drive.file grant, if he has connected it: Google must still refresh it. */
+async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
+  const connection = await oauthConnection(env);
+  if (connection.state === "not-configured") return { name: "google-drive-file", ok: true, detail: `Not connected: ${connection.detail}` };
+  if (connection.state === "misconfigured") return { name: "google-drive-file", ok: false, detail: connection.detail };
+  const grants = await drizzle(env.DB).select({ personId: googleTokens.personId }).from(googleTokens).all();
+  if (grants.length === 0) return { name: "google-drive-file", ok: true, detail: "Not connected: no one has connected Google for Send to Docs yet." };
+  try {
+    for (const g of grants) {
+      await userAccessToken(env, g.personId, ((input: RequestInfo | URL, init?: RequestInit) =>
+        fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch);
+    }
+    return { name: "google-drive-file", ok: true, detail: "The drive.file grant refreshes." };
+  } catch (error) {
+    return { name: "google-drive-file", ok: false, detail: message(error) };
+  }
+}
+
 export async function runChecks(
   env: Env,
   fetcher: Fetch = (url, init) => fetch(url, init),
+  now: Date = new Date(),
 ): Promise<CheckResult[]> {
   return Promise.all([
     checkConfig(env),
@@ -130,6 +182,8 @@ export async function runChecks(
     ...SITE_IDS.map((id) => checkSite(env, id, fetcher)),
     checkNovels(env, fetcher),
     checkAiPublishEmails(env),
+    checkServiceAccount(env, fetcher, now),
+    checkDriveFile(env, fetcher),
   ]);
 }
 
@@ -143,7 +197,7 @@ export async function runHealth(
   fetcher?: Fetch,
   now: () => Date = () => new Date(),
 ): Promise<{ results: CheckResult[]; emailed: boolean }> {
-  const results = await runChecks(env, fetcher);
+  const results = await runChecks(env, fetcher, now());
   const db = drizzle(env.DB);
 
   let previous: Map<string, boolean>;
