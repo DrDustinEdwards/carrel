@@ -15,6 +15,12 @@ interface CarrelSecrets {
    */
   NOVELS_APP_ID?: string;
   NOVELS_APP_PRIVATE_KEY?: string;
+  /**
+   * The AUD tag of the MCP Access application, the one with Managed OAuth on (the AI door). Absent
+   * until stage 5's setup; /mcp refuses every request until it is set. Set with
+   * `Get-Clipboard | npx wrangler secret put ACCESS_MCP_AUD`.
+   */
+  ACCESS_MCP_AUD?: string;
 }
 
 interface Env extends CarrelSecrets {}

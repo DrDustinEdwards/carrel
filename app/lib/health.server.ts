@@ -3,13 +3,14 @@
 //
 // It checks the settings the gate needs, the database and its Owner, the Access signing keys, and
 // each site: its key, and whether the site still conforms to the site-api contract Carrel was built
-// against, and the GitHub App for the novels repository. Later stages add the Google key.
+// against, the GitHub App for the novels repository, and that every AI publish reached Dustin's
+// inbox. Later stages add the Google key.
 
 import { runConformance } from "@dustinedwards/site-api/conformance";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { healthState, people } from "~/db/schema";
+import { aiPublications, healthState, people } from "~/db/schema";
 import { teamIssuer } from "~/lib/access.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
@@ -97,6 +98,27 @@ async function checkNovels(env: Env, fetcher: Fetch): Promise<CheckResult> {
   }
 }
 
+/** Decision 2c: every AI publish emails Dustin. One whose email failed stays a failure until it is sent. */
+async function checkAiPublishEmails(env: Env): Promise<CheckResult> {
+  try {
+    const unsent = await drizzle(env.DB)
+      .select({ changeId: aiPublications.changeId, itemId: aiPublications.itemId, client: aiPublications.client, error: aiPublications.emailError })
+      .from(aiPublications)
+      .where(isNull(aiPublications.emailedAt))
+      .all();
+    if (unsent.length === 0) return { name: "ai-publish-email", ok: true, detail: "Every AI publish was emailed." };
+    return {
+      name: "ai-publish-email",
+      ok: false,
+      detail: `${unsent.length} AI publish${unsent.length === 1 ? " was" : "es were"} not emailed: ${unsent
+        .map((u) => `${u.itemId} by ${u.client} (${u.error ?? "no error recorded"})`)
+        .join("; ")}.`,
+    };
+  } catch (error) {
+    return { name: "ai-publish-email", ok: false, detail: `The record could not be read: ${message(error)}` };
+  }
+}
+
 export async function runChecks(
   env: Env,
   fetcher: Fetch = (url, init) => fetch(url, init),
@@ -107,6 +129,7 @@ export async function runChecks(
     checkAccessKeys(env, fetcher),
     ...SITE_IDS.map((id) => checkSite(env, id, fetcher)),
     checkNovels(env, fetcher),
+    checkAiPublishEmails(env),
   ]);
 }
 

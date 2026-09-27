@@ -55,6 +55,8 @@
 		"ACCESS_TEAM_DOMAIN": "https://dustinedwards.cloudflareaccess.com",
 		"ALERT_EMAIL": "alerts@example.com",
 		"ALERT_FROM": "carrel@dustinedwards.info",
+		// Where Carrel's pages live, for links in email. The AI door (/mcp) is on its own hostname.
+		"CARREL_ORIGIN": "https://carrel.dustinedwards.info",
 		// The site Carrel reaches through site-api. Its key is the secret SITE_DUSTINEDWARDS_KEY.
 		"SITE_DUSTINEDWARDS_ORIGIN": "https://dustinedwards.info"
 	}

@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql, 0002_site_content.sql and 0003_books.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0004_ai.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -9,6 +9,7 @@ export const people = sqliteTable("people", {
   email: text("email").notNull().unique(),
   name: text("name").notNull().default(""),
   isOwner: integer("is_owner", { mode: "boolean" }).notNull().default(false),
+  isReviewer: integer("is_reviewer", { mode: "boolean" }).notNull().default(false),
   disabledAt: text("disabled_at"),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
@@ -79,6 +80,41 @@ export const changes = sqliteTable("changes", {
   versionBefore: text("version_before"),
   versionAfter: text("version_after").notNull(),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  client: text("client"),
+});
+
+export const mcpSessions = sqliteTable("mcp_sessions", {
+  id: text("id").primaryKey(),
+  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  clientName: text("client_name").notNull(),
+  clientVersion: text("client_version"),
+  protocolVersion: text("protocol_version").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  lastSeenAt: text("last_seen_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const aiDrafts = sqliteTable("ai_drafts", {
+  id: integer("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  client: text("client").notNull(),
+  source: text("source").notNull(),
+  baseVersion: text("base_version"),
+  note: text("note").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const aiPublications = sqliteTable("ai_publications", {
+  changeId: text("change_id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  personId: integer("person_id").notNull().references(() => people.id),
+  client: text("client").notNull(),
+  version: text("version").notNull(),
+  publishedAt: text("published_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  emailedAt: text("emailed_at"),
+  emailError: text("email_error"),
 });
 
 export const bookFiles = sqliteTable(

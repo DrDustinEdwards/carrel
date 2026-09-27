@@ -103,6 +103,8 @@ export async function writeToSite(
     | { action: "schedule"; expectedVersion: string; publishAt: string; source?: string }
     | { action: "unpublish"; expectedVersion: string },
   fetcher?: typeof fetch,
+  /** The AI client, when the write came through the AI door; the authorship record credits it. */
+  opts: { client?: string } = {},
 ): Promise<WriteOutcome> {
   // Checked twice: before any request, from the role alone, and again against the item's live state.
   requireCan(project, request.action === "save" ? "edit" : "publish");
@@ -156,6 +158,7 @@ export async function writeToSite(
     action: request.action,
     versionBefore: current?.version ?? null,
     versionAfter: result.version,
+    client: opts.client ?? null,
   });
 
   // The draft is done once its text reached the site; an unpublish sends no text, so it stays.
