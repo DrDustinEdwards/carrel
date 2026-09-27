@@ -30,11 +30,22 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <ul className="project-list">
             {projects.map((p) => (
               <li key={p.id}>
-                <Link to={`/p/${p.slug}`}>{p.name}</Link> <span className="muted">({p.role})</span>
+                {p.kind ? <Link to={`/${p.kind === "book" ? "b" : "p"}/${p.slug}`}>{p.name}</Link> : p.name}{" "}
+                <span className="muted">
+                  ({p.kind === "book" ? "book, " : p.kind === "site" ? "site, " : ""}
+                  {p.role})
+                </span>
               </li>
             ))}
           </ul>
         )}
+        {isOwner ? (
+          <p>
+            <Link to="/books/new" className="btn-ghost">
+              New book
+            </Link>
+          </p>
+        ) : null}
       </section>
     </main>
   );
