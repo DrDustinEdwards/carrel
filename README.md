@@ -95,6 +95,25 @@ They run on every save, on the saved text, and after a refresh that finds change
 
 The voice threshold (`VOICE_THRESHOLD` in `app/lib/novels/voice.ts`) was set on test fixtures that stand in for Dustin's passages; it needs setting again once `shared/voice/` holds his own text. Every check has a planted problem that must be flagged and a clean twin that must not (`test/checks.test.ts`).
 
+## Importing a manuscript from Word
+
+A manuscript that starts as Word files (exported from Google Docs with File, Download, Microsoft Word) is converted once into a book in the novels repository, then reviewed as a pull request there. Nothing is sent anywhere; the importer reads the files and writes Markdown into a local clone.
+
+```powershell
+git clone https://github.com/DrDustinEdwards/novels.git C:/dev/novels
+git -C C:/dev/novels switch -c import-paluxy-portal
+npm run import:docx -- C:/path/to/manuscript-folder --book paluxy-portal --novels C:/dev/novels
+```
+
+- A folder's `.docx` files are read in name order, so name them `01-...`, `02-...`. Single files can be listed instead.
+- In each file, a **Heading 1** starts a chapter (`chapters/NN-name/`); a file with no Heading 1 is one chapter named after the file. The **Title** paragraph becomes the title in `book.md` (or pass `--title "..."`).
+- A paragraph that is only a scene-break mark (`* * *`, `***`, `#`, `~`) starts a new scene (`NN-first-words.md`). Empty paragraphs never do.
+- Italics become `*...*`, bold `**...**`. Each scene opens with an empty scene header for you to fill.
+- Anything it cannot convert cleanly (tables, images, footnotes, comments, tracked changes, lists, line breaks inside a paragraph, headings below Heading 1, centered text, text before the first chapter) is **flagged, not guessed**: an `<!-- import: ... -->` line where it happened, and a row in `<book>/build/import-report.md`. Remove every marker before exporting.
+- It refuses to write into a book that already has `chapters/`.
+
+Then review the result in the clone, commit it, and open a pull request in the novels repository. The importer's tests (`test/import.test.ts`) run on a short test document built from `test/fixtures/import/test-manuscript.mjs`.
+
 ## Who may do what
 
 | Action | Reader | Editor | Owner |
