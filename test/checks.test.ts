@@ -180,6 +180,24 @@ describe("PLANT: AI habits", () => {
     expect(readHabits("---\nconditions: false\n---\n").conditions).toBe(false);
   });
 
+  it("reads the novels repository's shared/checks/ai-habits.md as it ships: the seed, unchanged", () => {
+    const shipped = [
+      "---",
+      "# Added to the AI-habits list Carrel starts from (the AI-tells list in the portfolio conventions).",
+      "words: []",
+      "# Words from that list to allow back. In fiction some of them are ordinary words; a flag is only a flag.",
+      "allow: []",
+      "# Set to false to stop flagging the constructions (\"it's not just X, it's Y\", a paragraph closing on",
+      "# a rule-of-three list) and keep only the words.",
+      "conditions: true",
+      "---",
+      "",
+      "Carrel reads the header above. Anything written here, below it, is for people.",
+      "",
+    ].join("\r\n");
+    expect(readHabits(shipped)).toEqual({ words: SEED_WORDS, conditions: true });
+  });
+
   it("seeds from the AI-tells list in capsid/conventions.md", () => {
     expect(SEED_WORDS).toEqual(expect.arrayContaining(["delve", "tapestry", "testament to", "it's worth noting", "furthermore"]));
   });
