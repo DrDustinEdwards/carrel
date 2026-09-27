@@ -3,10 +3,15 @@
 // (ai.server.ts), so a role that cannot do something in the browser cannot do it here. Each tool's
 // description carries the rule that AI never rewrites Dustin's prose unasked. The books tools call
 // books.server.ts as the book pages do, and draft_social_post stores a post for the social queue.
+//
+// NO ROLE LOGIC HERE. A tool names the project and the action it needs and calls down; the function
+// it calls decides whether this person may, and refuses. Asking "is this the Owner, a reviewer, an
+// editor" in this file would be a second place for the rules to live, and the first time the two
+// disagreed one door would allow what the other refused. check:mcp-roles fails on it.
 
 import { SiteApiError } from "@dustinedwards/site-api/client";
 
-import { addFinding, AiRefusal, aiPublish, itemFindings, listAiDrafts, saveAiDraft, type AiSession } from "~/lib/ai.server";
+import { addFinding, aiDraftSocialPost, AiRefusal, aiPublish, itemFindings, listAiDrafts, saveAiDraft, type AiSession } from "~/lib/ai.server";
 import { checkDraft, indexedFile, listFiles, listFindings, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { searchItems } from "~/lib/index.server";
@@ -15,7 +20,6 @@ import { visibleProjects } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import type { Action } from "~/lib/roles";
 import { siteClient, SiteNotConnected } from "~/lib/sites.server";
-import { draftForEvent, draftSocialPost } from "~/lib/social/queue.server";
 
 export type ToolDeps = { fetcher?: typeof fetch; carrelOrigin: string };
 
@@ -296,7 +300,6 @@ export const TOOLS: Tool[] = [
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     run: async (args, ctx) => {
-      if (ctx.session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use add_book_finding.");
       const b = await book(ctx, args, "read");
       const saved = await saveBookAiDraft(ctx.env.DB, b, ctx.session, str(args, "path", { max: 200 }), {
         source: str(args, "source", { max: 500_000 }),
@@ -353,18 +356,16 @@ export const TOOLS: Tool[] = [
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     run: async (args, ctx) => {
-      if (ctx.session.viewer.isReviewer || !ctx.session.viewer.isOwner) throw new AiRefusal("Social posts are Dustin's: only his own sessions may draft them.");
       const text = str(args, "text", { max: 2000 });
       const eventId = args.event_id;
       let result;
       if (eventId !== undefined) {
         if (typeof eventId !== "number" || !Number.isInteger(eventId)) throw new AiRefusal("event_id must be a whole number.");
-        result = await draftForEvent(ctx.env.DB, { eventId, text, createdBy: ctx.session.client });
+        result = await aiDraftSocialPost(ctx.env.DB, ctx.session, { eventId, text });
       } else {
         const p = await project(ctx, args, "read");
-        result = await draftSocialPost(ctx.env.DB, { accountKey: str(args, "account", { max: 80 }), projectId: p.id, itemId: str(args, "item", { max: 200 }), text, createdBy: ctx.session.client });
+        result = await aiDraftSocialPost(ctx.env.DB, ctx.session, { accountKey: str(args, "account", { max: 80 }), projectId: p.id, itemId: str(args, "item", { max: 200 }), text });
       }
-      if (!result.ok) throw new AiRefusal(result.error);
       return { stored: true, postId: result.postId, next: "Carrel lints it and, by the account's switch, queues it or holds it for Dustin's approval once the piece is live." };
     },
   },

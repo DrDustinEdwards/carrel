@@ -1,0 +1,29 @@
+// The dev config for `npm run check:conformance`. NEVER DEPLOYED: it has no routes, no account, and a
+// local-only D1 and KV. It exists so the gate runs the real protocol layer and the real AI door under
+// `wrangler dev` without depending on the gitignored wrangler.jsonc. The entry is passed positionally
+// by the script: conformance-entry.ts (the protocol) or conformance-auth-entry.ts (the door).
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "carrel-conformance",
+	"compatibility_date": "2026-09-01",
+	"compatibility_flags": ["global_fetch_strictly_public"],
+	// The app's own tsconfig, for its ~/ path alias.
+	"tsconfig": "../../tsconfig.cloudflare.json",
+	"workers_dev": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "carrel-conformance",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "../../drizzle"
+		}
+	],
+	"kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+	"vars": {
+		"ACCESS_TEAM_DOMAIN": "https://conformance.cloudflareaccess.com",
+		"ALERT_EMAIL": "owner@conformance.invalid",
+		"ALERT_FROM": "carrel@conformance.invalid",
+		"CARREL_ORIGIN": "http://localhost:8792",
+		"SITE_DUSTINEDWARDS_ORIGIN": "http://localhost:8799"
+	}
+}

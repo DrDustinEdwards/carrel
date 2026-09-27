@@ -88,7 +88,7 @@ describe("AI drafts in the browser", () => {
   it("shows an AI draft to the person whose session saved it, and Use as my draft replaces only their working copy", async () => {
     await published();
     const { viewer, project } = await as("owner@test.invalid");
-    const saved = await saveAiDraft(env, project, { viewer, client: "Claude 1.0", sessionId: "s" }, "post-one", { source: "AI text.", note: "A note." }, site.fetch);
+    const saved = await saveAiDraft(env, project, { viewer, client: "Claude 1.0" }, "post-one", { source: "AI text.", note: "A note." }, site.fetch);
     const params = { project: SLUG, item: "post-one", id: String(saved.id) };
     const page = (await aiDraftLoader({ request: new Request("https://carrel.test/"), params, context: await context("owner@test.invalid") } as never)) as Awaited<ReturnType<typeof aiDraftLoader>>;
     expect(page.draft).toMatchObject({ client: "Claude 1.0", note: "A note.", source: "AI text." });
@@ -101,7 +101,7 @@ describe("AI drafts in the browser", () => {
 
   it("PLANT: another person cannot see someone's AI draft", async () => {
     const { viewer, project } = await as("owner@test.invalid");
-    const saved = await saveAiDraft(env, project, { viewer, client: "Claude", sessionId: "s" }, "post-one", { source: "Private." }, site.fetch);
+    const saved = await saveAiDraft(env, project, { viewer, client: "Claude" }, "post-one", { source: "Private." }, site.fetch);
     const params = { project: SLUG, item: "post-one", id: String(saved.id) };
     expect(((await settle(aiDraftLoader({ request: new Request("https://carrel.test/"), params, context: await context("editor@test.invalid") } as never))) as Response).status).toBe(404);
   });
@@ -112,7 +112,7 @@ describe("flags in the editor", () => {
     await published();
     const reviewer = await viewerFor("owner@test.invalid");
     const { project } = await as("owner@test.invalid");
-    const flag = await addFinding(testEnv.DB, project, { viewer: { ...reviewer, isReviewer: true }, client: "Grok Build", sessionId: "s" }, "post-one", { message: "Check this." });
+    const flag = await addFinding(testEnv.DB, project, { viewer: { ...reviewer, isReviewer: true }, client: "Grok Build" }, "post-one", { message: "Check this." });
     const params = { project: SLUG, item: "post-one" };
     const data = (await editorLoader({ request: new Request("https://carrel.test/"), params, context: await context("editor@test.invalid") } as never)) as Awaited<ReturnType<typeof editorLoader>>;
     expect(data.flags).toMatchObject([{ status: "open", message: "Check this. (from Grok Build)" }]);

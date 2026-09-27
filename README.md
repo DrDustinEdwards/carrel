@@ -28,7 +28,13 @@ npm run db:migrate:local
 npm run seed:owner -- you@example.com "Your Name"
 npm test                     # Vitest in workerd with local D1
 npm run typecheck
+npm run build
+npm run check:mcp-roles      # no role logic in app/lib/mcp/
+npm run check:conformance    # the official MCP conformance suite, against a recorded baseline
+npm run check:plants         # each gate above, seen red on a planted violation (several minutes)
 ```
+
+The gates run locally, not on GitHub Actions (minutes are limited on this account).
 
 Every request without a valid Access token is refused, locally too, so the app answers 403 until it runs behind Access.
 
@@ -119,7 +125,13 @@ Then review the result in the clone, commit it, and open a pull request in the n
 
 ## The AI door (MCP)
 
-Carrel answers MCP at `/mcp` (Streamable HTTP, JSON replies, one session per client). An AI session is known by the door it came through, never by email: `/mcp` accepts only tokens from the MCP Access application (the one with Managed OAuth on, whose AUD is the secret `ACCESS_MCP_AUD`), and every other path accepts only the Worker's own Access application (`ACCESS_AUD`). A browser session at `/mcp`, or an AI session anywhere else, gets the gate's bare 403. Until `ACCESS_MCP_AUD` is set, `/mcp` refuses everything.
+The AI door is its own hostname, `carrel-mcp.dustinedwards.info` (design decision 7, corrected 2026-09-27). Every request that arrives there is an AI session, and every other hostname is the browser door behind Access; the hostname alone decides, never the email. The pages are never served on the AI host, and `/mcp` on the browser's host is just a page that does not exist.
+
+- **Protocol:** the official MCP SDK v2 (`@modelcontextprotocol/server` 2.0.0) through `agents`, stateless, at `/mcp`. The design-center era is 2026-07-28; 2025-era clients (Claude Code and claude.ai, as last measured) are answered by the shim in `app/lib/mcp/legacy-era.ts`, which carries its own removal condition.
+- **Sign-in:** the door is an OAuth 2.1 authorization server (`@cloudflare/workers-oauth-provider` 1.1.0, exact), CIMD only: clients present a metadata URL as their `client_id`, and there is no registration endpoint. After a consent page, the person signs in with Cloudflare Access for SaaS (OIDC; secrets `ACCESS_SAAS_CLIENT_ID` and `ACCESS_SAAS_CLIENT_SECRET`). The ID token's email must belong to an active person in Carrel; an unknown or disabled email gets no grant, and a person disabled later loses the door on their next request.
+- **Credit:** an AI session is credited by the client's CIMD name (for example "Claude Code") on every draft, flag and publish.
+- **No role logic in the MCP layer:** tools call the same functions as the buttons, and those refuse. `npm run check:mcp-roles` fails on a role test anywhere in `app/lib/mcp/`.
+- **Reachability:** `carrel-mcp.dustinedwards.info` has a hostname Access application with a Bypass policy, which Cloudflare applies before the Worker-level application; `carrel.dustinedwards.info` stays fully behind Worker-level Access.
 
 | Tool | Who | What |
 |---|---|---|
@@ -132,7 +144,7 @@ Carrel answers MCP at `/mcp` (Streamable HTTP, JSON replies, one session per cli
 | `add_book_finding` | anyone with a role, reviewers above all | a flag on a book file; a recheck never withdraws it, and it holds export |
 | `draft_social_post` | the Owner's own sessions | a post for the social queue, by event id or by account, project and item |
 
-A **reviewer** is a person row with `is_reviewer = 1` (another company's agent): it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
+A **reviewer** is a person row with `is_reviewer = 1` (another company's agent), signed in through the same door with its own email: it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
 
 ## Google
 
@@ -152,7 +164,7 @@ What it gives:
 
 `/social` (the Owner's) holds the accounts, the posts waiting on Dustin, and the record of every post. A post only ever announces a piece that went live through Carrel, and it comes from, in order (design decision 5):
 
-1. a draft stored ahead by the session that finished the piece (`draftSocialPost`, which stage 5's MCP tools will call);
+1. a draft stored ahead by the session that finished the piece (`draftSocialPost`, which the `draft_social_post` MCP tool calls);
 2. else the Claude Code routine, fired through its API trigger with every waiting item in one run (after a 30-minute gathering delay, at most 3 runs a day, plus a nightly sweep); the routine stores its drafts the same way;
 3. else, when the routine refuses the run, its daily cap is reached, or it drafted nothing within 3 hours, the account's template. The health check fails until Dustin marks each template post seen.
 
@@ -175,7 +187,7 @@ Credentials are secrets named for the account key, with dashes as underscores: `
 
 A person with no role on a project gets the same 404 as for a project that does not exist.
 
-The roles are checked in `app/lib/content.server.ts` and `app/lib/books.server.ts`, not only in the routes, so the MCP tools in stage 5 meet the same rule. A first publish asks for confirmation, as the site's own editor does.
+The roles are checked in `app/lib/content.server.ts`, `app/lib/books.server.ts` and `app/lib/ai.server.ts`, not in the routes or the MCP tools, so both doors meet the same rule. A first publish asks for confirmation, as the site's own editor does.
 
 ## Copied code
 

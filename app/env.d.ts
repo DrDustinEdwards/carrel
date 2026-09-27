@@ -16,11 +16,18 @@ interface CarrelSecrets {
   NOVELS_APP_ID?: string;
   NOVELS_APP_PRIVATE_KEY?: string;
   /**
-   * The AUD tag of the MCP Access application, the one with Managed OAuth on (the AI door). Absent
-   * until stage 5's setup; /mcp refuses every request until it is set. Set with
-   * `Get-Clipboard | npx wrangler secret put ACCESS_MCP_AUD`.
+   * The AI door's upstream login (design decision 7, corrected): the Cloudflare Access for SaaS (OIDC)
+   * application's client id and secret. Absent until its setup; the door's /authorize answers 503
+   * until both are set. `Get-Clipboard | npx wrangler secret put ACCESS_SAAS_CLIENT_ID`, then the same
+   * for ACCESS_SAAS_CLIENT_SECRET.
    */
-  ACCESS_MCP_AUD?: string;
+  ACCESS_SAAS_CLIENT_ID?: string;
+  ACCESS_SAAS_CLIENT_SECRET?: string;
+  /**
+   * Grants and tokens for the AI door's OAuth provider (@cloudflare/workers-oauth-provider). A KV
+   * binding in wrangler.jsonc, declared here too because a config from before the AI door lacks it.
+   */
+  OAUTH_KV: KVNamespace;
   /**
    * The service account's JSON key file, whole (setup step 9): it reads the manuscripts folder's
    * metadata and Search Console, and nothing else. `Get-Content <key>.json -Raw | npx wrangler secret put GOOGLE_SA_KEY`.
