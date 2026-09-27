@@ -8,10 +8,10 @@
 // - publish is the Owner's own sessions only, refused while any flag on the item is open, recorded
 //   as "published by <client> on Dustin's instruction", and emailed to Dustin with an unpublish link.
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiDrafts, aiPublications, findings } from "~/db/schema";
+import { aiDrafts, aiPublications, findings, siteItems } from "~/db/schema";
 import { readDoc, writeToSite, type ProjectRole, type WriteOutcome } from "~/lib/content.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
@@ -97,6 +97,34 @@ export async function addFinding(
     .where(and(eq(findings.projectId, project.id), eq(findings.path, itemId), eq(findings.fingerprint, key)))
     .get();
   return { id: existing!.id, duplicate: true };
+}
+
+export type ProjectFlag = ItemFinding & { itemId: string; title: string | null; onSite: boolean };
+
+/**
+ * Every flag on a site project, open first then newest first, including flags on items the site does
+ * not have (a proof item, a post since deleted), which no editor page can reach. `onSite` says whether
+ * Carrel's index of the site has the item.
+ */
+export async function projectFlags(db: D1Database, project: ProjectRole): Promise<ProjectFlag[]> {
+  if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
+  const rows = await drizzle(db)
+    .select({
+      id: findings.id,
+      itemId: findings.path,
+      check: findings.checkName,
+      message: findings.message,
+      excerpt: findings.excerpt,
+      status: findings.status,
+      createdAt: findings.createdAt,
+      title: siteItems.title,
+    })
+    .from(findings)
+    .leftJoin(siteItems, and(eq(siteItems.projectId, findings.projectId), eq(siteItems.itemId, findings.path)))
+    .where(eq(findings.projectId, project.id))
+    .orderBy(asc(sql`${findings.status} = 'dismissed'`), desc(findings.createdAt), desc(findings.id))
+    .all();
+  return rows.map((r) => ({ ...r, onSite: r.title !== null }));
 }
 
 /** Checks and reviewers flag; a person decides. Dismissing clears a flag for publish, so it is the Owner's. */

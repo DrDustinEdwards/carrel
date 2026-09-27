@@ -8,7 +8,10 @@
 
 import type { MediaDetail, MediaItem, MediaList, MediaUploadLimits, MediaUse } from "@dustinedwards/site-api";
 import { SiteApiError } from "@dustinedwards/site-api/client";
+import { drizzle } from "drizzle-orm/d1";
 
+import { changes } from "~/db/schema";
+import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, type Action } from "~/lib/roles";
 import { absoluteMediaUrl, siteClient, siteConnection } from "~/lib/sites.server";
@@ -19,6 +22,26 @@ function requireCan(project: SiteProject, action: Action) {
 
 /** A file as Carrel's screens show it: the site's item, plus the absolute address a browser loads. */
 export type MediaView = MediaItem & { src: string };
+
+/** Who did it: the person, and the AI client when it came through the AI door (credited in the record). */
+export type MediaActor = { viewer: Viewer; client?: string };
+
+/**
+ * One row in the authorship record per media action that the site carried out (migration 0007): the
+ * same change id Carrel sent the site, so the two histories join. A refused action writes nothing.
+ */
+async function record(env: Env, project: SiteProject, actor: MediaActor, action: "media-upload" | "media-delete", mediaId: string, changeId: string) {
+  await drizzle(env.DB).insert(changes).values({
+    id: changeId,
+    projectId: project.id,
+    itemId: mediaId,
+    personId: actor.viewer.id,
+    action,
+    versionBefore: null,
+    versionAfter: null,
+    client: actor.client ?? null,
+  });
+}
 
 function view(project: SiteProject, env: Env, item: MediaItem): MediaView {
   const connection = siteConnection(env, project.site);
@@ -65,6 +88,7 @@ export type UploadOutcome = { ok: true; item: MediaView } | { ok: false; message
 export async function uploadMedia(
   env: Env,
   project: SiteProject,
+  actor: MediaActor,
   file: { name: string; type: string; size: number; bytes: () => Promise<ArrayBuffer> },
   alt: string,
   fetcher?: typeof fetch,
@@ -80,14 +104,16 @@ export async function uploadMedia(
     return { ok: false, message: `${file.name} is ${megabytes(file.size)}; this site accepts files up to ${megabytes(limits.maxBytes)}.` };
   }
   if (file.size === 0) return { ok: false, message: `${file.name} is empty.` };
+  const changeId = crypto.randomUUID();
   try {
     const item = await siteClient(env, project.site, fetcher).media.upload({
       bytes: new Uint8Array(await file.bytes()),
       contentType: type,
       filename: file.name.replace(/[/\\]/g, "-").slice(0, 200),
       alt: alt.trim().slice(0, 2000),
-      changeId: crypto.randomUUID(),
+      changeId,
     });
+    await record(env, project, actor, "media-upload", item.id, changeId);
     return { ok: true, item: view(project, env, item) };
   } catch (error) {
     if (error instanceof SiteApiError && error.body) return { ok: false, message: `The site refused ${file.name}: ${error.body.message}` };
@@ -98,10 +124,12 @@ export async function uploadMedia(
 export type DeleteOutcome = { ok: true } | { ok: false; message: string; usedBy: MediaUse[] };
 
 /** Asks the site to delete a file. The site's reference check decides; a file in use is refused, with every use named. */
-export async function deleteMedia(env: Env, project: SiteProject, id: string, fetcher?: typeof fetch): Promise<DeleteOutcome> {
+export async function deleteMedia(env: Env, project: SiteProject, actor: MediaActor, id: string, fetcher?: typeof fetch): Promise<DeleteOutcome> {
   requireCan(project, "delete_media");
+  const changeId = crypto.randomUUID();
   try {
-    await siteClient(env, project.site, fetcher).media.delete(id, crypto.randomUUID());
+    await siteClient(env, project.site, fetcher).media.delete(id, changeId);
+    await record(env, project, actor, "media-delete", id, changeId);
     return { ok: true };
   } catch (error) {
     if (error instanceof SiteApiError && error.body) {

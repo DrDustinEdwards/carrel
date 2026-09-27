@@ -49,6 +49,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <p>
             <Link to="/books/new" className="btn-ghost">
               New book
+            </Link>{" "}
+            <Link to="/people" className="btn-ghost">
+              People
             </Link>
           </p>
         ) : null}
