@@ -9,6 +9,8 @@ export type Viewer = {
   email: string;
   name: string;
   isOwner: boolean;
+  /** Another company's AI agent that reads and flags through MCP (design B6). Never writes or publishes. */
+  isReviewer: boolean;
 };
 
 export type VisibleProject = {
@@ -27,7 +29,7 @@ function kindOf(row: { site: string | null; book: string | null }): VisibleProje
 /** The active person with this email, or null. Email matching is case-insensitive, as the column is. */
 export async function findViewer(db: D1Database, email: string): Promise<Viewer | null> {
   const row = await drizzle(db)
-    .select({ id: people.id, email: people.email, name: people.name, isOwner: people.isOwner })
+    .select({ id: people.id, email: people.email, name: people.name, isOwner: people.isOwner, isReviewer: people.isReviewer })
     .from(people)
     .where(and(eq(people.email, email.trim()), isNull(people.disabledAt)))
     .get();

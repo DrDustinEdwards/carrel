@@ -30,8 +30,8 @@ export function fakeSite<A extends SiteAdapter = ReturnType<typeof memoryAdapter
 }
 
 export async function viewerFor(email: string): Promise<Viewer> {
-  const row = await testEnv.DB.prepare("SELECT id, email, name, is_owner FROM people WHERE email = ?")
+  const row = await testEnv.DB.prepare("SELECT id, email, name, is_owner, is_reviewer FROM people WHERE email = ?")
     .bind(email)
-    .first<{ id: number; email: string; name: string; is_owner: number }>();
-  return { id: row!.id, email: row!.email, name: row!.name, isOwner: row!.is_owner === 1 };
+    .first<{ id: number; email: string; name: string; is_owner: number; is_reviewer: number }>();
+  return { id: row!.id, email: row!.email, name: row!.name, isOwner: row!.is_owner === 1, isReviewer: row!.is_reviewer === 1 };
 }
