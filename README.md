@@ -18,6 +18,7 @@ The design is `carrel/design.md` in Capsid.
   - export to ePub and Word, and a print page for PDF.
 - **Stage 5, AI work through MCP tools in the Worker:** read, search, preview, AI drafts beside yours, flags from checks and reviewers, and publish by instruction for the Owner's own sessions, refused while a flag is open and emailed with an unpublish link.
 - **Stage 6, Google:** the manuscripts index and search through a read-only service account, Send to Docs and Import through a `drive.file` grant, and Search Console per page.
+- **Stage 9, social (nothing posted until accounts are connected):** a queue that announces pieces that went live, from a draft stored ahead, else a Claude Code routine, else a template, with the AI-habits lint, per-account switches and caps, and no reply code at all.
 
 ## Develop
 
@@ -142,6 +143,18 @@ What it gives:
 - **Send to Docs** copies a post's body into a new Doc. The frontmatter stays in Carrel. **Import** brings the Doc back as a new working draft under that frontmatter, and is refused while a working draft exists.
 - **Search Console** per page, 28 days of settled data, fetched at most daily, shown in the post's editor.
 - **Health:** the key's age (counted from the first time Carrel saw it; fails past 90 days), whether Google still takes it, and whether the `drive.file` grant still refreshes.
+
+## Social
+
+`/social` (the Owner's) holds the accounts, the posts waiting on Dustin, and the record of every post. A post only ever announces a piece that went live through Carrel, and it comes from, in order (design decision 5):
+
+1. a draft stored ahead by the session that finished the piece (`draftSocialPost`, which stage 5's MCP tools will call);
+2. else the Claude Code routine, fired through its API trigger with every waiting item in one run (after a 30-minute gathering delay, at most 3 runs a day, plus a nightly sweep); the routine stores its drafts the same way;
+3. else, when the routine refuses the run, its daily cap is reached, or it drafted nothing within 3 hours, the account's template. The health check fails until Dustin marks each template post seen.
+
+Every post is linted (the AI-habits list, the "not X, it's Y" construction, the platform's length, an opening @handle). A post with a finding is held. Otherwise the account's switch decides: approve each post, or automatic. The personal account is always approval, and the database refuses otherwise. Sending keeps to each account's daily cap and gap between posts, and to X's monthly budget ($0.015 a post, $0.20 with a link). Every request to a platform passes an allowlist of the endpoints that create a session or an original post. A reply, quote, follow, like or message is refused before it is sent.
+
+Credentials are secrets named for the account key, with dashes as underscores: `SOCIAL_<KEY>_BLUESKY_APP_PASSWORD`, or `SOCIAL_<KEY>_X_API_KEY`, `_X_API_SECRET`, `_X_ACCESS_TOKEN` and `_X_ACCESS_SECRET`. The routine is `SOCIAL_ROUTINE_URL` and `SOCIAL_ROUTINE_TOKEN`. No AI API key or subscription token is stored anywhere.
 
 ## Who may do what
 

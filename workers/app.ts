@@ -5,6 +5,7 @@ import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
 import { handleMcp } from "~/lib/mcp/server";
 import { refreshAllSites } from "~/lib/refresh.server";
+import { processSocial } from "~/lib/social/queue.server";
 
 import { newNonce, withPolicy } from "./csp";
 import { gate } from "./gate";
@@ -32,5 +33,6 @@ export default {
     ctx.waitUntil(runHealth(env));
     ctx.waitUntil(refreshAllSites(env));
     ctx.waitUntil(refreshGoogle(env));
+    ctx.waitUntil(processSocial(env).catch((error) => console.error(JSON.stringify({ social: "tick-failed", error: String(error) }))));
   },
 } satisfies ExportedHandler<Env>;
