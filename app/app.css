@@ -363,23 +363,21 @@
   }
 }
 
-/* A scene's header, as a row's detail: each fact with its name, wrapping to the room there is. */
+/* A scene's header, as a row's detail: each fact with its name, wrapping to the room there is. A row's
+   detail is a paragraph, so these are spans. */
 .app-scene-header {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-5);
-  margin: var(--space-2) 0 0;
+  margin-block-start: var(--space-2);
 
-  & > div {
-    display: flex;
+  & > span {
+    display: inline-flex;
     gap: var(--space-2);
   }
-  & dt {
+  & b {
     color: var(--dim);
-  }
-  & dd {
-    margin: 0;
-    color: var(--muted);
+    font-weight: 400;
   }
 }
 

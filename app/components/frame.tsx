@@ -116,7 +116,13 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
       }
       prefKey="carrel-rail"
     >
-      <MessageProvider>{children}</MessageProvider>
+      <MessageProvider>
+        {children}
+        {/* Capsomer's publish gate only says its results when it finds [data-cap="message"] in the page, and
+            the React message region carries no such attribute, so the gate would stay silent here. This empty
+            marker is what it looks for; the region itself is the provider's. */}
+        <span hidden data-cap="message" />
+      </MessageProvider>
     </Shell>
   );
 }

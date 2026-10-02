@@ -73,11 +73,6 @@ export function transitionsFor(state, everPublished) {
 /** Publish is the ask and this is the answer; both mean draft: false, only this passes the ceremony. */
 export const PUBLISH_CONFIRMED_INTENT = "publish-confirmed";
 
-/** What the first-publication confirmation says, with or without script. */
-export const FIRST_PUBLICATION_NOTE =
-  "It has never been public. Publishing puts it on the blog, in the feed, the sitemap, the search " +
-  "index and the AI answer layer.";
-
 /**
  * @type {Readonly<Record<string, boolean>>}
  */

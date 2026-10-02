@@ -106,39 +106,18 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                 status={s.flags ? <Status tone="warn">{s.flags} flagged</Status> : undefined}
                 detail={
                   s.header ? (
-                    <dl className="app-scene-header">
-                      <div>
-                        <dt>Point of view</dt>
-                        <dd>{s.header.pov || "(none)"}</dd>
-                      </div>
-                      <div>
-                        <dt>Date</dt>
-                        <dd>
+                    <span className="app-scene-header">
+                      <span><b>Point of view</b> <span>{s.header.pov || "(none)"}</span></span>
+                      <span><b>Date</b> <span>
                           {s.header.date || "(none)"}
                           {s.header.flashback ? " (flashback)" : ""}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Location</dt>
-                        <dd>{s.header.location || "(none)"}</dd>
-                      </div>
-                      <div>
-                        <dt>Present</dt>
-                        <dd>{s.header.characters.join(", ") || "(none)"}</dd>
-                      </div>
-                      <div>
-                        <dt>Goal</dt>
-                        <dd>{s.header.goal || "(none)"}</dd>
-                      </div>
-                      <div>
-                        <dt>Conflict</dt>
-                        <dd>{s.header.conflict || "(none)"}</dd>
-                      </div>
-                      <div>
-                        <dt>Outcome</dt>
-                        <dd>{s.header.outcome || "(none)"}</dd>
-                      </div>
-                    </dl>
+                        </span></span>
+                      <span><b>Location</b> <span>{s.header.location || "(none)"}</span></span>
+                      <span><b>Present</b> <span>{s.header.characters.join(", ") || "(none)"}</span></span>
+                      <span><b>Goal</b> <span>{s.header.goal || "(none)"}</span></span>
+                      <span><b>Conflict</b> <span>{s.header.conflict || "(none)"}</span></span>
+                      <span><b>Outcome</b> <span>{s.header.outcome || "(none)"}</span></span>
+                    </span>
                   ) : undefined
                 }
                 meta={<span className="cap-num">{s.words.toLocaleString()} words</span>}
