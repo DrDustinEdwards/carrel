@@ -1,0 +1,47 @@
+# Carrel's checks, on every push and every pull request. No secrets: the tests run in workerd with a
+# local D1 and never reach the network, and the gates below start their own local Workers.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # The version in package.json's engines field.
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run check:mcp-roles
+      - name: Install Chromium for the accessibility scan
+        run: npx playwright install --with-deps chromium
+      - run: npm run check:a11y
+
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci
+      - run: npm run check:conformance
+      # Each gate seen red on a planted violation (several minutes).
+      - run: npm run check:plants
