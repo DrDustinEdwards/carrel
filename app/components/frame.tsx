@@ -94,7 +94,6 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
       nav={nav}
       tabs={tabs}
       more={more.length > 0 ? more : undefined}
-      moreLabel="Projects"
       renderLink={RouterLink}
       status={
         data ? (

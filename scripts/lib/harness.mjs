@@ -69,6 +69,19 @@ export const SCREENS = [
   { name: "not-found", viewer: "owner", path: "/p/nowhere" },
 
   // The states a person reaches by acting: dialogs, menus and the publish controls.
+  {
+    name: "more-sheet",
+    viewer: "owner",
+    path: "/",
+    // The tab bar, and so More, exists only on a phone.
+    after: async (page) => {
+      const more = page.getByRole("button", { name: /^More/ });
+      if (!(await more.isVisible())) return;
+      await more.click();
+      await page.getByRole("dialog").first().waitFor();
+      await page.waitForTimeout(300);
+    },
+  },
   { name: "flags-dismiss", viewer: "owner", path: `/p/${SITE}/flags`, after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
   { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media`, open: "media", after: (page) => press(page, "button", /^Delete/, "alertdialog") },
   { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".cm-editor", after: (page) => press(page, "button", /^Discard my draft/, "alertdialog") },
