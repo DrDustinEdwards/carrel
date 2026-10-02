@@ -3,6 +3,14 @@
 // search. Open goes to Google Docs; Carrel never edits a manuscript and never holds its text.
 
 import { Form, Link, useNavigation } from "react-router";
+import { Alert, Banner } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
+import { Empty } from "capsomer/react/empty";
+import { Field } from "capsomer/react/field";
+import { Panel } from "capsomer/react/panel";
+import { Time } from "capsomer/react/time";
+
+import { PageHead } from "~/components/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { listManuscripts, manuscriptsFolder, refreshManuscripts, searchManuscripts } from "~/lib/google/drive.server";
@@ -57,88 +65,93 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
   const { q, files, setup, error, titlesOnly } = loaderData;
   const refreshing = useNavigation().state === "submitting";
   return (
-    <main className="shell shell-wide">
-      <header className="shell-header">
-        <p className="crumbs">
-          <Link to="/">Carrel</Link>
-        </p>
-        <h1>Manuscripts</h1>
-        <p className="muted">The shared Drive folder, read-only. Open goes to Google Docs; search runs in Drive, so the text stays there.</p>
-      </header>
+    <div className="app-page">
+      <PageHead
+        title="Manuscripts"
+        lead="The shared Drive folder, read-only. Open goes to Google Docs; search runs in Drive, so the text stays there."
+        actions={
+          !setup ? (
+            <Form method="post">
+              <Button type="submit" pending={refreshing}>
+                {refreshing ? "Refreshing" : "Refresh from Drive"}
+              </Button>
+            </Form>
+          ) : null
+        }
+      />
+
       {setup ? (
-        <p className="notice" role="status">
-          Not set up yet: {setup}
-        </p>
+        <Banner tone="warn" title="Not set up yet">
+          {setup}
+        </Banner>
       ) : null}
-      <div className="toolbar-row">
-        <Form method="get" role="search" aria-label="Search manuscripts" className="filters">
-          <label className="field">
-            <span>Search the text</span>
-            <input type="search" name="q" defaultValue={q} placeholder="Words in a manuscript" />
-          </label>
-          <button type="submit" className="btn">
-            Search
-          </button>
-          {q ? (
-            <Link to="." className="btn-ghost">
-              Clear
-            </Link>
-          ) : null}
-        </Form>
-        {!setup ? (
-          <Form method="post">
-            <button type="submit" className="btn-ghost" disabled={refreshing}>
-              {refreshing ? "Refreshing" : "Refresh from Drive"}
-            </button>
-          </Form>
-        ) : null}
-      </div>
       {error || actionData?.error ? (
-        <p className="alarm" role="alert">
-          {error ?? actionData?.error}
-        </p>
+        <Alert tone="crit">{error ?? actionData?.error}</Alert>
       ) : actionData?.refreshed ? (
-        <p className="muted" role="status">
+        <Banner tone="ok">
           {actionData.refreshed.files} files in {actionData.refreshed.folders} folders, {actionData.refreshed.removed} gone
           {actionData.refreshed.more ? "; more folders on the next refresh" : ""}.
-        </p>
+        </Banner>
       ) : null}
-      {titlesOnly ? (
-        <p className="notice" role="status">
-          Drive would not search the text with the service account's metadata-only access, so these are title matches.
-        </p>
-      ) : null}
-      {files.length === 0 ? (
-        <p className="muted">{q ? "No manuscript matches." : "No manuscripts in the index yet."}</p>
-      ) : (
-        <table className="items">
-          <caption className="sr-only">Manuscripts</caption>
-          <thead>
-            <tr>
-              <th scope="col">Title</th>
-              <th scope="col">People</th>
-              <th scope="col">Changed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {files.map((f) => (
-              <tr key={f.fileId}>
-                <td>
-                  <a href={f.webViewLink} target="_blank" rel="noreferrer">
-                    {f.name}
-                  </a>
-                  <span className="muted item-id">
-                    {KIND[f.mimeType] ?? f.mimeType}
-                    {f.folder ? ` · ${f.folder}` : ""}
-                  </span>
-                </td>
-                <td>{f.people.join(", ")}</td>
-                <td className="muted">{f.modifiedTime?.slice(0, 10) ?? ""}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </main>
+      {titlesOnly ? <Banner tone="info">Drive would not search the text with the service account's metadata-only access, so these are title matches.</Banner> : null}
+
+      <Panel title="Manuscripts" count={files.length} src="Carrel's index of the Drive folder" flush>
+        <div className="cap-panel-pad">
+          <Form method="get" role="search" aria-label="Search manuscripts" className="app-filters">
+            <Field label="Search the text">
+              <input className="cap-input" type="search" name="q" defaultValue={q} placeholder="Words in a manuscript" />
+            </Field>
+            <div className="app-actions">
+              <Button type="submit" variant="primary">
+                Search
+              </Button>
+              {q ? (
+                <Link to="." className="cap-btn">
+                  Clear
+                </Link>
+              ) : null}
+            </div>
+          </Form>
+        </div>
+        {files.length === 0 ? (
+          <Empty kind={q ? "no-match" : "nothing-yet"} flush title={q ? "No manuscript matches" : "No manuscripts in the index yet"} action={q ? <Link to="." className="cap-btn">Clear the search</Link> : undefined}>
+            {q ? "Try other words, or fewer of them." : "Refresh from Drive to read the shared folder."}
+          </Empty>
+        ) : (
+          <div className="cap-table-wrap" role="region" aria-labelledby="manuscripts-caption" tabIndex={0}>
+            <table className="cap-table">
+              <caption id="manuscripts-caption" className="cap-sr-only">
+                Manuscripts
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col" data-drop="1">People</th>
+                  <th scope="col">Changed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {files.map((f) => (
+                  <tr key={f.fileId}>
+                    <th scope="row">
+                      <a className="cap-table-open" href={f.webViewLink} target="_blank" rel="noreferrer">
+                        {f.name}
+                        <span className="cap-sr-only"> (opens in a new tab)</span>
+                      </a>
+                      <span className="cap-table-aside">
+                        {KIND[f.mimeType] ?? f.mimeType}
+                        {f.folder ? ` · ${f.folder}` : ""}
+                      </span>
+                    </th>
+                    <td data-drop="1">{f.people.join(", ")}</td>
+                    <td>{f.modifiedTime ? <Time at={f.modifiedTime} /> : null}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+    </div>
   );
 }

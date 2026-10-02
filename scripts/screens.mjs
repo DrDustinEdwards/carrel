@@ -23,6 +23,7 @@ try {
         const { page, context } = await open(browser, harness.origin, { viewer: screen.viewer, theme, width, height });
         await visit(page, harness.origin, screen);
         await page.screenshot({ path: join(out, `${screen.name}-${theme}-${size}.png`), fullPage: true });
+        await screen.restore?.(page).catch(() => undefined);
         await context.close();
       }
     }

@@ -26,7 +26,10 @@ const BOOK = "paluxy-portal";
  * Every screen, as who sees it. `after` runs once the page is up (open a dialog, type), and `wait` is a
  * selector that must exist before the page counts as ready.
  */
-/** @type {{ name: string; viewer: keyof typeof VIEWERS; path: string; wait?: string; open?: string; skipFor?: string }[]} */
+/**
+ * @typedef {import("playwright").Page} Page
+ * @type {{ name: string; viewer: keyof typeof VIEWERS; path: string; wait?: string; open?: string; skipFor?: string; after?: (page: Page) => Promise<void>; restore?: (page: Page) => Promise<void> }[]}
+ */
 export const SCREENS = [
   { name: "home", viewer: "owner", path: "/" },
   { name: "home-editor", viewer: "editor", path: "/" },
@@ -64,7 +67,71 @@ export const SCREENS = [
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
   { name: "unpublish", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits/unpublish` },
   { name: "not-found", viewer: "owner", path: "/p/nowhere" },
+
+  // The states a person reaches by acting: dialogs, menus and the publish controls.
+  { name: "flags-dismiss", viewer: "owner", path: `/p/${SITE}/flags`, after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
+  { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media`, open: "media", after: (page) => press(page, "button", /^Delete/, "alertdialog") },
+  { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".cm-editor", after: (page) => press(page, "button", /^Discard my draft/, "alertdialog") },
+  { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor", after: (page) => press(page, "button", /^Schedule/, "dialog") },
+  { name: "post-first-publish", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor", after: (page) => press(page, "button", /^Publish$/, "alertdialog") },
+  { name: "post-library", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor", after: (page) => press(page, "button", /^Insert from library/, "dialog") },
+  {
+    name: "post-link-palette",
+    viewer: "owner",
+    path: `/p/${SITE}/e/foxhound-waits`,
+    wait: ".cm-editor",
+    after: async (page) => {
+      await page.locator(".cm-content").click();
+      await page.keyboard.press("Control+K");
+      await page.getByRole("combobox").first().waitFor();
+    },
+  },
+  {
+    name: "post-slash-menu",
+    viewer: "owner",
+    path: `/p/${SITE}/e/what-a-carrel-is-for`,
+    wait: ".cm-editor",
+    after: async (page) => {
+      await page.locator(".cm-content").click();
+      await page.keyboard.press("Control+End");
+      await page.keyboard.type("\n\n/");
+      await page.getByText("Figure", { exact: false }).first().waitFor();
+      // Typing steps the chrome back by design; a mouse move brings it back, and that is the screen scanned.
+      await page.mouse.move(180, 300);
+      await page.waitForTimeout(400);
+    },
+  },
+  { name: "post-split", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor", after: (page) => page.getByRole("radio", { name: "Split" }).check({ force: true }).then(() => page.waitForTimeout(800)) },
+  { name: "social-reject", viewer: "owner", path: "/social", after: (page) => press(page, "button", /^Reject/, "alertdialog") },
+  { name: "book-dismiss", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".cm-editor", after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
+  {
+    name: "people-disable",
+    viewer: "owner",
+    path: "/people",
+    after: async (page) => {
+      await page.getByRole("button", { name: /^Disable/ }).first().click();
+      await page.getByRole("button", { name: /Undo/ }).waitFor();
+    },
+    // The harness's database is shared by every scan, so the person is enabled again afterwards.
+    restore: async (page) => {
+      await page.getByRole("button", { name: /Undo/ }).click();
+      await page.getByText("is enabled again").waitFor();
+    },
+  },
 ];
+
+/**
+ * Presses the first button whose name matches and waits for the dialog it opens.
+ * @param {Page} page
+ * @param {"button"} role
+ * @param {RegExp} name
+ * @param {"dialog" | "alertdialog"} opens
+ */
+async function press(page, role, name, opens) {
+  await page.getByRole(role, { name }).first().click();
+  await page.getByRole(opens).first().waitFor();
+  await page.waitForTimeout(300);
+}
 
 /**
  * Built, then previewed, not run under `vite dev`: dev injects its styles through script, which the
@@ -142,7 +209,7 @@ export async function open(browser, origin, { viewer, theme, width, height }) {
 /**
  * @param {import("playwright").Page} page
  * @param {string} origin
- * @param {{ path: string; wait?: string; open?: string }} screen
+ * @param {{ path: string; wait?: string; open?: string; after?: (page: Page) => Promise<void> }} screen
  */
 export async function visit(page, origin, screen) {
   const response = await page.goto(`${origin}${screen.path}`, { waitUntil: "load" });
@@ -152,9 +219,10 @@ export async function visit(page, origin, screen) {
   if (screen.open === "media") {
     const href = await page.locator(".cap-media-open").first().getAttribute("href");
     if (href) {
-      await page.goto(`${origin}${screen.path}${href.startsWith("?") ? href : ""}`, { waitUntil: "load" });
+      await page.goto(new URL(href, origin).href, { waitUntil: "load" });
       await page.waitForTimeout(900);
     }
   }
+  if (screen.after) await screen.after(page);
   return response;
 }
