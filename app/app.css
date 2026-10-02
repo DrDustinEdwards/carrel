@@ -1,954 +1,123 @@
-/* Tokens only; no color outside :root. Light and dark follow data-theme, then the OS preference. */
-:root {
-  --paper: #f7f4ee;
-  --ink: #1d1a17;
-  --muted: #5f5850;
-  --rule: #d8d1c5;
-  --focus: #4f2d7f;
-  --font-prose: "Source Serif 4", Georgia, serif;
-  --font-ui: Inter, system-ui, sans-serif;
-  color-scheme: light;
-}
+/* Carrel's look is Capsomer's: its tokens, its base and the CSS of each component Carrel uses. What is
+   written below is only what Capsomer does not have: the page frame inside the shell, and the few
+   rules the writing screens need. Carrel's own rules are unlayered, so they win over Capsomer's. */
+@import "capsomer/layers.css";
+@import "capsomer/tokens.css";
+@import "capsomer/base.css";
+@import "capsomer/prose.css";
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #181614;
-    --ink: #ece7df;
-    --muted: #a79f94;
-    --rule: #3a3530;
-    --focus: #b89be0;
-    color-scheme: dark;
-  }
-}
+/* Shared building blocks first, then the components built on them. */
+@import "capsomer/popover.css";
+@import "capsomer/listbox.css";
+@import "capsomer/dialog.css";
+@import "capsomer/meter.css";
+@import "capsomer/skeleton.css";
 
-:root[data-theme="dark"] {
-  --paper: #181614;
-  --ink: #ece7df;
-  --muted: #a79f94;
-  --rule: #3a3530;
-  --focus: #b89be0;
-  color-scheme: dark;
-}
+@import "capsomer/button.css";
+@import "capsomer/field.css";
+@import "capsomer/select.css";
+@import "capsomer/segmented.css";
+@import "capsomer/switch.css";
+@import "capsomer/status.css";
+@import "capsomer/time.css";
+@import "capsomer/banner.css";
+@import "capsomer/message.css";
+@import "capsomer/empty.css";
+@import "capsomer/panel.css";
+@import "capsomer/table.css";
+@import "capsomer/row-list.css";
+@import "capsomer/disclosure.css";
+@import "capsomer/breadcrumb.css";
+@import "capsomer/tabs.css";
+@import "capsomer/tooltip.css";
+@import "capsomer/theme-switch.css";
+@import "capsomer/shell.css";
+@import "capsomer/confirm-dialog.css";
 
-body {
-  margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-ui);
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.shell {
-  max-width: 44rem;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
-.shell-header {
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: 1.5rem;
-}
-
-h1,
-h2 {
-  font-family: var(--font-prose);
-  font-weight: 600;
-}
-
-h1 {
-  font-size: 1.75rem;
-  margin: 0 0 0.25rem;
-}
-
-h2 {
-  font-size: 1.25rem;
-}
-
-.muted {
-  color: var(--muted);
-}
-
-.project-list {
-  list-style: none;
-  padding: 0;
-}
-
-.project-list li {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-/* Stage 2: the one view, the editor and its preview. */
-
-:root {
-  --selection: #e3d9f0;
-  --alarm: #9b2c1f;
-  --ok: #2f6b3a;
-  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --z-popover: 20;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --selection: #3d3350;
-    --alarm: #f09a8b;
-    --ok: #8fce9a;
-  }
-}
-
-:root[data-theme="dark"] {
-  --selection: #3d3350;
-  --alarm: #f09a8b;
-  --ok: #8fce9a;
-}
-
-a {
-  color: var(--focus);
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.shell-wide {
-  max-width: 64rem;
-}
-
-.crumbs {
-  margin: 0 0 0.25rem;
-  font-size: 0.875rem;
-}
-
-.notice,
-.alarm {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--rule);
-  border-radius: 0.375rem;
-}
-
-.alarm {
-  border-color: var(--alarm);
-  color: var(--alarm);
-}
-
-.stack {
+/* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
+   page is for, the page's actions at the right, then panels. */
+.app-page {
   display: grid;
-  gap: 0.75rem;
-}
-
-.field {
-  display: grid;
-  gap: 0.25rem;
-  font-size: 0.875rem;
-}
-
-.field-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-}
-
-input,
-select {
-  min-height: 2rem;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid var(--rule);
-  border-radius: 0.375rem;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-}
-
-/* WCAG 2.2 target size: 2rem is 32px, clear of the 24px minimum. */
-.btn,
-.btn-ghost,
-.btn-danger,
-.layout-option {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2rem;
-  padding: 0.25rem 0.75rem;
-  border: 1px solid var(--ink);
-  border-radius: 0.375rem;
-  background: var(--ink);
-  color: var(--paper);
-  font: inherit;
-  font-size: 0.875rem;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.btn-ghost,
-.layout-option {
-  border-color: var(--rule);
-  background: transparent;
-  color: var(--ink);
-}
-
-.btn-danger {
-  border-color: var(--alarm);
-  background: transparent;
-  color: var(--alarm);
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.layout-option[aria-checked="true"] {
-  border-color: var(--ink);
-  font-weight: 600;
-}
-
-.toolbar-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.filters,
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 0.5rem;
-}
-
-.items {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.items th,
-.items td {
-  padding: 0.5rem 0.5rem 0.5rem 0;
-  border-bottom: 1px solid var(--rule);
-  text-align: left;
-  vertical-align: top;
-}
-
-.items th {
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-.item-id {
-  display: block;
-  font-size: 0.8125rem;
-}
-
-.status {
-  font-size: 0.8125rem;
-  text-transform: capitalize;
-}
-
-.status-published {
-  color: var(--ok);
-}
-
-/* The editor: one column of prose, chrome above and below that steps back while you type. */
-
-.editor-shell {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-}
-
-.editor-chrome {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--rule);
-  transition: opacity 200ms ease;
-}
-
-.editor-actions {
-  border-top: 1px solid var(--rule);
-  border-bottom: none;
-}
-
-.editor-title h1 {
-  font-size: 1.25rem;
-}
-
-.editor-title p {
-  margin: 0;
-  font-size: 0.8125rem;
-}
-
-.editor-layouts {
-  display: flex;
-  gap: 0.25rem;
-}
-
-/* Hidden while typing, back on a mouse move or when focus enters it. */
-.editor-shell[data-typing] .editor-chrome:not(:focus-within) {
-  opacity: 0.08;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .editor-chrome {
-    transition: none;
-  }
-}
-
-.editor-body {
-  display: grid;
-  flex: 1;
-  grid-template-columns: 1fr;
-  min-height: 0;
-}
-
-.editor-shell[data-layout="split"] .editor-body {
-  grid-template-columns: 1fr 1fr;
-}
-
-@media (max-width: 48rem) {
-  .editor-shell[data-layout="split"] .editor-body {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
-}
-
-.editor-pane,
-.preview-pane {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-}
-
-.preview-pane {
-  border-left: 1px solid var(--rule);
-}
-
-.preview-pane iframe {
-  flex: 1;
-  width: 100%;
-  border: 0;
-  background: #fff;
-}
-
-.editor-loading {
-  padding: 1rem;
-}
-
-.confirm {
-  display: grid;
-  gap: 0.5rem;
-  max-width: 40rem;
-}
-
-.schedule {
-  display: inline-flex;
-  gap: 0.375rem;
-  align-items: center;
-}
-
-/* Copied from dustinedwards-info@6e0f8c9 app/styles/admin-editor.css (the md-* rules), mapped onto
-   Carrel's tokens; the upload rules are gone with the upload. */
-
-.md-editor {
-  display: flex;
-  position: relative;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.md-toolbar {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.125rem;
-  padding: 0.25rem 0.375rem;
-  border-bottom: 1px solid var(--rule);
-  background: var(--paper);
-  overflow-x: auto;
-}
-
-.editor-shell[data-typing] .md-toolbar:not(:focus-within) {
-  opacity: 0.08;
-}
-
-.md-tool {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.75rem;
-  min-height: 1.75rem;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.8125rem;
-  cursor: pointer;
-}
-
-.md-tool:hover {
-  border-color: var(--rule);
-  color: var(--ink);
-}
-
-.md-toolbar-sep {
-  width: 1px;
-  height: 1.25rem;
-  margin: 0 0.25rem;
-  background: var(--rule);
-}
-
-.md-toolbar-hint {
-  margin-left: auto;
-  padding-right: 0.375rem;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.md-surface {
-  flex: 1;
-  min-height: 0;
-  background: var(--paper);
-  overflow: hidden;
-}
-
-.md-surface .cm-editor {
-  height: 100%;
-}
-
-.md-foot {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.25rem 0.625rem;
-  border-top: 1px solid var(--rule);
-  font-size: 0.75rem;
-}
-
-.md-stats {
-  margin: 0 0 0 auto;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.md-stats-sep {
-  margin: 0 0.375rem;
-}
-
-.md-slash,
-.md-link-palette {
-  position: absolute;
-  z-index: var(--z-popover);
-  border: 1px solid var(--ink);
-  border-radius: 0.5rem;
-  background: var(--paper);
-}
-
-.md-slash {
-  min-width: 15rem;
-  margin: 0;
-  padding: 0.25rem;
-  list-style: none;
-}
-
-.md-link-palette {
-  width: min(26rem, 90%);
-  padding: 0.375rem;
-}
-
-.md-link-input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.md-link-list {
-  max-height: 15rem;
-  margin: 0.375rem 0 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.md-link-item,
-.md-slash-item {
-  display: grid;
-  gap: 0.125rem;
-  width: 100%;
-  padding: 0.375rem 0.5rem;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.8125rem;
-  text-align: left;
-  cursor: pointer;
-}
-
-.md-link-item .muted {
-  font-size: 0.75rem;
-}
-
-/* One highlight, driven by data-active, which arrow keys and pointer both write. */
-.md-link-item[data-active],
-.md-link-item:focus-visible,
-.md-slash-item:hover,
-.md-slash-item:focus-visible {
-  background: var(--selection);
-}
-
-.md-link-state {
-  font-style: italic;
-}
-
-.md-link-note {
-  margin: 0.375rem 0 0;
-  padding: 0.25rem 0.5rem;
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-/* Stage 4: books. */
-
-.chapter-block h3 {
-  font-family: var(--font-prose);
-  font-weight: 600;
-  margin: 1.5rem 0 0.5rem;
-}
-
-.flag-count {
-  font-size: 0.8125rem;
-  color: var(--alarm);
-}
-
-.inline-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 1rem 0;
-}
-
-.bible-list {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.25rem;
-}
-
-.scene-list {
-  padding-left: 1.25rem;
-}
-
-.scene-list li {
-  margin-bottom: 1rem;
-}
-
-.scene-header {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.125rem 1rem;
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.scene-header dt {
-  color: var(--muted);
-}
-
-.scene-header dd {
-  margin: 0;
-}
-
-.chapter-text {
-  max-width: 40rem;
-  margin: 2rem auto 0;
-  font-family: var(--font-prose);
-  font-size: 1.125rem;
-  line-height: 1.75;
-}
-
-.chapter-text p {
-  margin: 0 0 0.75rem;
-}
-
-.scene-break {
-  text-align: center;
-  color: var(--muted);
-}
-
-/* The book editor: the prose column, with flags and bible entries beside it on wide screens. */
-.book-body {
-  grid-template-columns: 1fr 20rem;
-}
-
-@media (max-width: 60rem) {
-  .book-body {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
-  }
-}
-
-.book-aside {
-  overflow-y: auto;
-  padding: 0.75rem 1rem;
-  border-left: 1px solid var(--rule);
-  font-size: 0.875rem;
-}
-
-.book-aside h2 {
-  font-size: 1rem;
-  margin: 0.5rem 0;
-}
-
-.findings {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.finding {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.finding p {
-  margin: 0.25rem 0;
-}
-
-.finding-check {
-  font-weight: 600;
-  color: var(--alarm);
-}
-
-.finding-dismissed .finding-check {
-  color: var(--muted);
-}
-
-.bible-entry {
-  padding: 0.375rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.bible-entry summary {
-  cursor: pointer;
-}
-
-.bible-body {
-  white-space: pre-wrap;
-  font-family: var(--font-prose);
-}
-
-/* Stage 5: flags and AI drafts beside the editor, the AI draft page. */
-
-.editor-extras {
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--rule);
-  font-size: 0.875rem;
-}
-
-.editor-extras summary {
-  cursor: pointer;
-}
-
-.flag-list {
-  list-style: none;
-  padding: 0;
-  margin: 0.5rem 0;
-}
-
-.flag-list li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-}
-
-.flag-open {
-  font-weight: 600;
-  color: var(--alarm);
-}
-
-.ai-draft-text {
-  white-space: pre-wrap;
-  font-family: var(--font-prose);
-  font-size: 1rem;
-  line-height: 1.7;
-  padding: 1rem;
-  border: 1px solid var(--rule);
-  border-radius: 0.375rem;
-  max-width: 44rem;
-}
-
-/* Stage 9: social. */
-
-.post-list {
-  list-style: none;
-  padding: 0;
-}
-
-.post-list > li {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.account-card {
-  display: grid;
-  gap: 0.5rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.account-card h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-textarea {
-  padding: 0.375rem 0.5rem;
-  border: 1px solid var(--rule);
-  border-radius: 0.375rem;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-}
-
-/* ---------- media (stage 3): the library, the editor's upload prompt and its picker */
-
-.media-upload {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 0.75rem;
-  margin: 1rem 0;
-}
-
-.media-upload-hint {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.media-layout {
-  display: grid;
-  gap: 1.5rem;
-  margin-top: 1rem;
-}
-
-@media (min-width: 60rem) {
-  .media-layout[data-detail] {
-    grid-template-columns: minmax(0, 1fr) 24rem;
-    align-items: start;
-  }
-}
-
-.media-grid,
-.media-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-  gap: 0.75rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.media-card {
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-6) var(--space-9);
+  max-width: 1320px;
   min-width: 0;
 }
 
-.media-thumb-link,
-.media-picker-item {
-  display: grid;
-  gap: 0.25rem;
-  width: 100%;
-  padding: 0.375rem;
-  border: 1px solid var(--rule);
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.media-card[data-active] .media-thumb-link {
-  border-color: var(--ink);
-}
-
-.media-thumb-link:focus-visible,
-.media-picker-item:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-/* `aspect-ratio` reserves the space, so a lazily loaded tile cannot reflow the rows below. */
-.media-thumb-box {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 0.25rem;
-  background: var(--rule);
-}
-
-.media-thumb,
-.media-picker-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.media-picker-item img {
-  aspect-ratio: 1;
-  height: auto;
-  border-radius: 0.25rem;
-}
-
-.media-thumb-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.media-name,
-.media-picker-key {
-  overflow: hidden;
-  font-size: 0.875rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.media-meta {
-  font-size: 0.8125rem;
-  color: var(--muted);
-}
-
-.media-empty {
-  padding: 2rem 0;
-  color: var(--muted);
-}
-
-.media-detail {
-  display: grid;
-  gap: 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--rule);
-  border-radius: 0.5rem;
-}
-
-.media-detail-head {
+.app-head {
   display: flex;
-  align-items: start;
+  flex-wrap: wrap;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-3) var(--space-5);
+
+  & > div:first-child {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+  & h1 {
+    margin: 0;
+    font-size: var(--fs-h2);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+  }
+  & p {
+    margin: 0;
+    max-width: 75ch;
+    color: var(--muted);
+  }
 }
 
-.media-detail-head h2 {
-  margin: 0;
-  overflow: hidden;
-  font-size: 1.125rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.media-detail-preview {
-  width: 100%;
-  height: auto;
-  border-radius: 0.25rem;
-}
-
-.media-detail h3 {
-  margin: 0.5rem 0 0;
-  font-size: 0.9375rem;
-}
-
-.media-facts {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 0.75rem;
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.media-facts dt {
-  color: var(--muted);
-}
-
-.media-facts dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.media-uses {
-  margin: 0;
-  padding-left: 1.25rem;
-}
-
-.media-picker {
-  display: grid;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-bottom: 1px solid var(--rule);
-}
-
-.media-picker-search {
+.app-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-3);
 }
 
-.md-upload {
+@media (max-width: 820px) {
+  .app-page {
+    padding: var(--space-5) var(--space-5) var(--space-7);
+  }
+}
+
+/* Panels side by side where there is room: the main list, and the Owner's tools beside it. */
+.app-split {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+  min-width: 0;
+
+  &[data-aside] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .app-split[data-aside] {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+
+.app-person {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* A search and its filters on one row, the button last; they wrap on a phone. */
+.app-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-top: 1px solid var(--rule);
-}
+  align-items: flex-end;
+  gap: var(--space-4);
 
-.md-upload-thumb {
-  width: 6rem;
-  height: 6rem;
-  object-fit: cover;
-  border-radius: 0.25rem;
-}
-
-.md-upload-fields {
-  display: grid;
-  flex: 1 1 16rem;
-  gap: 0.375rem;
-}
-
-.md-upload-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.md-upload-actions {
-  display: flex;
-  gap: 0.5rem;
+  & .cap-field {
+    flex: 0 1 15rem;
+    min-width: 10rem;
+  }
+  & .cap-field:first-child {
+    flex-basis: 20rem;
+  }
 }
