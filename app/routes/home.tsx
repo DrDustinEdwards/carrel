@@ -1,4 +1,12 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { Banner } from "capsomer/react/banner";
+import { Empty } from "capsomer/react/empty";
+import { Panel } from "capsomer/react/panel";
+import { Row, RowList } from "capsomer/react/row-list";
+import { Pill, Status } from "capsomer/react/status";
+
+import { PageHead } from "~/components/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { isConnected, oauthConnection } from "~/lib/google/oauth.server";
@@ -17,73 +25,86 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   return { name: viewer.name || viewer.email, isOwner: viewer.isOwner, projects, google, googleMessage: new URL(request.url).searchParams.get("google") };
 }
 
+const KIND = { site: "Site", book: "Book" } as const;
+const ROLE = { owner: "Owner", editor: "Editor", reader: "Reader" } as const;
+
+const SiteGlyph = (
+  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM2 8h12M8 2c2 1.8 2 10.2 0 12M8 2c-2 1.8-2 10.2 0 12" />
+  </svg>
+);
+const BookGlyph = (
+  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M2.5 3.5c2-.8 4-.6 5.5.6 1.5-1.2 3.5-1.4 5.5-.6v9c-2-.8-4-.6-5.5.6-1.5-1.2-3.5-1.4-5.5-.6zM8 4.1v9" />
+  </svg>
+);
+
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { name, isOwner, projects, google, googleMessage } = loaderData;
+  const { isOwner, projects, google, googleMessage } = loaderData;
+  const link = ({ href, children }: { href: string; children: ReactNode }) => <Link to={href}>{children}</Link>;
   return (
-    <main className="shell">
-      <header className="shell-header">
-        <h1>Carrel</h1>
-        <p className="muted">
-          {name}
-          {isOwner ? ", Owner" : ""}
-        </p>
-      </header>
-      <section aria-labelledby="projects-heading">
-        <h2 id="projects-heading">Projects</h2>
-        {projects.length === 0 ? (
-          <p className="muted">No projects yet.</p>
-        ) : (
-          <ul className="project-list">
-            {projects.map((p) => (
-              <li key={p.id}>
-                {p.kind ? <Link to={`/${p.kind === "book" ? "b" : "p"}/${p.slug}`}>{p.name}</Link> : p.name}{" "}
-                <span className="muted">
-                  ({p.kind === "book" ? "book, " : p.kind === "site" ? "site, " : ""}
-                  {p.role})
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {isOwner ? (
-          <p>
-            <Link to="/books/new" className="btn-ghost">
+    <div className="app-page">
+      <PageHead
+        title="Carrel"
+        lead="Your sites and your books, in one place."
+        actions={
+          isOwner ? (
+            <Link to="/books/new" className="cap-btn" data-variant="primary">
               New book
-            </Link>{" "}
-            <Link to="/people" className="btn-ghost">
-              People
             </Link>
-          </p>
+          ) : null
+        }
+      />
+
+      {googleMessage ? <Banner tone="info">{googleMessage}</Banner> : null}
+
+      <div className="app-split" data-aside={isOwner ? "" : undefined}>
+        <Panel title="Projects" count={projects.length} flush>
+          {projects.length === 0 ? (
+            <Empty kind="nothing-yet" flush title="No projects yet">
+              A project appears here once it is shared with you.
+            </Empty>
+          ) : (
+            <RowList label="Projects">
+              {projects.map((p) => (
+                <Row
+                  key={p.id}
+                  title={p.name}
+                  href={p.kind ? `/${p.kind === "book" ? "b" : "p"}/${p.slug}` : undefined}
+                  renderLink={link}
+                  media={p.kind === "book" ? BookGlyph : SiteGlyph}
+                  mediaVariant="icon"
+                  detail={p.kind ? KIND[p.kind] : "Not set up for writing yet"}
+                  meta={<Pill variant="outline">{ROLE[p.role]}</Pill>}
+                />
+              ))}
+            </RowList>
+          )}
+        </Panel>
+
+        {isOwner ? (
+          <Panel title="Owner tools" flush>
+            <RowList label="Owner tools">
+              <Row title="Manuscripts" href="/manuscripts" renderLink={link} detail="The shared Drive folder, read-only." />
+              <Row title="Social" href="/social" renderLink={link} detail="Posts announcing what went live." />
+              {google?.configured ? (
+                <Row
+                  title="Send to Docs"
+                  status={google.connected ? <Status tone="ok">Connected</Status> : <Status tone="nodata">Not connected</Status>}
+                  detail={google.connected ? "Connected with drive.file only." : "Connect Google to send a post to Docs."}
+                  actions={
+                    <a href="/auth/google/start" className="cap-btn">
+                      {google.connected ? "Connect again" : "Connect Google"}
+                    </a>
+                  }
+                />
+              ) : (
+                <Row title="Send to Docs" status={<Status tone="nodata">Not set up</Status>} detail="Send to Docs is not set up yet." />
+              )}
+            </RowList>
+          </Panel>
         ) : null}
-      </section>
-      {isOwner ? (
-        <>
-          <section aria-labelledby="google-heading">
-            <h2 id="google-heading">Google</h2>
-            {googleMessage ? (
-              <p className="notice" role="status">
-                {googleMessage}
-              </p>
-            ) : null}
-            <p>
-              <Link to="/manuscripts">Manuscripts</Link> <span className="muted">(the shared Drive folder, read-only)</span>
-            </p>
-            {google?.configured ? (
-              <p>
-                {google.connected ? "Send to Docs is connected (drive.file only). " : null}
-                <a href="/auth/google/start" className="btn-ghost">
-                  {google.connected ? "Connect again" : "Connect Google for Send to Docs"}
-                </a>
-              </p>
-            ) : (
-              <p className="muted">Send to Docs is not set up yet.</p>
-            )}
-          </section>
-          <p>
-            <Link to="/social">Social</Link> <span className="muted">(posts announcing what went live)</span>
-          </p>
-        </>
-      ) : null}
-    </main>
+      </div>
+    </div>
   );
 }
