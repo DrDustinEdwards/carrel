@@ -19,6 +19,9 @@ const SIZES = [
 ];
 const only = process.argv[2];
 
+/** The preview frame is the site's own page, sandboxed with no script: axe cannot enter it, and it is not Carrel's. */
+const axe = (/** @type {import("playwright").Page} */ page) => new AxeBuilder({ page }).withTags(TAGS).exclude("iframe[sandbox]");
+
 const harness = await startHarness().catch((error) => {
   console.error(`check:a11y: ${error instanceof Error ? error.message : error}`);
   return process.exit(2);
@@ -29,6 +32,21 @@ const failures = /** @type {string[]} */ ([]);
 
 /** @param {(typeof SCREENS)[number]} screen @param {"light" | "dark"} theme @param {(typeof SIZES)[number]} size */
 async function scan(screen, theme, size) {
+  const label = `${screen.name} (${theme}, ${size.name})`;
+  // A scan that never ends is a failure with a name, not a job that runs until the runner gives up.
+  let timer;
+  const stuck = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      failures.push(`${label}: did not finish in two minutes`);
+      resolve(undefined);
+    }, 120_000);
+  });
+  await Promise.race([scanOne(screen, theme, size), stuck]);
+  clearTimeout(timer);
+}
+
+/** @param {(typeof SCREENS)[number]} screen @param {"light" | "dark"} theme @param {(typeof SIZES)[number]} size */
+async function scanOne(screen, theme, size) {
   const { page, context } = await open(browser, harness.origin, { viewer: screen.viewer, theme, width: size.width, height: size.height });
   // A script error, and above all a hydration mismatch, is a screen that renders one thing and runs another.
   const errors = /** @type {string[]} */ ([]);
@@ -38,12 +56,13 @@ async function scan(screen, theme, size) {
   });
   const label = `${screen.name} (${theme}, ${size.name})`;
   try {
+    page.setDefaultTimeout(30_000);
     const response = await visit(page, harness.origin, screen);
     if (!response || (response.status() >= 400 && screen.name !== "not-found")) {
       failures.push(`${label}: the page answered ${response?.status()}`);
       return;
     }
-    const result = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    const result = await axe(page).analyze();
     scans++;
     for (const e of errors.slice(0, 2)) failures.push(`${label}: the page logged an error: ${e.slice(0, 300)}`);
     for (const v of result.violations) {
@@ -56,7 +75,7 @@ async function scan(screen, theme, size) {
           const selector = n.target.join(" ");
           try {
             await page.locator(selector).first().evaluate((el) => el.scrollIntoView({ block: "center" }));
-            const again = await new AxeBuilder({ page }).withTags(TAGS).include(n.target).analyze();
+            const again = await axe(page).include(n.target).analyze();
             if (again.violations.some((x) => x.id === "target-size")) bad.push(n);
           } catch {
             bad.push(n);
