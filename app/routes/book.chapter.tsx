@@ -1,7 +1,16 @@
 // One chapter: its scenes in order with their headers and Dustin's beats, and the chapter's text read
 // straight through, as the index last had it from Git.
 
+import type { ReactNode } from "react";
 import { Form, Link, redirect } from "react-router";
+import { Alert } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
+import { Field } from "capsomer/react/field";
+import { Panel } from "capsomer/react/panel";
+import { Row, RowList } from "capsomer/react/row-list";
+import { Status } from "capsomer/react/status";
+
+import { PageHead } from "~/components/page-head";
 
 import { indexedFile, listFiles, listFindings, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -60,75 +69,78 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 export default function Chapter({ loaderData, actionData }: Route.ComponentProps) {
   const { project, chapter, canEdit, scenes } = loaderData;
   const base = `/b/${project.slug}`;
+  const link = ({ href, children }: { href: string; children: ReactNode }) => <Link to={href}>{children}</Link>;
   return (
-    <main className="shell shell-wide">
-      <header className="shell-header">
-        <p className="crumbs">
-          <Link to="/">Carrel</Link> / <Link to={base}>{project.name}</Link>
-        </p>
-        <h1>{chapter.title}</h1>
-      </header>
+    <div className="app-page">
+      <PageHead
+        crumbs={[{ label: project.name, href: base }, { label: chapter.title }]}
+        title={chapter.title}
+        lead={`${scenes.length} scene${scenes.length === 1 ? "" : "s"}, ${scenes.reduce((n, s) => n + s.words, 0).toLocaleString()} words.`}
+      />
 
-      <section aria-labelledby="scenes-heading">
-        <h2 id="scenes-heading">Scenes</h2>
-        <ol className="scene-list">
-          {scenes.map((s) => (
-            <li key={s.path}>
-              <p>
-                <Link to={`${base}/f/${s.path}`}>{s.name}</Link> <span className="muted">{s.words.toLocaleString()} words</span>
-                {s.flags ? <span className="flag-count"> {s.flags} flagged</span> : null}
-              </p>
-              {s.header ? (
-                <dl className="scene-header">
-                  <dt>Point of view</dt>
-                  <dd>{s.header.pov || "(none)"}</dd>
-                  <dt>Date</dt>
-                  <dd>
-                    {s.header.date || "(none)"}
-                    {s.header.flashback ? " (flashback)" : ""}
-                  </dd>
-                  <dt>Location</dt>
-                  <dd>{s.header.location || "(none)"}</dd>
-                  <dt>Present</dt>
-                  <dd>{s.header.characters.join(", ") || "(none)"}</dd>
-                  <dt>Goal</dt>
-                  <dd>{s.header.goal || "(none)"}</dd>
-                  <dt>Conflict</dt>
-                  <dd>{s.header.conflict || "(none)"}</dd>
-                  <dt>Outcome</dt>
-                  <dd>{s.header.outcome || "(none)"}</dd>
-                </dl>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-        {canEdit ? (
-          <Form method="post" className="inline-form">
-            <label className="field-inline">
-              <span>New scene</span>
-              <input name="name" required placeholder="Scene name" />
-            </label>
-            <button type="submit" className="btn-ghost">
-              Start it
-            </button>
-          </Form>
-        ) : null}
-        {actionData?.error ? (
-          <p className="alarm" role="alert">
-            {actionData.error}
-          </p>
-        ) : null}
-      </section>
+      {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
 
-      <section aria-labelledby="text-heading" className="chapter-text">
-        <h2 id="text-heading">The chapter, read through</h2>
-        {scenes.map((s, i) => (
-          <div key={s.path}>
-            {i > 0 ? <p className="scene-break">* * *</p> : null}
-            <div dangerouslySetInnerHTML={{ __html: s.html }} />
+      <div className="app-split" data-aside data-flip>
+        <Panel
+          title="Scenes"
+          count={scenes.length}
+          flush
+          footer={
+            canEdit ? (
+              <Form method="post" className="app-inline-form">
+                <Field label="New scene">
+                  <input className="cap-input" name="name" required placeholder="Scene name" autoComplete="off" />
+                </Field>
+                <Button type="submit">Start it</Button>
+              </Form>
+            ) : undefined
+          }
+        >
+          <RowList label="Scenes">
+            {scenes.map((s) => (
+              <Row
+                key={s.path}
+                title={s.name}
+                href={`${base}/f/${s.path}`}
+                renderLink={link}
+                status={s.flags ? <Status tone="warn">{s.flags} flagged</Status> : undefined}
+                detail={
+                  s.header ? (
+                    <span className="app-scene-header">
+                      <span><b>Point of view</b> <span>{s.header.pov || "(none)"}</span></span>
+                      <span><b>Date</b> <span>
+                          {s.header.date || "(none)"}
+                          {s.header.flashback ? " (flashback)" : ""}
+                        </span></span>
+                      <span><b>Location</b> <span>{s.header.location || "(none)"}</span></span>
+                      <span><b>Present</b> <span>{s.header.characters.join(", ") || "(none)"}</span></span>
+                      <span><b>Goal</b> <span>{s.header.goal || "(none)"}</span></span>
+                      <span><b>Conflict</b> <span>{s.header.conflict || "(none)"}</span></span>
+                      <span><b>Outcome</b> <span>{s.header.outcome || "(none)"}</span></span>
+                    </span>
+                  ) : undefined
+                }
+                meta={<span className="cap-num">{s.words.toLocaleString()} words</span>}
+              />
+            ))}
+          </RowList>
+        </Panel>
+
+        <Panel title="The chapter, read through" headingId="text-heading">
+          <div data-context="prose" className="app-reading">
+            {scenes.map((s, i) => (
+              <div key={s.path}>
+                {i > 0 ? (
+                  <p className="app-scene-break" aria-hidden="true">
+                    * * *
+                  </p>
+                ) : null}
+                <div dangerouslySetInnerHTML={{ __html: s.html }} />
+              </div>
+            ))}
           </div>
-        ))}
-      </section>
-    </main>
+        </Panel>
+      </div>
+    </div>
   );
 }

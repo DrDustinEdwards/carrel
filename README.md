@@ -32,9 +32,16 @@ npm run build
 npm run check:mcp-roles      # no role logic in app/lib/mcp/
 npm run check:conformance    # the official MCP conformance suite, against a recorded baseline
 npm run check:plants         # each gate above, seen red on a planted violation (several minutes)
+npm run check:a11y           # an axe scan (WCAG 2.2 A and AA) of every screen, both themes, desktop and phone
 ```
 
-The gates run locally, not on GitHub Actions (minutes are limited on this account).
+GitHub Actions runs all of these on every push and pull request (`.github/workflows/ci.yml`); none needs a secret.
+
+## The look
+
+Carrel's interface is [Capsomer](https://github.com/DrDustinEdwards/capsomer) (`v0.3.0`): its shell (rail, top bar, phone tab bar), tokens, components and fonts, with Carrel's own CSS in `app/app.css` limited to the page frame and the few rules the writing screens need. The fonts (Schibsted Grotesk, Martian Mono, Source Serif 4) are self-hosted from the build; nothing loads from another origin, and `workers/csp.ts` is unchanged. The only components Carrel keeps are `app/components/editor` (the writing surface around Capsomer's markdown editor) and `app/components/media` (image upload and "Insert from library").
+
+`npm run harness` builds and serves the real app on http://127.0.0.1:5199 with the Access gate replaced by a header naming the viewer (`x-harness-viewer`: `dustin@harness.invalid` the Owner, `rosa@harness.invalid` an Editor, `sam@harness.invalid` a Reader) and a fake site, novels repository and Google (`test/harness`). It needs no Cloudflare credentials. `node scripts/screens.mjs <directory>` writes a screenshot of every screen in both themes at desktop and phone widths, for looking at.
 
 Every request without a valid Access token is refused, locally too, so the app answers 403 until it runs behind Access.
 

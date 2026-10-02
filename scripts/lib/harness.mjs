@@ -1,0 +1,241 @@
+// Starts the screen harness (vite dev over test/harness) and opens screens in headless Chromium.
+// Shared by check-a11y.mjs (the accessibility scan) and screens.mjs (screenshots for a human to look at).
+// Nothing here reaches the network or needs Cloudflare credentials.
+
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { setTimeout as sleep } from "node:timers/promises";
+
+import { chromium } from "playwright";
+
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const VITE = join(ROOT, "node_modules", "vite", "bin", "vite.js");
+
+export const VIEWERS = {
+  owner: "dustin@harness.invalid",
+  editor: "rosa@harness.invalid",
+  reader: "sam@harness.invalid",
+};
+
+const SITE = "dustinedwards-info";
+const BOOK = "paluxy-portal";
+
+/**
+ * Every screen, as who sees it. `after` runs once the page is up (open a dialog, type), and `wait` is a
+ * selector that must exist before the page counts as ready.
+ */
+/**
+ * @typedef {import("playwright").Page} Page
+ * @type {{ name: string; viewer: keyof typeof VIEWERS; path: string; wait?: string; open?: string; skipFor?: string; after?: (page: Page) => Promise<void>; restore?: (page: Page) => Promise<void> }[]}
+ */
+export const SCREENS = [
+  { name: "home", viewer: "owner", path: "/" },
+  { name: "home-editor", viewer: "editor", path: "/" },
+  { name: "home-reader", viewer: "reader", path: "/" },
+  { name: "site", viewer: "owner", path: `/p/${SITE}` },
+  { name: "site-filtered", viewer: "owner", path: `/p/${SITE}?status=draft` },
+  { name: "site-reader", viewer: "reader", path: `/p/${SITE}` },
+  { name: "site-new", viewer: "editor", path: `/p/${SITE}/new` },
+  { name: "flags", viewer: "owner", path: `/p/${SITE}/flags` },
+  { name: "flags-reader", viewer: "reader", path: `/p/${SITE}/flags` },
+  { name: "media", viewer: "owner", path: `/p/${SITE}/media` },
+  { name: "media-detail", viewer: "owner", path: `/p/${SITE}/media`, open: "media" },
+  { name: "media-editor", viewer: "editor", path: `/p/${SITE}/media` },
+  { name: "media-reader", viewer: "reader", path: `/p/${SITE}/media` },
+  { name: "people", viewer: "owner", path: "/people" },
+  { name: "manuscripts", viewer: "owner", path: "/manuscripts" },
+  { name: "manuscripts-search", viewer: "owner", path: "/manuscripts?q=paluxy" },
+  { name: "social", viewer: "owner", path: "/social" },
+  { name: "book-new", viewer: "owner", path: "/books/new" },
+  { name: "book", viewer: "owner", path: `/b/${BOOK}` },
+  { name: "book-editor", viewer: "editor", path: `/b/${BOOK}` },
+  { name: "book-reader", viewer: "reader", path: `/b/${BOOK}`, skipFor: "reader has no role on the book" },
+  { name: "book-empty", viewer: "owner", path: "/b/salt-roads" },
+  { name: "chapter", viewer: "owner", path: `/b/${BOOK}/c/01-arrival` },
+  { name: "book-scene", viewer: "owner", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".cm-editor" },
+  { name: "book-scene-flagged", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".cm-editor" },
+  { name: "book-bible", viewer: "owner", path: `/b/${BOOK}/f/bible/characters/nell.md`, wait: ".cm-editor" },
+  { name: "book-scene-editor", viewer: "editor", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".cm-editor" },
+  { name: "post-live", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor" },
+  { name: "post-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor" },
+  { name: "post-working-copy", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".cm-editor" },
+  { name: "post-scheduled", viewer: "owner", path: `/p/${SITE}/e/bacterial-genetics-primer`, wait: ".cm-editor" },
+  { name: "post-editor-live", viewer: "editor", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor" },
+  { name: "post-reader", viewer: "reader", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor" },
+  { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
+  { name: "unpublish", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits/unpublish` },
+  { name: "not-found", viewer: "owner", path: "/p/nowhere" },
+
+  // The states a person reaches by acting: dialogs, menus and the publish controls.
+  {
+    name: "more-sheet",
+    viewer: "owner",
+    path: "/",
+    // The tab bar, and so More, exists only on a phone.
+    after: async (page) => {
+      const more = page.getByRole("button", { name: /^More/ });
+      if (!(await more.isVisible())) return;
+      await more.click();
+      await page.getByRole("dialog").first().waitFor();
+      await page.waitForTimeout(300);
+    },
+  },
+  { name: "flags-dismiss", viewer: "owner", path: `/p/${SITE}/flags`, after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
+  { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media`, open: "media", after: (page) => press(page, "button", /^Delete/, "alertdialog") },
+  { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".cm-editor", after: (page) => press(page, "button", /^Discard my draft/, "alertdialog") },
+  { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor", after: (page) => press(page, "button", /^Schedule/, "dialog") },
+  { name: "post-first-publish", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor", after: (page) => press(page, "button", /^Publish$/, "alertdialog") },
+  { name: "post-library", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor", after: (page) => press(page, "button", /^Insert from library/, "dialog") },
+  {
+    name: "post-link-palette",
+    viewer: "owner",
+    path: `/p/${SITE}/e/foxhound-waits`,
+    wait: ".cm-editor",
+    after: async (page) => {
+      await page.locator(".cm-content").click();
+      await page.keyboard.press("Control+K");
+      await page.getByRole("combobox").first().waitFor();
+    },
+  },
+  {
+    name: "post-slash-menu",
+    viewer: "owner",
+    path: `/p/${SITE}/e/what-a-carrel-is-for`,
+    wait: ".cm-editor",
+    after: async (page) => {
+      await page.locator(".cm-content").click();
+      await page.keyboard.press("Control+End");
+      await page.keyboard.type("\n\n/");
+      await page.getByText("Figure", { exact: false }).first().waitFor();
+      // Typing steps the chrome back by design; a mouse move brings it back, and that is the screen scanned.
+      await page.mouse.move(180, 300);
+      await page.waitForTimeout(400);
+    },
+  },
+  { name: "post-split", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor", after: (page) => page.getByRole("radio", { name: "Split" }).check({ force: true }).then(() => page.waitForTimeout(800)) },
+  { name: "social-reject", viewer: "owner", path: "/social", after: (page) => press(page, "button", /^Reject/, "alertdialog") },
+  { name: "book-dismiss", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".cm-editor", after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
+  {
+    name: "people-disable",
+    viewer: "owner",
+    path: "/people",
+    after: async (page) => {
+      await page.getByRole("button", { name: /^Disable/ }).first().click();
+      await page.getByRole("button", { name: /Undo/ }).waitFor();
+    },
+    // The harness's database is shared by every scan, so the person is enabled again afterwards.
+    restore: async (page) => {
+      await page.getByRole("button", { name: /Undo/ }).click();
+      await page.getByText("is enabled again").waitFor();
+    },
+  },
+];
+
+/**
+ * Presses the first button whose name matches and waits for the dialog it opens.
+ * @param {Page} page
+ * @param {"button"} role
+ * @param {RegExp} name
+ * @param {"dialog" | "alertdialog"} opens
+ */
+async function press(page, role, name, opens) {
+  await page.getByRole(role, { name }).first().click();
+  await page.getByRole(opens).first().waitFor();
+  await page.waitForTimeout(300);
+}
+
+/**
+ * Built, then previewed, not run under `vite dev`: dev injects its styles through script, which the
+ * app's Content Security Policy refuses, and the page must be what a deploy would serve.
+ */
+export async function startHarness(port = 5199) {
+  execFileSync(process.execPath, [VITE, "build", "--config", "vite.harness.config.ts"], { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(process.execPath, [VITE, "preview", "--config", "vite.harness.config.ts", "--port", String(port), "--strictPort", "--host", "127.0.0.1"], { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
+  let output = "";
+  child.stdout.on("data", (d) => (output += d));
+  child.stderr.on("data", (d) => (output += d));
+  const origin = `http://127.0.0.1:${port}`;
+  const stop = () => {
+    child.kill("SIGTERM");
+  };
+  for (let i = 0; i < 120; i++) {
+    await sleep(2000);
+    try {
+      const res = await fetch(origin, { headers: { "x-harness-viewer": VIEWERS.owner }, signal: AbortSignal.timeout(60_000) });
+      if (res.ok) return { origin, stop };
+      if (res.status >= 500) {
+        stop();
+        throw new Error(`the harness answered ${res.status} for /\n${output.slice(-4000)}`);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("the harness")) throw error;
+    }
+    if (child.exitCode !== null) throw new Error(`the harness exited\n${output.slice(-4000)}`);
+  }
+  stop();
+  throw new Error(`the harness did not come up\n${output.slice(-4000)}`);
+}
+
+/** The bundled Chromium when Playwright has one, else the one in PLAYWRIGHT_BROWSERS_PATH (a sandbox's). */
+export async function launch() {
+  try {
+    return await chromium.launch();
+  } catch (error) {
+    const base = process.env.PLAYWRIGHT_BROWSERS_PATH ?? "";
+    const dir = base && existsSync(base) ? readdirSync(base).find((d) => /^chromium-\d+$/.test(d)) : undefined;
+    if (!dir) throw error;
+    return chromium.launch({ executablePath: join(base, dir, "chrome-linux", "chrome") });
+  }
+}
+
+const COLOURS = ["#8c5fd2", "#2f7d6d", "#c0803b", "#4a78b5", "#b8566f", "#6b7f3a"];
+/** @param {string} url */
+const picture = (url) => {
+  const n = [...url].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const c = COLOURS[n % COLOURS.length];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><rect width="320" height="320" fill="${c}" opacity="0.28"/><circle cx="${90 + (n % 120)}" cy="140" r="56" fill="${c}" opacity="0.8"/><rect x="40" y="220" width="240" height="14" rx="7" fill="${c}" opacity="0.6"/></svg>`;
+};
+
+/**
+ * A page for one viewer, in one theme at one size, with the site's pictures answered locally.
+ * @param {import("playwright").Browser} browser
+ * @param {string} origin
+ * @param {{ viewer: keyof typeof VIEWERS; theme: "light" | "dark"; width: number; height: number }} options
+ */
+export async function open(browser, origin, { viewer, theme, width, height }) {
+  const context = await browser.newContext({
+    viewport: { width, height },
+    colorScheme: theme,
+    extraHTTPHeaders: { "x-harness-viewer": VIEWERS[viewer] },
+    reducedMotion: "reduce",
+  });
+  await context.route("https://site.test/**", (route) => {
+    const url = route.request().url();
+    return /\/media\//.test(url) ? route.fulfill({ status: 200, contentType: "image/svg+xml", body: picture(url) }) : route.fulfill({ status: 404, body: "" });
+  });
+  const page = await context.newPage();
+  return { page, context };
+}
+
+/**
+ * @param {import("playwright").Page} page
+ * @param {string} origin
+ * @param {{ path: string; wait?: string; open?: string; after?: (page: Page) => Promise<void> }} screen
+ */
+export async function visit(page, origin, screen) {
+  const response = await page.goto(`${origin}${screen.path}`, { waitUntil: "load" });
+  if (screen.wait) await page.waitForSelector(screen.wait, { timeout: 30_000 });
+  // Hydration finishes a beat after load; a screen with its own marker waits for that instead.
+  await page.waitForTimeout(screen.wait ? 600 : 900);
+  if (screen.open === "media") {
+    const href = await page.locator(".cap-media-open").first().getAttribute("href");
+    if (href) {
+      await page.goto(new URL(href, origin).href, { waitUntil: "load" });
+      await page.waitForTimeout(900);
+    }
+  }
+  if (screen.after) await screen.after(page);
+  return response;
+}

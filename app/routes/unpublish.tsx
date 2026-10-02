@@ -2,7 +2,13 @@
 // returns it to draft. The link opens this page rather than unpublishing on its own, because a GET
 // that changed the site could be set off by anything that fetches links (a mail client's preview).
 
-import { Form, Link } from "react-router";
+import { Form, Link, useNavigation } from "react-router";
+import { Alert, Banner } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
+import { Pill } from "capsomer/react/status";
+import { Time } from "capsomer/react/time";
+
+import { PageHead } from "~/components/page-head";
 
 import { lastAiPublication, publishedByLine } from "~/lib/ai.server";
 import { readDoc, writeToSite } from "~/lib/content.server";
@@ -43,38 +49,37 @@ export async function action({ params, context }: Route.ActionArgs) {
 export default function Unpublish({ loaderData, actionData }: Route.ComponentProps) {
   const { project, item, publishedBy } = loaderData;
   const done = actionData?.ok;
+  const busy = useNavigation().state !== "idle";
   return (
-    <main className="shell">
-      <header className="shell-header">
-        <p className="crumbs">
-          <Link to="/">Carrel</Link> / <Link to={`/p/${project.slug}`}>{project.name}</Link>
-        </p>
-        <h1>{item.title}</h1>
-        <p className="muted">
-          <span className={`status status-${item.status}`}>{item.status}</span> on {project.site}
-          {item.path ? ` at ${item.path}` : ""}
-        </p>
-      </header>
+    <div className="app-page" data-narrow>
+      <PageHead
+        crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: item.title }]}
+        title={item.title}
+        lead={
+          <>
+            {item.status === "published" ? <Pill tone="ok">Published</Pill> : item.status === "scheduled" ? <Pill tone="info">Scheduled</Pill> : <Pill variant="secondary">Draft</Pill>} on {project.site}
+            {item.path ? <span className="cap-mono"> {item.path}</span> : null}
+          </>
+        }
+      />
       {publishedBy ? (
-        <p>
-          {publishedBy.line} <span className="muted">({new Date(publishedBy.at).toLocaleString()})</span>
-        </p>
+        <Banner tone="info">
+          {publishedBy.line} <Time at={publishedBy.at} format="exact" />
+        </Banner>
       ) : null}
-      {actionData ? (
-        <p className={actionData.ok ? "muted" : "alarm"} role={actionData.ok ? "status" : "alert"}>
-          {actionData.message}
-        </p>
-      ) : null}
-      {!done && item.status !== "draft" ? (
-        <Form method="post">
-          <button type="submit" className="btn-danger" autoFocus>
-            Unpublish now
-          </button>
-        </Form>
-      ) : null}
-      <p>
-        <Link to={`/p/${project.slug}/e/${encodeURIComponent(item.id)}`}>Open it in the editor</Link>
-      </p>
-    </main>
+      {actionData ? actionData.ok ? <Banner tone="ok">{actionData.message}</Banner> : <Alert tone="crit">{actionData.message}</Alert> : null}
+      <div className="app-actions">
+        {!done && item.status !== "draft" ? (
+          <Form method="post">
+            <Button type="submit" variant="danger" pending={busy} autoFocus>
+              Unpublish now
+            </Button>
+          </Form>
+        ) : null}
+        <Link className="cap-btn" to={`/p/${project.slug}/e/${encodeURIComponent(item.id)}`}>
+          Open it in the editor
+        </Link>
+      </div>
+    </div>
   );
 }

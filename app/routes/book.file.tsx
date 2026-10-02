@@ -2,8 +2,20 @@
 // CodeMirror editor as posts, autosave to D1 as you type, and Save, which commits to Git with the
 // version the text started from. Beside a scene: its flags and the bible entries it names.
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
+import { Alert, Banner } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
+import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { Disclosure } from "capsomer/react/disclosure";
+import { useMessage } from "capsomer/react/message";
+import { Panel } from "capsomer/react/panel";
+import { Pill, Status } from "capsomer/react/status";
+import { Time } from "capsomer/react/time";
+
+import { WritingSurface } from "~/components/editor/writing-surface";
+import { useTypingRecede } from "~/components/editor/typing";
+import { PageHead } from "~/components/page-head";
 
 import {
   bookRepo,
@@ -25,8 +37,6 @@ import { isBookPath, kindOf, TEMPLATES, titleFromSegment } from "~/lib/novels/la
 import { can } from "~/lib/roles";
 
 import type { Route } from "./+types/book.file";
-
-const MarkdownEditor = lazy(() => import("~/components/editor/markdown-editor"));
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -190,14 +200,19 @@ export default function BookFileRoute({ loaderData }: Route.ComponentProps) {
   return <BookFile key={`${loaderData.project.slug}/${loaderData.path}`} data={loaderData} />;
 }
 
+type Ask = { kind: "discard" | "dismiss" | "use-ai"; id?: number; opener: HTMLElement | null };
+
 function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [source, setSource] = useState(data.source);
   // A file started from a template is not saved anywhere yet.
   const [savedSource, setSavedSource] = useState(data.fresh ? "" : data.source);
   const [savedAt, setSavedAt] = useState<string | null>(data.draftAt);
+  const [asking, setAsking] = useState<Ask | null>(null);
   const autosaver = useFetcher<ActionResult>();
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
+  const { say } = useMessage();
+  useTypingRecede();
   const readOnly = !data.canEdit;
   const base = `/b/${data.project.slug}`;
 
@@ -249,6 +264,14 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcome, writer.state]);
 
+  // Said once in the message region, as each save finishes.
+  const said = useRef<unknown>(null);
+  useEffect(() => {
+    if (!outcome?.ok || writer.state !== "idle" || said.current === outcome) return;
+    said.current = outcome;
+    say(`Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${outcome.findings.length} flag${outcome.findings.length === 1 ? "" : "s"}; see the list.`}`);
+  }, [outcome, writer.state, say]);
+
   const send = (intent: string, extra: Record<string, string> = {}) =>
     writer.submit({ intent, source, expectedVersion: data.baseVersion ?? "", ...extra }, { method: "post" });
 
@@ -275,169 +298,206 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
           : data.version
             ? "Matches Git"
             : "";
+  const openFlags = data.findings.filter((f) => f.status === "open").length;
+  const ask = (kind: Ask["kind"], opener: HTMLElement | null, id?: number) => setAsking({ kind, opener, id });
+
+  const crumbs: { label: string; href?: string }[] = [{ label: data.project.name, href: base }];
+  if (data.kind === "scene") crumbs.push({ label: titleFromSegment(data.path.split("/")[1]!), href: `${base}/c/${data.path.split("/")[1]}` });
+  crumbs.push({ label: data.label });
 
   return (
-    <div className="editor-shell book-editor">
-      <header className="editor-chrome">
-        <p className="crumbs">
-          <Link to="/">Carrel</Link> / <Link to={base}>{data.project.name}</Link>
-          {data.kind === "scene" ? (
-            <>
-              {" "}
-              / <Link to={`${base}/c/${data.path.split("/")[1]}`}>{titleFromSegment(data.path.split("/")[1]!)}</Link>
-            </>
-          ) : null}
-        </p>
-        <div className="editor-title">
-          <h1>{data.label}</h1>
-          <p className="muted">
-            <span className="item-id">
+    <div className="app-page app-editor">
+      <PageHead
+        crumbs={crumbs}
+        title={data.label}
+        lead={
+          <>
+            <span className="cap-mono">
               {data.project.book}/{data.path}
             </span>{" "}
-            {data.version ? null : <span className="status">not in Git yet</span>} <span role="status">{saveState}</span>
-          </p>
-        </div>
-      </header>
+            {data.version ? null : <Pill variant="outline">Not in Git yet</Pill>}
+          </>
+        }
+      />
 
-      {data.connectionDetail ? (
-        <p className="notice" role="status">
-          {data.connectionDetail}
-        </p>
-      ) : null}
-      {data.behind ? (
-        <p className="notice" role="status">
-          This file changed in Git after your draft was started, so saving it will be refused. Discard the draft to load Git's version, then reapply your changes.
-        </p>
-      ) : null}
-      {data.problems.length > 0 ? (
-        <p className="notice" role="status">
-          The header has lines Carrel does not read: {data.problems.map((p) => `line ${p.line}`).join(", ")}. Use key: value, key: [a, b], or one - item per line.
-        </p>
-      ) : null}
+      <div className="app-notices">
+        {data.connectionDetail ? <Banner tone="warn">{data.connectionDetail}</Banner> : null}
+        {data.behind ? (
+          <Banner tone="warn" title="Git moved on">
+            This file changed in Git after your draft was started, so saving it will be refused. Discard the draft to load Git's version, then reapply your changes.
+          </Banner>
+        ) : null}
+        {data.problems.length > 0 ? (
+          <Banner tone="warn" title="The header has lines Carrel does not read">
+            {data.problems.map((p) => `line ${p.line}`).join(", ")}. Use key: value, key: [a, b], or one - item per line.
+          </Banner>
+        ) : null}
+      </div>
 
-      <div className="editor-body book-body">
-        <section className="editor-pane" aria-label="Write">
-          <Suspense fallback={<p className="muted editor-loading">Loading the editor</p>}>
-            <MarkdownEditor value={source} onChange={setSource} onReady={() => undefined} slug={data.path} linkTargets={[]} readOnly={readOnly} />
-          </Suspense>
-        </section>
-
-        <aside className="book-aside" aria-label="Checks and bible">
-          <section aria-labelledby="flags-heading">
-            <h2 id="flags-heading">Flags</h2>
-            <p className="muted">From the last save. A flag never stops a save; it holds export until it is fixed or the Owner dismisses it.</p>
-            {data.findings.length === 0 ? (
-              <p className="muted">None.</p>
-            ) : (
-              <ul className="findings">
-                {data.findings.map((f) => (
-                  <li key={f.id} className={`finding finding-${f.status}`}>
-                    <span className="finding-check">{f.check}</span> {f.line ? <span className="muted">line {f.line}</span> : null}
-                    <p>{f.message}</p>
-                    {f.status === "dismissed" ? (
-                      <p className="muted">Dismissed.</p>
-                    ) : data.canPublish ? (
-                      <button type="button" className="btn-ghost" disabled={busy} onClick={() => writer.submit({ intent: "dismiss", finding: String(f.id) }, { method: "post" })}>
-                        Dismiss
-                      </button>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {checked ? (
-              <div role="status">
-                <h3>This text, checked now</h3>
-                {checked.length === 0 ? (
-                  <p className="muted">Nothing flagged.</p>
-                ) : (
-                  <ul className="findings">
-                    {checked.map((f, i) => (
-                      <li key={i} className="finding">
-                        <span className="finding-check">{f.check}</span> {f.line ? <span className="muted">line {f.line}</span> : null}
-                        <p>{f.message}</p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ) : null}
+      <div className="app-editor-grid">
+        <div className="app-editor-main">
+          <section className="app-editor-pane" aria-label="Write">
+            <WritingSurface label={data.kind === "scene" ? "Scene" : "File"} value={source} onChange={setSource} readOnly={readOnly} linkTargets={[]} />
           </section>
+        </div>
+
+        <aside className="app-editor-side" aria-label="Saving, checks and the bible">
+          {data.canEdit ? (
+            <Panel title="This file" src={data.version ? "In Git" : "Only in Carrel so far"}>
+              <div className="app-stack" data-tight>
+                <p role="status" className="app-savestate">
+                  {saveState}
+                </p>
+                {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
+                <div className="app-actions">
+                  <Button variant="primary" pending={busy} disabledReason={!data.connected ? "Git is not connected, so saving waits. Your text is kept here as your draft." : undefined} onClick={() => send("save")}>
+                    Save to Git
+                  </Button>
+                  <Button pending={checker.state !== "idle"} onClick={() => checker.submit({ intent: "check", source }, { method: "post" })}>
+                    Check this text
+                  </Button>
+                  {savedAt ? (
+                    <Button variant="quiet" pending={busy} onClick={(event) => ask("discard", event.currentTarget)}>
+                      Discard my draft
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            </Panel>
+          ) : null}
+
+          <Panel title="Flags" count={openFlags} src="From the last save" id="flags">
+            <div className="app-stack" data-tight>
+              <p className="cap-muted app-note">A flag never stops a save; it holds export until it is fixed or the Owner dismisses it.</p>
+              {data.findings.length === 0 ? (
+                <p>None.</p>
+              ) : (
+                <ul className="app-flags" aria-label="Flags on this file">
+                  {data.findings.map((f) => (
+                    <li key={f.id}>
+                      {f.status === "open" ? <Status tone="warn">Open</Status> : <Pill variant="secondary">Dismissed</Pill>}
+                      <span>
+                        <strong>{f.check}</strong> {f.line ? <span className="cap-muted">line {f.line}</span> : null} {f.message}
+                      </span>
+                      {f.status === "open" && data.canPublish ? (
+                        <Button size="sm" onClick={(event) => ask("dismiss", event.currentTarget, f.id)}>
+                          Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {checked ? (
+                <div role="status" className="app-stack" data-tight>
+                  <h3 className="app-subhead">This text, checked now</h3>
+                  {checked.length === 0 ? (
+                    <p>Nothing flagged.</p>
+                  ) : (
+                    <ul className="app-flags">
+                      {checked.map((f, i) => (
+                        <li key={i}>
+                          <Status tone="warn">Found</Status>
+                          <span>
+                            <strong>{f.check}</strong> {f.line ? <span className="cap-muted">line {f.line}</span> : null} {f.message}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </Panel>
 
           {data.aiDrafts.length > 0 ? (
-            <section aria-labelledby="ai-drafts-heading">
-              <h2 id="ai-drafts-heading">AI drafts beside yours</h2>
-              <p className="muted">Written by an AI session. None has touched your draft or Git.</p>
-              {data.aiDrafts.map((d) => (
-                <details key={d.id} className="bible-entry">
-                  <summary>
-                    {d.client} <span className="muted">{new Date(d.createdAt).toLocaleString()} · {d.words} words</span>
-                  </summary>
-                  {d.note ? <p>{d.note}</p> : null}
-                  <p className="bible-body">{d.source}</p>
-                  {data.canEdit ? (
-                    <button type="button" className="btn-ghost" disabled={busy} onClick={() => writer.submit({ intent: "use-ai-draft", draft: String(d.id) }, { method: "post" })}>
-                      Use as my draft
-                    </button>
-                  ) : null}
-                </details>
-              ))}
-            </section>
+            <Panel title="AI drafts beside yours" count={data.aiDrafts.length} src="None has touched your draft or Git">
+              <div className="app-stack" data-tight>
+                {data.aiDrafts.map((d) => (
+                  <Disclosure
+                    key={d.id}
+                    summary={
+                      <>
+                        {d.client}{" "}
+                        <span className="cap-muted">
+                          <Time at={d.createdAt} /> · {d.words} words
+                        </span>
+                      </>
+                    }
+                  >
+                    {d.note ? <p>{d.note}</p> : null}
+                    <p className="app-bible-body">{d.source}</p>
+                    {data.canEdit ? (
+                      <Button size="sm" pending={busy} onClick={(event) => ask("use-ai", event.currentTarget, d.id)}>
+                        Use as my draft
+                      </Button>
+                    ) : null}
+                  </Disclosure>
+                ))}
+              </div>
+            </Panel>
           ) : null}
 
           {data.kind === "scene" ? (
-            <section aria-labelledby="bible-heading">
-              <h2 id="bible-heading">From the bible</h2>
+            <Panel title="From the bible" count={data.bible.length}>
               {data.bible.length === 0 ? (
-                <p className="muted">No entries match this scene's header.</p>
+                <p className="cap-muted">No entries match this scene's header.</p>
               ) : (
-                data.bible.map((b) => (
-                  <details key={b.path} className="bible-entry">
-                    <summary>
-                      {b.name} <span className="muted">{b.kind}</span>
-                    </summary>
-                    <p className="bible-body">{b.body || "(no notes)"}</p>
-                    <Link to={`${base}/f/${b.path}`}>Open</Link>
-                  </details>
-                ))
+                <div className="app-stack" data-tight>
+                  {data.bible.map((b) => (
+                    <Disclosure
+                      key={b.path}
+                      summary={
+                        <>
+                          {b.name} <span className="cap-muted">{b.kind}</span>
+                        </>
+                      }
+                    >
+                      <p className="app-bible-body">{b.body || "(no notes)"}</p>
+                      <Link to={`${base}/f/${b.path}`}>Open</Link>
+                    </Disclosure>
+                  ))}
+                </div>
               )}
-            </section>
+            </Panel>
           ) : null}
         </aside>
       </div>
 
-      <footer className="editor-chrome editor-actions">
-        {outcome && !outcome.ok ? (
-          <p className="alarm" role="alert">
-            {outcome.message}
-          </p>
-        ) : outcome?.ok ? (
-          <p className="muted" role="status">
-            Saved to Git ({outcome.commit.slice(0, 7)}).{" "}
-            {outcome.findings.length === 0 ? "Nothing flagged." : `${outcome.findings.length} flag${outcome.findings.length === 1 ? "" : "s"}; see the list.`}
-          </p>
-        ) : null}
-        <div className="actions">
-          {data.canEdit && savedAt ? (
-            <button type="button" className="btn-ghost" disabled={busy} onClick={() => send("discard")}>
-              Discard my draft
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="btn-ghost"
-            disabled={checker.state !== "idle"}
-            onClick={() => checker.submit({ intent: "check", source }, { method: "post" })}
-          >
-            Check this text
-          </button>
-          {data.canEdit ? (
-            <button type="button" className="btn" disabled={busy || !data.connected} onClick={() => send("save")}>
-              Save to Git
-            </button>
-          ) : null}
-        </div>
-      </footer>
+      <ConfirmDialog
+        open={asking?.kind === "discard"}
+        title="Discard your draft?"
+        lead="Your working copy in Carrel is deleted, and the editor goes back to Git's text. This cannot be undone."
+        body={[]}
+        action="Discard my draft"
+        returnTo={asking?.opener}
+        perform={async () => void (await writer.submit({ intent: "discard" }, { method: "post" }))}
+        onClose={() => setAsking(null)}
+      />
+      <ConfirmDialog
+        open={asking?.kind === "dismiss"}
+        title="Dismiss this flag?"
+        lead="A dismissed flag no longer holds export, and it cannot be reopened."
+        body={asking?.id !== undefined ? [data.findings.find((f) => f.id === asking.id)?.message ?? ""] : []}
+        action="Dismiss flag"
+        returnTo={asking?.opener}
+        perform={async () => {
+          if (asking?.id !== undefined) await writer.submit({ intent: "dismiss", finding: String(asking.id) }, { method: "post" });
+        }}
+        onClose={() => setAsking(null)}
+      />
+      <ConfirmDialog
+        open={asking?.kind === "use-ai"}
+        title="Use the AI draft as your draft?"
+        lead="Its text replaces your working draft, which you then edit and save as usual. Your current draft is not kept."
+        body={[]}
+        action="Replace my draft"
+        returnTo={asking?.opener}
+        perform={async () => {
+          if (asking?.id !== undefined) await writer.submit({ intent: "use-ai-draft", draft: String(asking.id) }, { method: "post" });
+        }}
+        onClose={() => setAsking(null)}
+      />
     </div>
   );
 }
