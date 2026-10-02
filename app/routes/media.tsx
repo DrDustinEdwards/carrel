@@ -3,13 +3,25 @@
 // the screen. A Reader browses, an Editor also uploads, and only the Owner deletes, and then only what
 // the site's own reference check lets go.
 //
-// The grid, tile and inspector follow DrDustinEdwards/dustinedwards-info@f84b978
-// (app/components/admin/media-grid.tsx, media-tile.tsx, media-inspector.tsx, media-upload-actions.tsx,
-// media-empty-state.tsx), cut to what the site API carries: no bulk selection, trash, tags, facets,
-// twins or keyboard grid, since v0.2.0 has no routes for them. The inspector is a panel on the page,
-// not a modal dialog, so it works without script.
+// The tiles and the drop zone are Capsomer's; the details are a panel on the page, not a modal dialog,
+// so they work without script. Capsomer's inspector edits alt text, tags and a bin, which the site API
+// (v0.2.0) has no routes for, so Carrel's inspector shows the file's facts, where it is used, and the
+// Owner's permanent delete behind a confirm dialog.
 
-import { Form, Link, useNavigation } from "react-router";
+import { useState } from "react";
+import { Form, Link, useFetcher, useNavigation } from "react-router";
+import { Alert, Banner } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
+import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { Disclosure } from "capsomer/react/disclosure";
+import { DropZone } from "capsomer/react/drop-zone";
+import { Empty } from "capsomer/react/empty";
+import { Field } from "capsomer/react/field";
+import { Panel } from "capsomer/react/panel";
+import { Status } from "capsomer/react/status";
+
+import { PageHead } from "~/components/page-head";
+import { ProjectTabs } from "~/components/project-tabs";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { deleteMedia, listMedia, mediaDetail, mediaLimits, uploadMedia } from "~/lib/media.server";
@@ -115,13 +127,16 @@ function size(bytes: number): string {
 }
 
 function dims(width: number | null, height: number | null): string {
-  return width && height ? `${width} x ${height}` : "not measured";
+  return width && height ? `${width} by ${height}` : "not measured";
 }
 
 export default function MediaLibrary({ loaderData, actionData }: Route.ComponentProps) {
   const { project, canUpload, canDelete, q, unavailable, limits, items, nextCursor, detail, missingId } = loaderData;
   const navigation = useNavigation();
   const busy = navigation.state !== "idle";
+  const deleter = useFetcher<ActionResult>();
+  const [confirming, setConfirming] = useState<HTMLElement | null>(null);
+  const [asking, setAsking] = useState(false);
   const here = (over: Record<string, string>) => {
     const params = new URLSearchParams();
     const next = { q, id: "", cursor: "", ...over };
@@ -129,224 +144,242 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
     const text = params.toString();
     return text ? `?${text}` : ".";
   };
-  const confirming = actionData?.intent === "delete" && "needsConfirm" in actionData ? actionData.id : null;
-  const refused = actionData?.intent === "delete" && "ok" in actionData && !actionData.ok ? actionData : null;
+  const result = deleter.data ?? actionData;
+  // Without script the Delete button posts and the server asks; with script the dialog asks first.
+  const serverAsks = result?.intent === "delete" && "needsConfirm" in result ? result.id : null;
+  const refused = result?.intent === "delete" && "ok" in result && !result.ok ? result : null;
   const name = detail ? (detail.filename ?? detail.id) : "";
 
   return (
-    <main className="shell shell-wide">
-      <header className="shell-header">
-        <p className="crumbs">
-          <Link to="/">Carrel</Link> / <Link to={`/p/${project.slug}`}>{project.name}</Link>
-        </p>
-        <h1>Media</h1>
-        <p className="muted">The files on {project.site}, kept and served by the site. Carrel only shows them here.</p>
-      </header>
+    <div className="app-page">
+      <PageHead title={project.name} lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`} />
+
+      <ProjectTabs slug={project.slug} current="media" />
 
       {unavailable ? (
-        <p className="notice" role="status">
-          {unavailable}
-        </p>
+        <Banner tone="warn">{unavailable}</Banner>
       ) : (
         <>
-          <div className="toolbar-row">
-            <Form method="get" className="filters" role="search" aria-label="Search media">
-              <label className="field">
-                <span>Search</span>
-                <input type="search" name="q" defaultValue={q} placeholder="Name, address or alt text" />
-              </label>
-              <button type="submit" className="btn">
-                Search
-              </button>
-              {q ? (
-                <Link to="." className="btn-ghost">
-                  Clear
-                </Link>
-              ) : null}
-            </Form>
-          </div>
-
-          {canUpload && limits ? (
-            <Form method="post" encType="multipart/form-data" className="media-upload">
-              <label className="field">
-                <span>File</span>
-                <input type="file" name="file" accept={limits.types.join(",")} required />
-              </label>
-              <label className="field">
-                <span>Alt text</span>
-                <input type="text" name="alt" placeholder="What the image shows" />
-              </label>
-              <button type="submit" name="intent" value="upload" className="btn" disabled={busy}>
-                Upload
-              </button>
-              <p className="muted media-upload-hint">
-                Up to {size(limits.maxBytes)}: {limits.types.map((t) => t.split("/")[1]).join(", ")}.
-              </p>
-            </Form>
-          ) : null}
-
           {/* An alert on a refusal, a status on success: one is an event to act on, the other a confirmation. */}
           {actionData?.intent === "upload" ? (
             actionData.ok ? (
-              <p className="notice" role="status">
+              <Banner tone="ok">
                 Uploaded {actionData.name}. <Link to={here({ id: actionData.id })}>See its details</Link>.
-              </p>
+              </Banner>
             ) : (
-              <p className="alarm" role="alert">
-                {actionData.message}
-              </p>
+              <Alert tone="crit">{actionData.message}</Alert>
             )
           ) : null}
-          {actionData?.intent === "delete" && "ok" in actionData && actionData.ok ? (
-            <p className="notice" role="status">
-              Deleted {actionData.id} from the site.
-            </p>
-          ) : null}
+          {result?.intent === "delete" && "ok" in result && result.ok ? <Banner tone="ok">Deleted {result.id} from the site.</Banner> : null}
 
-          <div className="media-layout" data-detail={detail || missingId ? "" : undefined}>
-            <section aria-label="Files">
-              {items.length === 0 ? (
-                <div className="media-empty">
-                  {q ? (
-                    <p>
-                      Nothing matches &ldquo;{q}&rdquo;. <Link to=".">Clear the search</Link>.
-                    </p>
-                  ) : (
-                    <p>Nothing here yet.{canUpload ? " Upload the first file above, or drop one into a post's editor." : ""}</p>
-                  )}
-                </div>
-              ) : (
-                <ul className="media-grid">
-                  {items.map((item) => (
-                    <li key={item.id} className="media-card" data-active={detail?.id === item.id || undefined}>
-                      {/* The whole tile is the link, named for the file: one tab stop per file. */}
-                      <Link to={here({ id: item.id })} className="media-thumb-link" preventScrollReset aria-label={item.filename ?? item.id}>
-                        <span className="media-thumb-box">
-                          {item.contentType.startsWith("image/") ? (
-                            <img className="media-thumb" src={item.src} alt="" loading="lazy" decoding="async" width={320} height={320} />
-                          ) : (
-                            <span className="media-thumb-label" aria-hidden="true">
-                              {(item.contentType.split("/").pop() ?? "file").toUpperCase()}
-                            </span>
-                          )}
-                        </span>
-                        <span className="media-name" title={item.id}>
-                          {item.filename ?? item.id}
-                        </span>
-                        <span className="media-meta">
-                          {size(item.bytes)}
-                          {item.alt ? "" : " · no alt text"}
-                        </span>
+          <div className="app-media" data-detail={detail || missingId ? "" : undefined}>
+            <Panel title="Files" count={items.length} src={`On ${project.site}`} flush>
+              <div className="cap-panel-pad">
+                <Form method="get" className="app-filters" role="search" aria-label="Search media">
+                  <Field label="Search">
+                    <input className="cap-input" type="search" name="q" defaultValue={q} placeholder="Name, address or alt text" />
+                  </Field>
+                  <div className="app-actions">
+                    <Button type="submit" variant="primary">
+                      Search
+                    </Button>
+                    {q ? (
+                      <Link to="." className="cap-btn">
+                        Clear
                       </Link>
-                    </li>
-                  ))}
-                </ul>
+                    ) : null}
+                  </div>
+                </Form>
+                {canUpload && limits ? (
+                  <Disclosure summary="Upload a file" defaultOpen={actionData?.intent === "upload" && !actionData.ok}>
+                    <Form method="post" encType="multipart/form-data" className="app-form">
+                      <DropZone name="file" accept={limits.types.join(",")} maxBytes={limits.maxBytes} maxFiles={1} hint={`Up to ${size(limits.maxBytes)}: ${limits.types.map((t) => t.split("/")[1]).join(", ")}.`} />
+                      <Field label="Alt text" help="What the image shows, for someone who cannot see it.">
+                        <input className="cap-input" type="text" name="alt" autoComplete="off" />
+                      </Field>
+                      <div className="app-actions">
+                        <Button type="submit" name="intent" value="upload" variant="primary" pending={busy && navigation.formData?.get("intent") === "upload"}>
+                          Upload
+                        </Button>
+                      </div>
+                    </Form>
+                  </Disclosure>
+                ) : null}
+              </div>
+              {items.length === 0 ? (
+                <Empty
+                  kind={q ? "no-match" : "nothing-yet"}
+                  flush
+                  title={q ? `Nothing matches \u201c${q}\u201d` : "No files yet"}
+                  action={q ? <Link to="." className="cap-btn">Clear the search</Link> : undefined}
+                >
+                  {q ? "Try the name, the address or the alt text." : canUpload ? "Upload the first file above, or drop one into a post's editor." : "Files appear here once someone uploads them."}
+                </Empty>
+              ) : (
+                <div className="cap-panel-pad">
+                  <div className="cap-media" data-size="m">
+                    <ul className="cap-media-grid" role="list" aria-label="Files">
+                      {items.map((item) => {
+                        const image = item.contentType.startsWith("image/");
+                        const label = item.filename ?? item.id;
+                        return (
+                          <li key={item.id} className="cap-media-tile" data-active={detail?.id === item.id ? "" : undefined}>
+                            {/* The whole tile is the link, named for the file: one tab stop per file. */}
+                            <Link to={here({ id: item.id })} className="cap-media-open" preventScrollReset aria-describedby={`flags-${item.id}`} aria-current={detail?.id === item.id ? "true" : undefined}>
+                              <span className="cap-media-thumb">
+                                {image ? (
+                                  <img src={item.src} alt="" loading="lazy" decoding="async" width={320} height={320} />
+                                ) : (
+                                  <span className="cap-media-doc" aria-hidden="true">
+                                    {(item.contentType.split("/").pop() ?? "file").slice(0, 5).toUpperCase()}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="cap-media-name" title={item.id}>
+                                {label}
+                              </span>
+                              <span className="cap-media-meta">
+                                {(item.contentType.split("/").pop() ?? "").toUpperCase()} · {size(item.bytes)}
+                              </span>
+                            </Link>
+                            <span className="cap-media-flags" id={`flags-${item.id}`}>
+                              {image && !item.alt ? <Status tone="warn">No alt text</Status> : null}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                  {nextCursor ? (
+                    <p className="app-more">
+                      <Link to={here({ cursor: nextCursor })} className="cap-btn">
+                        Next page
+                      </Link>
+                    </p>
+                  ) : null}
+                </div>
               )}
-              {nextCursor ? (
-                <p>
-                  <Link to={here({ cursor: nextCursor })} className="btn-ghost">
-                    Next page
-                  </Link>
-                </p>
-              ) : null}
-            </section>
+            </Panel>
 
             {missingId ? (
-              <aside className="media-detail" aria-label="Details">
-                <p className="muted">
+              <Panel title="Details">
+                <p>
                   The site has no file {missingId}. It may have been deleted. <Link to={here({})}>Back to the library</Link>.
                 </p>
-              </aside>
+              </Panel>
             ) : null}
 
             {detail ? (
-              <aside className="media-detail" aria-label={`Details for ${name}`}>
-                <header className="media-detail-head">
-                  <h2 title={detail.id}>{name}</h2>
-                  <Link to={here({})} preventScrollReset aria-label="Close the details">
-                    <span aria-hidden="true">&times;</span>
-                  </Link>
-                </header>
-                {detail.contentType.startsWith("image/") ? <img className="media-detail-preview" src={detail.src} alt="" width={640} height={427} /> : null}
-                <dl className="media-facts">
-                  <dt>Address on the site</dt>
-                  <dd>
-                    <code>{detail.url}</code>
-                  </dd>
-                  <dt>Type</dt>
-                  <dd>{detail.contentType}</dd>
-                  <dt>Size</dt>
-                  <dd>
-                    {size(detail.bytes)}, {dims(detail.width, detail.height)}
-                  </dd>
-                  <dt>Uploaded</dt>
-                  <dd>{detail.uploadedAt ? detail.uploadedAt.slice(0, 10) : "unknown"}</dd>
-                  <dt>Alt text</dt>
-                  <dd>{detail.alt || <span className="muted">none</span>}</dd>
-                </dl>
+              <Panel title={name} level={2} headingId="detail-title" actions={<Link to={here({})} className="cap-btn" data-variant="quiet" data-size="sm" preventScrollReset>Close<span className="cap-sr-only"> the details</span></Link>}>
+                <div className="app-detail">
+                  {detail.contentType.startsWith("image/") ? (
+                    <div className="cap-media-preview">
+                      <img src={detail.src} alt="" width={640} height={427} />
+                    </div>
+                  ) : null}
+                  <dl className="app-facts">
+                    <dt>Address on the site</dt>
+                    <dd>
+                      <code className="cap-mono">{detail.url}</code>
+                    </dd>
+                    <dt>Type</dt>
+                    <dd>{detail.contentType}</dd>
+                    <dt>Size</dt>
+                    <dd>
+                      {size(detail.bytes)}, {dims(detail.width, detail.height)}
+                    </dd>
+                    <dt>Uploaded</dt>
+                    <dd>{detail.uploadedAt ? detail.uploadedAt.slice(0, 10) : "unknown"}</dd>
+                    <dt>Alt text</dt>
+                    <dd>{detail.alt || <span className="cap-muted">none</span>}</dd>
+                  </dl>
 
-                <h3>Used in</h3>
-                {detail.usedBy.length === 0 ? (
-                  <p className="muted">
-                    No post on the site uses it, as far as the site's check can see. A page elsewhere linking to it would not show here.
-                  </p>
-                ) : (
-                  <ul className="media-uses">
-                    {detail.usedBy.map((use) => (
-                      <li key={`${use.type}:${use.id}:${use.detail}`}>
-                        {use.title || use.id} <span className="muted">({use.detail})</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {refused && refused.id === detail.id ? (
-                  <div className="alarm" role="alert">
-                    <p>Not deleted. {refused.message}</p>
-                    {refused.usedBy.length > 0 ? (
-                      <ul>
-                        {refused.usedBy.map((use) => (
-                          <li key={`${use.id}:${use.detail}`}>
-                            {use.title || use.id} ({use.detail})
+                  <section aria-labelledby="used-title" className="app-section">
+                    <h3 id="used-title">Used in</h3>
+                    {detail.usedBy.length === 0 ? (
+                      <p className="cap-muted">No post on the site uses it, as far as the site's check can see. A page elsewhere linking to it would not show here.</p>
+                    ) : (
+                      <ul className="app-list">
+                        {detail.usedBy.map((use) => (
+                          <li key={`${use.type}:${use.id}:${use.detail}`}>
+                            {use.title || use.id} <span className="cap-muted">({use.detail})</span>
                           </li>
                         ))}
                       </ul>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {canDelete && detail.deletable ? (
-                  <Form method="post" className="confirm">
-                    <input type="hidden" name="id" value={detail.id} />
-                    {confirming === detail.id ? (
-                      <>
-                        <p>
-                          Delete {name} from {project.site}? The file leaves the site's storage, and nothing in Carrel can bring it back.
-                        </p>
-                        <p>
-                          <button type="submit" name="intent" value="delete" className="btn-danger" disabled={busy}>
-                            Delete from the site
-                          </button>{" "}
-                          <input type="hidden" name="confirm" value="delete" />
-                          <Link to={here({ id: detail.id })} className="btn-ghost" preventScrollReset>
-                            Keep it
-                          </Link>
-                        </p>
-                      </>
-                    ) : (
-                      <p>
-                        <button type="submit" name="intent" value="delete" className="btn-danger" disabled={busy}>
-                          Delete
-                        </button>
-                      </p>
                     )}
-                  </Form>
-                ) : null}
-              </aside>
+                  </section>
+
+                  {refused && refused.id === detail.id ? (
+                    <Alert tone="crit" title="Not deleted">
+                      {refused.message}
+                      {refused.usedBy.length > 0 ? (
+                        <ul className="app-list">
+                          {refused.usedBy.map((use) => (
+                            <li key={`${use.id}:${use.detail}`}>
+                              {use.title || use.id} ({use.detail})
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </Alert>
+                  ) : null}
+
+                  {canDelete && detail.deletable ? (
+                    serverAsks === detail.id ? (
+                      <Alert tone="warn" title={`Delete ${name} from ${project.site}?`}>
+                        <Form method="post" className="app-form">
+                          <p>The file leaves the site's storage, and nothing in Carrel can bring it back.</p>
+                          <input type="hidden" name="id" value={detail.id} />
+                          <input type="hidden" name="confirm" value="delete" />
+                          <div className="app-actions">
+                            <Button type="submit" name="intent" value="delete" variant="danger" pending={busy}>
+                              Delete from the site
+                            </Button>
+                            <Link to={here({ id: detail.id })} className="cap-btn" preventScrollReset>
+                              Keep it
+                            </Link>
+                          </div>
+                        </Form>
+                      </Alert>
+                    ) : (
+                      <Form method="post">
+                        <input type="hidden" name="id" value={detail.id} />
+                        <Button
+                          type="submit"
+                          name="intent"
+                          value="delete"
+                          variant="danger"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setConfirming(event.currentTarget);
+                            setAsking(true);
+                          }}
+                        >
+                          Delete<span className="cap-sr-only"> {name}</span>
+                        </Button>
+                      </Form>
+                    )
+                  ) : null}
+                </div>
+              </Panel>
             ) : null}
           </div>
+
+          <ConfirmDialog
+            open={asking}
+            title={`Delete ${name} from the site?`}
+            lead="The file leaves the site's storage, and nothing in Carrel can bring it back."
+            body={detail && detail.usedBy.length > 0 ? ["The site's check lists places that use it, and may refuse."] : []}
+            action="Delete from the site"
+            returnTo={confirming}
+            perform={async () => {
+              if (!detail) return;
+              await deleter.submit({ intent: "delete", id: detail.id, confirm: "delete" }, { method: "post" });
+            }}
+            onClose={() => setAsking(false)}
+          />
         </>
       )}
-    </main>
+    </div>
   );
 }

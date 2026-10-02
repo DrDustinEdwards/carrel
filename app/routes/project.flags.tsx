@@ -3,7 +3,19 @@
 // item, a post since deleted). Anyone who can read the project sees them; only the Owner dismisses,
 // through the same function as the editor's Dismiss, so a dismissal is recorded the same way.
 
-import { Form, Link, useNavigation } from "react-router";
+import { useState, type ReactNode } from "react";
+import { Form, Link, useFetcher } from "react-router";
+import { Banner } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
+import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { Empty } from "capsomer/react/empty";
+import { Panel } from "capsomer/react/panel";
+import { Row, RowList } from "capsomer/react/row-list";
+import { Pill, Status } from "capsomer/react/status";
+import { Time } from "capsomer/react/time";
+
+import { PageHead } from "~/components/page-head";
+import { ProjectTabs } from "~/components/project-tabs";
 
 import { dismissItemFinding, projectFlags } from "~/lib/ai.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -48,77 +60,96 @@ function source(check: string): string {
   return `Check: ${check}`;
 }
 
+type Flag = Route.ComponentProps["loaderData"]["flags"][number];
+
 export default function ProjectFlags({ loaderData, actionData }: Route.ComponentProps) {
   const { project, canDismiss, flags } = loaderData;
-  const busy = useNavigation().state !== "idle";
+  const fetcher = useFetcher<typeof action>();
+  const [target, setTarget] = useState<{ flag: Flag; opener: HTMLElement | null } | null>(null);
   const open = flags.filter((f) => f.status === "open").length;
+  const dismissed = fetcher.data?.dismissed ?? actionData?.dismissed;
+  const link = ({ href, children }: { href: string; children: ReactNode }) => <Link to={href}>{children}</Link>;
 
   return (
-    <main className="shell shell-wide">
-      <header className="shell-header">
-        <p className="crumbs">
-          <Link to="/">Carrel</Link> / <Link to={`/p/${project.slug}`}>{project.name}</Link>
-        </p>
-        <h1>Flags</h1>
-        <p className="muted">
-          {open} open of {flags.length} on {project.site}. An open flag holds publish until the text is fixed or the Owner dismisses it.
-        </p>
-      </header>
+    <div className="app-page">
+      <PageHead
+        title={project.name}
+        lead={`${open} open of ${flags.length} flags on ${project.site}. An open flag holds publish until the text is fixed or the Owner dismisses it.`}
+      />
 
-      {actionData?.dismissed ? (
-        <p className="notice" role="status">
-          Dismissed flag {actionData.dismissed}.
-        </p>
-      ) : null}
+      <ProjectTabs slug={project.slug} current="flags" />
 
-      {flags.length === 0 ? (
-        <p className="muted">No flags on this project.</p>
-      ) : (
-        <table className="items">
-          <thead>
-            <tr>
-              <th scope="col">Item</th>
-              <th scope="col">From</th>
-              <th scope="col">Flag</th>
-              <th scope="col">State</th>
-            </tr>
-          </thead>
-          <tbody>
-            {flags.map((flag) => (
-              <tr key={flag.id} className={flag.status === "open" ? "flag-open" : "finding-dismissed"}>
-                <td>
-                  {flag.onSite ? <Link to={`/p/${project.slug}/e/${encodeURIComponent(flag.itemId)}`}>{flag.title || flag.itemId}</Link> : flag.itemId}
-                  <span className="item-id">{flag.onSite ? flag.itemId : "Not on the site: no editor page reaches this flag."}</span>
-                </td>
-                <td>{source(flag.check)}</td>
-                <td>
-                  {/* The credit ("from Claude Code", "from Grok Build") is part of the message, as the flag was written. */}
-                  {flag.message}
-                  {flag.excerpt ? <blockquote className="muted">{flag.excerpt}</blockquote> : null}
-                  <span className="item-id">{flag.createdAt.slice(0, 10)}</span>
-                </td>
-                <td>
-                  {flag.status === "open" ? (
-                    canDismiss ? (
+      {dismissed ? <Banner tone="ok">Dismissed flag {dismissed}.</Banner> : null}
+
+      <Panel title="Flags" count={open} src={`${open} open, ${flags.length - open} dismissed`} flush>
+        {flags.length === 0 ? (
+          <Empty kind="all-clear" flush title={<Status tone="ok">All clear</Status>}>
+            No flags on this project.
+          </Empty>
+        ) : (
+          <RowList label="Flags on this project">
+            {flags.map((flag) => {
+              const isOpen = flag.status === "open";
+              return (
+                <Row
+                  key={flag.id}
+                  status={isOpen ? <Status tone="warn">Open</Status> : <Pill variant="secondary">Dismissed</Pill>}
+                  title={flag.message}
+                  href={flag.onSite ? `/p/${project.slug}/e/${encodeURIComponent(flag.itemId)}` : undefined}
+                  renderLink={link}
+                  detail={
+                    <>
+                      {source(flag.check)} on {flag.onSite ? flag.title || flag.itemId : flag.itemId}
+                      {flag.onSite ? null : ". Not on the site: no editor page reaches this flag"}
+                      {flag.excerpt ? (
+                        <>
+                          {" "}
+                          <q>{flag.excerpt}</q>
+                        </>
+                      ) : null}
+                    </>
+                  }
+                  meta={<Time at={flag.createdAt} />}
+                  actions={
+                    isOpen && canDismiss ? (
                       <Form method="post">
                         <input type="hidden" name="flag" value={flag.id} />
                         <input type="hidden" name="item" value={flag.itemId} />
-                        <button type="submit" name="intent" value="dismiss" className="btn-ghost" disabled={busy}>
-                          Dismiss
-                        </button>
+                        <Button
+                          type="submit"
+                          name="intent"
+                          value="dismiss"
+                          size="sm"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setTarget({ flag, opener: event.currentTarget });
+                          }}
+                        >
+                          Dismiss<span className="cap-sr-only"> flag: {flag.message}</span>
+                        </Button>
                       </Form>
-                    ) : (
-                      "Open"
-                    )
-                  ) : (
-                    "Dismissed"
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </main>
+                    ) : undefined
+                  }
+                />
+              );
+            })}
+          </RowList>
+        )}
+      </Panel>
+
+      <ConfirmDialog
+        open={target !== null}
+        title="Dismiss this flag?"
+        lead="A dismissed flag no longer holds publish, and it cannot be reopened."
+        body={target ? [target.flag.message] : []}
+        action="Dismiss flag"
+        returnTo={target?.opener}
+        perform={async () => {
+          if (!target) return;
+          await fetcher.submit({ intent: "dismiss", flag: String(target.flag.id), item: target.flag.itemId }, { method: "post" });
+        }}
+        onClose={() => setTarget(null)}
+      />
+    </div>
   );
 }

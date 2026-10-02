@@ -33,6 +33,22 @@ const SiteGlyph = (
     <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM2 8h12M8 2c2 1.8 2 10.2 0 12M8 2c-2 1.8-2 10.2 0 12" />
   </svg>
 );
+const DocGlyph = (
+  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M4 2.5h5l3 3v8H4zM9 2.5v3h3M6 8.5h4M6 11h4" />
+  </svg>
+);
+const PostGlyph = (
+  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M2.5 9.5V6.5l8-3.5v10l-8-3.5zM5 10.5l.8 3h2" />
+  </svg>
+);
+const LinkGlyph = (
+  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M6.5 9.5a3 3 0 0 0 4 0l2-2a3 3 0 0 0-4-4l-.7.7M9.5 6.5a3 3 0 0 0-4 0l-2 2a3 3 0 0 0 4 4l.7-.7" />
+  </svg>
+);
+
 const BookGlyph = (
   <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
     <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M2.5 3.5c2-.8 4-.6 5.5.6 1.5-1.2 3.5-1.4 5.5-.6v9c-2-.8-4-.6-5.5.6-1.5-1.2-3.5-1.4-5.5-.6zM8 4.1v9" />
@@ -58,7 +74,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
       {googleMessage ? <Banner tone="info">{googleMessage}</Banner> : null}
 
-      <div className="app-split" data-aside={isOwner ? "" : undefined}>
+      <div className="app-split" data-aside={isOwner ? "" : undefined} data-even>
         <Panel title="Projects" count={projects.length} flush>
           {projects.length === 0 ? (
             <Empty kind="nothing-yet" flush title="No projects yet">
@@ -85,12 +101,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         {isOwner ? (
           <Panel title="Owner tools" flush>
             <RowList label="Owner tools">
-              <Row title="Manuscripts" href="/manuscripts" renderLink={link} detail="The shared Drive folder, read-only." />
-              <Row title="Social" href="/social" renderLink={link} detail="Posts announcing what went live." />
+              <Row title="Manuscripts" href="/manuscripts" renderLink={link} media={DocGlyph} mediaVariant="icon" detail="The shared Drive folder, read-only." />
+              <Row title="Social" href="/social" renderLink={link} media={PostGlyph} mediaVariant="icon" detail="Posts announcing what went live." />
               {google?.configured ? (
                 <Row
                   title="Send to Docs"
-                  status={google.connected ? <Status tone="ok">Connected</Status> : <Status tone="nodata">Not connected</Status>}
+                  media={LinkGlyph}
+                  mediaVariant="icon"
+                  meta={google.connected ? <Status tone="ok">Connected</Status> : <Status tone="nodata">Not connected</Status>}
                   detail={google.connected ? "Connected with drive.file only." : "Connect Google to send a post to Docs."}
                   actions={
                     <a href="/auth/google/start" className="cap-btn">
@@ -99,7 +117,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                   }
                 />
               ) : (
-                <Row title="Send to Docs" status={<Status tone="nodata">Not set up</Status>} detail="Send to Docs is not set up yet." />
+                <Row title="Send to Docs" media={LinkGlyph} mediaVariant="icon" meta={<Status tone="nodata">Not set up</Status>} detail="Send to Docs is not set up yet." />
               )}
             </RowList>
           </Panel>

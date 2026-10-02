@@ -2,7 +2,12 @@
 // site until the first Save, which sends it with expectedVersion null: the site refuses it if the
 // slug was taken in the meantime.
 
-import { Form, Link, redirect } from "react-router";
+import { Form, redirect, useNavigation } from "react-router";
+import { Button } from "capsomer/react/button";
+import { Field } from "capsomer/react/field";
+import { Panel } from "capsomer/react/panel";
+
+import { PageHead } from "~/components/page-head";
 
 import { autosave, readDoc } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -41,31 +46,26 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 }
 
 export default function NewPost({ loaderData, actionData }: Route.ComponentProps) {
+  const busy = useNavigation().state !== "idle";
   return (
-    <main className="shell">
-      <header className="shell-header">
-        <p className="crumbs">
-          <Link to="/">Carrel</Link> / <Link to="..">{loaderData.project.name}</Link>
-        </p>
-        <h1>New post</h1>
-      </header>
-      <Form method="post" className="stack">
-        <label className="field">
-          <span>Slug, the post's address on the site</span>
-          <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" autoComplete="off" aria-describedby="slug-help" />
-        </label>
-        <p id="slug-help" className="muted">
-          It becomes /blog/&lt;slug&gt;. It stays a draft in Carrel until you save it to the site.
-        </p>
-        {actionData?.error ? (
-          <p className="alarm" role="alert">
-            {actionData.error}
-          </p>
-        ) : null}
-        <button type="submit" className="btn">
-          Start writing
-        </button>
-      </Form>
-    </main>
+    <div className="app-page" data-narrow>
+      <PageHead
+        crumbs={[{ label: loaderData.project.name, href: `/p/${loaderData.project.slug}` }, { label: "New post" }]}
+        title="New post"
+        lead="A new post starts as a draft in Carrel, under the address you give it."
+      />
+      <Panel title="Address">
+        <Form method="post" className="app-form">
+          <Field label="Slug, the post's address on the site" required help="Lower-case letters, digits and single hyphens, such as my-new-post. It becomes /blog/<slug>. It stays a draft in Carrel until you save it to the site." error={actionData?.error} announce>
+            <input className="cap-input" name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" autoComplete="off" spellCheck={false} data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as my-new-post." />
+          </Field>
+          <div className="app-actions">
+            <Button type="submit" variant="primary" pending={busy}>
+              Start writing
+            </Button>
+          </div>
+        </Form>
+      </Panel>
+    </div>
   );
 }

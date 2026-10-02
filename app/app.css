@@ -33,6 +33,11 @@
 @import "capsomer/theme-switch.css";
 @import "capsomer/shell.css";
 @import "capsomer/confirm-dialog.css";
+@import "capsomer/markdown-editor.css";
+@import "capsomer/publish-gate.css";
+@import "capsomer/stat-tile.css";
+@import "capsomer/drop-zone.css";
+@import "capsomer/media.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */
@@ -99,6 +104,17 @@
   .app-split[data-aside] {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   }
+  /* Where the second panel is the one being read, it gets the wider column. */
+  .app-split[data-aside][data-flip] {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+  .app-split[data-aside][data-even] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.cap-table th .cap-status {
+  margin-inline-start: var(--space-3);
 }
 
 .app-person {
@@ -107,6 +123,11 @@
 }
 
 /* A search and its filters on one row, the button last; they wrap on a phone. */
+.cap-panel-pad:has(> .app-filters) {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .app-filters {
   display: flex;
   flex-wrap: wrap;
@@ -119,5 +140,468 @@
   }
   & .cap-field:first-child {
     flex-basis: 20rem;
+  }
+}
+
+/* A form on a page of its own sits in a column the width of a form, not the whole window. */
+.app-page[data-narrow] {
+  max-width: 44rem;
+}
+
+.app-form {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.app-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-5);
+}
+
+/* A select and its button on one line, inside a table cell. */
+.app-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* The steps after adding a person: a long list inside an alert, kept readable. */
+.app-steps {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 75ch;
+
+  & p,
+  & ol {
+    margin: 0;
+  }
+  & ol {
+    display: grid;
+    gap: var(--space-3);
+    padding-inline-start: 1.25em;
+  }
+}
+
+/* The media library: the files, and beside them the details of the one that is open. */
+.app-media {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+  min-width: 0;
+}
+
+@media (min-width: 1100px) {
+  .app-media[data-detail] {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+  }
+}
+
+.app-detail {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.app-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+
+  & dt {
+    color: var(--muted);
+  }
+  & dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.app-section {
+  display: grid;
+  gap: var(--space-2);
+
+  & h3 {
+    margin: 0;
+    font-size: var(--fs-body);
+  }
+  & p {
+    margin: 0;
+  }
+}
+
+.app-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: 1.25em;
+}
+
+.app-more {
+  margin: var(--space-4) 0 0;
+}
+
+/* Social: the posts waiting on the Owner, and the account forms. */
+.app-posts,
+.app-accounts {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-post,
+.app-account {
+  display: grid;
+  gap: var(--space-3);
+  padding-block-start: var(--space-5);
+  border-block-start: 1px solid var(--line);
+
+  &:first-child {
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+  & h3 {
+    margin: 0;
+    font-size: var(--fs-lead);
+  }
+}
+
+.app-post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.app-lint {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-post-text {
+  display: block;
+  max-width: 60ch;
+  font-weight: 400;
+  white-space: normal;
+}
+
+.app-note {
+  margin: 0;
+}
+
+.app-fields > .cap-check {
+  align-self: end;
+  min-height: var(--control);
+}
+
+.app-account h3 .cap-muted {
+  font-size: var(--fs-body);
+  font-weight: 400;
+}
+
+/* Books: a chapter's scenes, the bible's links, and the one-line forms that start a file. */
+.app-chapter {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-start: var(--space-4);
+
+  & + & {
+    border-block-start: 1px solid var(--line);
+  }
+  & h3 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+    margin: 0;
+    padding-inline: var(--pad-card);
+    font-size: var(--fs-lead);
+  }
+  & h3 .cap-muted {
+    font-size: var(--fs-body);
+    font-weight: 400;
+  }
+}
+
+.app-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  & li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+}
+
+.app-stack {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.app-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  width: 100%;
+
+  & .cap-field {
+    flex: 1 1 11rem;
+  }
+}
+
+/* A scene's header, as a row's detail: each fact with its name, wrapping to the room there is. */
+.app-scene-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  margin: var(--space-2) 0 0;
+
+  & > div {
+    display: flex;
+    gap: var(--space-2);
+  }
+  & dt {
+    color: var(--dim);
+  }
+  & dd {
+    margin: 0;
+    color: var(--muted);
+  }
+}
+
+/* The chapter read through: Capsomer's reading context, one serif column, in a panel. */
+.app-reading {
+  max-width: var(--measure);
+  font-size: var(--fs-prose);
+  line-height: 1.7;
+}
+
+.app-scene-break {
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ---------- The editor screens: one page of writing, with saving and publishing beside it. */
+
+.app-editor {
+  max-width: 1480px;
+}
+
+.app-notices {
+  display: grid;
+  gap: var(--space-3);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.app-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+  min-width: 0;
+}
+
+/* Beside the text on a wide screen; under it on a phone, and under both halves of a split. */
+@media (min-width: 1100px) {
+  .app-editor:not([data-layout="split"]) .app-editor-grid {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
+  .app-editor:not([data-layout="split"]) .app-editor-side {
+    position: sticky;
+    top: calc(var(--top-h) + var(--space-5));
+    max-height: calc(100dvh - var(--top-h) - var(--space-6));
+    overflow-y: auto;
+  }
+}
+
+.app-editor-side {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+  align-content: start;
+}
+
+.app-editor-body {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+@media (min-width: 48rem) {
+  .app-editor-body[data-layout="split"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.app-editor-pane,
+.app-preview-pane {
+  min-width: 0;
+}
+
+/* The preview is the site's own page in a sandboxed frame, so it is white whatever the theme. */
+.app-preview-pane {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  background: #fff;
+
+  & iframe {
+    flex: 1;
+    width: 100%;
+    min-height: 28rem;
+    height: calc(100dvh - 14rem);
+    border: 0;
+    background: #fff;
+  }
+}
+
+/* Capsomer's editor, set for long writing: the page scrolls rather than the editor, the tool strip stays
+   in reach, and the text is the serif reading face in one column. CodeMirror writes its own unlayered
+   styles, so these are specific enough to win. */
+.app-writing {
+  display: grid;
+  gap: var(--space-2);
+  --cap-md-max: none;
+  --cap-md-min: calc(100dvh - 18rem);
+
+  & .cap-md-frame {
+    overflow: clip;
+  }
+  & .cap-md-toolbar {
+    position: sticky;
+    top: var(--top-h);
+    z-index: var(--z-sticky);
+  }
+  & .cap-md .cm-editor {
+    font-size: var(--fs-prose);
+  }
+  & .cap-md .cm-scroller {
+    font-family: var(--prose);
+    line-height: 1.75;
+  }
+  & .cap-md .cm-content {
+    max-width: var(--measure);
+    margin-inline: auto;
+    padding-block: var(--space-6) 40vh;
+  }
+  & .cap-md-source {
+    font-family: var(--prose);
+    font-size: var(--fs-prose);
+  }
+}
+
+.app-writing-tools {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.app-stack[data-tight] {
+  gap: var(--space-4);
+}
+
+.app-savestate {
+  margin: 0;
+  color: var(--muted);
+  min-height: 1.5em;
+}
+
+.app-flags {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  & li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-3);
+  }
+}
+
+/* "Insert from library": the picked image beside its alt text. */
+.app-pick-alt {
+  display: grid;
+  grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.app-pick-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-m);
+}
+
+@media (max-width: 36rem) {
+  .app-pick-alt {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* While someone types, the rest of the screen falls quiet; a mouse move or focus brings it back. */
+html[data-typing] :is(.cap-shell-top, .cap-shell-rail, .cap-shell-tabs, .app-editor .app-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar):not(:focus-within) {
+  opacity: 0.08;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(.cap-shell-top, .cap-shell-rail, .cap-shell-tabs, .app-editor .app-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar) {
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+}
+
+.app-subhead {
+  margin: 0;
+  font-size: var(--fs-body);
+}
+
+.app-bible-body {
+  margin: 0 0 var(--space-3);
+  white-space: pre-wrap;
+  font-family: var(--prose);
+  line-height: 1.6;
+}
+
+.app-editor-main {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* An AI draft is read like prose, in the reading face, with its own line breaks. */
+.app-ai-draft {
+  margin: 0;
+  max-width: var(--measure);
+  white-space: pre-wrap;
+  font-family: var(--prose);
+  font-size: var(--fs-prose);
+  line-height: 1.7;
+}
+
+/* On a phone the tab bar sticks to the foot of the window; a focused control scrolls clear of it. */
+@media (max-width: 820px) {
+  :root:has(.cap-shell) {
+    scroll-padding-bottom: 5rem;
   }
 }

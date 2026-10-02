@@ -3,6 +3,7 @@
 
 import { useMemo, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
+import { MessageProvider } from "capsomer/react/message";
 import { Shell, type LinkProps, type ShellEntry } from "capsomer/react/shell";
 import { ThemeSwitch } from "capsomer/react/theme-switch";
 
@@ -115,7 +116,7 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
       }
       prefKey="carrel-rail"
     >
-      {children}
+      <MessageProvider>{children}</MessageProvider>
     </Shell>
   );
 }
