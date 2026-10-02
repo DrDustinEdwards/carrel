@@ -68,7 +68,7 @@ function wrangler(args) {
 function devServer(entry, port, persist, vars = []) {
   const child = spawn(
     process.execPath,
-    [WRANGLER, "dev", entry, "-c", CONFIG, "--port", String(port), "--persist-to", persist, ...vars.flatMap((v) => ["--var", v])],
+    [WRANGLER, "dev", entry, "-c", CONFIG, "--port", String(port), "--inspector-port", String(port + 1000), "--persist-to", persist, ...vars.flatMap((v) => ["--var", v])],
     { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
   );
   let output = "";
