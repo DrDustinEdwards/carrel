@@ -1,10 +1,23 @@
 // The editor for one site item: the copied CodeMirror editor in a prose layout, autosave to D1 as
 // you type, the site's own render in a sandboxed preview, and the writes the viewer's role allows.
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
+import { Alert, Banner } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
+import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
+import { Field } from "capsomer/react/field";
+import { useMessage } from "capsomer/react/message";
+import { Panel } from "capsomer/react/panel";
+import { PublishGate, type GateCheck, type GateSite } from "capsomer/react/publish-gate";
+import { Segmented } from "capsomer/react/segmented";
+import { Pill, Status } from "capsomer/react/status";
+import { Time } from "capsomer/react/time";
 
-import type { LinkTarget } from "~/components/editor/markdown-editor";
+import { WritingSurface } from "~/components/editor/writing-surface";
+import { useTypingRecede } from "~/components/editor/typing";
+import { PageHead } from "~/components/page-head";
 import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -15,14 +28,12 @@ import { GoogleNotConnected } from "~/lib/google/service-account.server";
 import { searchItems } from "~/lib/index.server";
 import { mediaLimits } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { FIRST_PUBLICATION_NOTE, transitionsFor } from "~/lib/publish-transition.mjs";
+import { transitionsFor } from "~/lib/publish-transition.mjs";
 import { can } from "~/lib/roles";
 import { figureMarkup } from "~/lib/site-markdown";
-import { siteEntry, SiteNotConnected } from "~/lib/sites.server";
+import { siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/editor";
-
-const MarkdownEditor = lazy(() => import("~/components/editor/markdown-editor"));
 
 const AUTOSAVE_DELAY_MS = 1200;
 const LAYOUT_KEY = "carrel:editor-layout";
@@ -67,7 +78,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       mediaAccept = null;
     }
   }
-  const linkTargets: LinkTarget[] = targets
+  const linkTargets: { slug: string; title: string; state: "published" | "scheduled" | "draft" }[] = targets
     .filter((t) => t.itemId !== itemId)
     .map((t) => ({ slug: t.itemId, title: t.title || t.itemId, state: t.status }));
 
@@ -81,6 +92,9 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     status: doc?.status ?? null,
     path: doc?.path ?? null,
     everPublished: Boolean(doc?.publishedAt),
+    publishedAt: doc?.publishedAt ?? null,
+    // Where the post lives, for the publish controls' View link: the site's origin and the post's path.
+    liveUrl: doc?.path && siteConnection(env, project.site).state === "connected" ? new URL(doc.path, (siteConnection(env, project.site) as { origin: string }).origin).href : null,
     publishAt: doc?.publishAt ?? null,
     version: doc?.version ?? null,
     source: draft?.source ?? doc?.source ?? "",
@@ -193,15 +207,19 @@ export default function EditorRoute({ loaderData }: Route.ComponentProps) {
   return <Editor key={`${loaderData.project.slug}/${loaderData.itemId}`} data={loaderData} />;
 }
 
+const utc = (iso: string) => `${iso.slice(0, 16).replace("T", " ")} UTC`;
+
 function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [source, setSource] = useState(data.source);
   const [savedSource, setSavedSource] = useState(data.source);
   const [savedAt, setSavedAt] = useState<string | null>(data.draftAt);
   const [layout, setLayout] = useState<Layout>("write");
-  const [typing, setTyping] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
+  const [asking, setAsking] = useState<null | { kind: "discard" | "import" | "schedule" | "dismiss"; flag?: number; opener: HTMLElement | null }>(null);
   const autosaver = useFetcher<ActionResult>();
   const writer = useFetcher<ActionResult>();
+  const { say } = useMessage();
+  useTypingRecede();
 
   const readOnly = !data.canEdit;
   const openFlags = data.flags.filter((f) => f.status === "open").length;
@@ -281,15 +299,48 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcome, writer.state]);
 
+  // What the controls send is read at the moment they send it: the publish controls keep an Undo that
+  // runs later, and it must carry the version the site has then, not the one this render saw.
+  const latest = useRef({ source, version: data.baseVersion });
+  latest.current = { source, version: data.baseVersion };
+  const waiting = useRef<((result: ActionResult) => void) | null>(null);
+  const viaGate = useRef(false);
   const send = (intent: string, extra: Record<string, string> = {}) =>
-    writer.submit({ intent, source, expectedVersion: data.baseVersion ?? "", ...extra }, { method: "post" });
+    new Promise<ActionResult>((resolve) => {
+      waiting.current = resolve;
+      writer.submit({ intent, source: latest.current.source, expectedVersion: latest.current.version ?? "", ...extra }, { method: "post" });
+    });
+  useEffect(() => {
+    if (writer.state === "idle" && writer.data && waiting.current) {
+      const done = waiting.current;
+      waiting.current = null;
+      done(writer.data);
+    }
+  }, [writer.state, writer.data]);
+
+  // The publish controls' two verbs. A rejection carries the site's own words, which the gate says.
+  const writeThrough = async (intent: string, extra: Record<string, string> = {}) => {
+    viaGate.current = true;
+    const result = await send(intent, extra);
+    viaGate.current = false;
+    if (result.intent !== "write") throw new Error("The site did not answer.");
+    if (!result.outcome.ok) throw new Error(result.outcome.message);
+  };
+
+  // Results of the buttons Carrel owns are said in the message region; the gate says its own.
+  const said = useRef<unknown>(null);
+  useEffect(() => {
+    if (writer.state !== "idle" || !outcome || said.current === outcome || viaGate.current) return;
+    said.current = outcome;
+    if (outcome.ok) say(outcome.action === "save" ? "Saved to the site." : outcome.action === "schedule" ? "Scheduled." : outcome.action === "publish" ? "Published." : "Returned to draft.");
+  }, [outcome, writer.state, say]);
 
   // Cmd+S saves in place: a draft stays a draft, a live post is updated.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        if (maySave && writer.state === "idle") send("save");
+        if (maySave && writer.state === "idle") void send("save");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -297,218 +348,279 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   });
 
   const busy = writer.state !== "idle";
-  const needsConfirm = writer.data?.intent === "publish" && writer.data.needsConfirm && !busy;
   const transitions = data.status ? transitionsFor(data.status === "draft" ? "draft" : "published", data.everPublished) : [];
+  const saveTransition = transitions.find((t) => t.id === "save-draft" || t.id === "save");
   const saveState =
     autosaver.state !== "idle" ? "Saving to Carrel" : source !== savedSource ? "Not yet saved" : savedAt ? `Draft saved in Carrel ${new Date(savedAt).toLocaleTimeString()}` : onSite ? "Matches the site" : "";
-  const previewSrc = `preview?at=${encodeURIComponent(savedAt ?? data.version ?? "")}`;
+  // Absolute, not relative: from /p/x/e/item a bare "preview" would resolve to /p/x/e/preview.
+  const previewSrc = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview?at=${encodeURIComponent(savedAt ?? data.version ?? "")}`;
+  const failure = outcome && !outcome.ok && !viaGate.current ? outcome : null;
+  const google = writer.data?.intent === "google" && !busy ? writer.data : null;
+
+  const gateSite: GateSite = {
+    id: data.project.siteId,
+    name: data.project.site,
+    first: !data.everPublished,
+    published: data.status === "published" && data.liveUrl ? { at: data.publishedAt ?? "", url: data.liveUrl } : null,
+    hold: data.status === "scheduled" && data.publishAt ? { reason: "scheduled", untilLabel: utc(data.publishAt), text: `Scheduled for ${utc(data.publishAt)}` } : null,
+  };
+  // Open flags never stop a publish here (checks and reviewers flag, they do not decide), so each is advisory.
+  const gateChecks: GateCheck[] = data.flags.map((f) => ({
+    id: `flag-${f.id}`,
+    name: "Flag",
+    required: false,
+    ok: f.status !== "open",
+    cause: f.message,
+    pass: "Dismissed",
+    href: "#flags",
+    fix: "Change the text, or dismiss the flag.",
+  }));
+
+  const ask = (kind: "discard" | "import" | "schedule" | "dismiss", opener: HTMLElement | null, flag?: number) => setAsking({ kind, opener, flag });
 
   return (
-    <div
-      className="editor-shell"
-      data-layout={layout}
-      data-typing={typing ? "" : undefined}
-      onKeyDown={(event) => {
-        if (!event.metaKey && !event.ctrlKey && event.key.length === 1) setTyping(true);
-      }}
-      onMouseMove={() => typing && setTyping(false)}
-    >
-      <header className="editor-chrome">
-        <p className="crumbs">
-          <Link to="/">Carrel</Link> / <Link to={`/p/${data.project.slug}`}>{data.project.name}</Link>
-        </p>
-        <div className="editor-title">
-          <h1>{data.title || data.itemId}</h1>
-          <p className="muted">
-            {data.status ? <span className={`status status-${data.status}`}>{data.status}</span> : <span className="status">not on the site yet</span>}{" "}
-            {data.path ? <span>{data.path}</span> : null} <span role="status">{saveState}</span>
-            {data.search ? (
-              <span className="muted">
-                {" "}
-                · Search, {data.search.start} to {data.search.end}: {data.search.clicks} clicks, {data.search.impressions} impressions, position {data.search.position}
-              </span>
-            ) : null}
-          </p>
-        </div>
-        <div className="editor-layouts" role="radiogroup" aria-label="Layout">
-          {(["write", "split", "preview"] as const).map((l) => (
-            <button key={l} type="button" role="radio" aria-checked={layout === l} className="layout-option" onClick={() => chooseLayout(l)}>
-              {l === "write" ? "Write" : l === "split" ? "Split" : "Preview"}
-            </button>
-          ))}
-        </div>
-      </header>
+    <div className="app-page app-editor" data-layout={layout}>
+      <PageHead
+        crumbs={[{ label: data.project.name, href: `/p/${data.project.slug}` }, { label: "Post" }]}
+        title={data.title || data.itemId}
+        lead={
+          <>
+            {data.status === "published" ? <Pill tone="ok">Published</Pill> : data.status === "scheduled" ? <Pill tone="info">Scheduled</Pill> : data.status === "draft" ? <Pill variant="secondary">Draft</Pill> : <Pill variant="outline">Not on the site yet</Pill>}{" "}
+            {data.path ? <span className="cap-mono">{data.path}</span> : null}
+          </>
+        }
+        actions={<Segmented legend="Layout" hideLegend size="sm" value={layout} onChange={chooseLayout} options={[{ value: "write", label: "Write" }, { value: "split", label: "Split" }, { value: "preview", label: "Preview" }]} />}
+      />
 
-      {data.siteError ? (
-        <p className="notice" role="status">
-          {data.siteError}
-        </p>
-      ) : null}
-      {data.behind ? (
-        <p className="notice" role="status">
-          The site's copy changed after this draft was started, so saving it will be refused. Discard the draft to load the site's version, then reapply your changes.
-        </p>
-      ) : null}
-      {data.aiPublished && data.status === "published" ? (
-        <p className="notice" role="status">
-          {data.aiPublished.line} <span className="muted">({new Date(data.aiPublished.at).toLocaleString()})</span>
-        </p>
-      ) : null}
-      {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
-        <details className="editor-extras" open={openFlags > 0}>
-          <summary>
-            {openFlags} open flag{openFlags === 1 ? "" : "s"}, {data.aiDrafts.length} AI draft{data.aiDrafts.length === 1 ? "" : "s"}
-          </summary>
-          {data.flags.length > 0 ? (
-            <ul className="flag-list" aria-label="Flags">
-              {data.flags.map((f) => (
-                <li key={f.id}>
-                  <span className={f.status === "open" ? "flag-open" : "muted"}>{f.status === "open" ? "Open" : "Dismissed"}</span> {f.message}
-                  {f.excerpt ? <q className="muted"> {f.excerpt}</q> : null}
-                  {f.status === "open" && data.canPublish ? (
-                    <button type="button" className="btn-ghost" onClick={() => writer.submit({ intent: "dismiss-flag", flag: String(f.id) }, { method: "post" })}>
-                      Dismiss
-                    </button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {data.aiDrafts.length > 0 ? (
-            <ul className="flag-list" aria-label="AI drafts beside yours">
-              {data.aiDrafts.map((d) => (
-                <li key={d.id}>
-                  <Link to={`ai/${d.id}`}>AI draft from {d.client}</Link> <span className="muted">{new Date(d.createdAt).toLocaleString()} · {d.words} words</span>
-                  {d.note ? <span> · {d.note}</span> : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </details>
-      ) : null}
-      {data.canEdit && live && !data.canPublish ? (
-        <p className="notice" role="status">
-          This post is live. Your changes autosave here as your draft; sending them to the site is the Owner's step.
-        </p>
-      ) : null}
-
-      <div className="editor-body">
-        {layout !== "preview" ? (
-          <section className="editor-pane" aria-label="Write">
-            <Suspense fallback={<p className="muted editor-loading">Loading the editor</p>}>
-              <MarkdownEditor
-                value={source}
-                onChange={setSource}
-                onReady={() => undefined}
-                slug={data.itemId}
-                linkTargets={data.linkTargets}
-                readOnly={readOnly}
-                media={
-                  data.media
-                    ? { ...data.media, figure: (url: string, alt: string) => figureMarkup(data.project.siteId, url, alt) }
-                    : undefined
-                }
-              />
-            </Suspense>
-          </section>
+      <div className="app-notices">
+        {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
+        {data.behind ? (
+          <Banner tone="warn" title="The site's copy changed">
+            It changed after this draft was started, so saving it will be refused. Discard the draft to load the site's version, then reapply your changes.
+          </Banner>
         ) : null}
-        {layout !== "write" ? (
-          <section className="preview-pane" aria-label="Preview">
-            {/* Sandboxed with no permissions: the site's page runs no script and has an opaque origin. */}
-            <iframe title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`} src={previewSrc} sandbox="" />
-          </section>
+        {data.aiPublished && data.status === "published" ? (
+          <Banner tone="info">
+            {data.aiPublished.line} <Time at={data.aiPublished.at} format="exact" />
+          </Banner>
         ) : null}
+        {data.canEdit && live && !data.canPublish ? <Banner tone="info">This post is live. Your changes autosave here as your draft; sending them to the site is the Owner's step.</Banner> : null}
       </div>
 
-      <footer className="editor-chrome editor-actions">
-        {outcome && !outcome.ok ? (
-          <p className="alarm" role="alert">
-            {outcome.message}
-          </p>
-        ) : outcome?.ok ? (
-          <p className="muted" role="status">
-            {outcome.action === "save" ? "Saved to the site." : outcome.action === "publish" ? "Published." : outcome.action === "schedule" ? "Scheduled." : "Returned to draft."}
-          </p>
-        ) : null}
-
-        {writer.data?.intent === "google" && !busy ? (
-          <p className={writer.data.ok ? "muted" : "alarm"} role={writer.data.ok ? "status" : "alert"}>
-            {writer.data.message}{" "}
-            {writer.data.url ? (
-              <a href={writer.data.url} target="_blank" rel="noreferrer">
-                Open the Doc
-              </a>
+      <div className="app-editor-grid">
+        <div className="app-editor-main">
+          <div className="app-editor-body" data-layout={layout}>
+            {layout !== "preview" ? (
+              <section className="app-editor-pane" aria-label="Write">
+                <WritingSurface
+                  label="Post"
+                  value={source}
+                  onChange={setSource}
+                  readOnly={readOnly}
+                  linkTargets={data.linkTargets.map((t) => ({ href: `/blog/${t.slug}`, title: t.title, hint: `/blog/${t.slug}`, note: t.state !== "published" ? `not live yet (${t.state})` : undefined }))}
+                  media={data.media ? { ...data.media, figure: (url: string, alt: string) => figureMarkup(data.project.siteId, url, alt) } : null}
+                />
+              </section>
             ) : null}
-          </p>
-        ) : null}
-
-        {needsConfirm ? (
-          <div className="confirm" role="group" aria-label="Confirm first publication">
-            <p>{FIRST_PUBLICATION_NOTE}</p>
-            <button type="button" className="btn" onClick={() => send("publish", { confirm: "first-publish" })}>
-              Publish now
-            </button>
+            {layout !== "write" ? (
+              <section className="app-preview-pane" aria-label="Preview">
+                {/* Sandboxed with no permissions: the site's page runs no script and has an opaque origin. */}
+                <iframe title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`} src={previewSrc} sandbox="" />
+              </section>
+            ) : null}
           </div>
-        ) : null}
-
-        <div className="actions">
-          {data.canEdit && savedAt ? (
-            <button type="button" className="btn-ghost" disabled={busy} onClick={() => send("discard")}>
-              Discard my draft
-            </button>
-          ) : null}
-
-          {data.canSend && data.googleConnected ? (
-            <>
-              <button type="button" className="btn-ghost" disabled={busy} onClick={() => send("send-to-docs")}>
-                Send to Google Docs
-              </button>
-              {data.sentDoc ? (
-                <button type="button" className="btn-ghost" disabled={busy} onClick={() => send("import-from-docs")}>
-                  Import from Docs
-                </button>
-              ) : null}
-            </>
-          ) : null}
-
-          {!onSite && maySave ? (
-            <button type="button" className="btn" disabled={busy} onClick={() => send("save")}>
-              Save draft to the site
-            </button>
-          ) : null}
-
-          {onSite
-            ? transitions.map((t) => {
-                const isSave = t.id === "save-draft" || t.id === "save";
-                const allowed = isSave ? maySave : data.canPublish;
-                if (!allowed) return null;
-                const intent = isSave ? "save" : t.id === "unpublish" ? "unpublish" : "publish";
-                return (
-                  <button key={t.id} type="button" className={t.danger ? "btn-danger" : isSave ? "btn-ghost" : "btn"} disabled={busy} onClick={() => send(intent)}>
-                    {t.label}
-                  </button>
-                );
-              })
-            : null}
-
-          {onSite && data.canPublish && data.status !== "published" ? (
-            <span className="schedule">
-              <label className="field-inline">
-                <span>Publish at</span>
-                <input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
-              </label>
-              <button
-                type="button"
-                className="btn-ghost"
-                disabled={busy || !scheduleAt}
-                onClick={() => send("schedule", { publishAt: new Date(scheduleAt).toISOString() })}
-              >
-                Schedule
-              </button>
-            </span>
+          {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
+            <Panel title="Flags and AI drafts" id="flags" count={openFlags} src={`${data.aiDrafts.length} AI draft${data.aiDrafts.length === 1 ? "" : "s"} beside yours`}>
+              <div className="app-stack" data-tight>
+                {data.flags.length > 0 ? (
+                  <ul className="app-flags" aria-label="Flags">
+                    {data.flags.map((f) => (
+                      <li key={f.id}>
+                        {f.status === "open" ? <Status tone="warn">Open</Status> : <Pill variant="secondary">Dismissed</Pill>}
+                        <span>
+                          {f.message}
+                          {f.excerpt ? (
+                            <>
+                              {" "}
+                              <q className="cap-muted">{f.excerpt}</q>
+                            </>
+                          ) : null}
+                        </span>
+                        {f.status === "open" && data.canPublish ? (
+                          <Button size="sm" onClick={(event) => ask("dismiss", event.currentTarget, f.id)}>
+                            Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
+                          </Button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {data.aiDrafts.length > 0 ? (
+                  <ul className="app-flags" aria-label="AI drafts beside yours">
+                    {data.aiDrafts.map((d) => (
+                      <li key={d.id}>
+                        <span>
+                          <Link to={`ai/${d.id}`}>AI draft from {d.client}</Link>{" "}
+                          <span className="cap-muted">
+                            <Time at={d.createdAt} /> · {d.words} words
+                          </span>
+                          {d.note ? <span> · {d.note}</span> : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                            </div>
+            </Panel>
           ) : null}
         </div>
-      </footer>
+
+        <aside className="app-editor-side" aria-label="Saving and publishing">
+          {data.canEdit ? (
+            <Panel title="This draft" src={data.version ? "On the site" : "Only in Carrel so far"}>
+              <div className="app-stack" data-tight>
+                <p role="status" className="app-savestate">
+                  {saveState}
+                </p>
+                {failure ? <Alert tone="crit">{failure.message}</Alert> : null}
+                {google ? (
+                  google.ok ? (
+                    <Banner tone="ok">
+                      {google.message}{" "}
+                      {google.url ? (
+                        <a href={google.url} target="_blank" rel="noreferrer">
+                          Open the Doc<span className="cap-sr-only"> (opens in a new tab)</span>
+                        </a>
+                      ) : null}
+                    </Banner>
+                  ) : (
+                    <Alert tone="crit">{google.message}</Alert>
+                  )
+                ) : null}
+                <div className="app-actions">
+                  {!onSite && maySave ? (
+                    <Button variant="primary" pending={busy} onClick={() => void send("save")}>
+                      Save draft to the site
+                    </Button>
+                  ) : null}
+                  {onSite && maySave && saveTransition ? (
+                    <Button variant={data.status === "draft" ? "default" : "primary"} pending={busy} onClick={() => void send("save")}>
+                      {saveTransition.label}
+                    </Button>
+                  ) : null}
+                  {onSite && data.canPublish && data.status === "scheduled" ? (
+                    <Button pending={busy} onClick={() => void send("unpublish")}>
+                      Revert to draft
+                    </Button>
+                  ) : null}
+                  {onSite && data.canPublish && data.status !== "published" ? (
+                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>Schedule</Button>
+                  ) : null}
+                  {savedAt ? (
+                    <Button variant="quiet" pending={busy} onClick={(event) => ask("discard", event.currentTarget)}>
+                      Discard my draft
+                    </Button>
+                  ) : null}
+                </div>
+                {data.canSend && data.googleConnected ? (
+                  <div className="app-actions">
+                    <Button variant="quiet" pending={busy} onClick={() => void send("send-to-docs")}>
+                      Send to Google Docs
+                    </Button>
+                    {data.sentDoc ? (
+                      <Button variant="quiet" pending={busy} onClick={(event) => ask("import", event.currentTarget)}>
+                        Import from Docs
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </Panel>
+          ) : null}
+
+          {onSite && data.canPublish ? (
+            <PublishGate
+              label="Publish checks"
+              sites={[gateSite]}
+              checks={gateChecks}
+              publish={() => writeThrough("publish", { confirm: "first-publish" })}
+              unpublish={() => writeThrough("unpublish")}
+              say={say}
+              fail={(text) => say(text)}
+            />
+          ) : null}
+
+          {data.search ? (
+            <Panel title="Search" src={`${data.search.start} to ${data.search.end}`} size="sm">
+              <dl className="app-facts">
+                <dt>Clicks</dt>
+                <dd className="cap-num">{data.search.clicks}</dd>
+                <dt>Impressions</dt>
+                <dd className="cap-num">{data.search.impressions}</dd>
+                <dt>Position</dt>
+                <dd className="cap-num">{data.search.position}</dd>
+              </dl>
+            </Panel>
+          ) : null}
+        </aside>
+      </div>
+
+      <ConfirmDialog
+        open={asking?.kind === "discard"}
+        title="Discard your draft?"
+        lead="Your working copy in Carrel is deleted, and the editor goes back to the site's text. This cannot be undone."
+        body={[]}
+        action="Discard my draft"
+        returnTo={asking?.opener}
+        perform={async () => void (await send("discard"))}
+        onClose={() => setAsking(null)}
+      />
+      <ConfirmDialog
+        open={asking?.kind === "import"}
+        title="Import from Google Docs?"
+        lead="The Doc's text replaces your working draft. This cannot be undone."
+        body={[]}
+        action="Import and replace"
+        returnTo={asking?.opener}
+        perform={async () => void (await send("import-from-docs"))}
+        onClose={() => setAsking(null)}
+      />
+      <ConfirmDialog
+        open={asking?.kind === "dismiss"}
+        title="Dismiss this flag?"
+        lead="A dismissed flag no longer holds publish, and it cannot be reopened."
+        body={asking?.flag !== undefined ? [data.flags.find((f) => f.id === asking.flag)?.message ?? ""] : []}
+        action="Dismiss flag"
+        returnTo={asking?.opener}
+        perform={async () => {
+          if (asking?.flag !== undefined) await writer.submit({ intent: "dismiss-flag", flag: String(asking.flag) }, { method: "post" });
+        }}
+        onClose={() => setAsking(null)}
+      />
+      <Dialog open={asking?.kind === "schedule"} onOpenChange={(o) => !o && setAsking(null)} placement="center" size="sm" returnTo={asking?.opener} aria-labelledby="schedule-title">
+        <DialogHeader divider>
+          <DialogTitle id="schedule-title">Schedule this post</DialogTitle>
+          <DialogDescription>The site publishes it at the time you choose. Revert to draft takes it back.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Field label="Publish at" required>
+            <input className="cap-input" type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
+          </Field>
+        </DialogBody>
+        <DialogFooter align="between">
+          <DialogClose part="cancel">Cancel</DialogClose>
+          <Button
+            variant="primary"
+            disabledReason={!scheduleAt ? "Choose a time first." : undefined}
+            onClick={async () => {
+              await send("schedule", { publishAt: new Date(scheduleAt).toISOString() });
+              setAsking(null);
+            }}
+          >
+            Schedule
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

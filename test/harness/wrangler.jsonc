@@ -1,0 +1,26 @@
+// The dev config for the screen harness (`npm run check:a11y`, `npm run harness`). NEVER DEPLOYED: no
+// routes, no account, a local-only D1. The harness runs the real app (every route, the shell, the
+// Content Security Policy) with the gate replaced by a header that names the viewer, and a site, a
+// novels repository and a Google that are the test fakes. Nothing in it reaches the network.
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "carrel-harness",
+	"compatibility_date": "2026-09-01",
+	"compatibility_flags": ["global_fetch_strictly_public"],
+	"main": "./entry.ts",
+	"tsconfig": "../../tsconfig.cloudflare.json",
+	"workers_dev": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "carrel-harness",
+			"database_id": "00000000-0000-0000-0000-000000000000"
+		}
+	],
+	"vars": {
+		"ACCESS_TEAM_DOMAIN": "https://harness.cloudflareaccess.com",
+		"ALERT_EMAIL": "owner@harness.invalid",
+		"ALERT_FROM": "carrel@harness.invalid",
+		"SITE_DUSTINEDWARDS_ORIGIN": "https://site.test"
+	}
+}
