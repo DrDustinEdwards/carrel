@@ -10,6 +10,7 @@
     "dev": "react-router dev",
     "typecheck": "wrangler types --strict-vars=false && react-router typegen && tsc -b",
     "test": "vitest run",
+    "check:postinstall": "node scripts/check-postinstall.mjs",
     "check:mcp-roles": "node scripts/check-mcp-roles.mjs",
     "check:conformance": "node scripts/check-conformance.mjs",
     "check:plants": "node scripts/plant-gates.mjs",
@@ -18,7 +19,7 @@
     "seed:owner": "node scripts/seed-owner.mjs",
     "import:docx": "node scripts/import-docx.mjs",
     "deploy": "npm run build && wrangler deploy",
-    "postinstall": "node scripts/bootstrap-config.mjs && wrangler types --strict-vars=false",
+    "postinstall": "node scripts/bootstrap-config.mjs",
     "check:a11y": "node scripts/check-a11y.mjs",
     "harness": "vite build --config vite.harness.config.ts && vite preview --config vite.harness.config.ts --port 5199 --host 127.0.0.1"
   },

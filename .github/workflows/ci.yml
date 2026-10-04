@@ -27,6 +27,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run check:postinstall
       - run: npm run check:mcp-roles
       - name: Install Chromium for the accessibility scan
         run: npx playwright install --with-deps chromium
