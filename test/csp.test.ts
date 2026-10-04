@@ -24,6 +24,17 @@ describe("the app policy", () => {
     expect(policy).toContain("frame-src 'self'");
   });
 
+  it("stays strict for Cloudflare's Web Analytics beacon: no host in script-src, connect-src is 'self'", () => {
+    const directives = appPolicy("abc123").split("; ");
+    const scripts = directives.find((d) => d.startsWith("script-src "))!;
+    const connect = directives.find((d) => d.startsWith("connect-src "))!;
+    const why =
+      "Carrel is private and its hosts are excluded from Web Analytics in the Cloudflare dashboard; do not loosen the policy for the beacon (static.cloudflareinsights.com).";
+    // Only the nonce and 'strict-dynamic' may appear: no scheme, no host, no wildcard.
+    expect(scripts.split(" ").slice(1), why).toEqual(["'nonce-abc123'", "'strict-dynamic'"]);
+    expect(connect, why).toBe("connect-src 'self'");
+  });
+
   it("mints a different nonce every time", () => {
     const nonces = new Set(Array.from({ length: 50 }, newNonce));
     expect(nonces.size).toBe(50);
