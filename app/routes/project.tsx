@@ -20,6 +20,7 @@ import { kindsIn, refreshIndex, searchItems } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteConnection, siteEntry } from "~/lib/sites.server";
+import { waitingWork, withWaitingWork } from "~/lib/waiting.server";
 
 import type { Route } from "./+types/project";
 
@@ -37,7 +38,13 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     status: status.success ? status.data : undefined,
     kind: url.searchParams.get("kind")?.trim() || undefined,
   };
-  const [items, kinds] = await Promise.all([searchItems(env.DB, project.id, filters), kindsIn(env.DB, project.id)]);
+  const viewer = getViewer(context);
+  const [indexed, kinds, waiting] = await Promise.all([
+    searchItems(env.DB, project.id, filters),
+    kindsIn(env.DB, project.id),
+    waitingWork(env.DB, project, viewer),
+  ]);
+  const items = withWaitingWork(indexed, waiting, filters);
   const connection = siteConnection(env, project.site);
   return {
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
@@ -183,8 +190,13 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                       ) : item.status === "scheduled" ? (
                         <Pill tone="info">Scheduled{item.publishAt ? ` ${when(item.publishAt)}` : ""}</Pill>
                       ) : (
-                        <Pill variant="secondary">Draft</Pill>
+                        <Pill variant="secondary">{item.isNew ? "New draft" : "Draft"}</Pill>
                       )}
+                      {item.aiDrafts > 0 ? (
+                        <Pill tone="info">
+                          {item.aiDrafts === 1 ? "1 AI draft waiting" : `${item.aiDrafts} AI drafts waiting`}
+                        </Pill>
+                      ) : null}
                     </td>
                     <td>{item.updatedAt ? <Time at={item.updatedAt} /> : null}</td>
                   </tr>

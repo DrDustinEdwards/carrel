@@ -3,9 +3,10 @@
 
 import { SiteApiError } from "@dustinedwards/site-api/client";
 
+import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { previewFailure, previewResponse } from "~/lib/preview.server";
+import { previewFailure, previewResponse, withLabel } from "~/lib/preview.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { siteClient, siteConnection, SiteNotConnected } from "~/lib/sites.server";
 
@@ -21,10 +22,17 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 
   try {
     const draft = await readDraft(env.DB, project, viewer, itemId);
-    const source = draft?.source ?? (await readDoc(env, project, itemId))?.source;
-    if (source === undefined) return previewFailure("There is nothing to preview yet.");
+    let source = draft?.source ?? (await readDoc(env, project, itemId))?.source;
+    let label: string | null = null;
+    if (source === undefined) {
+      // Nothing of the person's own and nothing on the site: show the newest AI draft, labelled as theirs to take or leave.
+      const [latest] = await listAiDrafts(env.DB, project, viewer, itemId);
+      if (!latest) return previewFailure("There is nothing to preview yet.");
+      source = (await readAiDraft(env.DB, project, viewer, itemId, latest.id)).source;
+      label = `AI draft from ${latest.client}. It is not your draft and it is not on the site.`;
+    }
     const html = await siteClient(env, project.site).preview({ id: itemId, source });
-    return previewResponse(html, connection.origin);
+    return previewResponse(label ? withLabel(html, label) : html, connection.origin);
   } catch (error) {
     if (error instanceof SiteNotConnected) return previewFailure(error.detail);
     if (error instanceof SiteApiError && error.body) return previewFailure(`The site could not render this: ${error.body.message}`);

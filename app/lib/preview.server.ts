@@ -29,6 +29,12 @@ export function withSiteBase(html: string, siteOrigin: string): string {
   return `${base}${stripped}`;
 }
 
+/** A line of plain text at the top of the page saying whose text this is, for a preview of something other than the person's own draft. */
+export function withLabel(html: string, label: string): string {
+  const note = `<p style="margin:0;padding:8px 12px;font:14px/1.4 system-ui,sans-serif;background:#fff3cd;color:#333;border-bottom:1px solid #d9c27a">${label.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)}</p>`;
+  return /<body\b[^>]*>/i.test(html) ? html.replace(/<body\b[^>]*>/i, (body) => `${body}${note}`) : `${note}${html}`;
+}
+
 export function previewResponse(html: string, siteOrigin: string): Response {
   return new Response(withSiteBase(html, siteOrigin), {
     status: 200,

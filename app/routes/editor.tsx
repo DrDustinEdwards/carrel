@@ -57,12 +57,13 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   } catch (error) {
     siteError = error instanceof SiteNotConnected ? error.detail : "The site did not answer, so this shows your Carrel draft only.";
   }
-  if (!doc && !draft && !siteError) throw new Response("Not found", { status: 404 });
+  // An item that exists only as an AI draft is still the person's to open: the list shows it.
+  const aiDrafts = await listAiDrafts(env.DB, project, viewer, itemId);
+  if (!doc && !draft && aiDrafts.length === 0 && !siteError) throw new Response("Not found", { status: 404 });
 
-  const [targets, flags, aiDrafts, aiPublished, sentDoc, googleConnected, search] = await Promise.all([
+  const [targets, flags, aiPublished, sentDoc, googleConnected, search] = await Promise.all([
     searchItems(env.DB, project.id, {}),
     itemFindings(env.DB, project, itemId),
-    listAiDrafts(env.DB, project, viewer, itemId),
     lastAiPublication(env.DB, project, itemId),
     lastSentDoc(env.DB, project, itemId),
     can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
