@@ -180,6 +180,8 @@ async function signIn(claims: (nonce: string) => IdClaims = () => ({}), opts: { 
   }).toString();
   const page = await door(new Request(authorize));
   expect(page.status, await page.clone().text()).toBe(200);
+  // The consent page is HTML: untransformed, so Web Analytics cannot inject its beacon into it.
+  expect(page.headers.get("cache-control")).toBe("no-store, no-transform");
   remember(jar, page);
   const html = await page.text();
   expect(html).toContain("Allow Claude Code to use Carrel as you?");

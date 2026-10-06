@@ -127,6 +127,17 @@ describe("gate: admission", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 
+  it("leaves an HTML page untransformed so Web Analytics cannot inject its beacon, and no asset", async () => {
+    const through = async (type: string) =>
+      gate(request(await token()), testEnv, async () => new Response("x", { headers: { "Content-Type": type } }), keys);
+    for (const html of ["text/html; charset=utf-8", "TEXT/HTML"]) {
+      expect((await through(html)).headers.get("cache-control")).toBe("private, no-store, no-transform");
+    }
+    for (const asset of ["text/css", "text/javascript", "font/woff2", "application/json", "text/plain; charset=utf-8"]) {
+      expect((await through(asset)).headers.get("cache-control"), asset).toBe("private, no-store");
+    }
+  });
+
   it("matches the email without regard to case", async () => {
     const { response } = await run(request(await token({ email: "Owner@Test.Invalid" })));
     expect(response.status).toBe(200);

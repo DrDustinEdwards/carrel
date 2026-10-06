@@ -28,6 +28,12 @@ function withPrivateHeaders(response: Response): Response {
   // The preview route alone may be framed, and only by Carrel itself; nothing can loosen it further.
   const framedByCarrel = response.headers.get("X-Frame-Options")?.toUpperCase() === "SAMEORIGIN";
   for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(name, value);
+  // An HTML page is left as it is: Cloudflare does not touch a response that says no-transform, which
+  // keeps the Web Analytics beacon out of private pages (a dashboard exclusion needs the Pro plan).
+  // Scripts, styles and fonts stay compressible. One Cache-Control header, never two.
+  if (out.headers.get("Content-Type")?.toLowerCase().startsWith("text/html")) {
+    out.headers.set("Cache-Control", `${PRIVATE_HEADERS["Cache-Control"]}, no-transform`);
+  }
   if (framedByCarrel) out.headers.set("X-Frame-Options", "SAMEORIGIN");
   return out;
 }

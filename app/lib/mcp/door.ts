@@ -134,7 +134,8 @@ async function authorizeGet(request: Request, env: DoorEnv): Promise<Response> {
   if (!client) return text("Unknown OAuth client.", 400);
   const consent = await oauth.beginConsent(authRequest);
   consent.headers.set("Content-Type", "text/html; charset=utf-8");
-  consent.headers.set("Cache-Control", "no-store");
+  // no-transform keeps Cloudflare from injecting its Web Analytics beacon into this page.
+  consent.headers.set("Cache-Control", "no-store, no-transform");
   return new Response(consentPage(client, authRequest, consent.handle), { headers: consent.headers });
 }
 
