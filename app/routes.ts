@@ -22,6 +22,7 @@ export default [
   ]),
   route("p/:project/media/api", "routes/media.api.ts"),
   route("p/:project/e/:item/preview", "routes/preview.ts"),
+  route("p/:project/e/:item/ai/:id/preview", "routes/ai-draft.preview.ts"),
   route("b/:project/export/:format", "routes/book.export.ts"),
   route("b/:project/authorship", "routes/book.authorship.ts"),
   route("auth/google/:step", "routes/auth.google.ts"),
