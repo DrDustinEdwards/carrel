@@ -196,9 +196,11 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
             <Field label="Text">
               <textarea className="cap-input" name="body" rows={5} />
             </Field>
-            <Button type="submit" name="intent" value="save-section" variant="primary">
-              Add section
-            </Button>
+            <div className="app-actions">
+              <Button type="submit" name="intent" value="save-section" variant="primary">
+                Add section
+              </Button>
+            </div>
           </Form>
         ) : (
           <p>Only the Owner changes shared text.</p>

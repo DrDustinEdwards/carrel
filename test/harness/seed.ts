@@ -184,6 +184,34 @@ async function build(base: Env): Promise<World> {
     changeId: "seed-primer",
   });
   await writeToSite(env, sitePr, owner, "bacterial-genetics-primer", { action: "schedule", expectedVersion: saved(sched), publishAt: "2026-10-09T13:00:00.000Z" }, site.fetch);
+  // Legal pages: two shared sections, and a privacy page that carries one with the Draft banner on. The
+  // terms page is left out, so the Legal tab shows both a page that is set up and one that is not.
+  for (const [key, title, body] of [
+    ["hosting", "Hosting", "{{site_name}} runs on Cloudflare. Questions about this page go to {{contact}}."],
+    ["analytics", "Analytics", "Cloudflare Web Analytics counts visits without tracking cookies. Nothing here is sold or shared for advertising."],
+  ] as const) {
+    await db.prepare("INSERT INTO legal_sections (key, title, body, updated_by) VALUES (?, ?, ?, ?)").bind(key, title, body, dustin).run();
+  }
+  const privacySource = [
+      "---",
+      "path: /privacy",
+      'title: "Privacy"',
+      "legal_type: privacy",
+      'site_name: "dustinedwards.info"',
+      'operator_name: "Dustin Edwards"',
+      'contact: "/contact"',
+      'banner: "Draft"',
+      "---",
+      "",
+      "This page says what the site collects and why.",
+      "",
+      "<!-- shared:hosting -->",
+      "",
+    ].join("\n");
+  // Written the way the editor writes it, so the shared section is expanded and the date stamped.
+  const privacy = await writeToSite(env, sitePr, owner, "page.privacy", { action: "save", source: privacySource, expectedVersion: null }, site.fetch);
+  if (!privacy.ok) throw new Error(privacy.message);
+  await writeToSite(env, sitePr, owner, "page.privacy", { action: "publish", expectedVersion: privacy.version, source: privacySource }, site.fetch);
   await refreshIndex(env, { id: siteId, site: "dustinedwards" });
 
   // Dustin's own working copy of one draft, so the editor shows a draft saved in Carrel.
