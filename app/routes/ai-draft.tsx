@@ -8,8 +8,10 @@ import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
 import { Panel } from "capsomer/react/panel";
+import { Segmented } from "capsomer/react/segmented";
 import { Time } from "capsomer/react/time";
 
+import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
 import { PageHead } from "~/components/page-head";
 
 import { readAiDraft } from "~/lib/ai.server";
@@ -57,6 +59,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const busy = useNavigation().state !== "idle";
   const [asking, setAsking] = useState<HTMLElement | null>(null);
+  const [view, setView] = useState<"rendered" | "source">("rendered");
   const form = useRef<HTMLFormElement>(null);
   return (
     <div className="app-page">
@@ -93,16 +96,28 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
         }
       />
       <Banner tone="info">
-        Written by an AI session, beside your own draft. It has not changed your draft or the site. Using it replaces your working draft with this text, which you then edit and
-        save as usual.
+        Written by an AI session, beside your own draft. It has not changed your draft or the site. Using it replaces your working draft in Carrel with this text, which you then edit
+        and save to the site as usual.
       </Banner>
-      <Panel title="The draft" src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}>
-        <pre className="app-ai-draft">{draft.source}</pre>
+      <FrontmatterFields source={draft.source} readOnly />
+      <Panel
+        title="The draft"
+        src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}
+        actions={<Segmented legend="View" hideLegend size="sm" value={view} onChange={setView} options={[{ value: "rendered", label: "As it reads" }, { value: "source", label: "Source" }]} />}
+      >
+        {view === "rendered" ? (
+          <div className="app-preview-pane">
+            {/* Sandboxed with no permissions, as the editor's preview is: the site's page runs no script. */}
+            <iframe title={`This AI draft as the site renders it`} src={`${editor}/ai/${draft.id}/preview`} sandbox="" />
+          </div>
+        ) : (
+          <pre className="app-ai-draft">{draft.source}</pre>
+        )}
       </Panel>
       <ConfirmDialog
         open={asking !== null}
         title="Use the AI draft as your draft?"
-        lead="Its text replaces your working draft. Your current draft is not kept."
+        lead="Its text replaces your working draft in Carrel, and your current draft is not kept. Nothing is sent to the site: the text waits in the editor until you save it there."
         body={[]}
         action="Replace my draft"
         returnTo={asking}
