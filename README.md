@@ -151,7 +151,7 @@ The AI door is its own hostname, `carrel-mcp.dustinedwards.info` (design decisio
 | `add_book_finding` | anyone with a role, reviewers above all | a flag on a book file; a recheck never withdraws it, and it holds export |
 | `draft_social_post` | the Owner's own sessions | a post for the social queue, by event id or by account, project and item |
 
-A **reviewer** is a person row with `is_reviewer = 1` (another company's agent), signed in through the same door with its own email: it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
+A **reviewer** is a person row with `is_reviewer = 1` (another company's agent), signed in through the same door with its own email: it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor, and the project's Posts list shows a post that exists only as a draft (yours or an AI's, `test/waiting.test.ts`) and marks a post with AI drafts waiting; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
 
 ## Media
 
