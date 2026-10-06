@@ -15,12 +15,15 @@ import { Segmented } from "capsomer/react/segmented";
 import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 
+import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
 import { PageHead } from "~/components/page-head";
 import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
+import { joinSource, splitSource } from "~/lib/frontmatter";
+import { siteState } from "~/lib/save-state";
 import { importFromDocs, lastSentDoc, sendToDocs } from "~/lib/google/drive.server";
 import { isConnected } from "~/lib/google/oauth.server";
 import { pageStats } from "~/lib/google/search-console.server";
@@ -351,7 +354,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const transitions = data.status ? transitionsFor(data.status === "draft" ? "draft" : "published", data.everPublished) : [];
   const saveTransition = transitions.find((t) => t.id === "save-draft" || t.id === "save");
   const saveState =
-    autosaver.state !== "idle" ? "Saving to Carrel" : source !== savedSource ? "Not yet saved" : savedAt ? `Draft saved in Carrel ${new Date(savedAt).toLocaleTimeString()}` : onSite ? "Matches the site" : "";
+    autosaver.state !== "idle" ? "Saving to Carrel" : source !== savedSource ? "Not yet saved" : savedAt ? `Draft saved in Carrel ${new Date(savedAt).toLocaleTimeString()}` : onSite ? siteState(data.status, data.everPublished) : "";
   // Absolute, not relative: from /p/x/e/item a bare "preview" would resolve to /p/x/e/preview.
   const previewSrc = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview?at=${encodeURIComponent(savedAt ?? data.version ?? "")}`;
   const failure = outcome && !outcome.ok && !viaGate.current ? outcome : null;
@@ -412,10 +415,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           <div className="app-editor-body" data-layout={layout}>
             {layout !== "preview" ? (
               <section className="app-editor-pane" aria-label="Write">
+                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly} />
                 <WritingSurface
                   label="Post"
-                  value={source}
-                  onChange={setSource}
+                  value={splitSource(source).body}
+                  onChange={(body) => setSource((current) => joinSource({ ...splitSource(current), body }))}
                   readOnly={readOnly}
                   linkTargets={data.linkTargets.map((t) => ({ href: `/blog/${t.slug}`, title: t.title, hint: `/blog/${t.slug}`, note: t.state !== "published" ? `not live yet (${t.state})` : undefined }))}
                   media={data.media ? { ...data.media, figure: (url: string, alt: string) => figureMarkup(data.project.siteId, url, alt) } : null}
@@ -477,7 +481,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
         <aside className="app-editor-side" aria-label="Saving and publishing">
           {data.canEdit ? (
-            <Panel title="This draft" src={data.version ? "On the site" : "Only in Carrel so far"}>
+            <Panel title="This draft" src={data.version ? (data.status === "draft" ? "Draft on the site" : "On the site") : "Only in Carrel so far"}>
               <div className="app-stack" data-tight>
                 <p role="status" className="app-savestate">
                   {saveState}

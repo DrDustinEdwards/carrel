@@ -587,6 +587,29 @@ html[data-typing] :is(.cap-shell-top, .cap-shell-rail, .cap-shell-tabs, .app-edi
   min-width: 0;
 }
 
+/* A post's frontmatter as fields above the text. */
+.app-fm {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  min-width: 0;
+  margin: 0 0 var(--space-5);
+  padding: var(--pad-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+
+  & legend {
+    padding: 0 var(--space-2);
+    font-weight: 600;
+  }
+  & .app-fm-field[data-wide] {
+    grid-column: 1 / -1;
+  }
+  & textarea {
+    resize: vertical;
+  }
+}
+
 /* An AI draft is read like prose, in the reading face, with its own line breaks. */
 .app-ai-draft {
   margin: 0;
