@@ -65,17 +65,30 @@ function listOf(block: Block): string[] {
     .map(unquote);
 }
 
-/** The fields the editor shows. A list field is a list of strings; the rest are one line of text. */
+/**
+ * The fields the editor shows. A list field is a list of strings, a flag is one fixed word or nothing,
+ * the rest are one line of text. `on` says which items show it: a post, a legal page, or both.
+ */
 export const FIELDS = [
-  { key: "title", label: "Title", kind: "line" },
-  { key: "description", label: "Description", kind: "text" },
-  { key: "date", label: "Date", kind: "line" },
-  { key: "tags", label: "Tags", kind: "tags" },
-  { key: "assumed_audience", label: "Audience", kind: "text" },
-  { key: "key_takeaways", label: "Key takeaways", kind: "lines" },
+  { key: "title", label: "Title", kind: "line", on: "all" },
+  { key: "description", label: "Description", kind: "text", on: "all" },
+  { key: "date", label: "Date", kind: "line", on: "post" },
+  { key: "tags", label: "Tags", kind: "tags", on: "post" },
+  { key: "assumed_audience", label: "Audience", kind: "text", on: "post" },
+  { key: "key_takeaways", label: "Key takeaways", kind: "lines", on: "post" },
+  { key: "site_name", label: "Site name", kind: "line", on: "legal" },
+  { key: "operator_name", label: "Operator", kind: "line", on: "legal" },
+  { key: "contact", label: "Contact", kind: "line", on: "legal" },
+  { key: "jurisdiction", label: "Jurisdiction", kind: "line", on: "legal" },
+  { key: "data_held", label: "Data this site holds", kind: "tags", on: "legal" },
+  { key: "last_updated", label: "Last updated", kind: "line", on: "legal" },
+  { key: "banner", label: "Draft banner", kind: "flag", on: "legal" },
 ] as const;
 export type FieldKey = (typeof FIELDS)[number]["key"];
 export type FieldValues = Record<FieldKey, string>;
+
+/** The one word the banner field holds. */
+export const BANNER_WORD = "Draft";
 
 /** What each field holds now: tags as "a, b", takeaways one per line. */
 export function readFields(front: string | null): FieldValues {
@@ -85,6 +98,7 @@ export function readFields(front: string | null): FieldValues {
     const field = FIELDS.find((f) => f.key === block.key);
     if (!field) continue;
     if (field.kind === "tags") values[field.key] = listOf(block).join(", ");
+    else if (field.kind === "flag") values[field.key] = unquote(KEY.exec(block.lines[0]!)![2]!) === BANNER_WORD ? BANNER_WORD : "";
     else if (field.kind === "lines") values[field.key] = listOf(block).join("\n");
     else values[field.key] = unquote(KEY.exec(block.lines[0]!)![2]!);
   }
@@ -94,12 +108,13 @@ export function readFields(front: string | null): FieldValues {
 function writeBlock(key: FieldKey, kind: (typeof FIELDS)[number]["kind"], value: string): string[] {
   if (kind === "tags") {
     const tags = value.split(",").map((t) => t.trim()).filter(Boolean);
-    return [`tags: [${tags.join(", ")}]`];
+    return [`${key}: [${tags.join(", ")}]`];
   }
   if (kind === "lines") {
     const items = value.split("\n").map((t) => t.trim()).filter(Boolean);
     return [`${key}:`, ...items.map((t) => `  - ${JSON.stringify(t)}`)];
   }
+  if (kind === "flag") return [`${key}: ${JSON.stringify(BANNER_WORD)}`];
   if (key === "date") return [`date: ${value.trim()}`];
   return [`${key}: ${JSON.stringify(value.replace(/\s*\n\s*/g, " ").trim())}`];
 }

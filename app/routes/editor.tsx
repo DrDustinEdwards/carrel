@@ -23,6 +23,7 @@ import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publ
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { joinSource, splitSource } from "~/lib/frontmatter";
+import { listSections } from "~/lib/legal.server";
 import { siteState } from "~/lib/save-state";
 import { importFromDocs, lastSentDoc, sendToDocs } from "~/lib/google/drive.server";
 import { isConnected } from "~/lib/google/oauth.server";
@@ -64,13 +65,14 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const aiDrafts = await listAiDrafts(env.DB, project, viewer, itemId);
   if (!doc && !draft && aiDrafts.length === 0 && !siteError) throw new Response("Not found", { status: 404 });
 
-  const [targets, flags, aiPublished, sentDoc, googleConnected, search] = await Promise.all([
+  const [targets, flags, aiPublished, sentDoc, googleConnected, search, sections] = await Promise.all([
     searchItems(env.DB, project.id, {}),
     itemFindings(env.DB, project, itemId),
     lastAiPublication(env.DB, project, itemId),
     lastSentDoc(env.DB, project, itemId),
     can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
     pageStats(env, project, doc?.path ?? null),
+    listSections(env.DB),
   ]);
   // Images go in only for someone who may edit, and only on a site with a media library. A site that
   // does not answer leaves the editor without them rather than failing the page.
@@ -108,6 +110,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     behind: Boolean(draft && doc && draft.baseVersion !== doc.version),
     siteError,
     linkTargets,
+    sections: sections.map((s) => ({ key: s.key, title: s.title })),
     flags,
     aiDrafts,
     aiPublished: aiPublished ? { line: publishedByLine(aiPublished.client), at: aiPublished.publishedAt } : null,
@@ -416,7 +419,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           <div className="app-editor-body" data-layout={layout}>
             {layout !== "preview" ? (
               <section className="app-editor-pane" aria-label="Write">
-                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly} />
+                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly} sections={data.sections} />
                 <WritingSurface
                   label="Post"
                   value={splitSource(source).body}

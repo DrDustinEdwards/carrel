@@ -290,3 +290,11 @@ export const socialPosts = sqliteTable("social_posts", {
   sentAt: text("sent_at"),
   acknowledgedAt: text("acknowledged_at"),
 });
+
+export const legalSections = sqliteTable("legal_sections", {
+  key: text("key").primaryKey(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  updatedBy: integer("updated_by").notNull().references(() => people.id),
+});
