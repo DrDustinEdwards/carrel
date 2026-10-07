@@ -8,7 +8,7 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changes, drafts } from "~/db/schema";
-import { indexDoc } from "~/lib/index.server";
+import { indexDoc, removeFromIndex } from "~/lib/index.server";
 import { checkLegalWrite } from "~/lib/legal.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
@@ -190,4 +190,90 @@ export async function writeToSite(
   }
 
   return { ok: true, action: request.action, version: result.version, status: result.status, changeId };
+}
+
+export type DeleteOutcome =
+  | { ok: true; changeId: string; version: string; title: string; recorded: boolean }
+  | { ok: false; reason: "missing" | "conflict" | "refused" | "not-implemented" | "failed"; message: string };
+
+/**
+ * Whether the site can delete a post, from its meta. A site on an older site API, or one whose adapter
+ * has no delete, says no and the reason is plain; a site that does not answer says that.
+ */
+export async function contentDeleteOffered(
+  env: Env,
+  project: SiteProject,
+  fetcher?: typeof fetch,
+): Promise<{ offered: true } | { offered: false; reason: string }> {
+  requireCan(project, "read");
+  try {
+    const meta = await siteClient(env, project.site, fetcher).meta();
+    return meta.capabilities.contentDelete === true ? { offered: true } : { offered: false, reason: "The site does not delete posts through Carrel yet." };
+  } catch (error) {
+    console.error(JSON.stringify({ meta: "failed", error: String(error) }));
+    return { offered: false, reason: "The site did not answer, so Carrel cannot tell whether it deletes posts." };
+  }
+}
+
+/**
+ * Deletes one post from the site. Owner only, checked before the site is asked anything. The version
+ * sent is the one the site holds now, so a post that changed between reading it and this call is
+ * refused as stale and stays. The authorship record is written only for a delete the site carried out;
+ * the person's own working drafts of the post stay in Carrel.
+ */
+export async function deleteFromSite(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  itemId: string,
+  fetcher?: typeof fetch,
+  opts: { client?: string } = {},
+): Promise<DeleteOutcome> {
+  requireCan(project, "delete_content");
+  const client = siteClient(env, project.site, fetcher);
+  const current = await readDoc(env, project, itemId, fetcher);
+  if (!current) {
+    await removeFromIndex(env.DB, project.id, itemId);
+    return { ok: false, reason: "missing", message: "The site has no post with this id, so there is nothing to delete." };
+  }
+
+  const changeId = crypto.randomUUID();
+  try {
+    await client.delete(itemId, { expectedVersion: current.version, changeId });
+  } catch (error) {
+    if (error instanceof SiteApiError) {
+      if (error.status === 501) return { ok: false, reason: "not-implemented", message: "The site does not delete posts through Carrel yet." };
+      if (error.body?.error === "version-conflict") {
+        return { ok: false, reason: "conflict", message: "The post changed on the site while this ran. It was not deleted; open it to see the new version." };
+      }
+      if (error.status === 404) {
+        await removeFromIndex(env.DB, project.id, itemId);
+        return { ok: false, reason: "missing", message: "The post was already gone from the site." };
+      }
+      if (error.body?.error === "refused") return { ok: false, reason: "refused", message: error.body.message };
+    }
+    console.error(JSON.stringify({ write: "failed", itemId, action: "content-delete", error: String(error) }));
+    return { ok: false, reason: "failed", message: "The site did not accept the delete. The post is still there." };
+  }
+
+  await removeFromIndex(env.DB, project.id, itemId);
+  // The site has deleted the post. If the record cannot be written, say so rather than report a
+  // clean success: the screen shows the post as deleted and the record as missing.
+  let recorded = true;
+  try {
+    await drizzle(env.DB).insert(changes).values({
+      id: changeId,
+      projectId: project.id,
+      itemId,
+      personId: viewer.id,
+      action: "content-delete",
+      versionBefore: current.version,
+      versionAfter: null,
+      client: opts.client ?? null,
+    });
+  } catch (error) {
+    recorded = false;
+    console.error(JSON.stringify({ record: "failed", itemId, action: "content-delete", changeId, error: String(error) }));
+  }
+  return { ok: true, changeId, version: current.version, title: current.title, recorded };
 }

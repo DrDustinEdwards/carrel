@@ -85,6 +85,14 @@ export async function indexDoc(db: D1Database, projectId: number, doc: ContentDo
   await db.batch(writeBody(db, projectId, doc.id, doc.title, doc.source));
 }
 
+/** Drops one item from the index after the site deleted it. The index is a cache; the site stays the authority. */
+export async function removeFromIndex(db: D1Database, projectId: number, itemId: string): Promise<void> {
+  await db.batch([
+    db.prepare("DELETE FROM site_items WHERE project_id = ? AND item_id = ?").bind(projectId, itemId),
+    db.prepare("DELETE FROM site_items_fts WHERE project_id = ? AND item_id = ?").bind(projectId, itemId),
+  ]);
+}
+
 export type RefreshResult = { listed: number; fetched: number; removed: number; pending: number };
 
 /**
