@@ -2,6 +2,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { people, projectMembers, projects } from "~/db/schema";
+import { agentEmail } from "~/lib/agent-keys.server";
 import { can, type Action, type Role } from "~/lib/roles";
 
 export type Viewer = {
@@ -34,6 +35,16 @@ export async function findViewer(db: D1Database, email: string): Promise<Viewer 
     .where(and(eq(people.email, email.trim()), isNull(people.disabledAt)))
     .get();
   return row ?? null;
+}
+
+/**
+ * The active person row for a named agent key ("agent:<name>"), or null. The row is where the agent's
+ * role lives: the key proves who is knocking and grants nothing. An agent is never the Owner, so a row
+ * flagged Owner is refused here, whatever the table says.
+ */
+export async function findAgentViewer(db: D1Database, name: string): Promise<Viewer | null> {
+  const viewer = await findViewer(db, agentEmail(name));
+  return viewer && !viewer.isOwner ? viewer : null;
 }
 
 export async function roleOn(db: D1Database, viewer: Viewer, projectId: number): Promise<Role | null> {

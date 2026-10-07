@@ -11,8 +11,9 @@
 // by email. The pages are never served here, and this door is never served on the browser's host.
 //
 // Routes on this host, outermost first:
-//   /mcp                          the provider checks the bearer token, then apiHandler finds the
-//                                 person and hands the request to server.ts
+//   /mcp                          a named agent key (agent-keys.server.ts) goes straight to agentHandler;
+//                                 anything else: the provider checks the bearer token, then apiHandler
+//                                 finds the person and hands the request to server.ts
 //   /authorize  /callback         the consent page and the Access sign-in, below
 //   /token, /.well-known/*        served by the provider
 //   /health                       liveness
@@ -20,7 +21,8 @@
 
 import OAuthProvider, { AuthorizationError, CimdFetchError, type AuthRequest, type ClientInfo, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 
-import { findViewer } from "~/lib/people.server";
+import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
+import { findAgentViewer, findViewer } from "~/lib/people.server";
 
 import { accessSaas, authorizationUrl, finishSignIn, newSignIn } from "./access-login";
 import { carrelOrigin, handleMcp, MCP_ROUTE } from "./server";
@@ -238,6 +240,26 @@ const apiHandler = {
   },
 };
 
+/**
+ * The named-agent surface. A key (agent-keys.server.ts) names an agent, and the agent is the person
+ * row "agent:<name>" in Carrel's People table, found again on every request: disabling that row
+ * revokes the agent at once, and its role on each project is whatever People says, never the key's.
+ * A key with no active row is refused here and never falls through to anything. Writes are credited
+ * to "agent:<name>", the same text as the person, never to Dustin.
+ */
+async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, name: string): Promise<Response> {
+  const viewer = await findAgentViewer(env.DB, name);
+  if (!viewer) {
+    console.warn(JSON.stringify({ door: "refused", reason: "agent-not-in-carrel", agent: name }));
+    return text("Forbidden. This agent key does not belong to an active agent in Carrel.", 403);
+  }
+  console.log(JSON.stringify({ door: "agent-key-accepted", agent: name }));
+  const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name) }, { carrelOrigin: carrelOrigin(env) });
+  const out = new Response(response.body, response);
+  for (const [header, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(header, value);
+  return out;
+}
+
 const providers = new Map<string, OAuthProvider<Env>>();
 
 /** One provider per origin: its resource URI is fixed at construction. */
@@ -270,6 +292,12 @@ function providerFor(env: Env): OAuthProvider<Env> {
 }
 
 /** Serves one request that arrived on the AI door's hostname. */
-export function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const { pathname } = new URL(request.url);
+  if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
+    // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
+    const agent = await agentPrincipal(env, request.headers.get("Authorization"));
+    if (agent) return agentHandler(request, env, ctx, agent);
+  }
   return providerFor(env).fetch(request, env, ctx);
 }
