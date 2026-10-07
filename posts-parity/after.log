@@ -1,0 +1,146 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.check: Clicking the checkbox did not change its state
+Call log:
+[2m  - waiting for getByRole('radio', { name: 'By word' })[22m
+[2m    - locator resolved to <input type="radio" value="word" name="_R_6qmb5_"/>[22m
+[2m  - attempting click action[22m
+[2m    - scrolling into view if needed[22m
+[2m    - done scrolling[22m
+[2m    - forcing action[22m
+[2m    - performing click action[22m
+[2m    - click action done[22m
+[2m    - waiting for scheduled navigations to finish[22m
+[2m    - navigations have finished[22m
+
+    at Object.after (C:\Users\email\dev\carrel\scripts\lib\harness.mjs:80:58)
+    at async visit (C:\Users\email\dev\carrel\scripts\lib\harness.mjs:316:21)
+    at async file:///C:/Users/email/dev/carrel/scripts/screens.mjs:24:9 {
+  log: [
+    "  - waiting for getByRole('radio', { name: 'By word' })",
+    '    - locator resolved to <input type="radio" value="word" name="_R_6qmb5_"/>',
+    '  - attempting click action',
+    '    - scrolling into view if needed',
+    '    - done scrolling',
+    '    - forcing action',
+    '    - performing click action',
+    '    - click action done',
+    '    - waiting for scheduled navigations to finish',
+    '    - navigations have finished'
+  ],
+  name: 'Error'
+}
+
+Node.js v24.21.0
+node:internal/errors:986
+  const err = new Error(message);
+              ^
+
+Error: Command failed: C:\Program Files\nodejs\node.exe C:\Users\email\dev\carrel\node_modules\vite\bin\vite.js build --config vite.harness.config.ts
+
+
+[43mWARNING[0m: your worker config (at `test\harness\wrangler.jsonc`) contains the following configuration options which are ignored since they are not applicable when using Vite:
+  - `tsconfig` which is not relevant in the context of a Vite project
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - react-router:dot-server (35%)
+  - react-router:virtual-modules (17%)
+  - react-router:inject-hmr-runtime (15%)
+  - react-router:hmr-runtime (11%)
+  - react-router:build-client-route (6%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[31m✗[39m Build failed in 8.50s
+[31merror during build:
+[31mBuild failed with 1 error:
+
+[plugin react-router:virtual-modules]
+Error: ENOENT: no such file or directory, mkdir 'C:\Users\email\dev\carrel\build\client\assets'
+    at async mkdir (node:internal/fs/promises:1564:10)
+    at async writeFileSafe (file:///C:/Users/email/dev/carrel/node_modules/@react-router/dev/dist/vite.js:1113:2)
+    at async generateReactRouterManifestsForBuild (file:///C:/Users/email/dev/carrel/node_modules/@react-router/dev/dist/vite.js:1369:3)
+    at async LoadPluginContextImpl.load (file:///C:/Users/email/dev/carrel/node_modules/@react-router/dev/dist/vite.js:1869:88)
+    at async plugin (file:///C:/Users/email/dev/carrel/node_modules/rolldown/dist/shared/bindingify-input-options-XPJLJOD0.mjs:1547:16)
+    at async plugin.<computed> (file:///C:/Users/email/dev/carrel/node_modules/rolldown/dist/shared/bindingify-input-options-XPJLJOD0.mjs:1959:12)[31m
+    at aggregateBindingErrorsIntoJsError (file:///C:/Users/email/dev/carrel/node_modules/rolldown/dist/shared/error-BHRSI0R7.mjs:48:18)
+    at unwrapBindingResult (file:///C:/Users/email/dev/carrel/node_modules/rolldown/dist/shared/error-BHRSI0R7.mjs:18:128)
+    at #build (file:///C:/Users/email/dev/carrel/node_modules/rolldown/dist/shared/rolldown-build-CtPvmZgJ.mjs:3276:34)
+    at async buildEnvironment (file:///C:/Users/email/dev/carrel/node_modules/vite/dist/node/chunks/node.js:32622:66)
+    at async build (file:///C:/Users/email/dev/carrel/node_modules/vite/dist/node/chunks/node.js:33044:19)
+    at async Promise.all (index 0)
+    at async buildApp (file:///C:/Users/email/dev/carrel/node_modules/@react-router/dev/dist/vite.js:1539:8)
+    at async buildApp (file:///C:/Users/email/dev/carrel/node_modules/@react-router/dev/dist/vite.js:794:6)
+    at async Object.buildApp (file:///C:/Users/email/dev/carrel/node_modules/@react-router/dev/dist/vite.js:2202:8)
+    at async Object.buildApp (file:///C:/Users/email/dev/carrel/node_modules/vite/dist/node/chunks/node.js:33036:6) {
+  errors: [Getter/Setter]
+}[39m
+
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at checkExecSyncError (node:child_process:942:11)
+    at execFileSync (node:child_process:978:15)
+    at startHarness (file:///C:/Users/email/dev/carrel/scripts/lib/harness.mjs:231:3)
+    at file:///C:/Users/email/dev/carrel/scripts/screens.mjs:16:23
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    Buffer(10075) [Uint8Array] [
+       85, 115, 105, 110, 103,  32,  86, 105, 116, 101,  32,  69,
+      110, 118, 105, 114, 111, 110, 109, 101, 110, 116,  32,  65,
+       80,  73,  10,  27,  91,  51,  54, 109, 118, 105, 116, 101,
+       32, 118,  56,  46,  49,  46,  51,  32,  27,  91,  51,  50,
+      109,  98, 117, 105, 108, 100, 105, 110, 103,  32,  99, 108,
+      105, 101, 110, 116,  32, 101, 110, 118, 105, 114, 111, 110,
+      109, 101, 110, 116,  32, 102, 111, 114,  32, 112, 114, 111,
+      100, 117,  99, 116, 105, 111, 110,  46,  46,  46,  27,  91,
+       51,  54, 109,  27,
+      ... 9975 more items
+    ],
+    Buffer(2709) [Uint8Array] [
+       10,  10,  27,  91,  52,  51, 109,  87,  65,  82,  78,  73,
+       78,  71,  27,  91,  48, 109,  58,  32, 121, 111, 117, 114,
+       32, 119, 111, 114, 107, 101, 114,  32,  99, 111, 110, 102,
+      105, 103,  32,  40,  97, 116,  32,  96, 116, 101, 115, 116,
+       92, 104,  97, 114, 110, 101, 115, 115,  92, 119, 114,  97,
+      110, 103, 108, 101, 114,  46, 106, 115, 111, 110,  99,  96,
+       41,  32,  99, 111, 110, 116,  97, 105, 110, 115,  32, 116,
+      104, 101,  32, 102, 111, 108, 108, 111, 119, 105, 110, 103,
+       32,  99, 111, 110,
+      ... 2609 more items
+    ]
+  ],
+  pid: 17340,
+  stdout: Buffer(10075) [Uint8Array] [
+     85, 115, 105, 110, 103,  32,  86, 105, 116, 101,  32,  69,
+    110, 118, 105, 114, 111, 110, 109, 101, 110, 116,  32,  65,
+     80,  73,  10,  27,  91,  51,  54, 109, 118, 105, 116, 101,
+     32, 118,  56,  46,  49,  46,  51,  32,  27,  91,  51,  50,
+    109,  98, 117, 105, 108, 100, 105, 110, 103,  32,  99, 108,
+    105, 101, 110, 116,  32, 101, 110, 118, 105, 114, 111, 110,
+    109, 101, 110, 116,  32, 102, 111, 114,  32, 112, 114, 111,
+    100, 117,  99, 116, 105, 111, 110,  46,  46,  46,  27,  91,
+     51,  54, 109,  27,
+    ... 9975 more items
+  ],
+  stderr: Buffer(2709) [Uint8Array] [
+     10,  10,  27,  91,  52,  51, 109,  87,  65,  82,  78,  73,
+     78,  71,  27,  91,  48, 109,  58,  32, 121, 111, 117, 114,
+     32, 119, 111, 114, 107, 101, 114,  32,  99, 111, 110, 102,
+    105, 103,  32,  40,  97, 116,  32,  96, 116, 101, 115, 116,
+     92, 104,  97, 114, 110, 101, 115, 115,  92, 119, 114,  97,
+    110, 103, 108, 101, 114,  46, 106, 115, 111, 110,  99,  96,
+     41,  32,  99, 111, 110, 116,  97, 105, 110, 115,  32, 116,
+    104, 101,  32, 102, 111, 108, 108, 111, 119, 105, 110, 103,
+     32,  99, 111, 110,
+    ... 2609 more items
+  ]
+}
+
+Node.js v24.21.0
+finished
