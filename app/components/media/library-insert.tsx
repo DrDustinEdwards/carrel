@@ -39,7 +39,7 @@ export function LibraryInsert({ media, editor }: { media: EditorMedia; editor: R
   const list = useFetcher<{ items: Row[]; nextCursor: string | null; error?: string }>();
 
   useEffect(() => {
-    if (open && list.state === "idle" && !list.data) list.load(media.endpoint);
+    if (open && list.state === "idle" && !list.data) void list.load(media.endpoint);
   }, [open, list, media.endpoint]);
 
   // Focus goes to the alt field once a file is picked: the step is otherwise silent.
@@ -115,7 +115,7 @@ export function LibraryInsert({ media, editor }: { media: EditorMedia; editor: R
                 role="search"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  list.load(`${media.endpoint}?q=${encodeURIComponent(q.trim())}`);
+                  void list.load(`${media.endpoint}?q=${encodeURIComponent(q.trim())}`);
                 }}
               >
                 <Field label="Search the library">

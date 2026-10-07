@@ -280,7 +280,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (readOnly || source === savedSource || autosaver.state !== "idle") return;
     const timer = window.setTimeout(() => {
       inFlight.current = source;
-      autosaver.submit({ intent: "autosave", source, expectedVersion: data.baseVersion ?? "" }, { method: "post" });
+      void autosaver.submit({ intent: "autosave", source, expectedVersion: data.baseVersion ?? "" }, { method: "post" });
     }, AUTOSAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -335,7 +335,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const send = (intent: string, extra: Record<string, string> = {}) =>
     new Promise<ActionResult>((resolve) => {
       waiting.current = resolve;
-      writer.submit({ intent, source: latest.current.source, expectedVersion: latest.current.version ?? "", ...extra }, { method: "post" });
+      void writer.submit({ intent, source: latest.current.source, expectedVersion: latest.current.version ?? "", ...extra }, { method: "post" });
     });
   useEffect(() => {
     if (writer.state === "idle" && writer.data && waiting.current) {

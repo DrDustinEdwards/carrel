@@ -221,7 +221,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (readOnly || source === savedSource || autosaver.state !== "idle") return;
     const timer = window.setTimeout(() => {
       inFlight.current = source;
-      autosaver.submit({ intent: "autosave", source, expectedVersion: data.baseVersion ?? "" }, { method: "post" });
+      void autosaver.submit({ intent: "autosave", source, expectedVersion: data.baseVersion ?? "" }, { method: "post" });
     }, AUTOSAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,7 +279,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        if (data.canEdit && data.connected && writer.state === "idle") send("save");
+        if (data.canEdit && data.connected && writer.state === "idle") void send("save");
       }
     };
     window.addEventListener("keydown", onKey);
