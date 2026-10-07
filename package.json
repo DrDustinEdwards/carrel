@@ -33,7 +33,7 @@
     "@codemirror/language": "6.12.4",
     "@codemirror/state": "6.7.1",
     "@codemirror/view": "6.43.7",
-    "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.3.0",
+    "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#90d64b8053a48891a44aac93b214a046fb12451e",
     "@fontsource-variable/source-serif-4": "5.3.0",
     "@fontsource/martian-mono": "5.3.0",
     "@fontsource/schibsted-grotesk": "5.3.0",
