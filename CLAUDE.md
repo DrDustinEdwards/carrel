@@ -19,4 +19,6 @@ Carrel is Dustin's private writing hub at https://carrel.dustinedwards.info, beh
 
 ## Deploys
 
-`npm run deploy` (build, then wrangler deploy) is the only deploy; CI (`.github/workflows/ci.yml`) runs the tests and deploys nothing. A merge does not deploy.
+A merge to main deploys itself: the `deploy` job in `.github/workflows/ci.yml` runs after `check` and `gates` pass, on pushes to main only, and calls `npm run deploy:ci` (`scripts/deploy.mjs`). It renders `wrangler.jsonc` from the example and the variables `CARREL_D1_DATABASE_ID`, `CARREL_KV_OAUTH_ID` and `CARREL_ALERT_EMAIL`, checks the ids against the names `carrel` and `carrel-oauth`, builds, applies remote D1 migrations, confirms none is pending, then deploys. Any failed step stops the run before the deploy. `scripts/check-deploy.mjs` (part of `npm test`) pins that order. Setup and the job text are in `docs/auto-deploy.md`.
+
+`npm run deploy` (build, then wrangler deploy, from your own `wrangler.jsonc`) still works for a manual deploy. It does not run migrations: run `npm run db:migrate:remote` first.
