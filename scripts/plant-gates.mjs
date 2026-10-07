@@ -31,7 +31,7 @@ const GATES = {
   conformance: [process.execPath, ["scripts/check-conformance.mjs"]],
 };
 
-const MCP_TESTS = ["test/mcp.test.ts", "test/mcp-followups.test.ts", "test/door.test.ts"];
+const MCP_TESTS = ["test/mcp.test.ts", "test/mcp-followups.test.ts", "test/door.test.ts", "test/agent-keys.test.ts"];
 
 /** Each plant: the gate that must catch it, the file, the exact text replaced, and what replaces it. */
 const PLANTS = [
@@ -55,6 +55,14 @@ const PLANTS = [
   { gate: "tests", file: "app/lib/mcp/access-login.ts", find: 'if (payload.nonce !== input.nonce) return { ok: false, reason: "nonce-mismatch" };', replace: "", label: "the ID token's nonce unchecked" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "  if (!viewer) {\n    // Access let them in", replace: "  if (viewer === undefined) {\n    // Access let them in", label: "an unknown person gets a grant" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (!viewer || viewer.id !== props?.personId) {", replace: "if (!viewer) {", label: "the per-request person check trusts a stale grant" },
+  // Named agent keys (job_77fd33040bdd): the key names an agent and grants nothing.
+  { gate: "tests", file: "app/lib/agent-keys.server.ts", find: 'if (typeof native === "function") return native.call(crypto.subtle, a, b);', replace: 'if (typeof native === "function") return true;', label: "any presented key matches a configured agent key" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (agent) return agentHandler(request, env, ctx, agent);", replace: 'if (agent || request.headers.get("Authorization")) return agentHandler(request, env, ctx, agent ?? "grok");', label: "an unknown key or an OAuth token is treated as the grok agent" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (agent) return agentHandler(request, env, ctx, agent);", replace: 'if (agent) return agentHandler(request, env, ctx, request.headers.get("X-Agent-Name") ?? agent);', label: "the agent's name taken from the request" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "{ viewer, client: agentClient(name) }", replace: "{ viewer: { ...viewer, isOwner: true }, client: agentClient(name) }", label: "an agent key acts as the Owner" },
+  { gate: "tests", file: "app/lib/people.server.ts", find: "return viewer && !viewer.isOwner ? viewer : null;", replace: "return viewer;", label: "a person row marked Owner may be an agent" },
+  { gate: "tests", file: "app/lib/agent-keys.server.ts", find: "/^Bearer[ ]+(\\S+)$/i.exec(authorization.trim())", replace: "/^\\s*(?:Bearer\\s+)?(\\S+)/i.exec(authorization.trim())", label: "a bare key with no Bearer scheme is read as an agent key" },
+  { gate: "tests", file: "app/lib/people.server.ts", find: "and(eq(people.email, email.trim()), isNull(people.disabledAt))", replace: "eq(people.email, email.trim())", label: "a disabled person (or agent) is still found" },
   { gate: "roles", file: "app/lib/mcp/tools.ts", find: "    run: async (args, ctx) => {\n      // Refused on the role", replace: "    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal(\"planted\");\n      // Refused on the role", label: "an Owner check in a tool" },
   {
     gate: "conformance",
