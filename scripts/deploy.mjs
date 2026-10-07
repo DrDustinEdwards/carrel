@@ -36,17 +36,23 @@ const ZERO_KV = "00000000000000000000000000000000";
 const D1_NAME = "carrel";
 const KV_TITLE = "carrel-oauth";
 
+/** @param {string} message @returns {never} */
 function fail(message) {
   console.error(`deploy: ${message}`);
   process.exit(1);
 }
 
+/** @param {string} name */
 function step(name) {
   console.log(`deploy: ${name}`);
 }
 
-/** Runs a node script. Returns {status, stdout}; stdout is echoed unless quiet. */
-function run(entry, args, { quiet = false } = {}) {
+/**
+ * Runs a node script. Returns {status, stdout}; stdout is echoed unless quiet.
+ * @param {string} entry @param {string[]} args @param {{ quiet?: boolean }} [opts]
+ */
+function run(entry, args, opts = {}) {
+  const quiet = opts.quiet ?? false;
   const result = spawnSync(process.execPath, [entry, ...args], {
     cwd: root,
     env: process.env,
@@ -58,6 +64,7 @@ function run(entry, args, { quiet = false } = {}) {
   return { status: result.status ?? 1, stdout: result.stdout ?? "" };
 }
 
+/** @param {string} label @param {string} entry @param {string[]} args @param {{ quiet?: boolean }} [opts] */
 function must(label, entry, args, opts) {
   const result = run(entry, args, opts);
   if (result.status !== 0) fail(`${label} failed (exit ${result.status}). Stopping; nothing after it ran.`);
@@ -87,7 +94,7 @@ if (existsSync(configPath) && readFileSync(configPath, "utf8") !== example) {
   fail("wrangler.jsonc already exists and is not the placeholder copy. Refusing to overwrite a real config.");
 }
 
-/** Replaces `from` with `to`, which must occur exactly once in the text. */
+/** Replaces `from` with `to`, which must occur exactly once in the text. @param {string} text @param {string} from @param {string} to */
 function replaceOnce(text, from, to) {
   const parts = text.split(from);
   if (parts.length !== 2) fail(`the example has ${parts.length - 1} copies of ${JSON.stringify(from)}, expected 1.`);
@@ -114,6 +121,7 @@ writeFileSync(configPath, rendered);
 // 3. The ids must be the ones the names resolve to in this account.
 step(`checking database "${D1_NAME}" and namespace "${KV_TITLE}" against the account`);
 const d1List = must("wrangler d1 list", wrangler, ["d1", "list", "--json"], { quiet: true });
+/** @type {{ name: string, uuid: string }[]} */
 let databases;
 try {
   databases = JSON.parse(d1List.stdout);
@@ -125,6 +133,7 @@ if (d1Match.length !== 1 || d1Match[0].uuid !== d1Id) {
   fail(`the D1 database named "${D1_NAME}" does not have the id in CARREL_D1_DATABASE_ID. Refusing to deploy.`);
 }
 const kvList = must("wrangler kv namespace list", wrangler, ["kv", "namespace", "list"], { quiet: true });
+/** @type {{ title: string, id: string }[]} */
 let namespaces;
 try {
   namespaces = JSON.parse(kvList.stdout);

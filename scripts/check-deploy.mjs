@@ -39,7 +39,10 @@ const dir = mkdtempSync(join(tmpdir(), "carrel-deploy-"));
 writeFileSync(join(dir, "wrangler-stub.cjs"), wranglerStub);
 writeFileSync(join(dir, "build-stub.cjs"), buildStub);
 
-/** Runs deploy.mjs in a fresh scratch project. Returns the exit code, the calls made and the config. */
+/**
+ * Runs deploy.mjs in a fresh scratch project. Returns the exit code, the calls made and the config.
+ * @param {Record<string, string>} env @param {{ realConfig?: boolean }} [opts]
+ */
 function attempt(env, { realConfig = false } = {}) {
   const proj = mkdtempSync(join(dir, "proj-"));
   copyFileSync(join(repo, "wrangler.jsonc.example"), join(proj, "wrangler.jsonc.example"));
@@ -63,12 +66,17 @@ function attempt(env, { realConfig = false } = {}) {
   return { code: result.status, calls, stderr: result.stderr, config: readFileSync(join(proj, "wrangler.jsonc"), "utf8") };
 }
 
+/** @type {string[]} */
 const failures = [];
+/** @param {string} name @param {boolean} ok @param {string} detail */
 function expect(name, ok, detail) {
   console.log(`${ok ? "ok  " : "FAIL"} ${name}`);
   if (!ok) failures.push(`${name}: ${detail}`);
 }
+/** @typedef {{ calls: string[] }} Run */
+/** @param {Run} r */
 const deployed = (r) => r.calls.some((c) => c.startsWith("wrangler deploy"));
+/** @param {Run} r @param {string} prefix */
 const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
 
 {
@@ -111,12 +119,14 @@ const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
   const r = attempt({ ...GOOD, STUB_FAIL: "deploy" });
   expect("failed deploy: exit is nonzero", r.code !== 0, `exit ${r.code}`);
 }
-for (const [label, env] of [
+/** @type {[string, Record<string, string>][]} */
+const refusals = [
   ["no variables", {}],
   ["placeholder D1 id", { ...GOOD, CARREL_D1_DATABASE_ID: "00000000-0000-0000-0000-000000000000" }],
   ["placeholder KV id", { ...GOOD, CARREL_KV_OAUTH_ID: "00000000000000000000000000000000" }],
   ["placeholder email", { ...GOOD, CARREL_ALERT_EMAIL: "alerts@example.com" }],
-]) {
+];
+for (const [label, env] of refusals) {
   const r = attempt(env);
   expect(`${label}: refuses before any wrangler call`, r.code !== 0 && r.calls.length === 0, `exit ${r.code} ${JSON.stringify(r.calls)}`);
 }
