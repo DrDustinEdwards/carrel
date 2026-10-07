@@ -2,20 +2,23 @@
 // FTS5 over title and body. The list is Carrel's index; Refresh asks the site again.
 
 import { ContentStatus } from "@dustinedwards/site-api";
-import { Form, Link, useNavigation } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Form, Link, useNavigation, useRevalidator } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
+import { BulkBar } from "capsomer/react/bulk-bar";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
-import { Pill } from "capsomer/react/status";
+import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 
 import { PageHead } from "~/components/page-head";
 import { ProjectTabs } from "~/components/project-tabs";
 
 import { getEnv, getViewer } from "~/lib/context";
+import { contentDeleteOffered } from "~/lib/content.server";
 import { kindsIn, refreshIndex, searchItems } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
@@ -46,7 +49,13 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   ]);
   const items = withWaitingWork(indexed, waiting, filters);
   const connection = siteConnection(env, project.site);
+  // Delete is the Owner's, and a site may not offer it. The Owner is told which, and why, beside the actions.
+  const canDelete = can(project.role, "delete_content");
+  const deleteSupport = canDelete && connection.state === "connected" ? await contentDeleteOffered(env, project) : null;
   return {
+    canDelete,
+    deleteOffered: deleteSupport?.offered === true,
+    deleteReason: deleteSupport && !deleteSupport.offered ? deleteSupport.reason : null,
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
     canEdit: can(project.role, "edit"),
     connected: connection.state === "connected",
@@ -76,9 +85,44 @@ function when(iso: string | null): string {
   return Number.isNaN(date.getTime()) ? iso : date.toISOString().slice(0, 10);
 }
 
+type BulkOutcome = { id: string; title: string; ok: boolean; message: string; copyId?: string };
+type BulkOp = "tag-add" | "tag-remove" | "duplicate" | "delete";
+
+const DONE = "Done. The result for each post is listed below the table.";
+
 export default function Project({ loaderData, actionData }: Route.ComponentProps) {
-  const { project, canEdit, connected, connectionDetail, filters, kinds, items } = loaderData;
+  const { project, canEdit, canDelete, deleteOffered, deleteReason, connected, connectionDetail, filters, kinds, items } = loaderData;
   const navigation = useNavigation();
+  const revalidator = useRevalidator();
+  // The selection is by post id; a post no longer listed (a filter, a delete) drops out of it.
+  const [selected, setSelected] = useState<string[]>([]);
+  const [tag, setTag] = useState("");
+  const [result, setResult] = useState<{ what: string; outcomes: BulkOutcome[] } | null>(null);
+  const resultRef = useRef<HTMLElement>(null);
+  // Only a post the site holds can be acted on; one that exists only in Carrel (an AI draft for a new post) cannot.
+  const selectable = items.filter((i) => !i.isNew);
+  const chosen = selectable.filter((i) => selected.includes(i.itemId));
+  useEffect(() => {
+    if (!result) return;
+    const el = resultRef.current;
+    if (el) {
+      el.tabIndex = -1;
+      el.focus();
+    }
+  }, [result]);
+
+  const run = (op: BulkOp, what: string) => async (picked: readonly { id: string; label: string }[]) => {
+    if ((op === "tag-add" || op === "tag-remove") && tag.trim() === "") throw new Error("Type a tag first.");
+    const form = new FormData();
+    form.set("op", op);
+    if (op === "tag-add" || op === "tag-remove") form.set("tag", tag);
+    for (const p of picked) form.append("id", p.id);
+    const response = await fetch(`/p/${encodeURIComponent(project.slug)}/bulk`, { method: "POST", body: form, headers: { accept: "application/json" } });
+    const body = (await response.json().catch(() => null)) as { results?: BulkOutcome[]; error?: string } | null;
+    if (!response.ok || !body?.results) throw new Error(body?.error ?? `The server answered ${response.status}.`);
+    setResult({ what, outcomes: body.results });
+    void revalidator.revalidate();
+  };
   const refreshing = navigation.state !== "idle" && navigation.formData?.get("intent") === "refresh";
   const filtered = Boolean(filters.q || filters.status || filters.kind);
 
@@ -120,6 +164,39 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
           {actionData.refreshed.listed} posts listed, {actionData.refreshed.fetched} read in full
           {actionData.refreshed.pending > 0 ? `, ${actionData.refreshed.pending} more on the next refresh` : ""}.
         </Banner>
+      ) : null}
+
+      {result ? (
+        <Panel
+          title="Result"
+          id="bulk-result"
+          ref={resultRef}
+          src={`${result.what}: ${result.outcomes.filter((o) => o.ok).length} of ${result.outcomes.length} done`}
+          actions={
+            <Button size="sm" onClick={() => setResult(null)}>
+              Clear this result
+            </Button>
+          }
+        >
+          <ul className="app-flags" aria-label="Result for each post">
+            {result.outcomes.map((o) => (
+              <li key={o.id}>
+                {o.ok ? <Status tone="ok">Done</Status> : <Status tone="crit">Left as it was</Status>}
+                <span>
+                  <strong>{o.title}</strong> <span className="cap-mono cap-muted">{o.id}</span>
+                  <br />
+                  {o.message}
+                  {o.copyId ? (
+                    <>
+                      {" "}
+                      <Link to={`e/${encodeURIComponent(o.copyId)}`}>Open the copy</Link>
+                    </>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       ) : null}
 
       <Panel title="Posts" count={items.length} src={`Carrel's index of ${project.site}`} flush>
@@ -170,6 +247,11 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
               </caption>
               <thead>
                 <tr>
+                  {canEdit ? (
+                    <th scope="col">
+                      <span className="cap-sr-only">Select</span>
+                    </th>
+                  ) : null}
                   <th scope="col">Title</th>
                   <th scope="col">Status</th>
                   <th scope="col">Updated</th>
@@ -177,7 +259,23 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.itemId}>
+                  <tr key={item.itemId} data-state={selected.includes(item.itemId) ? "selected" : undefined}>
+                    {canEdit ? (
+                      <td>
+                        <label className="cap-check">
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(item.itemId)}
+                            disabled={item.isNew}
+                            onChange={(event) => setSelected((now) => (event.target.checked ? [...now, item.itemId] : now.filter((id) => id !== item.itemId)))}
+                          />
+                          <span className="cap-sr-only">
+                            Select {item.title || item.itemId}
+                            {item.isNew ? " (only in Carrel, so it cannot be acted on in bulk)" : ""}
+                          </span>
+                        </label>
+                      </td>
+                    ) : null}
                     <th scope="row">
                       <Link className="cap-table-open" to={`e/${encodeURIComponent(item.itemId)}`}>
                         {item.title || item.itemId}
@@ -206,6 +304,40 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
           </div>
         )}
       </Panel>
+
+      {canEdit ? (
+        <BulkBar
+          items={chosen.map((i) => ({ id: i.itemId, label: `${i.title || i.itemId} (${i.itemId})` }))}
+          total={selectable.length}
+          onSelectAll={() => setSelected(selectable.map((i) => i.itemId))}
+          onClear={() => setSelected([])}
+          actions={[
+            { id: "tag-add", label: "Add tag", said: DONE, run: run("tag-add", "Add tag") },
+            { id: "tag-remove", label: "Remove tag", said: DONE, run: run("tag-remove", "Remove tag") },
+            { id: "duplicate", label: "Duplicate", said: DONE, run: run("duplicate", "Duplicate") },
+            ...(canDelete && deleteOffered
+              ? [
+                  {
+                    id: "delete",
+                    label: "Delete",
+                    destructive: true,
+                    confirmTitle: "Delete {n} post{s} from the site?",
+                    confirmLead: `Each post below is removed from ${project.site}. Carrel cannot bring one back; the site's own history may still hold its text. Your working drafts of them stay in Carrel.`,
+                    confirmAction: "Delete {n} post{s}",
+                    said: DONE,
+                    run: run("delete", "Delete"),
+                  },
+                ]
+              : []),
+          ]}
+        >
+          <span className="cap-bulk-field">
+            <label htmlFor="bulk-tag">Tag</label>
+            <input className="cap-input" id="bulk-tag" value={tag} onChange={(event) => setTag(event.target.value)} autoComplete="off" />
+          </span>
+          {canDelete && deleteReason ? <span className="cap-bulk-detail">Delete is not offered: {deleteReason}</span> : null}
+        </BulkBar>
+      ) : null}
     </div>
   );
 }
