@@ -4,7 +4,7 @@
 // unified patches; the two comparisons that have both sides in Carrel build the patch here.
 // "By word" sets the same two texts against each other sentence by sentence.
 
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate, useNavigation } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { Empty } from "capsomer/react/empty";
@@ -162,6 +162,9 @@ export default function History({ loaderData }: Route.ComponentProps) {
   const historyPath = `${editor}/history`;
   const navigate = useNavigate();
   const location = useLocation();
+  // The switch moves at once, while the other view loads; the loader's answer confirms it.
+  const pending = useNavigation().location;
+  const shown = pending ? (new URLSearchParams(pending.search).get("by") === "word" ? "word" : "line") : by;
   const setBy = (next: "line" | "word") => {
     const params = new URLSearchParams(location.search);
     params.set("by", next);
@@ -219,7 +222,7 @@ export default function History({ loaderData }: Route.ComponentProps) {
         <Panel
           title={view.heading}
           description={view.lead}
-          actions={<Segmented legend="Compare by" hideLegend size="sm" value={by} onChange={setBy} options={[{ value: "line", label: "By line" }, { value: "word", label: "By word" }]} />}
+          actions={<Segmented legend="Compare by" hideLegend size="sm" value={shown} onChange={setBy} options={[{ value: "line", label: "By line" }, { value: "word", label: "By word" }]} />}
         >
           {view.patch !== null ? <DraftPatch patch={view.patch} title={view.heading} id="history-patch" /> : view.before && view.after ? <DraftCompare before={view.before} after={view.after} id="history-compare" /> : null}
         </Panel>
