@@ -137,3 +137,41 @@ export function setField(front: string, key: FieldKey, value: string): string {
   }
   return all.flatMap((b) => b.lines).join("\n");
 }
+
+/** The tags the frontmatter holds now, in order. */
+export function tagsOf(front: string | null): string[] {
+  const tags = readFields(front).tags;
+  return tags === "" ? [] : tags.split(",").map((t) => t.trim()).filter(Boolean);
+}
+
+/**
+ * The frontmatter with its tags set to exactly this list, and nothing else touched. Unlike
+ * setField, an empty list is written as `tags: []`, not removed: a post that lost its last tag keeps
+ * the key the site's own new-post template starts with. A list in block form comes back in flow form.
+ */
+export function setTags(front: string, tags: string[]): string {
+  const all = blocks(front);
+  const fresh = { key: "tags", lines: [`tags: [${tags.join(", ")}]`] };
+  const at = all.findIndex((b) => b.key === "tags");
+  if (at >= 0) {
+    if (all[at]!.lines.length === 1 && all[at]!.lines[0] === fresh.lines[0]) return front;
+    all[at] = fresh;
+  } else {
+    all.push(fresh);
+  }
+  return all.flatMap((b) => b.lines).join("\n");
+}
+
+/** The frontmatter with a top-level key set to a raw value (`draft: true`), added at the end when absent. Every other block is returned as it was. */
+export function setRawKey(front: string, key: string, raw: string): string {
+  const all = blocks(front);
+  const line = `${key}: ${raw}`;
+  const at = all.findIndex((b) => b.key === key);
+  if (at >= 0) {
+    if (all[at]!.lines.length === 1 && all[at]!.lines[0] === line) return front;
+    all[at] = { key, lines: [line] };
+  } else {
+    all.push({ key, lines: [line] });
+  }
+  return all.flatMap((b) => b.lines).join("\n");
+}

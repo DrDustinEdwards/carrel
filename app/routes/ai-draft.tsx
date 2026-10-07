@@ -89,6 +89,9 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
                 </Button>
               </Form>
             ) : null}
+            <Link to={`${editor}/history?compare=ai&ai=${draft.id}`} className="cap-btn">
+              Compare with my draft
+            </Link>
             <Link to={editor} className="cap-btn">
               Back to my draft
             </Link>

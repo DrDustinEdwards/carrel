@@ -16,12 +16,15 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { DraftLinks } from "~/components/history/draft-links";
+import { RevisionPicker } from "~/components/history/revision-picker";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
 import { PageHead } from "~/components/page-head";
 import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
+import { listRevisions } from "~/lib/history.server";
 import { joinSource, splitSource } from "~/lib/frontmatter";
 import { listSections } from "~/lib/legal.server";
 import { siteState } from "~/lib/save-state";
@@ -40,6 +43,8 @@ import { siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server"
 import type { Route } from "./+types/editor";
 
 const AUTOSAVE_DELAY_MS = 1200;
+/** The editor shows the newest revisions; the history page lists them all. */
+const HISTORY_SHOWN = 8;
 const LAYOUT_KEY = "carrel:editor-layout";
 type Layout = "write" | "split" | "preview";
 
@@ -64,6 +69,18 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   // An item that exists only as an AI draft is still the person's to open: the list shows it.
   const aiDrafts = await listAiDrafts(env.DB, project, viewer, itemId);
   if (!doc && !draft && aiDrafts.length === 0 && !siteError) throw new Response("Not found", { status: 404 });
+
+  // The site's revisions of this item, for the History panel. A site that does not answer leaves the
+  // panel saying so, never the editor failing.
+  let revisions: Awaited<ReturnType<typeof listRevisions>> = null;
+  let historyError: string | null = null;
+  if (doc) {
+    try {
+      revisions = await listRevisions(env, project, itemId);
+    } catch (error) {
+      historyError = error instanceof SiteNotConnected ? error.detail : "The site did not answer, so its history is not shown.";
+    }
+  }
 
   const [targets, flags, aiPublished, sentDoc, googleConnected, search, sections] = await Promise.all([
     searchItems(env.DB, project.id, {}),
@@ -109,6 +126,9 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     // The site moved on since this draft was started: saving it would be refused as stale.
     behind: Boolean(draft && doc && draft.baseVersion !== doc.version),
     siteError,
+    revisions: revisions ? revisions.slice(0, HISTORY_SHOWN).map((r) => ({ version: r.version, at: r.at, author: r.author, message: r.message })) : null,
+    revisionCount: revisions?.length ?? 0,
+    historyError,
     linkTargets,
     sections: sections.map((s) => ({ key: s.key, title: s.title })),
     flags,
@@ -383,6 +403,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     fix: "Change the text, or dismiss the flag.",
   }));
 
+  const historyPath = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/history`;
   const ask = (kind: "discard" | "import" | "schedule" | "dismiss", opener: HTMLElement | null, flag?: number) => setAsking({ kind, opener, flag });
 
   return (
@@ -479,6 +500,31 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   </ul>
                 ) : null}
                             </div>
+            </Panel>
+          ) : null}
+          {data.revisions || data.historyError ? (
+            <Panel
+              title="History"
+              id="history"
+              count={data.revisionCount}
+              src="Saves and publishes on the site"
+              actions={
+                data.revisionCount > 0 ? (
+                  <Link className="cap-btn" data-size="sm" to={historyPath}>
+                    All revisions
+                  </Link>
+                ) : undefined
+              }
+            >
+              <div className="app-stack" data-tight>
+                {data.historyError ? <Banner tone="warn">{data.historyError}</Banner> : null}
+                {data.revisions && data.revisions.length > 0 ? (
+                  <RevisionPicker revisions={data.revisions} historyPath={historyPath} label="Recent revisions" />
+                ) : data.revisions ? (
+                  <p className="cap-muted">The site has no saved revisions of this post yet.</p>
+                ) : null}
+                <DraftLinks historyPath={historyPath} againstSite={Boolean(savedAt) && onSite} aiDrafts={data.aiDrafts} />
+              </div>
             </Panel>
           ) : null}
         </div>

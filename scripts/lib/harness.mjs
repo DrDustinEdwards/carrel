@@ -20,6 +20,7 @@ export const VIEWERS = {
 };
 
 const SITE = "dustinedwards-info";
+const REFRESH = "how-the-index-refreshes";
 const BOOK = "paluxy-portal";
 
 /**
@@ -68,6 +69,48 @@ export const SCREENS = [
   { name: "post-editor-live", viewer: "editor", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor" },
   { name: "post-reader", viewer: "reader", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor" },
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
+  { name: "post-history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}`, wait: ".cm-editor" },
+  { name: "history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history` },
+  { name: "history-reader", viewer: "reader", path: `/p/${SITE}/e/${REFRESH}/history` },
+  { name: "history-source", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history`, after: openOldestSource },
+  { name: "history-diff", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history`, after: (page) => compareOutermost(page, ".cap-patch") },
+  {
+    name: "history-diff-word",
+    viewer: "owner",
+    path: `/p/${SITE}/e/${REFRESH}/history`,
+    after: async (page) => {
+      await compareOutermost(page, ".cap-patch");
+      await chooseByWord(page);
+      await page.waitForSelector(".cap-compare[data-cap]", { timeout: 30_000 });
+      await page.waitForTimeout(600);
+    },
+  },
+  { name: "history-draft-compare", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history?compare=site`, wait: ".cap-patch" },
+  { name: "history-ai-compare", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history?compare=ai&ai=2`, wait: ".cap-patch" },
+  { name: "history-problem", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history?v=nope` },
+  { name: "site-select", viewer: "owner", path: `/p/${SITE}`, after: (page) => selectPosts(page, ["Counting what the build skips", "What a carrel is for", "How the index refreshes"]) },
+  { name: "site-select-editor", viewer: "editor", path: `/p/${SITE}`, after: (page) => selectPosts(page, ["Counting what the build skips", "Why Foxhound waits before it pages you"]) },
+  {
+    name: "site-bulk-delete",
+    viewer: "owner",
+    path: `/p/${SITE}`,
+    after: async (page) => {
+      await selectPosts(page, ["Counting what the build skips", "What a carrel is for"]);
+      await press(page, "button", /^Delete$/, "alertdialog");
+    },
+  },
+  {
+    name: "site-bulk-result",
+    viewer: "editor",
+    path: `/p/${SITE}`,
+    after: async (page) => {
+      await selectPosts(page, ["Counting what the build skips", "Why Foxhound waits before it pages you", "A primer on bacterial genetics"]);
+      await page.getByLabel("Tag").fill("colophon");
+      await page.getByRole("button", { name: /^Add tag$/ }).click();
+      await page.locator("#bulk-result").waitFor();
+      await page.waitForTimeout(600);
+    },
+  },
   { name: "unpublish", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits/unpublish` },
   { name: "not-found", viewer: "owner", path: "/p/nowhere" },
 
@@ -135,6 +178,60 @@ export const SCREENS = [
     },
   },
 ];
+
+/**
+ * Ticks the rows of the posts list whose titles are named, and waits for the bulk bar to say so.
+ * @param {Page} page
+ * @param {string[]} titles
+ */
+async function selectPosts(page, titles) {
+  for (const title of titles) await page.getByRole("checkbox", { name: new RegExp(`^Select ${title}`) }).check();
+  await page.getByRole("region", { name: "Bulk actions" }).getByText(`${titles.length} selected`).waitFor();
+  await page.waitForTimeout(400);
+}
+
+/**
+ * Opens the source of the oldest revision on the history page.
+ * @param {Page} page
+ */
+async function openOldestSource(page) {
+  await page.getByRole("link", { name: /open its source/ }).last().click();
+  await page.getByLabel("Source of this revision").waitFor();
+}
+
+/**
+ * Chooses the By word view on the history page, retrying until the hydrated handler has acted.
+ * @param {Page} page
+ */
+async function chooseByWord(page) {
+  // The switch is a controlled radio: a click before the page has hydrated is undone when React takes
+  // over, and Playwright's check() then fails on "did not change its state". Click until the address
+  // carries by=word, which only the hydrated handler writes.
+  const radio = page.getByRole("radio", { name: "By word" });
+  for (let attempt = 1; ; attempt++) {
+    await radio.click({ force: true });
+    try {
+      await page.waitForURL(/[?&]by=word\b/, { timeout: 3_000 });
+      return;
+    } catch (error) {
+      if (attempt === 8) throw error;
+    }
+  }
+}
+
+/**
+ * Picks the newest and the oldest revision, compares them, and waits for the view named by `ready`.
+ * @param {Page} page
+ * @param {string} ready
+ */
+async function compareOutermost(page, ready) {
+  const boxes = page.getByRole("checkbox", { name: /^Compare the revision/ });
+  await boxes.first().check();
+  await boxes.last().check();
+  await page.getByRole("button", { name: /^Compare the two picked/ }).click();
+  await page.waitForSelector(ready, { timeout: 30_000 });
+  await page.waitForTimeout(400);
+}
 
 /**
  * Presses the first button whose name matches and waits for the dialog it opens.

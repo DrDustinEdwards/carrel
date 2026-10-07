@@ -39,7 +39,7 @@ GitHub Actions runs all of these on every push and pull request (`.github/workfl
 
 ## The look
 
-Carrel's interface is [Capsomer](https://github.com/DrDustinEdwards/capsomer) (`v0.3.0`): its shell (rail, top bar, phone tab bar), tokens, components and fonts, with Carrel's own CSS in `app/app.css` limited to the page frame and the few rules the writing screens need. The fonts (Schibsted Grotesk, Martian Mono, Source Serif 4) are self-hosted from the build; nothing loads from another origin, and `workers/csp.ts` is unchanged. Carrel is private, so Web Analytics stays off it. A dashboard exclusion by hostname needs the Pro plan, so instead every HTML response carries `Cache-Control: ..., no-transform` (`workers/gate.ts`, and the consent page in `app/lib/mcp/door.ts`; `test/access.test.ts` and `test/door.test.ts` pin it), which Cloudflare's Web Analytics FAQ says keeps the proxy from injecting the beacon. The cost is that those HTML responses are not compressed by Cloudflare; scripts, styles and fonts still are. The CSP is deliberately not loosened for Cloudflare's beacon, and `test/csp.test.ts` pins that. The only components Carrel keeps are `app/components/editor` (the writing surface around Capsomer's markdown editor) and `app/components/media` (image upload and "Insert from library").
+Carrel's interface is [Capsomer](https://github.com/DrDustinEdwards/capsomer) (tag `v0.4.0`, which carries `DraftPatch`): its shell (rail, top bar, phone tab bar), tokens, components and fonts, with Carrel's own CSS in `app/app.css` limited to the page frame and the few rules the writing screens need. The fonts (Schibsted Grotesk, Martian Mono, Source Serif 4) are self-hosted from the build; nothing loads from another origin, and `workers/csp.ts` is unchanged. Carrel is private, so Web Analytics stays off it. A dashboard exclusion by hostname needs the Pro plan, so instead every HTML response carries `Cache-Control: ..., no-transform` (`workers/gate.ts`, and the consent page in `app/lib/mcp/door.ts`; `test/access.test.ts` and `test/door.test.ts` pin it), which Cloudflare's Web Analytics FAQ says keeps the proxy from injecting the beacon. The cost is that those HTML responses are not compressed by Cloudflare; scripts, styles and fonts still are. The CSP is deliberately not loosened for Cloudflare's beacon, and `test/csp.test.ts` pins that. The only components Carrel keeps are `app/components/editor` (the writing surface around Capsomer's markdown editor) and `app/components/media` (image upload and "Insert from library").
 
 `npm run harness` builds and serves the real app on http://127.0.0.1:5199 with the Access gate replaced by a header naming the viewer (`x-harness-viewer`: `dustin@harness.invalid` the Owner, `rosa@harness.invalid` an Editor, `sam@harness.invalid` a Reader) and a fake site, novels repository and Google (`test/harness`). It needs no Cloudflare credentials. `node scripts/screens.mjs <directory>` writes a screenshot of every screen in both themes at desktop and phone widths, for looking at.
 
@@ -166,6 +166,26 @@ Each site's files stay in that site's own storage and are served by the site; Ca
 - **Not in v0.2.0:** bulk actions, trash, tags, folders and editing a file's alt text after upload. The site's own media screen keeps those until they have routes.
 - **Authorship:** an upload or delete writes one row in `changes` (migration 0007): the person, the AI client when it came through the AI door, the project, the site's media id, and the same change id Carrel sent the site, so the two histories join. A refused upload or delete writes nothing.
 
+## History
+
+The editor's History panel (and the page behind it, `/p/<project>/e/<item>/history`) shows what the site remembers of one post, for any kind of item. It is read-only: looking at history writes nothing to the site or to Carrel, and a Reader may read all of it. The reads live in `app/lib/history.server.ts`, which checks the role like `content.server.ts` does.
+
+- **Revisions** come from the site, newest first, each with who and when. Each opens its source (site-api v0.3.0's `GET /content/:id/revisions/:version`; on an older site the page says it cannot open one).
+- **Any two revisions** can be picked and compared. The patch is the site's own (`GET /content/:id/diff`), drawn with Capsomer's `DraftPatch`. "By word" sets the same two texts against each other with Capsomer's `DraftCompare`.
+- **Your working draft** can be compared against the site's current text, and against each AI draft saved beside it (also linked from the AI draft page). Both sides are in Carrel, so the patch is built here by `unifiedPatch` in `app/lib/patch.ts`, with the `diff` package the site API already uses, and drawn the same way. "On the site" means the site's current version, published or not.
+- **Not here:** restoring a revision. Opening a revision is read-only; putting one back is a wider job.
+
+`test/history.test.ts` drives the route's loader: a Reader's reads, that only GETs reach the site, the order of a picked pair, and each comparison.
+
+## Bulk actions
+
+On the posts list, Editors and the Owner can tick posts and use Capsomer's bulk bar: **Add tag** and **Remove tag** (only the frontmatter `tags` line changes, through `app/lib/frontmatter.ts`; every other byte of the file comes back as it was), **Duplicate** (a new draft with the first unused id of `-copy`, `-copy-2`, ..., `draft: true`, a "(copy)" title and its own `slug`, created as a new item), and **Delete** (the Owner's alone; the confirm dialog names every post). The work is in `app/lib/bulk.server.ts`; `POST /p/<project>/bulk` answers JSON.
+
+- **One post at a time, nothing aborts.** Each post is its own write through `writeToSite`, so the editor's rules apply to it: a change to a live or scheduled post is the Owner's, and an Editor's tag on one is refused for that post alone. A stale version, a refusal, a post the site does not have, or a post you have an unsaved working draft of (a save to the site would clear that draft) leaves that post as it was. The response lists every post's outcome, and the page shows them under "Result".
+- **Delete needs the site to offer it.** It uses site-api v0.3.0's `DELETE /content/:id` with the version the site holds and a change id. A site whose adapter has no `delete` answers 501 and `meta.capabilities.contentDelete` is absent: the Owner then sees "Delete is not offered" with the reason, and the action is not shown. A deleted post leaves Carrel's index; your working drafts of it stay in Carrel.
+- **Authorship:** a delete writes one row in `changes` with action `content-delete` (migration 0009, the same rebuild as 0007): the person, the project, the post, the version deleted, and the change id sent to the site. Apply the migration before deploying the code that deletes; until then the site's delete still happens and the screen says the record could not be saved. Tag and duplicate are ordinary saves and write their usual rows.
+- **Roles** are checked in `bulk.server.ts` and `content.server.ts` (`delete_content` in `app/lib/roles.ts` is the Owner's alone), before any post is read. `test/bulk.test.ts` names each refusal.
+
 ## Google
 
 Two separate accesses (design decision 6), and no `drive.readonly` anywhere:
@@ -226,6 +246,9 @@ A privacy or terms page is an ordinary page on the site (item `page.privacy` or 
 | Browse the media library | yes | yes | yes |
 | Upload media, insert an image into a post | | yes | yes |
 | Delete a media file from the site | | | yes |
+| Read a post's history and compare revisions or drafts | yes | yes | yes |
+| Add or remove a tag on, or duplicate, several posts at once (a live post's change is the Owner's) | | yes | yes |
+| Delete posts from a site | | | yes |
 | See a project's flags list | yes | yes | yes |
 | See the Legal tab and the shared sections | yes | yes | yes |
 | Change or remove a shared section | | | yes |
