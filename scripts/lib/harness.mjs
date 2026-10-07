@@ -80,7 +80,7 @@ export const SCREENS = [
     path: `/p/${SITE}/e/${REFRESH}/history`,
     after: async (page) => {
       await compareOutermost(page, ".cap-patch");
-      await page.getByRole("radio", { name: "By word" }).check({ force: true });
+      await chooseByWord(page);
       await page.waitForSelector(".cap-compare[data-cap]", { timeout: 30_000 });
       await page.waitForTimeout(600);
     },
@@ -197,6 +197,26 @@ async function selectPosts(page, titles) {
 async function openOldestSource(page) {
   await page.getByRole("link", { name: /open its source/ }).last().click();
   await page.getByLabel("Source of this revision").waitFor();
+}
+
+/**
+ * Chooses the By word view on the history page, retrying until the hydrated handler has acted.
+ * @param {Page} page
+ */
+async function chooseByWord(page) {
+  // The switch is a controlled radio: a click before the page has hydrated is undone when React takes
+  // over, and Playwright's check() then fails on "did not change its state". Click until the address
+  // carries by=word, which only the hydrated handler writes.
+  const radio = page.getByRole("radio", { name: "By word" });
+  for (let attempt = 1; ; attempt++) {
+    await radio.click({ force: true });
+    try {
+      await page.waitForURL(/[?&]by=word\b/, { timeout: 3_000 });
+      return;
+    } catch (error) {
+      if (attempt === 8) throw error;
+    }
+  }
 }
 
 /**
