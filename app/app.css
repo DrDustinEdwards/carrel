@@ -38,6 +38,7 @@
 @import "capsomer/stat-tile.css";
 @import "capsomer/drop-zone.css";
 @import "capsomer/media.css";
+@import "capsomer/draft-compare.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */

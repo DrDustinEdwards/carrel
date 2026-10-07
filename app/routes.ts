@@ -18,6 +18,7 @@ export default [
     route("b/:project/f/*", "routes/book.file.tsx"),
     route("p/:project/e/:item/unpublish", "routes/unpublish.tsx"),
     route("p/:project/e/:item/ai/:id", "routes/ai-draft.tsx"),
+    route("p/:project/e/:item/history", "routes/history.tsx"),
     route("manuscripts", "routes/manuscripts.tsx"),
     route("social", "routes/social.tsx"),
   ]),
