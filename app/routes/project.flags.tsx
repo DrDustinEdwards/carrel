@@ -33,7 +33,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read");
   return {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
+    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
     canDismiss: can(project.role, "publish"),
     flags: await projectFlags(env.DB, project),
   };
@@ -77,7 +77,7 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
         lead={`${open} open of ${flags.length} flags on ${project.site}. An open flag holds publish until the text is fixed or the Owner dismisses it.`}
       />
 
-      <ProjectTabs slug={project.slug} current="flags" />
+      <ProjectTabs slug={project.slug} current="flags" mentions={project.mentions} />
 
       {dismissed ? <Banner tone="ok">Dismissed flag {dismissed}.</Banner> : null}
 

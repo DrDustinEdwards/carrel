@@ -61,7 +61,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     }),
   );
   return {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
+    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
     canManage: can(project.role, "manage"),
     siteError,
     pages,
@@ -93,7 +93,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
   return (
     <div className="app-page">
       <PageHead title={project.name} lead={`The privacy and terms pages on ${project.site}, and the text every site shares.`} />
-      <ProjectTabs slug={project.slug} current="legal" />
+      <ProjectTabs slug={project.slug} current="legal" mentions={project.mentions} />
 
       {siteError ? (
         <Banner tone="warn" title="The site's legal pages could not be read">

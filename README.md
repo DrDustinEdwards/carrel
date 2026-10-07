@@ -193,6 +193,17 @@ On the posts list, Editors and the Owner can tick posts and use Capsomer's bulk 
 - **Authorship:** a delete writes one row in `changes` with action `content-delete` (migration 0009, the same rebuild as 0007): the person, the project, the post, the version deleted, and the change id sent to the site. Apply the migration before deploying the code that deletes; until then the site's delete still happens and the screen says the record could not be saved. Tag and duplicate are ordinary saves and write their usual rows.
 - **Roles** are checked in `bulk.server.ts` and `content.server.ts` (`delete_content` in `app/lib/roles.ts` is the Owner's alone), before any post is read. `test/bulk.test.ts` names each refusal.
 
+## Mentions
+
+The **Mentions** tab of a site project is the queue of webmentions other sites sent about its posts, over site-api v0.5.0's mentions group. Moderation stays on the site until Dustin confirms it has moved here; Carrel is the screen, and the site keeps the table and the rules. Files: `app/lib/mentions.server.ts`, `app/routes/mentions.tsx`, `POST /p/<project>/mentions/api` (JSON), `test/mentions.test.ts`.
+
+- **The screen.** A table of the mentions in one status (a filter with counts: Pending, Failed, Approved, Rejected, Unverified, All; it opens on Pending, or All when none is pending), 50 to a page. Tick rows and use Capsomer's bulk bar: **Approve** and **Reject** (a decision can be changed later) and **Delete** (the confirm dialog names every mention; it removes the only copy of what the sender sent). A Retention panel shows how many failed and rejected mentions are past the site's window and **Remove N expired** sweeps them behind a confirm. Everything a stranger sent is drawn as text; the source address is never a link.
+- **Who may.** The Owner alone, to read and to decide: `carrel/design.md` says the inbox belongs to Dustin alone, and the site reserves deleting a mention to its admin. `read_mentions` and `decide_mention` in `app/lib/roles.ts` are separate actions, so opening the queue to Editors or Readers to read is one line there. The tab is shown only to a person who may open it; anyone else who asks for the page gets 403, and the site is never asked.
+- **One mention at a time, nothing aborts.** Each is its own site write with its own change id, in order. A stale version (the mention was re-sent or decided elsewhere since the page loaded), a mention the site no longer has, and one the site refuses (it will not decide an unverified or failed mention) leave that mention as it was; the others go on, and the page lists every outcome under "Result". The site saves the decision and clears the post's cache as one step; if the clear fails Carrel says so.
+- **A version** is the site's own opaque string for the mention; it must move when the status, the verification or the decision does.
+- **Offered per site.** `meta.capabilities.mentions` says the site has the group; without it the screen says so and the routes answer 501. The health check runs the mentions conformance checks on a site that declares the group (none changes the site) and expects 501 from one that does not.
+- **Authorship:** every write the site carried out writes one row in `mention_decisions` (migration 0011, a table of its own because the `changes` table holds posts and files): the person, the AI client if one ever decides, the project, the site's mention id (empty for a sweep), the status before and after, and the change id sent to the site. **Apply migration 0011 before deploying this code**; until then the site's decision still happens and the screen says the record could not be saved. A refused write writes nothing.
+
 ## Google
 
 Two separate accesses (design decision 6), and no `drive.readonly` anywhere:
@@ -261,6 +272,7 @@ A privacy or terms page is an ordinary page on the site (item `page.privacy` or 
 | See the Legal tab and the shared sections | yes | yes | yes |
 | Change or remove a shared section | | | yes |
 | Dismiss a flag | | | yes |
+| See a site's mention queue; approve, reject or delete a mention; sweep the expired ones | | | yes |
 | Manage people and their roles | | | yes |
 
 A person with no role on a project gets the same 404 as for a project that does not exist.
