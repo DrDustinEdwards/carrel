@@ -229,6 +229,28 @@ async function build(base: Env): Promise<World> {
   await saveAiDraft(env, sitePr, claude, "counting-what-the-build-skips", { source: post("Counting what the build skips", "counting-what-the-build-skips", "", "2026-10-01", ["build"], "An alternative opening, written beside yours.\n\nThe build logs every skip with a reason, and the count is the first line of the summary."), note: "A tighter opening, for you to take or leave." }, site.fetch);
   void rosaV;
 
+  // One draft with a history, a working copy that has moved on from the site, and an AI draft beside it:
+  // the screens that show revisions, diffs and draft compare. Added after the other AI draft, so its id is 2.
+  const REFRESH = "how-the-index-refreshes";
+  const refreshTitle = "How the index refreshes";
+  let refreshVersion: string | null = null;
+  for (const body of [
+    "The index is a copy of the site's list. It is read again every fifteen minutes.",
+    "The index is a copy of the site's list. It is read again every fifteen minutes, and after every save.\n\nA save writes the new title and text at once, so the list never lags behind the editor.",
+    "The index is a copy of the site's list. It is read again every fifteen minutes, and after every save.\n\nA save writes the new title and text at once, so the list never lags behind the editor.\n\nThe site stays the authority. When the two disagree, the next refresh wins.",
+  ]) {
+    const saved = await writeToSite(env, sitePr, owner, REFRESH, { action: "save", source: post(refreshTitle, REFRESH, "A note on the cached list.", "2026-10-03", ["carrel", "index"], body), expectedVersion: refreshVersion }, site.fetch);
+    if (!saved.ok) throw new Error(saved.message);
+    refreshVersion = saved.version;
+  }
+  const refreshDoc = await site.adapter.content.get(REFRESH);
+  await autosave(db, sitePr, owner, REFRESH, {
+    source: refreshDoc!.source.replace("is read again every fifteen minutes,", "is read again every quarter hour,").trimEnd() + "\n\nA refresh that finds nothing new changes nothing.\n",
+    baseVersion: refreshDoc!.version,
+  });
+  await saveAiDraft(env, sitePr, claude, REFRESH, { source: post(refreshTitle, REFRESH, "A note on the cached list.", "2026-10-03", ["carrel", "index"], "The index copies the site's list and reads it again every fifteen minutes and after each save.\n\nThe site is the authority: when the two disagree, the next refresh wins."), note: "A shorter version, for you to take or leave." }, site.fetch);
+  await refreshIndex(env, { id: siteId, site: "dustinedwards" });
+
   // Books, indexed from the fake novels repository.
   gh.files.clear();
   const put = async (path: string, source: string) => {
