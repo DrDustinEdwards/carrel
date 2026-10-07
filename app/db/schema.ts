@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql to 0006_social.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0011_mentions_decisions.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -84,6 +84,23 @@ export const changes = sqliteTable("changes", {
   versionAfter: text("version_after"),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   client: text("client"),
+});
+
+// Webmention decisions since migration 0011 (a table of its own: the changes table holds posts and
+// files). mention_id is the site's id for the mention and is null for a sweep; status_after is null
+// for a delete and a sweep; change_id is the id Carrel sent the site, so the two histories join.
+const MENTION_STATUS = ["unverified", "pending", "approved", "rejected", "failed"] as const;
+export const mentionDecisions = sqliteTable("mention_decisions", {
+  id: integer("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  mentionId: text("mention_id"),
+  personId: integer("person_id").notNull().references(() => people.id),
+  action: text("action", { enum: ["approve", "reject", "delete", "sweep"] }).notNull(),
+  statusBefore: text("status_before", { enum: MENTION_STATUS }),
+  statusAfter: text("status_after", { enum: MENTION_STATUS }),
+  changeId: text("change_id").notNull().unique(),
+  client: text("client"),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 // No longer written: the MCP endpoint is stateless since the SDK v2 rebuild, and the client is known
