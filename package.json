@@ -20,6 +20,7 @@
     "import:docx": "node scripts/import-docx.mjs",
     "deploy": "npm run build && wrangler deploy",
     "postinstall": "node scripts/bootstrap-config.mjs",
+    "lint:promises": "eslint app workers test",
     "check:a11y": "node scripts/check-a11y.mjs",
     "harness": "vite build --config vite.harness.config.ts && vite preview --config vite.harness.config.ts --port 5199 --host 127.0.0.1"
   },
@@ -57,8 +58,10 @@
     "@types/node": "22.20.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
+    "eslint": "10.12.0",
     "playwright": "1.63.0",
     "typescript": "5.9.3",
+    "typescript-eslint": "8.71.0",
     "vite": "8.1.3",
     "vitest": "4.1.11",
     "wrangler": "4.141.0"
