@@ -113,7 +113,12 @@ async function tagOne(env: Env, project: SiteProject, viewer: Viewer, id: string
   if (op === "tag-remove" && !has) return { id, title, ok: true, message: `Did not have the tag "${tag}". Not changed.` };
   const next = op === "tag-add" ? [...tags, tag] : tags.filter((t) => !same(t, tag));
   const source = joinSource({ ...parts, front: setTags(parts.front, next) });
-  const outcome = await writeToSite(env, project, viewer, id, { action: "save", source, expectedVersion: doc.version }, fetcher);
+  let outcome;
+  try {
+    outcome = await writeToSite(env, project, viewer, id, { action: "save", source, expectedVersion: doc.version }, fetcher);
+  } catch (error) {
+    return { ...failure(id, error), title };
+  }
   if (!outcome.ok) return { id, title, ok: false, message: outcome.reason === "conflict" ? "The post changed on the site while this ran. Nothing was changed." : outcome.message };
   return { id, title, ok: true, message: op === "tag-add" ? `Added the tag "${tag}".` : `Removed the tag "${tag}".` };
 }
@@ -158,7 +163,12 @@ async function duplicateOne(env: Env, project: SiteProject, viewer: Viewer, id: 
   if (/^slug:/m.test(front)) front = setRawKey(front, "slug", copy.id);
   front = setRawKey(front, "draft", "true");
   const source = joinSource({ ...parts, front });
-  const outcome = await writeToSite(env, project, viewer, copy.id, { action: "save", source, expectedVersion: null }, fetcher);
+  let outcome;
+  try {
+    outcome = await writeToSite(env, project, viewer, copy.id, { action: "save", source, expectedVersion: null }, fetcher);
+  } catch (error) {
+    return { ...failure(id, error), title };
+  }
   if (!outcome.ok) return { id, title, ok: false, message: outcome.reason === "conflict" ? "The id chosen for the copy was taken while this ran. Nothing was copied." : outcome.message };
   return { id, title, ok: true, message: `Copied as a draft with the id "${copy.id}".`, copyId: copy.id };
 }

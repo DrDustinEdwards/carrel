@@ -201,6 +201,7 @@ describe("bulk tag", () => {
     const results = await bulkApply(env, project, viewer, { op: "tag-add", tag: "new" }, ["draft-one", "live-one", "draft-two"], site.fetch);
     expect(results.map((r) => [r.id, r.ok])).toEqual([["draft-one", true], ["live-one", false], ["draft-two", true]]);
     expect(results[1]!.message).toBe("Changing a live post is the Owner's step, so this one was left as it was.");
+    expect(results[1]!.title).toBe("Live one");
     expect(sourceOf("live-one")).toBe(liveBefore);
     expect(sourceOf("draft-one")).toContain("tags: [a, new]");
     expect(sourceOf("draft-two")).toContain("tags: [a, new]");

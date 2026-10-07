@@ -627,6 +627,14 @@ html[data-typing] :is(.cap-shell-top, .cap-shell-rail, .cap-shell-tabs, .app-edi
   line-height: 1.7;
 }
 
+/* A row's checkbox sits above the row's stretched link, as Capsomer already lifts links and buttons
+   there; without this the link takes the click and a post cannot be selected. Capsomer job: lift
+   `.cap-check` in table.css, then delete this rule. */
+.cap-table tbody tr:has(.cap-table-open) .cap-check {
+  position: relative;
+  z-index: 1;
+}
+
 /* On a phone the tab bar sticks to the foot of the window; a focused control scrolls clear of it. */
 @media (max-width: 820px) {
   :root:has(.cap-shell) {
