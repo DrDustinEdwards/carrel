@@ -14,6 +14,7 @@ Carrel is Dustin's private writing hub at https://carrel.dustinedwards.info, beh
 
 - `npm run typecheck` (wrangler types, typegen, tsc -b) and `npm test`: the quick local checks.
 - `npm run check:a11y`, `npm run check:conformance`, `npm run check:mcp-roles`, `npm run check:plants`: the gates for accessibility, the MCP door, the AI roles and the planted-failure proofs.
+- `npm run check:bloat`: a warn-only report (Knip, jscpd, JS and CSS gzip per route) against `docs/bloat-baseline.json`; it always exits 0. Knip and jscpd run through npx at exact versions, set up in `knip.json` and `.jscpd.json`.
 - `npm run harness`: the app against a fake site, for working without the real one.
 - `npm run db:migrate:local` and `db:migrate:remote`: D1 migrations.
 
