@@ -9,6 +9,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { people, projectMembers, projects } from "~/db/schema";
+import { agentEmail, isAgentName } from "~/lib/agent-keys.server";
 import type { Viewer } from "~/lib/people.server";
 import type { Role } from "~/lib/roles";
 
@@ -75,6 +76,26 @@ export async function addPerson(db: D1Database, viewer: Viewer, input: { email: 
   const [row] = await d
     .insert(people)
     .values({ email, name, isOwner: false, isReviewer: input.reviewer })
+    .returning({ id: people.id, email: people.email, name: people.name, isOwner: people.isOwner, isReviewer: people.isReviewer, disabledAt: people.disabledAt });
+  return { ...row!, roles: [] };
+}
+
+/**
+ * Adds a named AI agent: the person row "agent:<name>" that an AGENT_KEY_<NAME> secret resolves to at
+ * the AI door. Never an Owner, never a reviewer, and it starts with no role on any project. Adding the
+ * row grants nothing by itself: the key is a Worker secret the Owner sets, and the role is set below.
+ */
+export async function addAgent(db: D1Database, viewer: Viewer, input: { name: string; label?: string }): Promise<PersonRow> {
+  requireOwner(viewer);
+  const name = input.name.trim().toLowerCase();
+  if (!isAgentName(name)) throw new PeopleRefusal("An agent's name is letters, digits, hyphens and underscores, up to 32, such as grok.");
+  const email = agentEmail(name);
+  const d = drizzle(db);
+  const existing = await d.select({ id: people.id }).from(people).where(eq(people.email, email)).get();
+  if (existing) throw new PeopleRefusal(`${email} is already in Carrel.`);
+  const [row] = await d
+    .insert(people)
+    .values({ email, name: input.label?.trim().slice(0, 200) || name, isOwner: false, isReviewer: false })
     .returning({ id: people.id, email: people.email, name: people.name, isOwner: people.isOwner, isReviewer: people.isReviewer, disabledAt: people.disabledAt });
   return { ...row!, roles: [] };
 }

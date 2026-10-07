@@ -44,6 +44,14 @@ interface CarrelSecrets {
    */
   SOCIAL_ROUTINE_URL?: string;
   SOCIAL_ROUTINE_TOKEN?: string;
+  /**
+   * Named agent keys for the AI door, for agents that cannot complete its OAuth sign-in: one secret
+   * per agent, and the secret's NAME is the agent (AGENT_KEY_GROK is "grok"). The key says which agent
+   * is knocking and grants nothing; the agent's role is its person row "agent:grok" in People. Inert
+   * until a secret exists. Any AGENT_KEY_<NAME> is read, so this declares only the first one:
+   * `Get-Content <key file> -Raw | npx wrangler secret put AGENT_KEY_GROK`.
+   */
+  AGENT_KEY_GROK?: string;
 }
 
 interface Env extends CarrelSecrets {}

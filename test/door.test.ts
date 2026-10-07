@@ -282,6 +282,23 @@ describe("signing in through Access for SaaS", () => {
     expect(await testEnv.DB.prepare("SELECT message FROM findings").first()).toEqual({ message: "A flag. (from Claude Code)" });
   });
 
+  it("PLANT: OAuth is unchanged while an agent key is configured: the grant is still the person, an Owner here, never an agent", async () => {
+    const { final } = await signIn();
+    const token = await tokenFor(final.searchParams.get("code")!);
+    await addProject("de-info", "dustinedwards");
+    await addPerson("agent:grok");
+    const withKey = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret", AGENT_KEY_GROK: "grok-test-key-0123456789abcdefghijklmnop" });
+    const site = fakeSite();
+    vi.stubGlobal("fetch", site.fetch);
+    const { status, result } = await callTool(token, "list_projects", {}, withKey);
+    expect(status).toBe(200);
+    expect(result!.structuredContent).toMatchObject({ projects: [{ slug: "de-info", role: "owner" }] });
+    await callTool(token, "add_finding", { project: "de-info", item: "post-one", message: "A flag." }, withKey);
+    expect(await testEnv.DB.prepare("SELECT message FROM findings").first()).toEqual({ message: "A flag. (from Claude Code)" });
+    // And a token that is not a grant is still refused by the provider, not read as an agent key.
+    expect((await callTool("not-a-token", "list_projects", {}, withKey)).status).toBe(401);
+  });
+
   it("PLANT: Access let someone in whom Carrel does not know: refused, no code", async () => {
     const { final } = await signIn(() => ({ email: "stranger@test.invalid" }));
     expect(final.searchParams.get("error")).toBe("access_denied");

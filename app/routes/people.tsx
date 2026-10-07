@@ -22,7 +22,7 @@ import { Pill } from "capsomer/react/status";
 import { PageHead } from "~/components/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
-import { addPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
+import { addAgent, addPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
 
 import type { Route } from "./+types/people";
 
@@ -34,7 +34,7 @@ export async function loader({ context }: Route.LoaderArgs) {
   return listPeople(getEnv(context).DB, getViewer(context));
 }
 
-type ActionResult = { ok: true; intent: string; added?: string } | { ok: false; intent: string; message: string };
+type ActionResult = { ok: true; intent: string; added?: string; agent?: string } | { ok: false; intent: string; message: string };
 
 export async function action({ request, context }: Route.ActionArgs): Promise<ActionResult> {
   const db = getEnv(context).DB;
@@ -51,6 +51,10 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
           reviewer: form.get("reviewer") === "yes",
         });
         return { ok: true, intent, added: added.email };
+      }
+      case "add-agent": {
+        const added = await addAgent(db, viewer, { name: String(form.get("agent") ?? ""), label: String(form.get("label") ?? "") });
+        return { ok: true, intent, agent: added.email };
       }
       case "role": {
         const role = String(form.get("role") ?? "");
@@ -112,7 +116,20 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
 
       {actionData && !actionData.ok ? <Alert tone="crit" title="Nothing changed">{actionData.message}</Alert> : null}
 
-      {actionData?.ok && actionData.added ? (
+      {actionData?.ok && actionData.agent ? (
+        <Alert tone="warn" title={`Added ${actionData.agent}. It has no key and no role yet.`}>
+          <div className="app-steps">
+            <p>
+              An agent reaches the AI door with a key, a Worker secret named <code>AGENT_KEY_</code> and the agent's name in capitals. Carrel never shows or stores the key.
+              The key says which agent is knocking and grants nothing: what the agent may do is the role you set for it below, and it can never publish.
+            </p>
+            <ol>
+              <li>Set the Worker secret from a file, in the carrel folder: <code>Get-Content &lt;key file&gt; -Raw | npx wrangler secret put AGENT_KEY_{actionData.agent.slice("agent:".length).toUpperCase()}</code>.</li>
+              <li>Set the agent's role on each project it may use, below. Editor lets it save AI drafts, and it flags and previews as a Reader does.</li>
+            </ol>
+          </div>
+        </Alert>
+      ) : actionData?.ok && actionData.added ? (
         <Alert tone="warn" title={`Added ${actionData.added}. They cannot sign in yet.`}>
           <div className="app-steps">
             <p>
@@ -164,7 +181,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
             </thead>
             <tbody>
               {people.map((person) => {
-                const kind = person.isOwner ? "Owner" : person.isReviewer ? "Reviewer (AI)" : "Person";
+                const kind = person.isOwner ? "Owner" : person.email.startsWith("agent:") ? "Agent (AI)" : person.isReviewer ? "Reviewer (AI)" : "Person";
                 return (
                   <tr key={person.id}>
                     <th scope="row">
@@ -238,6 +255,24 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
           <div className="app-actions">
             <Button type="submit" name="intent" value="add" variant="primary" pending={busy}>
               Add
+            </Button>
+          </div>
+        </Form>
+      </Panel>
+
+      <Panel title="Add an AI agent" src="For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never as you.">
+        <Form method="post" className="app-form">
+          <div className="app-fields">
+            <Field label="Agent name" required help="Lower case, such as grok. Its key is the Worker secret AGENT_KEY_ and this name in capitals.">
+              <input className="cap-input" type="text" name="agent" required autoComplete="off" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,31}" />
+            </Field>
+            <Field label="Label">
+              <input className="cap-input" type="text" name="label" autoComplete="off" />
+            </Field>
+          </div>
+          <div className="app-actions">
+            <Button type="submit" name="intent" value="add-agent" variant="primary" pending={busy}>
+              Add agent
             </Button>
           </div>
         </Form>
