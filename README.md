@@ -201,6 +201,16 @@ Credentials are secrets named for the account key, with dashes as underscores: `
   - Someone without a Cloudflare account signs in with an emailed code only if One-time PIN is set up, under Zero Trust > Integrations > Identity providers.
 - **Flags** (`/p/<project>/flags`): every flag on a site project, open first, from checks, AI sessions and reviewers, including flags on items the site does not have, which no editor page reaches. Anyone who can read the project sees them. Only the Owner dismisses, through the editor's own dismiss function, so a dismissal is recorded the same way.
 
+## Legal pages
+
+A privacy or terms page is an ordinary page on the site (item `page.privacy` or `page.terms`, registered on the site, never made by Carrel) and opens in the normal editor. The **Legal** tab (`/p/<project>/legal`) lists the two, says which are not set up on the site, and holds the shared sections.
+
+- **Fields**: a legal page's frontmatter carries `legal_type` (`privacy` or `terms`), `site_name`, `operator_name`, `contact`, `jurisdiction`, `data_held`, `last_updated` and `banner`. The editor shows them as labelled fields. `banner` is a checkbox that writes the one word `Draft`; the Owner clears it when the page is done. The site's layout decides how to show them.
+- **Shared sections** (the `legal_sections` table, migration 0008): text every site says alike, written once. A page names one with `<!-- shared:hosting -->`; on every write to the site Carrel writes the section's text between that marker and `<!-- /shared:hosting -->`, with `{{site_name}}`, `{{operator_name}}`, `{{contact}}`, `{{jurisdiction}}` and `{{data_held}}` filled in from the page's own fields. Each site still publishes its own page, so changing a section changes nothing public until a page is next saved; the Legal tab marks a page whose text is behind its sections. Only the Owner changes a section. A save as draft keeps an empty field's `{{token}}`; a publish, or a save to a live page, is refused naming the empty field or the unknown section. Tests: `test/legal.test.ts`.
+- **`last_updated`** is stamped with the day when the Owner publishes a text that changed, or a draft going public, and not by a draft save or a change to a field other than the text.
+- **The license page**: dustinedwards.info's `/terms` is the license named by the Dataset JSON-LD and the `Link: rel="license"` header, so Carrel refuses to unpublish `page.terms` (`keepPublic` in `app/lib/sites.server.ts`) and refuses to change the path of any legal page. Its wording can change. The test is `PLANT: the page the site's data license names` in `test/legal.test.ts`.
+- AI sessions treat legal pages like any other page: drafts are saved as labelled AI drafts, and only the Owner publishes.
+
 ## Who may do what
 
 | Action | Reader | Editor | Owner |
@@ -217,6 +227,8 @@ Credentials are secrets named for the account key, with dashes as underscores: `
 | Upload media, insert an image into a post | | yes | yes |
 | Delete a media file from the site | | | yes |
 | See a project's flags list | yes | yes | yes |
+| See the Legal tab and the shared sections | yes | yes | yes |
+| Change or remove a shared section | | | yes |
 | Dismiss a flag | | | yes |
 | Manage people and their roles | | | yes |
 

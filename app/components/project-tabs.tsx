@@ -6,6 +6,7 @@ import { TabsNav } from "capsomer/react/tabs";
 const SECTIONS = [
   { id: "posts", label: "Posts", path: "" },
   { id: "media", label: "Media", path: "/media" },
+  { id: "legal", label: "Legal", path: "/legal" },
   { id: "flags", label: "Flags", path: "/flags" },
 ] as const;
 

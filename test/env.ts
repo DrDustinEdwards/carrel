@@ -23,6 +23,7 @@ export async function resetDb(): Promise<void> {
     testEnv.DB.prepare("DELETE FROM social_events"),
     testEnv.DB.prepare("DELETE FROM social_routine_runs"),
     testEnv.DB.prepare("DELETE FROM social_accounts"),
+    testEnv.DB.prepare("DELETE FROM legal_sections"),
     testEnv.DB.prepare("DELETE FROM changes"),
     testEnv.DB.prepare("DELETE FROM drafts"),
     testEnv.DB.prepare("DELETE FROM site_items"),

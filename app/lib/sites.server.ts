@@ -13,6 +13,11 @@ type SiteEntry = {
   keyName: string;
   /** The source a new item starts from, in the site's own frontmatter. The site validates it on save. */
   newSource: (slug: string, today: string) => string;
+  /**
+   * Items other code on the site depends on staying public. dustinedwards.info's terms are the license
+   * named by the Dataset JSON-LD and the Link header on every download, so Carrel never takes them down.
+   */
+  keepPublic: readonly string[];
 };
 
 const SITES: Record<SiteId, SiteEntry> = {
@@ -21,6 +26,7 @@ const SITES: Record<SiteId, SiteEntry> = {
     origin: (env) => env.SITE_DUSTINEDWARDS_ORIGIN,
     key: (env) => env.SITE_DUSTINEDWARDS_KEY,
     keyName: "SITE_DUSTINEDWARDS_KEY",
+    keepPublic: ["page.terms"],
     // The shape of content/posts/*.md on the site: draft until the Owner publishes.
     newSource: (slug, today) =>
       ["---", 'title: ""', `slug: ${slug}`, 'description: ""', `date: ${today}`, "tags: []", "draft: true", "---", "", ""].join("\n"),

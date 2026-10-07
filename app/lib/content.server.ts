@@ -9,6 +9,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { changes, drafts } from "~/db/schema";
 import { indexDoc } from "~/lib/index.server";
+import { checkLegalWrite } from "~/lib/legal.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, type Action, type Role } from "~/lib/roles";
@@ -112,6 +113,11 @@ export async function writeToSite(
   const client = siteClient(env, project.site, fetcher);
   const current = await readDoc(env, project, itemId, fetcher);
   requireCan(project, actionNeeded(request.action, current));
+
+  // A legal page has its shared sections written in and its date stamped; a page the site keeps public is not taken down.
+  const legal = await checkLegalWrite(env.DB, project, itemId, request, current, new Date());
+  if (!legal.ok) return { ok: false, reason: "refused", message: legal.message };
+  if ("source" in request && request.source !== undefined) request = { ...request, source: legal.source };
 
   const changeId = crypto.randomUUID();
   let result;

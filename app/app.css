@@ -602,6 +602,11 @@ html[data-typing] :is(.cap-shell-top, .cap-shell-rail, .cap-shell-tabs, .app-edi
     padding: 0 var(--space-2);
     font-weight: 600;
   }
+  & input[type="checkbox"] {
+    justify-self: start;
+    align-self: start;
+    margin: 0;
+  }
   & .app-fm-field[data-wide] {
     grid-column: 1 / -1;
   }
