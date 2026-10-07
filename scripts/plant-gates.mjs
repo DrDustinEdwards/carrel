@@ -36,7 +36,7 @@ const MCP_TESTS = ["test/mcp.test.ts", "test/mcp-followups.test.ts", "test/door.
 /** Each plant: the gate that must catch it, the file, the exact text replaced, and what replaces it. */
 const PLANTS = [
   { gate: "typecheck", file: "app/lib/mcp/server.ts", find: "const SERVER_INFO =", replace: 'const PLANTED: number = "a string";\nconst SERVER_INFO =', label: "a type error in the protocol layer" },
-  { gate: "build", file: "app/lib/mcp/door.ts", find: 'import { findViewer } from "~/lib/people.server";', replace: 'import { findViewer } from "~/lib/people.server";\nimport "./no-such-module";', label: "an import that does not resolve" },
+  { gate: "build", file: "app/lib/mcp/door.ts", find: 'import { findAgentViewer, findViewer } from "~/lib/people.server";', replace: 'import { findAgentViewer, findViewer } from "~/lib/people.server";\nimport "./no-such-module";', label: "an import that does not resolve" },
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
