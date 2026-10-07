@@ -25,7 +25,9 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "carrel",
-	"compatibility_date": "2026-09-01",
+	// Cloudflare says to set this to today's date. It is the newest date the pinned workerd accepts (a
+	// newer one stops the local runtime and the tests from starting); raise it with wrangler.
+	"compatibility_date": "2026-10-02",
 	"main": "./workers/app.ts",
 	// global_fetch_strictly_public: the AI door's OAuth provider refuses to fetch a client's metadata
 	// document (CIMD) without it, as SSRF protection. It also sends same-zone fetches (the site API on
@@ -45,10 +47,20 @@
 	// 		"custom_domain": true
 	// 	}
 	// ],
+	// Logs and traces both on, at a stated rate. 1 keeps every request: Carrel is one person's tool, so
+	// the volume is small and a sampled-away failure is the cost that matters. invocation_logs stays
+	// off; the code writes its own structured JSON lines (console.warn(JSON.stringify({...}))).
 	"observability": {
 		"enabled": true,
+		"head_sampling_rate": 1,
 		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
 			"invocation_logs": false
+		},
+		"traces": {
+			"enabled": true,
+			"head_sampling_rate": 1
 		}
 	},
 	"triggers": {
