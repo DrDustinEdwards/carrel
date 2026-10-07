@@ -35,7 +35,7 @@ npm run check:plants         # each gate above, seen red on a planted violation 
 npm run check:a11y           # an axe scan (WCAG 2.2 A and AA) of every screen, both themes, desktop and phone
 ```
 
-GitHub Actions runs all of these on every push and pull request (`.github/workflows/ci.yml`); none needs a secret.
+GitHub Actions runs all of these on every push and pull request (`.github/workflows/ci.yml`); none needs a secret. `npm test` also runs `scripts/check-deploy.mjs`, which proves the deploy script never deploys after a failed migration, build or id check. A push to main then runs the `deploy` job (secrets: see `docs/auto-deploy.md`).
 
 ## The look
 
@@ -53,6 +53,7 @@ The tests never reach the network. Site tests run Carrel's code against site-api
 2. `npm run deploy` with no route: `workers_dev` and `preview_urls` are false, so nothing reaches the Worker yet.
 3. Turn on Access for the Worker (Workers & Pages, carrel, Access, All traffic) and `Get-Clipboard | npx wrangler secret put ACCESS_AUD`.
 4. Uncomment `routes` in `wrangler.jsonc` and deploy again to add `carrel.dustinedwards.info`.
+5. From then on a merge to main deploys itself (`npm run deploy:ci`, run by the `deploy` job in CI): it renders `wrangler.jsonc` from the example and the variables `CARREL_D1_DATABASE_ID`, `CARREL_KV_OAUTH_ID` and `CARREL_ALERT_EMAIL` (both routes on), checks the ids against the names `carrel` and `carrel-oauth`, builds, runs `wrangler d1 migrations apply DB --remote`, checks nothing is pending, and only then runs `wrangler deploy`. A failed step stops the run before the deploy. Secrets set with `wrangler secret put` live in the Worker and survive deploys. See `docs/auto-deploy.md`.
 
 ## Connecting a site
 
