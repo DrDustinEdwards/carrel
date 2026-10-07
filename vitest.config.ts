@@ -15,7 +15,7 @@ export default defineConfig({
     cloudflareTest({
       main: "./test/entry.ts",
       miniflare: {
-        compatibilityDate: "2026-09-01",
+        compatibilityDate: "2026-10-02",
         // As wrangler.jsonc: the AI door's OAuth provider needs the flag to fetch CIMD documents.
         compatibilityFlags: ["global_fetch_strictly_public"],
         d1Databases: ["DB"],
