@@ -73,8 +73,8 @@ export const SCREENS = [
       await press(page, "button", /^Delete$/, "alertdialog");
     } },
   { name: "mentions-sweep", viewer: "owner", path: `/p/${SITE}/mentions`, after: (page) => pressUntilOpen(page, /^Remove \d+ expired/, "alertdialog") },
-  { name: "mentions-editor", viewer: "editor", path: `/p/${SITE}/mentions` },
-  { name: "mentions-reader", viewer: "reader", path: `/p/${SITE}/mentions` },
+  { name: "mentions-editor", viewer: "editor", path: `/p/${SITE}/mentions`, skipFor: "the queue is the Owner's alone: this page answers 403, which test/mentions.test.ts asserts" },
+  { name: "mentions-reader", viewer: "reader", path: `/p/${SITE}/mentions`, skipFor: "the queue is the Owner's alone: this page answers 403, which test/mentions.test.ts asserts" },
   { name: "people", viewer: "owner", path: "/people" },
   { name: "manuscripts", viewer: "owner", path: "/manuscripts" },
   { name: "manuscripts-search", viewer: "owner", path: "/manuscripts?q=paluxy" },
