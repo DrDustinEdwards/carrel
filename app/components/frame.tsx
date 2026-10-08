@@ -4,7 +4,7 @@
 import { useMemo, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { MessageProvider } from "capsomer/react/message";
-import { Shell, type LinkProps, type ShellEntry } from "capsomer/react/shell";
+import { AdminShell, type AdminApp, type AdminEntry, type LinkProps } from "capsomer/react/admin-shell";
 import { ThemeSwitch } from "capsomer/react/theme-switch";
 
 export type FrameProject = { slug: string; name: string; kind: "site" | "book" | null };
@@ -17,7 +17,7 @@ export type FrameData = {
 
 function Icon({ d, stroke }: { d: string; stroke?: boolean }) {
   return (
-    <svg className="cap-shell-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <svg className="cap-admin-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
       <path d={d} fill={stroke ? "none" : "currentColor"} stroke={stroke ? "currentColor" : "none"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -38,6 +38,21 @@ const BRAND_MARK = (
   </svg>
 );
 
+// The strip's apps. Carrel is the one we are in; the others are the family's other admin areas.
+const APPS: AdminApp[] = [
+  { id: "carrel", label: "Carrel", href: "/", logo: BRAND_MARK, current: true },
+  { id: "portal", label: "Capsid Portal", href: "https://portal.dustinedwards.info/", mono: "P" },
+  { id: "info", label: "dustinedwards.info", href: "https://dustinedwards.info/admin", mono: "D" },
+];
+
+const initialsOf = (name: string) =>
+  name
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("") || "?";
+
 function RouterLink({ href, children, ...rest }: LinkProps) {
   return (
     <Link to={href} {...rest}>
@@ -54,10 +69,10 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
 
   const { nav, tabs, more } = useMemo(() => {
     const at = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
-    const home: ShellEntry = { id: "home", label: "Home", href: "/", icon: ICONS.home, current: pathname === "/" };
+    const home: AdminEntry = { id: "home", label: "Home", href: "/", icon: ICONS.home, current: pathname === "/" };
     const projects = (data?.projects ?? [])
       .filter((p) => p.kind !== null)
-      .map<ShellEntry>((p) => ({
+      .map<AdminEntry>((p) => ({
         id: `${p.kind}-${p.slug}`,
         label: p.name,
         href: projectHref(p),
@@ -68,7 +83,7 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
     // Sites before books, as the groups read down the rail.
     const sites = projects.filter((e) => e.group === "Sites");
     const books = projects.filter((e) => e.group === "Books");
-    const library: ShellEntry[] = owner
+    const library: AdminEntry[] = owner
       ? [
           { id: "manuscripts", label: "Manuscripts", href: "/manuscripts", icon: ICONS.manuscripts, current: at("/manuscripts"), group: "Owner" },
           { id: "social", label: "Social", href: "/social", icon: ICONS.social, current: at("/social"), group: "Owner" },
@@ -83,36 +98,22 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
   }, [data, owner, pathname]);
 
   return (
-    <Shell
-      brand={
-        <>
-          {BRAND_MARK}
-          Carrel
-        </>
-      }
-      brandHref="/"
+    <AdminShell
+      title="Carrel"
+      mark={BRAND_MARK}
+      apps={APPS}
       nav={nav}
       tabs={tabs}
-      more={more.length > 0 ? more : undefined}
+      more={more}
       renderLink={RouterLink}
-      status={
-        data ? (
-          <span className="cap-muted" data-hide="phone">
-            <b className="app-person">{data.name}</b>
-            {owner ? ", Owner" : ""}
-          </span>
-        ) : null
-      }
-      actions={
-        <>
-          <ThemeSwitch />
-          {owner ? (
-            <Link className="cap-btn cap-shell-settings" to="/people" aria-current={pathname === "/people" ? "page" : undefined}>
-              Settings
-            </Link>
-          ) : null}
-        </>
-      }
+      account={{
+        name: data?.name ?? "Signed out",
+        initials: initialsOf(data?.name ?? ""),
+        role: owner ? "Owner" : undefined,
+        appLinks: owner ? [{ label: "Settings", href: "/people", current: pathname === "/people" }] : undefined,
+        onSignOut: data ? () => location.assign("/cdn-cgi/access/logout") : undefined,
+      }}
+      actions={<ThemeSwitch />}
       prefKey="carrel-rail"
     >
       <MessageProvider>
@@ -122,6 +123,6 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
             marker is what it looks for; the region itself is the provider's. */}
         <span hidden data-cap="message" />
       </MessageProvider>
-    </Shell>
+    </AdminShell>
   );
 }
