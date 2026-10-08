@@ -52,6 +52,29 @@ export const SCREENS = [
   { name: "media-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash` },
   { name: "media-trash-editor", viewer: "editor", path: `/p/${SITE}/media?view=trash` },
   { name: "media-tag", viewer: "owner", path: `/p/${SITE}/media?tag=foxhound` },
+  { name: "mentions", viewer: "owner", path: `/p/${SITE}/mentions` },
+  { name: "mentions-failed", viewer: "owner", path: `/p/${SITE}/mentions?status=failed` },
+  { name: "mentions-all", viewer: "owner", path: `/p/${SITE}/mentions?status=all` },
+  { name: "mentions-select", viewer: "owner", path: `/p/${SITE}/mentions`, after: (page) => selectMentions(page, 2) },
+  // The site refuses to decide a failed mention, so this shows the per mention result without changing anything.
+  {
+    name: "mentions-result",
+    viewer: "owner",
+    path: `/p/${SITE}/mentions?status=failed`,
+    after: async (page) => {
+      await selectMentions(page, 2);
+      await page.getByRole("region", { name: "Bulk actions" }).getByRole("button", { name: /^Approve/ }).click();
+      await page.locator("#mention-result").waitFor();
+      await page.waitForTimeout(600);
+    },
+  },
+  { name: "mentions-delete", viewer: "owner", path: `/p/${SITE}/mentions?status=failed`, after: async (page) => {
+      await selectMentions(page, 1);
+      await press(page, "button", /^Delete$/, "alertdialog");
+    } },
+  { name: "mentions-sweep", viewer: "owner", path: `/p/${SITE}/mentions`, after: (page) => pressUntilOpen(page, /^Remove \d+ expired/, "alertdialog") },
+  { name: "mentions-editor", viewer: "editor", path: `/p/${SITE}/mentions`, skipFor: "the queue is the Owner's alone: this page answers 403, which test/mentions.test.ts asserts" },
+  { name: "mentions-reader", viewer: "reader", path: `/p/${SITE}/mentions`, skipFor: "the queue is the Owner's alone: this page answers 403, which test/mentions.test.ts asserts" },
   { name: "people", viewer: "owner", path: "/people" },
   { name: "manuscripts", viewer: "owner", path: "/manuscripts" },
   { name: "manuscripts-search", viewer: "owner", path: "/manuscripts?q=paluxy" },
@@ -203,6 +226,51 @@ async function selectPosts(page, titles) {
   for (const title of titles) await page.getByRole("checkbox", { name: new RegExp(`^Select ${title}`) }).check();
   await page.getByRole("region", { name: "Bulk actions" }).getByText(`${titles.length} selected`).waitFor();
   await page.waitForTimeout(400);
+}
+
+/**
+ * Ticks the first `count` rows of the Mentions table, and waits for the bulk bar to say so. Rows are
+ * named by their sender, and several senders are unnamed, so they are taken by position.
+ * @param {Page} page
+ * @param {number} count
+ */
+async function selectMentions(page, count) {
+  // The boxes are controlled: a click before the page has hydrated is undone when React takes over, so
+  // each click is repeated until the bar's count says it landed, never a fixed wait.
+  const boxes = page.getByRole("checkbox", { name: /^Select the mention from/ });
+  const bar = page.getByRole("region", { name: "Bulk actions" });
+  for (let i = 0; i < count; i++) {
+    for (let attempt = 1; ; attempt++) {
+      await boxes.nth(i).click();
+      try {
+        await bar.getByText(`${i + 1} selected`).waitFor({ timeout: 3_000 });
+        break;
+      } catch (error) {
+        if (attempt === 8) throw error;
+      }
+    }
+  }
+  await page.waitForTimeout(400);
+}
+
+/**
+ * Presses a button that opens a dialog, repeating the click until the dialog is there: the button is
+ * wired by React, so a click before hydration does nothing.
+ * @param {Page} page
+ * @param {RegExp} name
+ * @param {"dialog" | "alertdialog"} opens
+ */
+async function pressUntilOpen(page, name, opens) {
+  for (let attempt = 1; ; attempt++) {
+    await page.getByRole("button", { name }).first().click();
+    try {
+      await page.getByRole(opens).first().waitFor({ timeout: 3_000 });
+      break;
+    } catch (error) {
+      if (attempt === 8) throw error;
+    }
+  }
+  await page.waitForTimeout(300);
 }
 
 /**

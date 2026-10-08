@@ -77,7 +77,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const tag = tagText ? cleanMediaTag(tagText) : null;
   const wantsTrash = url.searchParams.get("view") === "trash";
   const base = {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
+    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
     canUpload: can(project.role, "edit"),
     canDelete: can(project.role, "delete_media"),
     q,
@@ -327,7 +327,7 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
     <div className="app-page">
       <PageHead title={project.name} lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`} />
 
-      <ProjectTabs slug={project.slug} current="media" />
+      <ProjectTabs slug={project.slug} current="media" mentions={project.mentions} />
 
       {unavailable ? (
         <Banner tone="warn">{unavailable}</Banner>

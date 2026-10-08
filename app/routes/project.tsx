@@ -56,7 +56,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     canDelete,
     deleteOffered: deleteSupport?.offered === true,
     deleteReason: deleteSupport && !deleteSupport.offered ? deleteSupport.reason : null,
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
+    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
     canEdit: can(project.role, "edit"),
     connected: connection.state === "connected",
     connectionDetail: connection.state === "connected" ? null : connection.detail,
@@ -149,7 +149,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
         }
       />
 
-      <ProjectTabs slug={project.slug} current="posts" />
+      <ProjectTabs slug={project.slug} current="posts" mentions={project.mentions} />
 
       {!connected ? (
         <Banner tone="warn" title="This site is not connected yet">

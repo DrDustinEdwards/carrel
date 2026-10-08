@@ -199,6 +199,23 @@ async function build(base: Env): Promise<World> {
     changeId: "seed-primer",
   });
   await writeToSite(env, sitePr, owner, "bacterial-genetics-primer", { action: "schedule", expectedVersion: saved(sched), publishAt: "2026-10-09T13:00:00.000Z" }, site.fetch);
+  // The webmention queue: a mix of states, with fake senders on the reserved .example domains. Two are
+  // past the site's retention windows, so the Retention panel has something to offer to sweep.
+  const day = 24 * 60 * 60 * 1000;
+  const ago = (days: number) => new Date(Date.parse("2026-10-06T12:00:00Z") - days * day);
+  for (const m of [
+    { sourceUrl: "https://fieldnotes.example/2026/10/lysis-and-lysogeny", targetId: "foxhound-waits", authorName: "Rosa Okafor", authorUrl: "https://fieldnotes.example", excerpt: "A clear account of why a page should wait before it wakes anyone, and what the wait costs.", receivedAt: ago(1) },
+    { sourceUrl: "https://microbial-reading-group.example/notes/week-14", targetId: "how-the-index-refreshes", authorName: "Tomas Brandt", authorUrl: null, excerpt: "We read this in the group: the refresh order is the part that finally made the cron make sense.", receivedAt: ago(2) },
+    { sourceUrl: "https://slowweb.example/links", targetId: "foxhound-waits", authorName: null, excerpt: "Links from this week: the Foxhound piece, a long read on plasmids, a short one on fonts.", receivedAt: ago(3) },
+    { sourceUrl: "https://quiet-desk.example/carrels", targetId: "what-a-carrel-is-for", authorName: "Mina Hale", authorUrl: "https://quiet-desk.example", excerpt: "Agreeing with the part about the habit a small desk builds.", status: "approved" as const, receivedAt: ago(9) },
+    { sourceUrl: "https://seo-links.example/best-casino", targetId: "foxhound-waits", authorName: "Top Picks Daily", excerpt: null, status: "rejected" as const, receivedAt: ago(20) },
+    { sourceUrl: "https://seo-links.example/older", targetId: "how-the-index-refreshes", authorName: "Top Picks Daily", excerpt: null, status: "rejected" as const, receivedAt: ago(120) },
+    { sourceUrl: "https://gone.example/post-that-vanished", targetId: "foxhound-waits", authorName: null, excerpt: null, status: "failed" as const, failureReason: "source-unreachable", receivedAt: ago(4) },
+    { sourceUrl: "https://gone.example/a-second-vanished-post", targetId: "how-the-index-refreshes", authorName: null, excerpt: null, status: "failed" as const, failureReason: "no-link-to-target", receivedAt: ago(45) },
+    { sourceUrl: "https://newsletter.example/issue-31", targetId: "what-a-carrel-is-for", status: "unverified" as const, receivedAt: ago(0) },
+  ]) {
+    site.adapter.receiveMention({ authorUrl: null, ...m });
+  }
   // Legal pages: two shared sections, and a privacy page that carries one with the Draft banner on. The
   // terms page is left out, so the Legal tab shows both a page that is set up and one that is not.
   for (const [key, title, body] of [
