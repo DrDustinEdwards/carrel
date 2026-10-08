@@ -9,7 +9,7 @@ import { autosave, writeToSite } from "~/lib/content.server";
 import { refreshIndex } from "~/lib/index.server";
 import { finishAuth, startAuth } from "~/lib/google/oauth.server";
 import { refreshManuscripts } from "~/lib/google/drive.server";
-import { uploadMedia } from "~/lib/media.server";
+import { setMediaTags, trashMedia, uploadMedia } from "~/lib/media.server";
 import { findViewer } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { clearTokenCache, novelsRepo } from "~/lib/novels/repo.server";
@@ -135,6 +135,7 @@ async function build(base: Env): Promise<World> {
   // Media, then posts (one uses a picture), then the index.
   const sitePr = await requireSiteProject(db, owner, SITE_SLUG, "publish");
   const media: string[] = [];
+  const uploaded: Array<{ id: string; version: string; name: string }> = [];
   for (const [name, alt] of [
     ["foxhound-dashboard.png", "The Foxhound dashboard with three sites reporting healthy"],
     ["lambda-switch.png", "A diagram of the CI and Cro switch in phage lambda"],
@@ -144,8 +145,22 @@ async function build(base: Env): Promise<World> {
     ["release-banner.png", ""],
   ] as const) {
     const out = await uploadMedia(env, sitePr, { viewer: owner }, { name, type: "image/png", size: PNG.byteLength, bytes: async () => PNG.slice().buffer }, alt);
-    if (out.ok) media.push(out.item.url);
+    if (out.ok) {
+      media.push(out.item.url);
+      uploaded.push({ id: out.item.id, version: out.item.version ?? "", name });
+    }
   }
+  // Tags on two files and one in the trash, so the library, the tag filter and the Trash view all have something to show.
+  const writer = { viewer: owner };
+  for (const [name, tags] of [["foxhound-dashboard.png", ["foxhound", "screenshots"]], ["lambda-switch.png", ["phage", "diagrams"]]] as const) {
+    const file = uploaded.find((u) => u.name === name);
+    if (file) {
+      const tagged = await setMediaTags(env, sitePr, writer, file.id, [...tags], file.version);
+      if (tagged.ok) file.version = tagged.version;
+    }
+  }
+  const banner = uploaded.find((u) => u.name === "release-banner.png");
+  if (banner) await trashMedia(env, sitePr, writer, banner.id, banner.version);
 
   const posts: Array<{ slug: string; source: string; publish: boolean }> = [
     {
