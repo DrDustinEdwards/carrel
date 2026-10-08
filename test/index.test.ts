@@ -10,6 +10,7 @@ import {
   REFRESH_MAX_SUBREQUESTS,
   REFRESH_SUBREQUEST_BUDGET,
   refreshIndex,
+  kindsIn,
   searchItems,
   SUBREQUEST_LIMIT,
 } from "~/lib/index.server";
@@ -54,6 +55,25 @@ describe("refresh", () => {
     expect((await searchItems(env.DB, projectId, { q: "stemming" })).map((i) => i.itemId)).toEqual(["fts-notes"]);
     expect((await searchItems(env.DB, projectId, { status: "published" })).map((i) => i.itemId)).toEqual(["workers-caching"]);
     expect(await searchItems(env.DB, projectId, { q: "nothing-like-this" })).toEqual([]);
+  });
+
+  it("keeps a site's data kinds out of the writing lists and their kinds, whatever the kind is called", async () => {
+    const db = connectedEnv().DB;
+    const row = (itemId: string, kind: string) =>
+      db
+        .prepare("INSERT INTO site_items (project_id, item_id, kind, title, status, synced_at) VALUES (?, ?, ?, ?, 'published', '2026-10-07T00:00:00Z')")
+        .bind(projectId, itemId, kind, itemId);
+    await db.batch([
+      row("a-post", "post"),
+      row("a-page", "page"),
+      row("equipment.heat-block", "equipment"),
+      row("reagent.agar", "reagent"),
+      row("widget.x", "some-kind-no-one-listed"),
+    ]);
+    const listed = await searchItems(db, projectId, {});
+    expect(listed.map((i) => i.itemId).sort()).toEqual(["a-page", "a-post"]);
+    expect(await searchItems(db, projectId, { kind: "equipment" })).toEqual([]);
+    expect(await kindsIn(db, projectId)).toEqual(["page", "post"]);
   });
 
   it("reads a body again only when the item changed, and drops an item the site no longer lists", async () => {
