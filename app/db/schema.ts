@@ -78,7 +78,8 @@ export const changes = sqliteTable("changes", {
   personId: integer("person_id").notNull().references(() => people.id),
   // Media actions since migration 0007: item_id is then the site's media id, and a file has no version.
   // content-delete since migration 0009: item_id is the post's id, version_before the version deleted, version_after null.
-  action: text("action", { enum: ["save", "publish", "schedule", "unpublish", "media-upload", "media-delete", "content-delete"] }).notNull(),
+  // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.
+  action: text("action", { enum: ["save", "publish", "schedule", "unpublish", "media-upload", "media-delete", "content-delete", "media-alt", "media-tags", "media-trash", "media-restore"] }).notNull(),
   versionBefore: text("version_before"),
   versionAfter: text("version_after"),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
