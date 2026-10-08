@@ -1,0 +1,8 @@
+{
+  "path": ["app", "workers", "scripts", "test"],
+  "format": ["typescript", "tsx", "javascript", "css"],
+  "ignore": ["**/node_modules/**", "**/build/**", "**/.react-router/**", "**/worker-configuration.d.ts", "**/fixtures/**"],
+  "gitignore": true,
+  "reporters": ["json"],
+  "silent": true
+}
