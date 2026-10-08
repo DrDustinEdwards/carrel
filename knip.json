@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@6.39.0/schema.json",
+  "entry": ["workers/app.ts", "scripts/*.mjs", "vite.harness.config.ts", "test/**/*.test.ts", "test/entry.ts", "test/conformance/*entry.ts", "test/harness/*.ts"],
+  "ignoreDependencies": ["cloudflare"],
+  "project": ["app/**/*.{ts,tsx}", "workers/**/*.ts", "scripts/**/*.mjs", "test/**/*.ts", "*.{ts,mjs}"],
+  "ignore": ["worker-configuration.d.ts", "drizzle/**"]
+}

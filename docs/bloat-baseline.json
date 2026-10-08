@@ -1,0 +1,194 @@
+{
+  "measuredAt": "a27643c (origin/main) plus the check:bloat config, 2026-10-08",
+  "tools": {
+    "knip": "6.39.0",
+    "jscpd": "5.4.0"
+  },
+  "knip": {
+    "files": 0,
+    "dependencies": 0,
+    "devDependencies": 0,
+    "optionalPeerDependencies": 0,
+    "unlisted": 0,
+    "binaries": 0,
+    "unresolved": 0,
+    "exports": 34,
+    "nsExports": 0,
+    "types": 7,
+    "nsTypes": 0,
+    "enumMembers": 0,
+    "classMembers": 0,
+    "duplicates": 0
+  },
+  "jscpd": {
+    "percentage": 1.6886866742497157,
+    "clones": 39,
+    "duplicatedLines": 386,
+    "lines": 22858
+  },
+  "routes": [
+    {
+      "id": "root",
+      "path": "/",
+      "jsFiles": 6,
+      "cssFiles": 1,
+      "jsGzip": 103069,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/ai-draft",
+      "path": "/p/:project/e/:item/ai/:id",
+      "jsFiles": 23,
+      "cssFiles": 1,
+      "jsGzip": 130384,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/book",
+      "path": "/b/:project",
+      "jsFiles": 21,
+      "cssFiles": 1,
+      "jsGzip": 131705,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/book.chapter",
+      "path": "/b/:project/c/:chapter",
+      "jsFiles": 19,
+      "cssFiles": 1,
+      "jsGzip": 123235,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/book.file",
+      "path": "/b/:project/f/*",
+      "jsFiles": 22,
+      "cssFiles": 1,
+      "jsGzip": 200419,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/book.new",
+      "path": "/books/new",
+      "jsFiles": 16,
+      "cssFiles": 1,
+      "jsGzip": 120875,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/editor",
+      "path": "/p/:project/e/:item",
+      "jsFiles": 26,
+      "cssFiles": 1,
+      "jsGzip": 209425,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/frame",
+      "path": "/",
+      "jsFiles": 11,
+      "cssFiles": 1,
+      "jsGzip": 114387,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/history",
+      "path": "/p/:project/e/:item/history",
+      "jsFiles": 20,
+      "cssFiles": 1,
+      "jsGzip": 132835,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/home",
+      "path": "/",
+      "jsFiles": 17,
+      "cssFiles": 1,
+      "jsGzip": 122156,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/legal",
+      "path": "/p/:project/legal",
+      "jsFiles": 19,
+      "cssFiles": 1,
+      "jsGzip": 124004,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/manuscripts",
+      "path": "/manuscripts",
+      "jsFiles": 18,
+      "cssFiles": 1,
+      "jsGzip": 123391,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/media",
+      "path": "/p/:project/media",
+      "jsFiles": 21,
+      "cssFiles": 1,
+      "jsGzip": 130596,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/people",
+      "path": "/people",
+      "jsFiles": 19,
+      "cssFiles": 1,
+      "jsGzip": 129749,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/project",
+      "path": "/p/:project",
+      "jsFiles": 22,
+      "cssFiles": 1,
+      "jsGzip": 134962,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/project.flags",
+      "path": "/p/:project/flags",
+      "jsFiles": 22,
+      "cssFiles": 1,
+      "jsGzip": 128749,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/project.new",
+      "path": "/p/:project/new",
+      "jsFiles": 16,
+      "cssFiles": 1,
+      "jsGzip": 120867,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/social",
+      "path": "/social",
+      "jsFiles": 25,
+      "cssFiles": 1,
+      "jsGzip": 137026,
+      "cssGzip": 26345
+    },
+    {
+      "id": "routes/unpublish",
+      "path": "/p/:project/e/:item/unpublish",
+      "jsFiles": 16,
+      "cssFiles": 1,
+      "jsGzip": 121599,
+      "cssGzip": 26345
+    }
+  ],
+  "dependencies": {
+    "runtime": 24,
+    "dev": 15
+  },
+  "linesOfCode": {
+    "ts": 14847,
+    "tsx": 5129,
+    "mjs": 2624,
+    "css": 643,
+    "sql": 486
+  }
+}

@@ -50,6 +50,22 @@ jobs:
       # Each gate seen red on a planted violation (several minutes).
       - run: npm run check:plants
 
+  # Warn-only: Knip, jscpd and the JS and CSS weight per route, compared with docs/bloat-baseline.json
+  # and posted to the job summary. It always exits 0 and continue-on-error backs that up; nothing
+  # waits on it. It runs beside check and gates, so it adds no wall-clock time to a pull request.
+  bloat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci
+      - run: npm run check:bloat
+
   # Migrations first, then the Worker, and any failed step stops the run (scripts/deploy.mjs, tested by
   # check:deploy in `npm test`). It never runs on a pull request or on a branch other than main.
   # Actions here are pinned by full commit sha; the comment names the tag.

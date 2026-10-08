@@ -52,7 +52,7 @@ describe("pageWeight", () => {
   it("adds the entry and every route module from root down, each file once, and leaves out a resource route", () => {
     const weights = pageWeight(manifest, read, identity);
     expect(weights.map((w: { id: string }) => w.id)).toEqual(["root", "routes/frame", "routes/leaf"]);
-    const leaf = weights.find((w: { id: string }) => w.id === "routes/leaf");
+    const leaf = weights.find((w: { id: string }) => w.id === "routes/leaf")!;
     // entry 1 + shared 10 (listed by three modules, counted once) + root 100 + frame 1000 + leaf 10000
     expect(leaf.jsGzip).toBe(11111);
     expect(leaf.jsFiles).toBe(5);
@@ -62,7 +62,7 @@ describe("pageWeight", () => {
 
   it("gives a parent route only its own chain, so a child's files do not leak upward", () => {
     const weights = pageWeight(manifest, read, identity);
-    const root = weights.find((w: { id: string }) => w.id === "root");
+    const root = weights.find((w: { id: string }) => w.id === "root")!;
     expect(root.jsGzip).toBe(111);
     expect(root.cssGzip).toBe(7);
   });
@@ -86,8 +86,9 @@ describe("parseManifest", () => {
 describe("knipCounts", () => {
   it("counts files and each issue category as Knip groups them", () => {
     const counts = knipCounts({
-      files: ["a.ts", "b.ts"],
       issues: [
+        { file: "a.ts", files: [{ name: "a.ts" }] },
+        { file: "b.ts", files: [{ name: "b.ts" }] },
         { file: "x.ts", exports: [{ name: "one" }, { name: "two" }], types: [{ name: "T" }] },
         { file: "package.json", dependencies: [{ name: "left-pad" }], unlisted: [{ name: "zod" }] },
       ],
@@ -96,7 +97,7 @@ describe("knipCounts", () => {
   });
 
   it("is all zero for a clean report, so zero means Knip read the project and found nothing", () => {
-    expect(Object.values(knipCounts({ files: [], issues: [] })).every((n) => n === 0)).toBe(true);
+    expect(Object.values(knipCounts({ issues: [] })).every((n) => n === 0)).toBe(true);
   });
 });
 

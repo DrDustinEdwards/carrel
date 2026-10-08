@@ -1,3 +1,4 @@
+// @ts-nocheck (plain Node scripts, exercised by test/bloat.test.ts; the repo has no types for them yet)
 // `npm run check:bloat`: a warn-only report on dead code (Knip), duplicated code (jscpd) and
 // JavaScript and CSS weight per route. It always exits 0: the numbers are defaults to watch, never
 // a gate (capsid/decisions.md, "no bloat, as a standing plan"). In CI the summary also goes to the
@@ -15,7 +16,7 @@ import { gzipSync } from "node:zlib";
 
 import { jscpdTotals, knipCounts, pageWeight, parseManifest, renderSummary } from "./lib/bloat.mjs";
 
-const KNIP_VERSION = "6.40.0";
+const KNIP_VERSION = "6.39.0";
 const JSCPD_VERSION = "5.4.0";
 
 const args = process.argv.slice(2);

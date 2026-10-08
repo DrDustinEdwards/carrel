@@ -1,3 +1,4 @@
+// @ts-nocheck (plain Node scripts, exercised by test/bloat.test.ts; the repo has no types for them yet)
 // Logic for the warn-only bloat report (scripts/check-bloat.mjs): the page-weight reader, the
 // readers for Knip's and jscpd's JSON, the baseline comparison and the summary text. Pure
 // functions with no file access, so test/bloat.test.ts (which runs in workerd) can feed them fixtures.
@@ -75,12 +76,10 @@ const KNIP_CATEGORIES = [
 /** Counts by category from Knip's `--reporter json` output, exactly as Knip groups them. */
 export function knipCounts(report) {
   const counts = Object.fromEntries(KNIP_CATEGORIES.map((c) => [c, 0]));
-  counts.files = (report.files ?? []).length;
+  // Knip 6's JSON has one entry per file in `issues`; an unused file is an entry with a `files` array.
   for (const issue of report.issues ?? []) {
     for (const category of KNIP_CATEGORIES) {
-      if (category !== "files" && Array.isArray(issue[category])) {
-        counts[category] += issue[category].length;
-      }
+      if (Array.isArray(issue[category])) counts[category] += issue[category].length;
     }
   }
   return counts;
@@ -129,7 +128,9 @@ function round(n) {
   return Math.round(n * 100) / 100;
 }
 
-/** The markdown posted to the job log. Warn-only: it states numbers and never a verdict. */
+/** The markdown posted to the job log. Warn-only: it states numbers and never a verdict.
+ * @param {{knip?: any, jscpd?: any, routes?: any, baseline?: any, notes?: string[]}} input
+ */
 export function renderSummary({ knip, jscpd, routes, baseline, notes }) {
   const out = ["## Bloat report (warn-only, never blocks a merge)", ""];
   for (const note of notes ?? []) out.push(`Note: ${note}`);
