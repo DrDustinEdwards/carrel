@@ -31,7 +31,7 @@
 @import "capsomer/tabs.css";
 @import "capsomer/tooltip.css";
 @import "capsomer/theme-switch.css";
-@import "capsomer/shell.css";
+@import "capsomer/admin-shell.css";
 @import "capsomer/confirm-dialog.css";
 @import "capsomer/markdown-editor.css";
 @import "capsomer/publish-gate.css";
@@ -117,11 +117,6 @@
 
 .cap-table th .cap-status {
   margin-inline-start: var(--space-3);
-}
-
-.app-person {
-  color: var(--text);
-  font-weight: 500;
 }
 
 /* A search and its filters on one row, the button last; they wrap on a phone. */
@@ -561,12 +556,12 @@
 }
 
 /* While someone types, the rest of the screen falls quiet; a mouse move or focus brings it back. */
-html[data-typing] :is(.cap-shell-top, .cap-shell-rail, .cap-shell-tabs, .app-editor .app-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar):not(:focus-within) {
+html[data-typing] :is(.cap-admin-strip, .cap-admin-menu, .cap-admin-tabs, .cap-admin-bar, .app-editor .app-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar):not(:focus-within) {
   opacity: 0.08;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  :is(.cap-shell-top, .cap-shell-rail, .cap-shell-tabs, .app-editor .app-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar) {
+  :is(.cap-admin-strip, .cap-admin-menu, .cap-admin-tabs, .cap-admin-bar, .app-editor .app-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar) {
     transition: opacity var(--dur-base) var(--ease-out);
   }
 }
@@ -637,7 +632,7 @@ html[data-typing] :is(.cap-shell-top, .cap-shell-rail, .cap-shell-tabs, .app-edi
 
 /* On a phone the tab bar sticks to the foot of the window; a focused control scrolls clear of it. */
 @media (max-width: 820px) {
-  :root:has(.cap-shell) {
+  :root:has(.cap-admin) {
     scroll-padding-bottom: 5rem;
   }
 }
