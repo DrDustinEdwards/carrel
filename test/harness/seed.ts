@@ -250,6 +250,15 @@ async function build(base: Env): Promise<World> {
   });
   await saveAiDraft(env, sitePr, claude, REFRESH, { source: post(refreshTitle, REFRESH, "A note on the cached list.", "2026-10-03", ["carrel", "index"], "The index copies the site's list and reads it again every fifteen minutes and after each save.\n\nThe site is the authority: when the two disagree, the next refresh wins."), note: "A shorter version, for you to take or leave." }, site.fetch);
   await refreshIndex(env, { id: siteId, site: "dustinedwards" });
+  // The site's lab registry rows, as the real site lists them: data kinds that must stay out of the Posts list.
+  const registry: [string, string][] = [["equipment.heat-block", "equipment"], ["equipment.nanodrop", "equipment"], ["reagent.agar", "reagent"], ["primer.16s-fwd", "primer"], ["strain.k12", "strain"]];
+  await env.DB.batch(
+    registry.map(([id, kind]) =>
+      env.DB
+        .prepare("INSERT INTO site_items (project_id, item_id, kind, title, status, synced_at) VALUES (?, ?, ?, ?, 'published', '2026-10-03T00:00:00Z')")
+        .bind(siteId, id, kind, id),
+    ),
+  );
 
   // Books, indexed from the fake novels repository.
   gh.files.clear();

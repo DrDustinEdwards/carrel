@@ -2,7 +2,7 @@
 // and body, refreshed on every save and by the 15-minute cron. The site stays the authority.
 
 import type { ContentDoc, ContentStatus, ContentSummary } from "@dustinedwards/site-api";
-import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { siteItems } from "~/db/schema";
@@ -191,8 +191,17 @@ export function ftsQuery(q: string): string | null {
 
 export type Filters = { q?: string; status?: ContentStatus; kind?: string };
 
+/**
+ * The kinds Carrel presents as writing. site-api reports a kind only as a free string, so a site's
+ * data kinds (the dustinedwards lab registry: equipment, reagent, primer, strain) cannot be named
+ * here and need not be: any kind outside this list stays in the index but out of every writing list
+ * and its count. A new writing kind is added here, and a site-api field that says "writing" would
+ * replace this list.
+ */
+export const WRITING_KINDS = ["post", "page"] as const;
+
 export async function searchItems(db: D1Database, projectId: number, filters: Filters): Promise<IndexedItem[]> {
-  const conditions: SQL[] = [eq(siteItems.projectId, projectId)];
+  const conditions: SQL[] = [eq(siteItems.projectId, projectId), inArray(siteItems.kind, WRITING_KINDS)];
   if (filters.status) conditions.push(eq(siteItems.status, filters.status));
   if (filters.kind) conditions.push(eq(siteItems.kind, filters.kind));
   const match = filters.q ? ftsQuery(filters.q) : null;
@@ -224,7 +233,7 @@ export async function kindsIn(db: D1Database, projectId: number): Promise<string
   const rows = await drizzle(db)
     .selectDistinct({ kind: siteItems.kind })
     .from(siteItems)
-    .where(eq(siteItems.projectId, projectId))
+    .where(and(eq(siteItems.projectId, projectId), inArray(siteItems.kind, WRITING_KINDS)))
     .orderBy(asc(siteItems.kind))
     .all();
   return rows.map((r) => r.kind);
