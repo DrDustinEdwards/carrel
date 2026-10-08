@@ -157,16 +157,20 @@ A **named agent** is a person row `agent:<name>` that a key resolves to; it is n
 
 ## Media
 
-Each site's files stay in that site's own storage and are served by the site; Carrel is only the screen, over the site API's media group (site-api v0.2.0). Nothing about serving an image depends on Carrel.
+Each site's files stay in that site's own storage and are served by the site; Carrel is only the screen, over the site API's media group (site-api v0.2.0, and the optional writes of v0.4.0). Nothing about serving an image depends on Carrel.
 
-- **The library** (`/p/<project>/media`): browse and search the site's files, see each one's details and every place the site's reference check finds it used, upload, and delete.
+- **The library** (`/p/<project>/media`): browse and search the site's files, see each one's details and every place the site's reference check finds it used, upload, edit alt text and tags, use the trash, and delete.
 - **In the editor:** paste or drop an image, or use Insert image, and it uploads to the site; From library inserts a file already there. Either way the alt text is asked for before anything goes into the post, and the post gets the site's own figure markup (`app/lib/site-markdown.ts`), pointing at the site's own address for the file.
 - **Limits are the site's.** Carrel reads the accepted types and the size limit from the site's meta and refuses anything else before sending it. The site API checks again, bytes included.
 - **Deletes are the site's to decide.** A file a post uses is refused, with every post named. Delete asks once more before it acts, because nothing brings the file back.
 - **Images load from the site.** The page's image policy names each configured site origin, and nothing else.
 - **Health.** The conformance run includes the media checks, all of which a conforming site refuses. The suite's real upload round trip stays off, so the health check never stores a file.
-- **Not in v0.2.0:** bulk actions, trash, tags, folders and editing a file's alt text after upload. The site's own media screen keeps those until they have routes.
-- **Authorship:** an upload or delete writes one row in `changes` (migration 0007): the person, the AI client when it came through the AI door, the project, the site's media id, and the same change id Carrel sent the site, so the two histories join. A refused upload or delete writes nothing.
+- **Writes beyond upload and delete (site-api v0.4.0):** a file's **alt text** and **tags** are edited in the details panel (a form each; the versions are the site's, so a stale save is a plain "the file changed" message and the page refreshes to what the site holds). **Trash and restore** are reversible, so an Editor may; the library's **Trash** view lists the trashed files, and the Owner can **Empty the trash** behind a confirm dialog that names every file (without script, the page asks on its own). The tag filter narrows the library to one tag.
+- **Selection and the bulk bar:** Editors and the Owner tick files (Capsomer's tile checkbox and bulk bar; the bar needs script) and **Add tag**, **Remove tag**, **Move to trash** (or **Restore**, in the Trash view) or, for the Owner, **Delete for good**, whose confirm dialog names every file. `POST /p/<project>/media/bulk` answers JSON. The site answers file by file, so nothing aborts: the Result panel lists each file as done or left as it was, with the reason, and a file a post uses is refused by the site's check with the post named. At most 100 files a request, as the site allows.
+- **Only the Owner deletes for good or empties the trash** (`delete_media`, checked in `media.server.ts` before the site is asked). Alt text, tags, trash and restore are the Editor's (`edit`). `test/media-writes.test.ts` names each refusal.
+- **Each write is optional per site.** Carrel reads `mediaAlt`, `mediaTags` and `mediaTrash` from the site's meta and hides the alt form, the tag form and filter, the Trash view and the selection tools for what the site lacks; a write that arrives anyway and is answered 501 says "This site does not offer that." The site's adapter for dustinedwards.info is specified in [docs/dustinedwards-media-adapter.md](docs/dustinedwards-media-adapter.md).
+- **Not here:** folders (the dustinedwards media schema has none; a site whose schema grows them gets a contract change first) and "rebuild from the bucket" (a repair, in Capsid's allowlist work, not a Carrel screen). Capsomer's own media inspector autosaves through a client call; this page keeps server forms, so the versioned writes, their refusals and the authorship record are one path.
+- **Authorship:** every media action the site carried out writes one row in `changes`: the person, the AI client when it came through the AI door, the project, the site's media id, and the same change id Carrel sent the site, so the two histories join. Upload and delete since migration 0007; alt text, tags, trash and restore (`media-alt`, `media-tags`, `media-trash`, `media-restore`, with the file's version before and after) since migration 0010. A bulk action writes one row per file, each under its own change id; emptying the trash writes a `media-delete` row per deleted file under the id the site gave it (`<change id>-<n>`). A refused action writes nothing. Apply migration 0010 before deploying the code that writes: until then the site's write happens and the screen says the record was not saved.
 
 ## History
 
@@ -247,7 +251,8 @@ A privacy or terms page is an ordinary page on the site (item `page.privacy` or 
 | Dismiss a flag, export a book | | | yes |
 | Browse the media library | yes | yes | yes |
 | Upload media, insert an image into a post | | yes | yes |
-| Delete a media file from the site | | | yes |
+| Edit a file's alt text and tags, move files to the trash and restore them, in bulk or one at a time | | yes | yes |
+| Delete a media file from the site for good, empty the trash | | | yes |
 | Read a post's history and compare revisions or drafts | yes | yes | yes |
 | Add or remove a tag on, or duplicate, several posts at once (a live post's change is the Owner's) | | yes | yes |
 | Delete posts from a site | | | yes |
