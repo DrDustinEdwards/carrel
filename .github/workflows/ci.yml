@@ -1,5 +1,6 @@
-# Carrel's checks, on every push and every pull request. No secrets: the tests run in workerd with a
-# local D1 and never reach the network, and the gates below start their own local Workers.
+# Carrel's checks, on every push and every pull request, and a deploy on a push to main after they
+# pass. The check and gates jobs use no secrets: the tests run in workerd with a local D1 and never
+# reach the network, and the gates start their own local Workers. Only the deploy job holds secrets.
 name: CI
 
 on:
@@ -9,9 +10,11 @@ on:
 permissions:
   contents: read
 
+# A push to main is never cancelled by the next one: cancelling a deploy halfway could leave the
+# database migrated and the Worker not. Every other ref still cancels its older run.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -46,3 +49,26 @@ jobs:
       - run: npm run check:conformance
       # Each gate seen red on a planted violation (several minutes).
       - run: npm run check:plants
+
+  # Migrations first, then the Worker, and any failed step stops the run (scripts/deploy.mjs, tested by
+  # check:deploy in `npm test`). It never runs on a pull request or on a branch other than main.
+  # Actions here are pinned by full commit sha; the comment names the tag.
+  deploy:
+    needs: [check, gates]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci
+      - run: npm run deploy:ci
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CARREL_ALERT_EMAIL: ${{ secrets.CARREL_ALERT_EMAIL }}
+          CARREL_D1_DATABASE_ID: ${{ vars.CARREL_D1_DATABASE_ID }}
+          CARREL_KV_OAUTH_ID: ${{ vars.CARREL_KV_OAUTH_ID }}
