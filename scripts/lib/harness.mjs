@@ -48,6 +48,10 @@ export const SCREENS = [
   { name: "media-detail", viewer: "owner", path: `/p/${SITE}/media`, open: "media" },
   { name: "media-editor", viewer: "editor", path: `/p/${SITE}/media` },
   { name: "media-reader", viewer: "reader", path: `/p/${SITE}/media` },
+  { name: "media-detail-editor", viewer: "editor", path: `/p/${SITE}/media`, open: "media" },
+  { name: "media-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash` },
+  { name: "media-trash-editor", viewer: "editor", path: `/p/${SITE}/media?view=trash` },
+  { name: "media-tag", viewer: "owner", path: `/p/${SITE}/media?tag=foxhound` },
   { name: "people", viewer: "owner", path: "/people" },
   { name: "manuscripts", viewer: "owner", path: "/manuscripts" },
   { name: "manuscripts-search", viewer: "owner", path: "/manuscripts?q=paluxy" },
@@ -129,6 +133,17 @@ export const SCREENS = [
     },
   },
   { name: "flags-dismiss", viewer: "owner", path: `/p/${SITE}/flags`, after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
+  {
+    name: "media-select",
+    viewer: "owner",
+    path: `/p/${SITE}/media`,
+    after: async (page) => {
+      await page.getByRole("checkbox", { name: /^Select/ }).first().setChecked(true, { force: true });
+      await page.getByRole("region", { name: "Bulk actions" }).waitFor();
+      await page.waitForTimeout(300);
+    },
+  },
+  { name: "media-empty-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash`, after: (page) => press(page, "button", /^Empty the trash/, "alertdialog") },
   { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media`, open: "media", after: (page) => press(page, "button", /^Delete/, "alertdialog") },
   { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".cm-editor", after: (page) => press(page, "button", /^Discard my draft/, "alertdialog") },
   { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor", after: (page) => press(page, "button", /^Schedule/, "dialog") },
