@@ -3,7 +3,8 @@
 -- tool, the arguments as sent, and the result: ok or refused, and what the client was told.
 --
 -- Append-only. Two triggers refuse every UPDATE and DELETE, so a row once written stays as written;
--- nothing in Carrel edits or prunes it. A row names the person by id and email as text, with no
+-- nothing in Carrel edits or prunes it. Each trigger is on one line, so the harness's statement
+-- splitter (test/harness/seed.ts) keeps it whole. A row names the person by id and email as text, with no
 -- foreign key, so removing a person never rewrites or blocks the record of what their sessions did.
 --
 -- Long arguments are cut before they are stored (a draft's whole source is up to 500,000 characters);
@@ -26,12 +27,6 @@ CREATE TABLE mcp_calls (
 
 CREATE INDEX mcp_calls_person ON mcp_calls (person_id, created_at);
 
-CREATE TRIGGER mcp_calls_no_update BEFORE UPDATE ON mcp_calls
-BEGIN
-  SELECT RAISE(ABORT, 'mcp_calls is append-only');
-END;
+CREATE TRIGGER mcp_calls_no_update BEFORE UPDATE ON mcp_calls BEGIN SELECT RAISE(ABORT, 'mcp_calls is append-only'); END;
 
-CREATE TRIGGER mcp_calls_no_delete BEFORE DELETE ON mcp_calls
-BEGIN
-  SELECT RAISE(ABORT, 'mcp_calls is append-only');
-END;
+CREATE TRIGGER mcp_calls_no_delete BEFORE DELETE ON mcp_calls BEGIN SELECT RAISE(ABORT, 'mcp_calls is append-only'); END;

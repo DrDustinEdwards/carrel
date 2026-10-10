@@ -75,7 +75,7 @@ const PLANTS = [
   {
     gate: "tests",
     file: "drizzle/0012_mcp_calls.sql",
-    find: "CREATE TRIGGER mcp_calls_no_delete BEFORE DELETE ON mcp_calls\nBEGIN\n  SELECT RAISE(ABORT, 'mcp_calls is append-only');\nEND;\n",
+    find: "CREATE TRIGGER mcp_calls_no_delete BEFORE DELETE ON mcp_calls BEGIN SELECT RAISE(ABORT, 'mcp_calls is append-only'); END;\n",
     replace: "",
     label: "the call log may be deleted from",
   },
