@@ -1,4 +1,4 @@
-// A new book is a project whose folder in the novels repository is named here. Nothing is written to
+// A new book is a project whose folder in the writing repository is named here. Nothing is written to
 // Git until the first file is saved; the folder appears then.
 
 import { Form, redirect, useNavigation } from "react-router";
@@ -35,14 +35,14 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
   const busy = useNavigation().state !== "idle";
   return (
     <div className="app-page" data-narrow>
-      <PageHead crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]} title="New book" lead="A book is a folder in the novels repository. Nothing is written to Git until its first file is saved." />
+      <PageHead crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]} title="New book" lead="A book is a folder in the writing repository. Nothing is written to Git until its first file is saved." />
       <Panel title="The book">
         <Form method="post" className="app-form">
           <Field label="Name" required>
             <input className="cap-input" name="name" required maxLength={120} autoComplete="off" />
           </Field>
           <Field
-            label="Folder in the novels repository"
+            label="Folder in the writing repository"
             required
             help="Lower-case letters, digits and single hyphens, such as paluxy-portal. An existing folder is picked up at the first refresh."
             error={actionData?.error}

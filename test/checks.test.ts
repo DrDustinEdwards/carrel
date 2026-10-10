@@ -180,7 +180,7 @@ describe("PLANT: AI habits", () => {
     expect(readHabits("---\nconditions: false\n---\n").conditions).toBe(false);
   });
 
-  it("reads the novels repository's shared/checks/ai-habits.md as it ships: the seed, unchanged", () => {
+  it("reads the writing repository's shared/checks/ai-habits.md as it ships: the seed, unchanged", () => {
     const shipped = [
       "---",
       "# Added to the AI-habits list Carrel starts from (the AI-tells list in the portfolio conventions).",

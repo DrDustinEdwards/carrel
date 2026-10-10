@@ -1,4 +1,4 @@
-// The GitHub client for the novels repository, against the fake GitHub in test/novels.ts: the App's
+// The GitHub client for the writing repository, against the fake GitHub in test/novels.ts: the App's
 // key as GitHub downloads it, the token exchange, text that survives the round trip, and a stale or
 // blind write refused as a conflict rather than overwriting someone's commit.
 
@@ -40,7 +40,7 @@ describe("the App's key and token", () => {
     expect(payload.exp! - payload.iat!).toBe(540);
   });
 
-  it("exchanges the JWT for an installation token narrowed to the novels repository, and reuses it", async () => {
+  it("exchanges the JWT for an installation token narrowed to the writing repository, and reuses it", async () => {
     const key = await githubStyleKey();
     const gh = fakeNovels();
     const bodies: string[] = [];
@@ -50,8 +50,8 @@ describe("the App's key and token", () => {
     }) as typeof fetch;
     expect(await installationToken("123456", key.pkcs1Pem, spy)).toBe(TOKEN);
     expect(await installationToken("123456", key.pkcs1Pem, spy)).toBe(TOKEN);
-    expect(gh.requests).toEqual(["GET /repos/DrDustinEdwards/novels/installation", "POST /app/installations/4242/access_tokens"]);
-    expect(JSON.parse(bodies[0]!)).toEqual({ repositories: ["novels"], permissions: { contents: "write" } });
+    expect(gh.requests).toEqual(["GET /repos/DrDustinEdwards/writing/installation", "POST /app/installations/4242/access_tokens"]);
+    expect(JSON.parse(bodies[0]!)).toEqual({ repositories: ["writing"], permissions: { contents: "write" } });
   });
 
   it("is not connected without secrets, and misconfigured with half of them or a bad key", () => {

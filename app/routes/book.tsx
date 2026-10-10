@@ -142,7 +142,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         title={project.name}
         lead={
           <>
-            <span className="cap-mono">{project.book}/</span> in the novels repository.
+            <span className="cap-mono">{project.book}/</span> in the writing repository.
           </>
         }
         actions={

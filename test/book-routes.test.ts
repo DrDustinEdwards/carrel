@@ -1,5 +1,5 @@
 // The book routes, driven through their loaders and actions with a real request context and the
-// Worker's own GitHub client (App key and all) against the fake novels repository.
+// Worker's own GitHub client (App key and all) against the fake writing repository.
 
 import { RouterContextProvider } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -121,7 +121,7 @@ describe("the book view", () => {
       ReturnType<typeof bookLoader>
     >;
     expect(data.connected).toBe(false);
-    expect(data.connectionDetail).toMatch(/GitHub App for the novels repository is not set up yet/);
+    expect(data.connectionDetail).toMatch(/GitHub App for the writing repository is not set up yet/);
   });
 });
 

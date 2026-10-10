@@ -232,7 +232,7 @@ export const TOOLS: Tool[] = [
   {
     name: "list_book_files",
     title: "List a book's files",
-    description: `A book's chapters, scenes, bible and outline files from Carrel's index of the novels repository, with each scene's header and open flags. ${RULE}`,
+    description: `A book's chapters, scenes, bible and outline files from Carrel's index of the writing repository, with each scene's header and open flags. ${RULE}`,
     inputSchema: { type: "object", properties: { project: BOOK }, required: ["project"], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: false },
     run: async (args, ctx) => {
