@@ -1,0 +1,4079 @@
+[
+ {
+  "file": "test/kinds.test.ts",
+  "name": "every kind the site reports lists each writing kind under its own kind, and the kind filter narrows to it",
+  "kills": 100,
+  "unique": 0,
+  "covered": 219,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/kinds.test.ts",
+  "name": "every kind the site reports opens, saves, previews, publishes and shows the history of a non-post kind",
+  "kills": 224,
+  "unique": 31,
+  "covered": 598,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/kinds.test.ts",
+  "name": "every kind the site reports keeps a data kind out of the lists, and shows the site's own refusal if one is written",
+  "kills": 136,
+  "unique": 10,
+  "covered": 352,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/routes.test.ts",
+  "name": "the preview renders the viewer's own draft through the site, sandboxed and frameable by Carrel only",
+  "kills": 78,
+  "unique": 0,
+  "covered": 121,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/routes.test.ts",
+  "name": "the preview PLANT: never shows one person's working draft to another",
+  "kills": 67,
+  "unique": 0,
+  "covered": 127,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/routes.test.ts",
+  "name": "the preview PLANT: refuses a non-member with the same 404 as a missing project",
+  "kills": 14,
+  "unique": 0,
+  "covered": 21,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/routes.test.ts",
+  "name": "the preview explains a site that is not connected inside the frame instead of failing",
+  "kills": 33,
+  "unique": 2,
+  "covered": 65,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/routes.test.ts",
+  "name": "publishing from the editor asks before a first publish, and publishes on the explicit second ask",
+  "kills": 99,
+  "unique": 7,
+  "covered": 262,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/routes.test.ts",
+  "name": "publishing from the editor PLANT: refuses an Editor's publish from the editor, confirmed or not",
+  "kills": 29,
+  "unique": 1,
+  "covered": 64,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/waiting.test.ts",
+  "name": "the project's Posts list lists an AI draft for a post the site does not have, and its editor opens",
+  "kills": 147,
+  "unique": 19,
+  "covered": 393,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/waiting.test.ts",
+  "name": "the project's Posts list includes it under the Draft filter and the search, and leaves it out of Published and a kind",
+  "kills": 105,
+  "unique": 15,
+  "covered": 285,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/waiting.test.ts",
+  "name": "the project's Posts list lists a draft of the person's own for a new post too",
+  "kills": 98,
+  "unique": 5,
+  "covered": 231,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/waiting.test.ts",
+  "name": "the project's Posts list marks an indexed post that has AI drafts waiting, with the count",
+  "kills": 120,
+  "unique": 5,
+  "covered": 286,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/waiting.test.ts",
+  "name": "the project's Posts list PLANT: shows nobody else's AI drafts, and the editor of one still answers 404",
+  "kills": 94,
+  "unique": 4,
+  "covered": 229,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/waiting.test.ts",
+  "name": "the preview of an AI-draft-only post renders the AI draft through the site, labelled as an AI draft",
+  "kills": 95,
+  "unique": 8,
+  "covered": 180,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/waiting.test.ts",
+  "name": "the preview of an AI-draft-only post still says there is nothing to preview when there is no AI draft either",
+  "kills": 71,
+  "unique": 2,
+  "covered": 113,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/waiting.test.ts",
+  "name": "titleOf reads a plain or quoted frontmatter title, and nothing when there is none",
+  "kills": 14,
+  "unique": 4,
+  "covered": 25,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "PLANT: a reply attempt is refused, before anything is sent refuses a Bluesky record with a reply, a follow, a like, and any other endpoint",
+  "kills": 8,
+  "unique": 3,
+  "covered": 21,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "PLANT: a reply attempt is refused, before anything is sent refuses an X post that replies or quotes, and any other X endpoint",
+  "kills": 15,
+  "unique": 8,
+  "covered": 36,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "PLANT: a reply attempt is refused, before anything is sent lets an original post through",
+  "kills": 23,
+  "unique": 0,
+  "covered": 44,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "X signing matches the OAuth 1.0a signature in X's own documentation",
+  "kills": 27,
+  "unique": 16,
+  "covered": 35,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the primary path: a draft stored ahead sends the pre-drafted post when the piece goes live, with no routine and no AI",
+  "kills": 177,
+  "unique": 11,
+  "covered": 350,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the primary path: a draft stored ahead PLANT: a post failing the lint is held, and goes only once edited and approved",
+  "kills": 182,
+  "unique": 17,
+  "covered": 382,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the routine, and the template only after it fails batches waiting items across accounts into one routine run, after the batch delay",
+  "kills": 118,
+  "unique": 18,
+  "covered": 193,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the routine, and the template only after it fails uses the routine's draft when it arrives in time, and no template",
+  "kills": 205,
+  "unique": 3,
+  "covered": 432,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the routine, and the template only after it fails PLANT: no template while the routine still has time, and the template once it has had its time",
+  "kills": 207,
+  "unique": 4,
+  "covered": 418,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the routine, and the template only after it fails PLANT: a routine that refuses the run means the template at once",
+  "kills": 126,
+  "unique": 12,
+  "covered": 429,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the routine, and the template only after it fails PLANT: the hourly limit is not a failure: the item waits, and the next tick tries again",
+  "kills": 109,
+  "unique": 7,
+  "covered": 213,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the routine, and the template only after it fails PLANT: with the routine's daily cap reached, the template",
+  "kills": 96,
+  "unique": 4,
+  "covered": 372,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the routine, and the template only after it fails PLANT: with no routine set up, the template",
+  "kills": 93,
+  "unique": 0,
+  "covered": 365,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "PLANT: the health email when a template post goes out emails once when it goes out, stays failing until Dustin marks it seen, then recovers",
+  "kills": 347,
+  "unique": 22,
+  "covered": 649,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "switches and caps an account that is off when a piece goes live posts nothing, then or later",
+  "kills": 39,
+  "unique": 1,
+  "covered": 108,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "switches and caps PLANT: the personal account is never automatic",
+  "kills": 23,
+  "unique": 4,
+  "covered": 47,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "switches and caps keeps to the daily cap and the gap between posts, and posts the rest later",
+  "kills": 171,
+  "unique": 13,
+  "covered": 353,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "switches and caps holds an X post that would pass the month's budget, and signs the ones within it",
+  "kills": 205,
+  "unique": 51,
+  "covered": 412,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "the lint flags length by each platform's count, a reply in disguise, and the construction",
+  "kills": 33,
+  "unique": 19,
+  "covered": 59,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social.test.ts",
+  "name": "a publish records the event records the piece's title, address and summary for its accounts when it goes live through Carrel",
+  "kills": 146,
+  "unique": 20,
+  "covered": 306,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the service account asks for an access token with a JWT signed by its key, for read-only scopes, once an hour",
+  "kills": 64,
+  "unique": 7,
+  "covered": 114,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the service account never asks for drive.readonly, or any scope that writes",
+  "kills": 0,
+  "unique": 0,
+  "covered": 1,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the service account PLANT: a Drive write through the service account is refused in code, before anything is sent",
+  "kills": 41,
+  "unique": 7,
+  "covered": 72,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the service account PLANT: a missing key fails closed: no request, and a clear reason",
+  "kills": 29,
+  "unique": 10,
+  "covered": 54,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "health for Google reports a key that works and its age from the first time it was seen",
+  "kills": 90,
+  "unique": 5,
+  "covered": 372,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "health for Google PLANT: a missing key says so plainly, as not connected yet",
+  "kills": 48,
+  "unique": 2,
+  "covered": 284,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "health for Google PLANT: a key Google refuses (deleted, disabled, expired) fails with what to do",
+  "kills": 93,
+  "unique": 12,
+  "covered": 363,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "health for Google PLANT: a key past 90 days fails, asking for rotation",
+  "kills": 90,
+  "unique": 6,
+  "covered": 374,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "health for Google PLANT: a revoked drive.file grant fails; none connected is not a failure",
+  "kills": 150,
+  "unique": 25,
+  "covered": 503,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the manuscripts index walks the shared folder and its subfolders, keeping metadata and no text",
+  "kills": 121,
+  "unique": 16,
+  "covered": 206,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the manuscripts index picks up files added later and drops files removed",
+  "kills": 108,
+  "unique": 3,
+  "covered": 206,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the manuscripts index searches the text through Drive, and returns only files in the folder",
+  "kills": 114,
+  "unique": 1,
+  "covered": 220,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the manuscripts index falls back to titles, and says so, if Drive will not run a full-text query for this access",
+  "kills": 115,
+  "unique": 3,
+  "covered": 224,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "the manuscripts index PLANT: manuscripts are the Owner's alone",
+  "kills": 6,
+  "unique": 3,
+  "covered": 9,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "connecting drive.file asks Google for drive.file alone, offline, back to Carrel's own callback",
+  "kills": 35,
+  "unique": 4,
+  "covered": 68,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "connecting drive.file stores the refresh token encrypted, never as it came",
+  "kills": 82,
+  "unique": 0,
+  "covered": 134,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "connecting drive.file PLANT: a callback Carrel did not start, or one used twice, is refused",
+  "kills": 79,
+  "unique": 4,
+  "covered": 132,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "connecting drive.file PLANT: a grant wider than drive.file is refused and nothing is stored",
+  "kills": 63,
+  "unique": 13,
+  "covered": 136,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "connecting drive.file PLANT: only the Owner connects Google",
+  "kills": 5,
+  "unique": 3,
+  "covered": 8,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "Send to Docs and Import sends the post's body as a new Doc and keeps its frontmatter in Carrel",
+  "kills": 177,
+  "unique": 10,
+  "covered": 286,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "Send to Docs and Import imports the Doc's text as a new draft under the post's frontmatter, leaving the site alone",
+  "kills": 193,
+  "unique": 12,
+  "covered": 318,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "Send to Docs and Import PLANT: an import never replaces a working draft",
+  "kills": 180,
+  "unique": 4,
+  "covered": 305,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "Send to Docs and Import PLANT: an Editor cannot send outside Carrel",
+  "kills": 73,
+  "unique": 3,
+  "covered": 173,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "Send to Docs and Import PLANT: without a connected grant, Send fails closed and says how to connect",
+  "kills": 86,
+  "unique": 3,
+  "covered": 164,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "Search Console reads 28 days per page, settled data only, at most once a day, and finds a post's row by its URL",
+  "kills": 137,
+  "unique": 31,
+  "covered": 221,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google.test.ts",
+  "name": "Search Console says what to do when the service account is not on the property",
+  "kills": 99,
+  "unique": 6,
+  "covered": 183,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "the browser door lets the browser's Access token in",
+  "kills": 30,
+  "unique": 0,
+  "covered": 64,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "the browser door PLANT: a token from any other Access application is refused, the retired MCP Access app's included",
+  "kills": 6,
+  "unique": 0,
+  "covered": 56,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "the browser door PLANT: a reviewer is refused at the browser door",
+  "kills": 6,
+  "unique": 1,
+  "covered": 72,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "the browser door PLANT: /mcp on the browser's host is a page behind Access like any other, never the AI door",
+  "kills": 11,
+  "unique": 0,
+  "covered": 61,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "which door is decided by the hostname alone",
+  "kills": 10,
+  "unique": 3,
+  "covered": 15,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "the AI door's OAuth surface answers /mcp without a token with a Bearer challenge that points at its metadata",
+  "kills": 19,
+  "unique": 0,
+  "covered": 40,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "the AI door's OAuth surface advertises CIMD and no registration endpoint, and /register does not exist",
+  "kills": 20,
+  "unique": 2,
+  "covered": 50,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "the AI door's OAuth surface PLANT: never serves Carrel's pages",
+  "kills": 23,
+  "unique": 2,
+  "covered": 50,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "the AI door's OAuth surface PLANT: stays shut until the Access for SaaS app is configured",
+  "kills": 25,
+  "unique": 2,
+  "covered": 59,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS an Owner signs in, and the grant reaches the tools as that person, credited to the client",
+  "kills": 231,
+  "unique": 6,
+  "covered": 418,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: OAuth is unchanged while an agent key is configured: the grant is still the person, an Owner here, never an agent",
+  "kills": 229,
+  "unique": 0,
+  "covered": 442,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: Access let someone in whom Carrel does not know: refused, no code",
+  "kills": 123,
+  "unique": 2,
+  "covered": 230,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: a disabled person is refused at sign-in",
+  "kills": 89,
+  "unique": 0,
+  "covered": 230,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: an ID token with the wrong nonce, the wrong audience, a foreign key or an unverified email is refused",
+  "kills": 98,
+  "unique": 10,
+  "covered": 222,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: Access reporting an error, and a person who clicks Deny, end with access_denied",
+  "kills": 80,
+  "unique": 3,
+  "covered": 175,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: a person disabled after the grant loses the door at once",
+  "kills": 142,
+  "unique": 0,
+  "covered": 313,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: a grant follows the person, not the email: the email moved to a new person row is refused",
+  "kills": 143,
+  "unique": 1,
+  "covered": 313,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: a reviewer signs in through the same door and is refused a publish",
+  "kills": 194,
+  "unique": 0,
+  "covered": 373,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/door.test.ts",
+  "name": "signing in through Access for SaaS PLANT: a forged or foreign bearer token is refused",
+  "kills": 9,
+  "unique": 0,
+  "covered": 42,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "health sends nothing on a first run where every check passes",
+  "kills": 112,
+  "unique": 1,
+  "covered": 214,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "health sends one email when a check starts failing, and none while it stays failing",
+  "kills": 142,
+  "unique": 0,
+  "covered": 244,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "health sends one email on recovery",
+  "kills": 141,
+  "unique": 1,
+  "covered": 241,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "health flags a database with no Owner",
+  "kills": 50,
+  "unique": 4,
+  "covered": 232,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "health flags a missing ACCESS_AUD and a placeholder alert address",
+  "kills": 61,
+  "unique": 11,
+  "covered": 235,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "health keeps the alert pending when the email fails, and sends it on the next run",
+  "kills": 47,
+  "unique": 4,
+  "covered": 232,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "site health counts a site with no key as not connected, which is not a failure",
+  "kills": 49,
+  "unique": 1,
+  "covered": 214,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "site health PLANT: flags a key too short to be the site's",
+  "kills": 61,
+  "unique": 9,
+  "covered": 239,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "site health passes a conforming site, and its write probe changes nothing there",
+  "kills": 117,
+  "unique": 0,
+  "covered": 232,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "site health includes the mentions group when the site declares it, and its probe changes nothing there",
+  "kills": 122,
+  "unique": 0,
+  "covered": 232,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "site health PLANT: a site that decides a mention it does not hold is flagged, by the mentions check",
+  "kills": 71,
+  "unique": 1,
+  "covered": 254,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "site health a site without the mentions group still conforms: its mentions routes answer 501",
+  "kills": 51,
+  "unique": 0,
+  "covered": 232,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "site health PLANT: a changed schema hash sends one email, and none while it stays changed",
+  "kills": 153,
+  "unique": 0,
+  "covered": 267,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "site health PLANT: flags a site that holds a different key",
+  "kills": 55,
+  "unique": 0,
+  "covered": 254,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "novels health counts an App not set up yet as not connected, which is not a failure",
+  "kills": 52,
+  "unique": 2,
+  "covered": 215,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "novels health PLANT: flags half a setup, an App id with no key",
+  "kills": 64,
+  "unique": 5,
+  "covered": 244,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "novels health passes when the App gets a token for the repository",
+  "kills": 99,
+  "unique": 4,
+  "covered": 299,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/health.test.ts",
+  "name": "novels health PLANT: flags an App GitHub will not answer for",
+  "kills": 104,
+  "unique": 8,
+  "covered": 304,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the book view lists nothing until a refresh, then the chapters with each scene's header",
+  "kills": 404,
+  "unique": 33,
+  "covered": 946,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the book view PLANT: a Reader cannot start a chapter; an Editor is sent to the editor on the next number",
+  "kills": 250,
+  "unique": 25,
+  "covered": 892,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the book view says why when Git is not connected, and still shows the index",
+  "kills": 56,
+  "unique": 1,
+  "covered": 118,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the file editor opens a scene from Git with its version and the bible entries it names",
+  "kills": 353,
+  "unique": 28,
+  "covered": 967,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the file editor PLANT: a path outside the layout is 404, and a Reader cannot start a new file",
+  "kills": 43,
+  "unique": 4,
+  "covered": 238,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the file editor starts a new file from its template, named from the link",
+  "kills": 145,
+  "unique": 33,
+  "covered": 512,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the file editor saves through the route: a commit, the flags, and the draft gone",
+  "kills": 533,
+  "unique": 1,
+  "covered": 1135,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the file editor PLANT: without Git, Save keeps the draft and says why; nothing is committed",
+  "kills": 123,
+  "unique": 12,
+  "covered": 271,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the file editor PLANT: an Editor cannot dismiss a flag through the route",
+  "kills": 370,
+  "unique": 7,
+  "covered": 1145,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "the chapter view PLANT: markup in a scene is shown as text, never run",
+  "kills": 273,
+  "unique": 13,
+  "covered": 1001,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "export and the authorship record PLANT: export is 403 to an Editor, and 409 to the Owner while a flag is open",
+  "kills": 454,
+  "unique": 11,
+  "covered": 869,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "export and the authorship record exports a clean book as ePub, Word and a print page with its own policy",
+  "kills": 515,
+  "unique": 37,
+  "covered": 1121,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "export and the authorship record serves the authorship record as Markdown to a Reader",
+  "kills": 33,
+  "unique": 6,
+  "covered": 72,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/book-routes.test.ts",
+  "name": "home and new books lists a book as a book, and offers New book to the Owner only",
+  "kills": 16,
+  "unique": 7,
+  "covered": 28,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "the protocol lists the tools in the 2026-07-28 era, each carrying the rule",
+  "kills": 6,
+  "unique": 0,
+  "covered": 14,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "the protocol answers a 2025-era client through the legacy shim: initialize, then calls with no session",
+  "kills": 25,
+  "unique": 0,
+  "covered": 37,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "the protocol answers an unknown protocol version at initialize with one it speaks",
+  "kills": 8,
+  "unique": 0,
+  "covered": 16,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "the protocol PLANT: a page elsewhere cannot drive the tools, a rebinding host is refused, and GET, DELETE, 2026-era batches and bad JSON are refused",
+  "kills": 7,
+  "unique": 2,
+  "covered": 18,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "reading, drafting, flagging lists projects, searches and reads posts through the buttons' own functions",
+  "kills": 101,
+  "unique": 2,
+  "covered": 152,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "reading, drafting, flagging PLANT: a stranger's session reads nothing",
+  "kills": 47,
+  "unique": 0,
+  "covered": 76,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "reading, drafting, flagging saves an AI draft beside Dustin's, never over his draft or the site's text",
+  "kills": 124,
+  "unique": 5,
+  "covered": 187,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "reading, drafting, flagging PLANT: a Reader's session and a reviewer's cannot save a draft",
+  "kills": 81,
+  "unique": 2,
+  "covered": 113,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "reading, drafting, flagging lets a reviewer flag, once per flag, credited to its client",
+  "kills": 97,
+  "unique": 12,
+  "covered": 152,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "reading, drafting, flagging previews through the site's own renderer",
+  "kills": 83,
+  "unique": 4,
+  "covered": 132,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "publish by instruction (decision 2) PLANT: a shared user's session publishing is refused, and the site and inbox hear nothing",
+  "kills": 62,
+  "unique": 0,
+  "covered": 105,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "publish by instruction (decision 2) PLANT: a reviewer publishing is refused",
+  "kills": 61,
+  "unique": 0,
+  "covered": 101,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "publish by instruction (decision 2) PLANT: the Owner's AI publish with an open flag is refused, naming the flag",
+  "kills": 118,
+  "unique": 11,
+  "covered": 187,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "publish by instruction (decision 2) the Owner's AI publish with clean checks publishes, credits the client, and emails Dustin an unpublish link",
+  "kills": 140,
+  "unique": 14,
+  "covered": 283,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "publish by instruction (decision 2) PLANT: publish sends no text, so an AI draft can never be what goes live",
+  "kills": 10,
+  "unique": 0,
+  "covered": 320,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "publish by instruction (decision 2) PLANT: a stale expected version is refused by the site",
+  "kills": 15,
+  "unique": 2,
+  "covered": 211,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp.test.ts",
+  "name": "publish by instruction (decision 2) keeps the publish when the email fails, records why, and the health check reports it",
+  "kills": 173,
+  "unique": 14,
+  "covered": 514,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "roles: the queue is the Owner's alone (carrel/design.md: the inbox belongs to Dustin alone) PLANT: refuses an Editor and a Reader who open the queue, and the site is never asked",
+  "kills": 16,
+  "unique": 0,
+  "covered": 26,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "roles: the queue is the Owner's alone (carrel/design.md: the inbox belongs to Dustin alone) PLANT: refuses an Editor and a Reader who decide, delete or sweep, and nothing on the site or in the record moves",
+  "kills": 33,
+  "unique": 3,
+  "covered": 49,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "roles: the queue is the Owner's alone (carrel/design.md: the inbox belongs to Dustin alone) PLANT: the screen's loader and the write endpoint refuse an Editor before the site is asked",
+  "kills": 30,
+  "unique": 9,
+  "covered": 47,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "roles: the queue is the Owner's alone (carrel/design.md: the inbox belongs to Dustin alone) answers 404, not 403, for a person with no role on the project",
+  "kills": 11,
+  "unique": 0,
+  "covered": 17,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "reading the queue opens on Pending, with the counts of the whole queue and what a sweep would remove",
+  "kills": 54,
+  "unique": 3,
+  "covered": 84,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "reading the queue opens on All when nothing is pending, and filters when asked",
+  "kills": 89,
+  "unique": 12,
+  "covered": 148,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "reading the queue says why when the site does not receive mentions through Carrel",
+  "kills": 50,
+  "unique": 5,
+  "covered": 74,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "reading the queue says why when the site has no key",
+  "kills": 30,
+  "unique": 3,
+  "covered": 65,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding approves at the version the person saw, purges through the site, and writes one authorship row with the site's change id",
+  "kills": 84,
+  "unique": 0,
+  "covered": 123,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding credits the AI client in the record when one decides",
+  "kills": 73,
+  "unique": 1,
+  "covered": 123,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding deletes, with no status after, and records it",
+  "kills": 85,
+  "unique": 4,
+  "covered": 123,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding PLANT: refuses a stale version for that mention alone, writes no row for it, and decides the rest",
+  "kills": 88,
+  "unique": 4,
+  "covered": 140,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding PLANT: one missing, one the site refuses and one fine: each has its own outcome and the fine one lands",
+  "kills": 96,
+  "unique": 8,
+  "covered": 151,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding reports a site error for one mention without stopping the next, and writes no row for it",
+  "kills": 92,
+  "unique": 4,
+  "covered": 153,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding says when the site could not clear its cache, since the decision still stands",
+  "kills": 81,
+  "unique": 1,
+  "covered": 122,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding PLANT: answers a site with no mentions in plain words, writes nothing and records nothing",
+  "kills": 77,
+  "unique": 1,
+  "covered": 120,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding says the decision happened when only the record failed",
+  "kills": 75,
+  "unique": 2,
+  "covered": 126,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding refuses an empty choice, and too many, before the site is asked",
+  "kills": 39,
+  "unique": 4,
+  "covered": 75,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "deciding does not send an id or a version a site could not hold",
+  "kills": 26,
+  "unique": 10,
+  "covered": 28,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "sweeping removes what the site says is expired, keeps the rest, and records one row with no mention id",
+  "kills": 53,
+  "unique": 2,
+  "covered": 83,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "sweeping PLANT: a site with no mentions answers in plain words, and nothing is recorded",
+  "kills": 56,
+  "unique": 3,
+  "covered": 83,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "sweeping goes through the endpoint for the Owner as JSON",
+  "kills": 61,
+  "unique": 7,
+  "covered": 100,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mentions.test.ts",
+  "name": "the migration PLANT: refuses a record that names no mention for anything but a sweep, and a status after a delete",
+  "kills": 21,
+  "unique": 0,
+  "covered": 33,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key does lets the agent read, save an AI draft beside Dustin's, flag and preview, credited as agent:grok",
+  "kills": 191,
+  "unique": 3,
+  "covered": 323,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key does PLANT: a key trying publish is refused with the Owner-only message, and nothing is published",
+  "kills": 111,
+  "unique": 0,
+  "covered": 189,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key does PLANT: the role is the person's role in People, never the key's: a Reader agent cannot save a draft",
+  "kills": 128,
+  "unique": 0,
+  "covered": 196,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key does PLANT: a project the agent has no role on is not there for it: not listed, not read, not drafted, not flagged",
+  "kills": 103,
+  "unique": 1,
+  "covered": 182,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key does PLANT: a row marked Owner is never an agent: the key is refused",
+  "kills": 44,
+  "unique": 1,
+  "covered": 78,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key refuses PLANT: an unknown key is refused by the OAuth path: 401 with the Bearer challenge, nothing run",
+  "kills": 21,
+  "unique": 0,
+  "covered": 78,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key refuses PLANT: a key whose secret is absent is refused, and so is one that was revoked by deleting the secret",
+  "kills": 11,
+  "unique": 0,
+  "covered": 42,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key refuses PLANT: a key whose person row is disabled, or missing, is refused at once, and never falls through to OAuth",
+  "kills": 58,
+  "unique": 0,
+  "covered": 128,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key refuses PLANT: the agent's name is the secret's name, never the request's: a header or body naming another agent changes nothing",
+  "kills": 125,
+  "unique": 0,
+  "covered": 240,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key refuses PLANT: a malformed Authorization header is never an agent: it goes to the OAuth path and is refused there",
+  "kills": 64,
+  "unique": 1,
+  "covered": 132,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key refuses is inert until a secret exists: with none, the door answers as it did before",
+  "kills": 12,
+  "unique": 0,
+  "covered": 42,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "what a named agent key refuses keeps the agent key to /mcp: another path on the door is never an agent's",
+  "kills": 17,
+  "unique": 0,
+  "covered": 73,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "how the key is read names the agent from the secret's name, lower-cased, and only a valid name",
+  "kills": 31,
+  "unique": 6,
+  "covered": 44,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "how the key is read picks the right agent among several and refuses a key that is none of them",
+  "kills": 27,
+  "unique": 0,
+  "covered": 44,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "how the key is read compares digests: equal keys match, and any difference in content or length does not",
+  "kills": 4,
+  "unique": 0,
+  "covered": 8,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "adding an agent in People is the Owner's alone, and the agent row is never an Owner or a reviewer, with no role until one is set",
+  "kills": 31,
+  "unique": 6,
+  "covered": 40,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "adding an agent in People refuses a duplicate and a name that is not a name, and changes nothing",
+  "kills": 10,
+  "unique": 2,
+  "covered": 21,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/agent-keys.test.ts",
+  "name": "adding an agent in People lists the agent and lets the Owner set its role like anyone's, Editor allowed",
+  "kills": 47,
+  "unique": 2,
+  "covered": 74,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "the library through the site API lists, searches and reads a file with its uses, and shows it at the site's own address",
+  "kills": 72,
+  "unique": 5,
+  "covered": 119,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "the library through the site API uploads as an Editor into the site's own storage",
+  "kills": 78,
+  "unique": 1,
+  "covered": 136,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "the library through the site API deletes as the Owner",
+  "kills": 49,
+  "unique": 0,
+  "covered": 75,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: roles refuses a Reader's upload, and the site hears nothing",
+  "kills": 29,
+  "unique": 0,
+  "covered": 43,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: roles refuses an Editor's delete, and the file stays",
+  "kills": 30,
+  "unique": 0,
+  "covered": 43,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: roles answers 404 to someone the project is not shared with",
+  "kills": 11,
+  "unique": 0,
+  "covered": 17,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: roles refuses at the routes too: a Reader's upload and an Editor's delete",
+  "kills": 26,
+  "unique": 0,
+  "covered": 43,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: deleting a file a post uses is refused by the site's reference check, with the post named, and the file stays",
+  "kills": 56,
+  "unique": 0,
+  "covered": 92,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: deleting a file a post uses asks before it deletes, then shows the refusal on the page",
+  "kills": 75,
+  "unique": 13,
+  "covered": 103,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: an upload the site does not accept refuses a type the site did not declare before sending anything",
+  "kills": 60,
+  "unique": 3,
+  "covered": 111,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: an upload the site does not accept refuses a file over the site's limit before sending anything",
+  "kills": 64,
+  "unique": 5,
+  "covered": 117,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "PLANT: an upload the site does not accept shows the site API's refusal of bytes that are not their type, and stores nothing",
+  "kills": 68,
+  "unique": 5,
+  "covered": 122,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "a site with no media library says so on the page, and the editor gets no image tools",
+  "kills": 101,
+  "unique": 3,
+  "covered": 259,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "the editor's image tools are given to an Editor with the site's accepted types, and never to a Reader",
+  "kills": 108,
+  "unique": 10,
+  "covered": 230,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "the editor's image tools uploads through the endpoint and answers the site's address and where to show it",
+  "kills": 95,
+  "unique": 15,
+  "covered": 160,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "the editor's image tools lists for the picker, and says why when the site cannot be reached",
+  "kills": 66,
+  "unique": 18,
+  "covered": 114,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "the editor's image tools inserts the site's own figure, with the alt text escaped",
+  "kills": 11,
+  "unique": 11,
+  "covered": 12,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "the image policy loads images from the configured sites, and drops anything that is not a plain https origin",
+  "kills": 12,
+  "unique": 9,
+  "covered": 24,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media.test.ts",
+  "name": "health runs the media conformance against a site with media, and never stores or deletes a file",
+  "kills": 57,
+  "unique": 1,
+  "covered": 232,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "expandShared writes each section between its markers with the page's fields filled in",
+  "kills": 16,
+  "unique": 0,
+  "covered": 23,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "expandShared gives the same text when run again, so a page is expanded on every write",
+  "kills": 8,
+  "unique": 0,
+  "covered": 26,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "expandShared replaces text a person typed inside the markers, since the section is the source",
+  "kills": 6,
+  "unique": 0,
+  "covered": 15,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "expandShared names an unknown section and a missing field, and leaves both as written",
+  "kills": 22,
+  "unique": 1,
+  "covered": 27,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "prepareLegalWrite stamps last_updated when the Owner publishes a changed text",
+  "kills": 90,
+  "unique": 1,
+  "covered": 150,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "prepareLegalWrite leaves the date alone when only a field changed",
+  "kills": 37,
+  "unique": 3,
+  "covered": 96,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "prepareLegalWrite stamps a draft that goes public even if its text was already saved",
+  "kills": 89,
+  "unique": 0,
+  "covered": 151,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "prepareLegalWrite does not stamp a draft save, and keeps a missing field's token so no work is lost",
+  "kills": 35,
+  "unique": 0,
+  "covered": 107,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "prepareLegalWrite refuses to go public with a field missing or a section unknown, and says which",
+  "kills": 50,
+  "unique": 9,
+  "covered": 112,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "prepareLegalWrite recognises a legal page by its legal_type",
+  "kills": 21,
+  "unique": 2,
+  "covered": 31,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "a legal page written to the site is published with its shared sections filled in and its date stamped, through the real write path",
+  "kills": 179,
+  "unique": 5,
+  "covered": 357,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "a legal page written to the site stamps last_updated when the text sent with a publish changed",
+  "kills": 204,
+  "unique": 1,
+  "covered": 421,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "a legal page written to the site is refused at publish with a field missing, and the site hears no write after the seed",
+  "kills": 149,
+  "unique": 1,
+  "covered": 354,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "a legal page written to the site is an ordinary item for an AI session: no special refusal, the same role rules",
+  "kills": 105,
+  "unique": 0,
+  "covered": 297,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "PLANT: the page the site's data license names cannot be unpublished through Carrel, and the site hears nothing",
+  "kills": 121,
+  "unique": 4,
+  "covered": 324,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "PLANT: the page the site's data license names can have its wording changed, but not its path",
+  "kills": 137,
+  "unique": 6,
+  "covered": 309,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "PLANT: the page the site's data license names is guarded by id even when its legal_type is removed",
+  "kills": 125,
+  "unique": 0,
+  "covered": 303,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "the shared sections are changed only by the Owner",
+  "kills": 51,
+  "unique": 4,
+  "covered": 73,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "the shared sections refuse a bad name, an empty text and a wide dash",
+  "kills": 39,
+  "unique": 11,
+  "covered": 63,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "the Legal tab lists each legal page, says which are not set up, and flags a page behind the shared text",
+  "kills": 132,
+  "unique": 14,
+  "covered": 336,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/legal.test.ts",
+  "name": "the Legal tab changes a section only for the Owner, through the action",
+  "kills": 64,
+  "unique": 17,
+  "covered": 86,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses a request with no Access token",
+  "kills": 8,
+  "unique": 0,
+  "covered": 46,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses an empty token",
+  "kills": 8,
+  "unique": 0,
+  "covered": 46,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses a token that is not a JWT",
+  "kills": 8,
+  "unique": 0,
+  "covered": 56,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses a token signed by a key the team does not publish",
+  "kills": 8,
+  "unique": 0,
+  "covered": 56,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses the wrong audience",
+  "kills": 9,
+  "unique": 0,
+  "covered": 56,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses the wrong issuer",
+  "kills": 10,
+  "unique": 0,
+  "covered": 56,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses an expired token",
+  "kills": 8,
+  "unique": 0,
+  "covered": 56,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses a valid token with no email",
+  "kills": 8,
+  "unique": 0,
+  "covered": 63,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses an email Access admitted but Carrel does not know",
+  "kills": 10,
+  "unique": 0,
+  "covered": 70,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses a disabled person",
+  "kills": 10,
+  "unique": 0,
+  "covered": 70,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses everyone when ACCESS_AUD is not set",
+  "kills": 8,
+  "unique": 0,
+  "covered": 43,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: refusals (fail closed) refuses everyone when the team domain is not set",
+  "kills": 8,
+  "unique": 0,
+  "covered": 42,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: admission admits a valid token for a known person and passes the viewer to render",
+  "kills": 32,
+  "unique": 0,
+  "covered": 64,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: admission leaves an HTML page untransformed so Web Analytics cannot inject its beacon, and no asset",
+  "kills": 40,
+  "unique": 8,
+  "covered": 68,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: admission matches the email without regard to case",
+  "kills": 30,
+  "unique": 0,
+  "covered": 64,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/access.test.ts",
+  "name": "gate: admission accepts the team domain written with a trailing slash",
+  "kills": 31,
+  "unique": 1,
+  "covered": 64,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/ai-routes.test.ts",
+  "name": "the unpublish page opens without changing anything, and one button returns the post to draft",
+  "kills": 86,
+  "unique": 20,
+  "covered": 164,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/ai-routes.test.ts",
+  "name": "the unpublish page PLANT: an Editor cannot open it or use it",
+  "kills": 20,
+  "unique": 0,
+  "covered": 32,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/ai-routes.test.ts",
+  "name": "AI drafts in the browser shows an AI draft to the person whose session saved it, and Use as my draft replaces only their working copy",
+  "kills": 65,
+  "unique": 3,
+  "covered": 127,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/ai-routes.test.ts",
+  "name": "AI drafts in the browser PLANT: another person cannot see someone's AI draft",
+  "kills": 45,
+  "unique": 0,
+  "covered": 120,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/ai-routes.test.ts",
+  "name": "flags in the editor lists flags, and only the Owner dismisses one",
+  "kills": 114,
+  "unique": 7,
+  "covered": 308,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google-routes.test.ts",
+  "name": "Google routes PLANT: manuscripts and Connect Google are 404 to anyone but the Owner",
+  "kills": 11,
+  "unique": 3,
+  "covered": 26,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google-routes.test.ts",
+  "name": "Google routes connects Google through the real routes and says so on the home page",
+  "kills": 102,
+  "unique": 19,
+  "covered": 167,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/google-routes.test.ts",
+  "name": "Google routes shows the manuscripts page with the setup still missing, rather than failing",
+  "kills": 17,
+  "unique": 5,
+  "covered": 36,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/editor-ux.test.ts",
+  "name": "Use as my draft writes the working copy in Carrel exactly as the AI wrote it, and sends nothing to the site",
+  "kills": 60,
+  "unique": 0,
+  "covered": 122,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/editor-ux.test.ts",
+  "name": "the AI draft's rendered view renders the draft through the site for its owner",
+  "kills": 78,
+  "unique": 8,
+  "covered": 151,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/editor-ux.test.ts",
+  "name": "the AI draft's rendered view PLANT: is never shown to another person, whose request answers 404",
+  "kills": 44,
+  "unique": 0,
+  "covered": 119,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/editor-ux.test.ts",
+  "name": "the save line does not read as live for a draft on the site",
+  "kills": 13,
+  "unique": 13,
+  "covered": 13,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "the app policy allows scripts only by this render's nonce, never inline or eval",
+  "kills": 8,
+  "unique": 3,
+  "covered": 20,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "the app policy stays strict for Cloudflare's Web Analytics beacon: no host in script-src, connect-src is 'self'",
+  "kills": 5,
+  "unique": 1,
+  "covered": 20,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "the app policy mints a different nonce every time",
+  "kills": 1,
+  "unique": 1,
+  "covered": 1,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "the app policy PLANT: a page without a policy gets one; a route's own policy is kept",
+  "kills": 13,
+  "unique": 3,
+  "covered": 58,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "the app policy adds the policy to a response whose headers are immutable",
+  "kills": 8,
+  "unique": 3,
+  "covered": 30,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "the preview runs the site's page sandboxed: no script, no forms, only the site's styles and images",
+  "kills": 9,
+  "unique": 3,
+  "covered": 13,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "the preview resolves the page's relative URLs against the site and drops the page's own <base>",
+  "kills": 14,
+  "unique": 9,
+  "covered": 14,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "framing through the gate PLANT: denies framing of every page by default",
+  "kills": 6,
+  "unique": 0,
+  "covered": 64,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "framing through the gate lets the preview be framed by Carrel alone",
+  "kills": 41,
+  "unique": 7,
+  "covered": 101,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/csp.test.ts",
+  "name": "framing through the gate cannot be loosened by a route asking for ALLOW-FROM or anything else",
+  "kills": 5,
+  "unique": 0,
+  "covered": 64,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: continuity flags a character not in the bible",
+  "kills": 124,
+  "unique": 4,
+  "covered": 269,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: continuity flags a dead character present, found by alias",
+  "kills": 130,
+  "unique": 4,
+  "covered": 272,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: continuity flags a character not born yet, and a location not in the bible",
+  "kills": 126,
+  "unique": 11,
+  "covered": 275,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: continuity CLEAN TWIN: everyone known and alive, the place known by alias: nothing",
+  "kills": 69,
+  "unique": 3,
+  "covered": 260,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: timeline flags a scene dated before the one it follows, with no flashback mark",
+  "kills": 99,
+  "unique": 1,
+  "covered": 269,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: timeline CLEAN TWIN: the same scene marked flashback: true is not flagged",
+  "kills": 30,
+  "unique": 7,
+  "covered": 205,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: timeline CLEAN TWIN: a scene in order is not flagged, and a flashback before it does not move the clock",
+  "kills": 29,
+  "unique": 0,
+  "covered": 255,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: timeline orders chapter 100 after chapter 99",
+  "kills": 105,
+  "unique": 6,
+  "covered": 268,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: timeline reads story dates strictly",
+  "kills": 21,
+  "unique": 9,
+  "covered": 29,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: world rules flags a forbidden pattern from a rule, on the file's own line",
+  "kills": 29,
+  "unique": 2,
+  "covered": 151,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: world rules CLEAN TWIN: prose that keeps the rule is not flagged",
+  "kills": 11,
+  "unique": 0,
+  "covered": 141,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: world rules flags a rule whose pattern cannot compile, on the rule's own file",
+  "kills": 15,
+  "unique": 5,
+  "covered": 20,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: AI habits flags the \"it's not just X, it's Y\" construction, in both its forms",
+  "kills": 30,
+  "unique": 1,
+  "covered": 179,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: AI habits flags a banned word, as a whole word and in any case",
+  "kills": 29,
+  "unique": 1,
+  "covered": 181,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: AI habits flags a paragraph that closes on a rule-of-three list",
+  "kills": 50,
+  "unique": 22,
+  "covered": 186,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: AI habits CLEAN TWIN: the same ideas without the habits are not flagged",
+  "kills": 22,
+  "unique": 0,
+  "covered": 175,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: AI habits takes words from shared/checks/ai-habits.md and lets Dustin allow one back",
+  "kills": 111,
+  "unique": 8,
+  "covered": 217,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: AI habits reads the novels repository's shared/checks/ai-habits.md as it ships: the seed, unchanged",
+  "kills": 18,
+  "unique": 0,
+  "covered": 124,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: AI habits seeds from the AI-tells list in capsid/conventions.md",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: voice has a profile to compare with",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: voice flags a public-domain passage by another author among Dustin's",
+  "kills": 49,
+  "unique": 7,
+  "covered": 232,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: voice CLEAN TWIN: more of Dustin's register, not in the passages, is not flagged",
+  "kills": 44,
+  "unique": 4,
+  "covered": 214,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "PLANT: voice stays silent without passages to compare with, or on a short scene",
+  "kills": 22,
+  "unique": 2,
+  "covered": 181,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "the header and checkFile PLANT: a scene with no header is flagged, and so is a missing field",
+  "kills": 166,
+  "unique": 11,
+  "covered": 401,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "the header and checkFile CLEAN TWIN: a complete, clean scene has no findings",
+  "kills": 139,
+  "unique": 0,
+  "covered": 369,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "the header and checkFile does not check a bible entry or an outline as prose",
+  "kills": 22,
+  "unique": 0,
+  "covered": 183,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/checks.test.ts",
+  "name": "the header and checkFile gives repeats of the same finding their own fingerprints",
+  "kills": 36,
+  "unique": 0,
+  "covered": 198,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "opening a book PLANT: a non-member, a missing book, and a site all answer 404",
+  "kills": 28,
+  "unique": 3,
+  "covered": 52,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "opening a book PLANT: a Reader asking to edit is refused 403",
+  "kills": 16,
+  "unique": 0,
+  "covered": 26,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "opening a book creates a book for the Owner only, with a folder name the layout allows",
+  "kills": 30,
+  "unique": 28,
+  "covered": 42,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "refresh from Git indexes the book's Markdown files by kind, skips build/ and other files, and reads shared/",
+  "kills": 417,
+  "unique": 9,
+  "covered": 859,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "refresh from Git reads again only what changed, and drops what Git no longer has",
+  "kills": 442,
+  "unique": 17,
+  "covered": 879,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "saving PLANT: a Reader cannot autosave or save, and Git hears nothing",
+  "kills": 33,
+  "unique": 0,
+  "covered": 51,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "saving PLANT: a path outside the layout is refused before Git is asked",
+  "kills": 33,
+  "unique": 2,
+  "covered": 85,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "saving commits as the person with a change id and no AI trailer, records authorship, clears the draft",
+  "kills": 306,
+  "unique": 23,
+  "covered": 1019,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "saving PLANT: a stale expected version is refused as a conflict, and the draft is kept",
+  "kills": 254,
+  "unique": 0,
+  "covered": 924,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "saving creates a new scene only where no file exists",
+  "kills": 195,
+  "unique": 0,
+  "covered": 692,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "checks on save PLANT: a flagged scene still saves; the flags come back and are recorded",
+  "kills": 496,
+  "unique": 13,
+  "covered": 1004,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "checks on save PLANT: the voice check flags another author's passage once shared/voice/ holds Dustin's",
+  "kills": 477,
+  "unique": 22,
+  "covered": 1104,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "checks on save fixing the text clears the flag; saving a bible entry rechecks every scene",
+  "kills": 460,
+  "unique": 13,
+  "covered": 987,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "checks on save checks a draft without saving or recording anything",
+  "kills": 391,
+  "unique": 0,
+  "covered": 865,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "dismissing flags and exporting PLANT: export is refused while a flag is open, and to anyone but the Owner",
+  "kills": 455,
+  "unique": 0,
+  "covered": 994,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "dismissing flags and exporting PLANT: an Editor cannot dismiss a flag; the Owner can, and a dismissal survives the next save",
+  "kills": 479,
+  "unique": 3,
+  "covered": 1015,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "dismissing flags and exporting a dismissal in another book cannot be reached by id",
+  "kills": 272,
+  "unique": 2,
+  "covered": 984,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "dismissing flags and exporting assembles the book in reading order with its title and author from book.md",
+  "kills": 319,
+  "unique": 22,
+  "covered": 895,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/books.test.ts",
+  "name": "word counts for the authorship record counts a changed word once each way and a moved word not at all",
+  "kills": 44,
+  "unique": 6,
+  "covered": 120,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk delete is the Owner's alone refuses an Editor and a Reader before the site is asked anything, and changes nothing",
+  "kills": 92,
+  "unique": 0,
+  "covered": 207,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk delete is the Owner's alone answers the endpoint's JSON 403 for an Editor who posts a delete",
+  "kills": 115,
+  "unique": 26,
+  "covered": 239,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk delete is the Owner's alone deletes for the Owner at the version the site holds, records it, drops it from the index and keeps working drafts",
+  "kills": 138,
+  "unique": 7,
+  "covered": 271,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "a post that cannot be deleted does not stop the others reports a missing post, a stale version and a refusal, deletes the rest, and records only what the site did",
+  "kills": 143,
+  "unique": 21,
+  "covered": 299,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "a post that cannot be deleted does not stop the others says a site with no delete does not delete, deletes nothing and records nothing",
+  "kills": 124,
+  "unique": 8,
+  "covered": 270,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "a post that cannot be deleted does not stop the others offers delete where the site has it",
+  "kills": 50,
+  "unique": 4,
+  "covered": 73,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk tag changes only the tags line: the rest of the file comes back byte for byte",
+  "kills": 243,
+  "unique": 16,
+  "covered": 426,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk tag is a save with its authorship row, and writes nothing for a post that already has the tag",
+  "kills": 197,
+  "unique": 5,
+  "covered": 417,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk tag leaves a live post to the Owner: an Editor's tag on it is refused alone, and the others still change",
+  "kills": 231,
+  "unique": 12,
+  "covered": 473,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk tag lets the Owner tag a live post",
+  "kills": 142,
+  "unique": 0,
+  "covered": 455,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk tag leaves a post alone when the person has an unsaved working draft of it, so the draft is not lost",
+  "kills": 126,
+  "unique": 5,
+  "covered": 269,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk tag refuses a tag that would break the list, before any post is read",
+  "kills": 48,
+  "unique": 12,
+  "covered": 84,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk duplicate makes a new draft with an unused id, a copy title and its own slug, created fresh, and leaves the original alone",
+  "kills": 254,
+  "unique": 4,
+  "covered": 498,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk duplicate sets draft: true on a copy of a live post, and adds the key when the post lacks one",
+  "kills": 246,
+  "unique": 1,
+  "covered": 498,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk duplicate skips an id that a working draft or an AI draft already uses, and one the site already holds",
+  "kills": 167,
+  "unique": 1,
+  "covered": 461,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "bulk duplicate reports a post the site does not have and one with no frontmatter, and copies the rest",
+  "kills": 168,
+  "unique": 6,
+  "covered": 461,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/bulk.test.ts",
+  "name": "what a request may carry refuses a Reader, nothing chosen and too many posts, and never sends an id that could not be one",
+  "kills": 57,
+  "unique": 8,
+  "covered": 86,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "books through MCP lists a book's files with each scene's header, and reads a file with its version",
+  "kills": 396,
+  "unique": 19,
+  "covered": 803,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "books through MCP PLANT: a stranger's session, and a site's slug, reach no book",
+  "kills": 165,
+  "unique": 0,
+  "covered": 768,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "books through MCP runs the checks on text without saving or recording anything",
+  "kills": 384,
+  "unique": 6,
+  "covered": 781,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "books through MCP saves an AI draft beside the person's, never over it and never to Git",
+  "kills": 255,
+  "unique": 4,
+  "covered": 806,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "books through MCP PLANT: a reviewer's and a Reader's sessions cannot save a book draft",
+  "kills": 210,
+  "unique": 2,
+  "covered": 789,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "books through MCP PLANT: a reviewer's flag on a book file survives the recheck a save runs, and holds export",
+  "kills": 424,
+  "unique": 9,
+  "covered": 945,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "books through MCP PLANT: a flag on a path outside the layout is refused",
+  "kills": 165,
+  "unique": 1,
+  "covered": 770,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "AI drafts in the book editor shows them beside the text, and Use as my draft makes one the working copy",
+  "kills": 304,
+  "unique": 10,
+  "covered": 1012,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "export refuses a book with import markers PLANT: names each file still holding a marker; clean, it passes",
+  "kills": 348,
+  "unique": 10,
+  "covered": 757,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "draft_social_post stores the Owner's session's draft by event id, credited to the client",
+  "kills": 258,
+  "unique": 8,
+  "covered": 895,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "draft_social_post stores by account, project and item too",
+  "kills": 259,
+  "unique": 7,
+  "covered": 907,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/mcp-followups.test.ts",
+  "name": "draft_social_post PLANT: an Editor's or a reviewer's session cannot draft social posts",
+  "kills": 230,
+  "unique": 3,
+  "covered": 850,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "reading history lists the revisions newest first for a Reader, and only reads",
+  "kills": 107,
+  "unique": 2,
+  "covered": 269,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "reading history opens the source of an old revision",
+  "kills": 139,
+  "unique": 19,
+  "covered": 292,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "reading history says plainly when the revision is not one the site holds",
+  "kills": 116,
+  "unique": 5,
+  "covered": 279,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "reading history is answered 404 to someone with no role on the project, before the site is asked",
+  "kills": 83,
+  "unique": 0,
+  "covered": 201,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "comparing revisions sets the older revision against the newer whichever was picked first, from the site's own patch",
+  "kills": 151,
+  "unique": 11,
+  "covered": 318,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "comparing revisions by word, hands the two revisions' texts to the word compare, older as Before",
+  "kills": 153,
+  "unique": 13,
+  "covered": 327,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "comparing revisions refuses one pick, the same pick twice and a pick the site does not hold, in words",
+  "kills": 123,
+  "unique": 5,
+  "covered": 296,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "comparing revisions orders a pair by the site's list, newest first, so the older is always from",
+  "kills": 97,
+  "unique": 1,
+  "covered": 218,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "comparing the working draft sets the draft against the site's text with a patch built here, and the site is only read",
+  "kills": 125,
+  "unique": 6,
+  "covered": 295,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "comparing the working draft says there is nothing to compare when the person has no working draft",
+  "kills": 105,
+  "unique": 4,
+  "covered": 259,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "comparing the working draft sets the draft against an AI draft, and a draft that is not the viewer's is not found",
+  "kills": 140,
+  "unique": 12,
+  "covered": 332,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/history.test.ts",
+  "name": "the local patch names both sides but one file, shows only the changed lines with context, and says nothing changed when nothing did",
+  "kills": 76,
+  "unique": 1,
+  "covered": 196,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the people page lists everyone with their kind and their role on each project, the Owner first",
+  "kills": 22,
+  "unique": 7,
+  "covered": 25,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the people page adds a person, shares a project with them, changes and removes the role, disables and enables them",
+  "kills": 78,
+  "unique": 28,
+  "covered": 111,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the people page refuses an email already in Carrel, and one that is not an email",
+  "kills": 9,
+  "unique": 3,
+  "covered": 24,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "PLANT: a non-Owner at the people page answers editor@test.invalid 404 for the page and every action, and nothing changes",
+  "kills": 22,
+  "unique": 0,
+  "covered": 57,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "PLANT: a non-Owner at the people page answers reader@test.invalid 404 for the page and every action, and nothing changes",
+  "kills": 22,
+  "unique": 0,
+  "covered": 57,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "PLANT: a non-Owner at the people page answers reviewer@test.invalid 404 for the page and every action, and nothing changes",
+  "kills": 20,
+  "unique": 0,
+  "covered": 57,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "PLANT: a non-Owner at the people page answers stranger@test.invalid 404 for the page and every action, and nothing changes",
+  "kills": 22,
+  "unique": 0,
+  "covered": 57,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "PLANT: the Owner's own row refuses a second Owner: the page has no way to make one, and the database refuses one too",
+  "kills": 23,
+  "unique": 0,
+  "covered": 47,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "PLANT: the Owner's own row refuses the Owner disabling themself, and changing the Owner's role, and nothing changes",
+  "kills": 26,
+  "unique": 7,
+  "covered": 42,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "PLANT: a reviewer given the Editor role is refused (reviewers read and flag only), and nothing changes; Reader is allowed",
+  "kills": 27,
+  "unique": 5,
+  "covered": 34,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the project flags list lists every flag, open first, including one on an item the site does not have",
+  "kills": 53,
+  "unique": 3,
+  "covered": 68,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the project flags list lets the Owner dismiss a flag on an item the site does not have, recorded as the editor records it, and it stays dismissed",
+  "kills": 58,
+  "unique": 2,
+  "covered": 81,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the project flags list PLANT: an Editor or a Reader cannot dismiss, a stranger sees nothing, and the flag stays open",
+  "kills": 21,
+  "unique": 0,
+  "covered": 34,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the project flags list PLANT: the route refuses a non-Owner by role before it reads the form",
+  "kills": 19,
+  "unique": 0,
+  "covered": 30,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the project flags list PLANT: the dismiss function refuses a non-Owner on its own, whatever route calls it",
+  "kills": 29,
+  "unique": 0,
+  "covered": 42,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "the project flags list refuses a flag named with the wrong item, so a form cannot dismiss another item's flag",
+  "kills": 33,
+  "unique": 2,
+  "covered": 63,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "media in the authorship record writes exactly one row for an upload and one for a delete, crediting the person and an AI client",
+  "kills": 80,
+  "unique": 1,
+  "covered": 143,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "media in the authorship record PLANT: a refused delete, a refused upload and a role refusal write no row",
+  "kills": 64,
+  "unique": 0,
+  "covered": 125,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/people-flags.test.ts",
+  "name": "media in the authorship record still requires a version for every content write (migration 0007 keeps that rule)",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "alt text, tags, trash and restore writes each as an Editor with the version seen, and records who did it",
+  "kills": 75,
+  "unique": 9,
+  "covered": 114,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "alt text, tags, trash and restore refuses a Reader before the site hears anything, and records nothing",
+  "kills": 33,
+  "unique": 0,
+  "covered": 56,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "alt text, tags, trash and restore says a stale version plainly, changes nothing and records nothing",
+  "kills": 61,
+  "unique": 0,
+  "covered": 96,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "alt text, tags, trash and restore answers the page's form with the conflict, and refuses a tag the site would not spell",
+  "kills": 140,
+  "unique": 55,
+  "covered": 212,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "PLANT: only the Owner deletes for good or empties the trash refuses an Editor's bulk delete and empty-trash before the site hears anything, and the files stay",
+  "kills": 99,
+  "unique": 6,
+  "covered": 183,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "PLANT: only the Owner deletes for good or empties the trash lets the Owner empty the trash only after confirming, then deletes what the site lets go and records each file",
+  "kills": 104,
+  "unique": 30,
+  "covered": 166,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "bulk actions report each file trashes the fresh file, leaves the stale one, and records only what was done",
+  "kills": 105,
+  "unique": 5,
+  "covered": 189,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "bulk actions report each file names the post that blocks a bulk delete, deletes the rest, and tags in bulk",
+  "kills": 106,
+  "unique": 17,
+  "covered": 181,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "bulk actions report each file answers the endpoint's JSON: a bad action and a bad tag are 400, and a good one lists every file",
+  "kills": 115,
+  "unique": 10,
+  "covered": 235,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "a site that offers none of the writes is told so by its meta, so the page shows no alt, tag, trash or selection tools",
+  "kills": 87,
+  "unique": 4,
+  "covered": 193,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "a site that offers none of the writes answers a write that arrives anyway with 'not offered', not a crash",
+  "kills": 58,
+  "unique": 6,
+  "covered": 88,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/media-writes.test.ts",
+  "name": "the page's loader offers the writes the site has, lists the trash on its own view, and filters by tag",
+  "kills": 154,
+  "unique": 35,
+  "covered": 264,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: refusals refuses a Reader who saves",
+  "kills": 15,
+  "unique": 0,
+  "covered": 25,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: refusals refuses an Editor who publishes",
+  "kills": 15,
+  "unique": 0,
+  "covered": 25,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: refusals refuses an Editor who sends externally or manages people",
+  "kills": 15,
+  "unique": 0,
+  "covered": 25,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: refusals answers 404, not 403, when a non-member reads a project",
+  "kills": 12,
+  "unique": 0,
+  "covered": 16,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: refusals answers 404 for a shared user on a project not shared with them",
+  "kills": 12,
+  "unique": 0,
+  "covered": 16,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: refusals gives nobody a role from nothing",
+  "kills": 6,
+  "unique": 1,
+  "covered": 10,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: what is allowed lets a Reader read and comment",
+  "kills": 13,
+  "unique": 0,
+  "covered": 23,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: what is allowed lets an Editor edit",
+  "kills": 13,
+  "unique": 0,
+  "covered": 23,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: what is allowed lets the Owner do everything on every project, shared or not",
+  "kills": 13,
+  "unique": 0,
+  "covered": 21,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: what each person sees shows a shared user only the projects shared with them",
+  "kills": 8,
+  "unique": 0,
+  "covered": 12,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "roles: what each person sees shows the Owner every project",
+  "kills": 9,
+  "unique": 0,
+  "covered": 13,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "schema: the Owner cannot be granted twice refuses a second Owner row",
+  "kills": 1,
+  "unique": 0,
+  "covered": 4,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/roles.test.ts",
+  "name": "schema: the Owner cannot be granted twice refuses 'owner' as a membership role",
+  "kills": 1,
+  "unique": 0,
+  "covered": 4,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "PLANT: a non-member reads is answered 404, the same as a project that does not exist",
+  "kills": 14,
+  "unique": 2,
+  "covered": 19,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "PLANT: a non-member reads is answered 404 for a project that is not a site",
+  "kills": 13,
+  "unique": 0,
+  "covered": 34,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "PLANT: a Reader saves is refused for autosave and for a save to the site, and the site hears nothing",
+  "kills": 32,
+  "unique": 0,
+  "covered": 50,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "PLANT: an Editor publishes is refused for publish, schedule and unpublish before any request",
+  "kills": 91,
+  "unique": 1,
+  "covered": 177,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "PLANT: an Editor publishes is refused when the change would alter a live post, since that is a publish",
+  "kills": 101,
+  "unique": 0,
+  "covered": 224,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "PLANT: an Editor publishes lets an Editor save a draft, and records who did it",
+  "kills": 95,
+  "unique": 1,
+  "covered": 178,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "PLANT: a stale expectedVersion is refused by the site, reported as a conflict, and the person's draft is kept",
+  "kills": 102,
+  "unique": 0,
+  "covered": 200,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "PLANT: a stale expectedVersion refuses a create over a slug the site already holds",
+  "kills": 90,
+  "unique": 0,
+  "covered": 189,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "the Owner's writes publish, index the result, record the change, and clear the draft that was sent",
+  "kills": 110,
+  "unique": 4,
+  "covered": 224,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/content.test.ts",
+  "name": "the Owner's writes reports a site that is not connected rather than failing obscurely",
+  "kills": 36,
+  "unique": 0,
+  "covered": 63,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/social-route.test.ts",
+  "name": "the social page PLANT: is 404 to anyone but the Owner",
+  "kills": 3,
+  "unique": 1,
+  "covered": 8,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/social-route.test.ts",
+  "name": "the social page adds an account that starts off, in approval mode, and says the routine is not set up",
+  "kills": 58,
+  "unique": 28,
+  "covered": 105,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/index.test.ts",
+  "name": "refresh indexes every item and finds one by a word in its body, not only its title",
+  "kills": 64,
+  "unique": 1,
+  "covered": 110,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/index.test.ts",
+  "name": "refresh keeps a site's data kinds out of the writing lists and their kinds, whatever the kind is called",
+  "kills": 14,
+  "unique": 0,
+  "covered": 17,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/index.test.ts",
+  "name": "refresh reads a body again only when the item changed, and drops an item the site no longer lists",
+  "kills": 79,
+  "unique": 8,
+  "covered": 120,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/index.test.ts",
+  "name": "refresh reads at most MAX_BODY_FETCHES bodies per run and reports the rest as pending",
+  "kills": 52,
+  "unique": 0,
+  "covered": 80,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/index.test.ts",
+  "name": "the refresh's subrequests (Workers Paid) keeps the cap's worst case inside its budget, and the budget a tenth of the plan's limit",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/index.test.ts",
+  "name": "the refresh's subrequests (Workers Paid) stays under the limit when every post needs its body read: counted, not assumed",
+  "kills": 43,
+  "unique": 1,
+  "covered": 73,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/index.test.ts",
+  "name": "the search expression treats punctuation as text, never FTS5 syntax",
+  "kills": 20,
+  "unique": 9,
+  "covered": 22,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/index.test.ts",
+  "name": "the search expression returns nothing for a query with no words rather than everything",
+  "kills": 3,
+  "unique": 1,
+  "covered": 23,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "scene headers reads strings, inline lists, dash lists, booleans and quotes, and reports what it cannot read",
+  "kills": 117,
+  "unique": 36,
+  "covered": 165,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "scene headers treats a file with no header, or an unclosed one, as all body",
+  "kills": 20,
+  "unique": 5,
+  "covered": 33,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "the layout allows the novels layout and nothing else",
+  "kills": 52,
+  "unique": 9,
+  "covered": 63,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "the layout names and numbers chapters and scenes",
+  "kills": 26,
+  "unique": 3,
+  "covered": 33,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "prose Markdown parses emphasis and strong, and leaves unmatched markers and snake_case as text",
+  "kills": 78,
+  "unique": 36,
+  "covered": 91,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "prose Markdown splits paragraphs, scene breaks, headings and quotes; joins hard-wrapped lines",
+  "kills": 55,
+  "unique": 27,
+  "covered": 113,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "ePub puts an uncompressed mimetype first, as the container format requires",
+  "kills": 21,
+  "unique": 4,
+  "covered": 208,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "ePub has a package document, a navigation document and one XHTML file per chapter, escaped",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "Word is a Word document holding the title, each chapter and the formatting",
+  "kills": 78,
+  "unique": 21,
+  "covered": 184,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/export.test.ts",
+  "name": "the print page is the whole book with each chapter on a new page, escaped",
+  "kills": 21,
+  "unique": 1,
+  "covered": 179,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the App's key and token accepts the PKCS#1 key GitHub downloads, byte for byte the PKCS#8 WebCrypto would export",
+  "kills": 27,
+  "unique": 3,
+  "covered": 33,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the App's key and token signs an RS256 JWT GitHub can verify: issuer the App id, back-dated a minute, under ten minutes",
+  "kills": 36,
+  "unique": 3,
+  "covered": 46,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the App's key and token exchanges the JWT for an installation token narrowed to the novels repository, and reuses it",
+  "kills": 56,
+  "unique": 8,
+  "covered": 82,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the App's key and token is not connected without secrets, and misconfigured with half of them or a bad key",
+  "kills": 33,
+  "unique": 7,
+  "covered": 44,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the App's key and token works end to end from the Worker's secrets",
+  "kills": 85,
+  "unique": 0,
+  "covered": 131,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the contents client lists a book's files relative to its folder, and nothing outside it",
+  "kills": 26,
+  "unique": 3,
+  "covered": 33,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the contents client reads and writes text beyond ASCII unchanged, with the sha Git would give it",
+  "kills": 48,
+  "unique": 1,
+  "covered": 74,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the contents client PLANT: a save against a stale version is a conflict naming the current version, and Git is unchanged",
+  "kills": 37,
+  "unique": 1,
+  "covered": 78,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/novels-repo.test.ts",
+  "name": "the contents client PLANT: creating a file that already exists is a conflict, not an overwrite",
+  "kills": 37,
+  "unique": 0,
+  "covered": 79,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "splitSource and joinSource round-trips every shape of source byte for byte",
+  "kills": 12,
+  "unique": 1,
+  "covered": 14,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "the fields reads them, quoted or not, with tags and takeaways as lists",
+  "kills": 68,
+  "unique": 12,
+  "covered": 98,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "the fields leaves the source untouched when a field is set to what it already holds",
+  "kills": 12,
+  "unique": 0,
+  "covered": 106,
+  "protected": false,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "the fields changes only the edited block and keeps unknown keys, comments and lists exactly",
+  "kills": 57,
+  "unique": 9,
+  "covered": 165,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "the fields adds a field the frontmatter lacks and removes one that is emptied",
+  "kills": 77,
+  "unique": 9,
+  "covered": 168,
+  "protected": false,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "bulk edits: tags and one raw key changes only the tags line and returns every other byte of the file as it was",
+  "kills": 70,
+  "unique": 0,
+  "covered": 131,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "bulk edits: tags and one raw key writes an emptied list as tags: [], where setField would drop the key",
+  "kills": 51,
+  "unique": 0,
+  "covered": 146,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "bulk edits: tags and one raw key leaves the frontmatter as it was when the tags are already that list, and adds the key when it is missing",
+  "kills": 25,
+  "unique": 2,
+  "covered": 39,
+  "protected": true,
+  "kind": "unique-kills"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "bulk edits: tags and one raw key turns a block-form list into the flow form and touches nothing else",
+  "kills": 27,
+  "unique": 0,
+  "covered": 36,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/frontmatter.test.ts",
+  "name": "bulk edits: tags and one raw key sets one raw key in place or at the end, and never rewrites a line that already says it",
+  "kills": 30,
+  "unique": 0,
+  "covered": 38,
+  "protected": true,
+  "kind": "covered-by-others"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "pageWeight adds the entry and every route module from root down, each file once, and leaves out a resource route",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "pageWeight gives a parent route only its own chain, so a child's files do not leak upward",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "pageWeight fails loudly on a file the manifest names but the build does not hold",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "parseManifest reads the object after the window assignment, with or without a trailing semicolon",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "parseManifest refuses text that is not the manifest",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "knipCounts counts files and each issue category as Knip groups them",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "knipCounts is all zero for a clean report, so zero means Knip read the project and found nothing",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "jscpdTotals takes the totals",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "jscpdTotals refuses a report with no totals rather than reading it as zero duplication",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "compareToBaseline names each metric that is above the baseline and counts the rest",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "compareToBaseline names a route the baseline does not have",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "renderSummary states every number and, against an equal baseline, that nothing is above it",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "renderSummary lists what is above the baseline",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/bloat.test.ts",
+  "name": "renderSummary says when a tool did not run and carries the notes, so a failed tool is not read as a clean one",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "the test manuscript becomes two chapters, the first split at its scene break, with italics and bold kept",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "the test manuscript reads the same from a stored (uncompressed) archive as from a deflated one",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "the test manuscript ignores italics set on the paragraph mark, which style no text",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "the test manuscript treats a folder of files as chapters in order, a file with no heading as one chapter",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "PLANT: what the importer flags instead of guessing marks each problem where it happened and lists it in the report",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "PLANT: what the importer flags instead of guessing keeps the text around a problem, and drops only what cannot be text",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "PLANT: what the importer flags instead of guessing refuses a file that is not a Word document",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": true,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "Markdown for runs and names closes emphasis around the words, not the spaces, and marks bold italic",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ },
+ {
+  "file": "test/import.test.ts",
+  "name": "Markdown for runs and names names folders and files as the novels layout requires",
+  "kills": 0,
+  "unique": 0,
+  "covered": 0,
+  "protected": false,
+  "kind": "zero-kill"
+ }
+]

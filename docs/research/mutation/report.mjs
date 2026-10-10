@@ -2,7 +2,7 @@
 // node docs/research/mutation/report.mjs <chunks-dir> <out-dir>
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 
-const [dir = "docs/research/mutation/chunks", out = "docs/research"] = process.argv.slice(2);
+const [dir = "docs/research/mutation/chunks", out = "docs/research", vitestJson] = process.argv.slice(2);
 const KEPT = /auth|access|session|oauth|token|key|secret|signing|csp|gate|plant|publish|role|owner|door|permission|origin|redirect|sanit|escape|xss|inject|traversal|refus|forbid|unauthor|403|401|mcp-roles|conformance/i;
 
 const files = {};
@@ -26,6 +26,22 @@ for (const f of readdirSync(dir).filter((n) => /^chunk-\d+\.json$/.test(n))) {
         const k = [...new Set(m.killedBy ?? [])];
         for (const id of k) if (byId[id]) tests[byId[id]].kills++;
         if (k.length === 1 && byId[k[0]]) tests[byId[k[0]]].unique++;
+      }
+    }
+  }
+}
+
+// Tests the dry runs never listed (vitest --reporter=json output, third argument): zero kills.
+let unlisted = 0;
+if (vitestJson) {
+  const base = JSON.parse(readFileSync(vitestJson, "utf8"));
+  for (const f of base.testResults) {
+    const rel = f.name.slice(f.name.indexOf("/test/") + 1);
+    for (const t of f.assertionResults) {
+      const key = `${rel} :: ${t.fullName}`;
+      if (!tests[key] && !rel.endsWith("wrangler-config.test.ts")) {
+        tests[key] = { file: rel, name: t.fullName, kills: 0, unique: 0, covered: 0 };
+        unlisted++;
       }
     }
   }
@@ -65,4 +81,4 @@ o.push("| Test file | Tests | Zero-kill | Covered by others |", "|---|---|---|--
 for (const [f, v] of cl) o.push(`| ${f} | ${all[f]} | ${v.z} | ${v.c} |`);
 writeFileSync(`${out}/mutation-candidates.md`, o.join("\n") + "\n");
 console.log(md[0]);
-console.log(o[0]);
+console.log(o[0], "unlisted", unlisted);
