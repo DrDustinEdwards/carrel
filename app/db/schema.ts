@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql to 0011_mentions_decisions.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0012_writing_progress.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -188,7 +188,44 @@ export const authorship = sqliteTable("authorship", {
   versionAfter: text("version_after").notNull(),
   commitSha: text("commit_sha").notNull(),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  /** What the save counts toward the day: typed words only. Empty before 0012 and for an AI client's save. */
+  wordsTyped: integer("words_typed"),
 });
+
+export const statusLabels = sqliteTable(
+  "status_labels",
+  {
+    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    label: text("label").notNull(),
+    color: integer("color").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.position] })],
+);
+
+export const writingGoals = sqliteTable(
+  "writing_goals",
+  {
+    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    mode: text("mode", { enum: ["daily", "deadline"] }).notNull().default("daily"),
+    dailyTarget: integer("daily_target"),
+    writingDays: text("writing_days").notNull().default("0123456"),
+    allowNegative: integer("allow_negative", { mode: "boolean" }).notNull().default(false),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.personId] })],
+);
+
+export const untypedWords = sqliteTable(
+  "untyped_words",
+  {
+    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    words: integer("words").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.personId, t.path] })],
+);
 
 export const googleKeysSeen = sqliteTable("google_keys_seen", {
   privateKeyId: text("private_key_id").primaryKey(),
