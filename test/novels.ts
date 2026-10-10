@@ -2,19 +2,11 @@
 // the three GitHub endpoints Carrel calls (tree, contents read, contents write) and the two App
 // authentication endpoints. Carrel's GitHub client runs unchanged against it.
 
+import { gitBlobSha } from "@dustinedwards/devkit/github";
+
 import { githubRepo, type NovelsRepo } from "~/lib/novels/repo.server";
 
 export const TOKEN = "ghs_test_installation_token";
-
-export async function blobSha(source: string): Promise<string> {
-  const bytes = new TextEncoder().encode(source);
-  const header = new TextEncoder().encode(`blob ${bytes.length}\0`);
-  const all = new Uint8Array(header.length + bytes.length);
-  all.set(header);
-  all.set(bytes, header.length);
-  const digest = await crypto.subtle.digest("SHA-1", all);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 function toBase64(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -37,7 +29,7 @@ export function fakeNovels(initial: Record<string, string> = {}) {
   const requests: string[] = [];
   let n = 0;
   const ready = (async () => {
-    for (const [path, source] of Object.entries(initial)) files.set(path, { source, sha: await blobSha(source) });
+    for (const [path, source] of Object.entries(initial)) files.set(path, { source, sha: await gitBlobSha(source) });
   })();
 
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -74,7 +66,7 @@ export function fakeNovels(initial: Record<string, string> = {}) {
         if (!file && body.sha) return json(409, { message: "is at a different sha" });
         if (file && body.sha !== file.sha) return json(409, { message: `${path} does not match ${body.sha}` });
         const source = fromBase64(body.content.replace(/\s+/g, ""));
-        const sha = await blobSha(source);
+        const sha = await gitBlobSha(source);
         files.set(path, { source, sha });
         const commit = `c0ffee${String(++n).padStart(34, "0")}`;
         commits.push({ path, message: body.message, author: body.author, sha: commit });
@@ -87,7 +79,7 @@ export function fakeNovels(initial: Record<string, string> = {}) {
   /** Changes a file as if someone committed from elsewhere, so a Carrel save made before it is stale. */
   async function commitElsewhere(path: string, source: string) {
     await ready;
-    files.set(path, { source, sha: await blobSha(source) });
+    files.set(path, { source, sha: await gitBlobSha(source) });
   }
 
   const repo: NovelsRepo = githubRepo(async () => TOKEN, fetch);
