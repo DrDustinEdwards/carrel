@@ -2,6 +2,7 @@
 // key as GitHub downloads it, the token exchange, text that survives the round trip, and a stale or
 // blind write refused as a conflict rather than overwriting someone's commit.
 
+import { gitBlobSha } from "@dustinedwards/devkit/github";
 import { importSPKI, jwtVerify } from "jose";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -17,7 +18,7 @@ import {
 } from "~/lib/novels/repo.server";
 
 import { testEnv } from "./env";
-import { blobSha, fakeNovels, githubStyleKey, TOKEN } from "./novels";
+import { fakeNovels, githubStyleKey, TOKEN } from "./novels";
 
 beforeEach(() => clearTokenCache());
 
@@ -69,7 +70,7 @@ describe("the App's key and token", () => {
     const key = await githubStyleKey();
     const gh = fakeNovels({ "book-a/book.md": "---\ntitle: A\n---\n" });
     const repo = novelsRepo({ ...testEnv, NOVELS_APP_ID: "77", NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem }, gh.fetch);
-    expect(await repo.tree("book-a")).toEqual([{ path: "book.md", sha: await blobSha("---\ntitle: A\n---\n") }]);
+    expect(await repo.tree("book-a")).toEqual([{ path: "book.md", sha: await gitBlobSha("---\ntitle: A\n---\n") }]);
   });
 });
 
@@ -84,18 +85,18 @@ describe("the contents client", () => {
     const gh = fakeNovels();
     const source = "---\npov: Zoë\n---\n“Río,” she said. Naïve café, … and a 🐎.\n".repeat(20);
     const written = await gh.repo.write("book-a/chapters/01-a/01-b.md", { source, expectedSha: null, message: "m", author: { name: "D", email: "d@test.invalid" } });
-    expect(written.sha).toBe(await blobSha(source));
+    expect(written.sha).toBe(await gitBlobSha(source));
     expect(await gh.repo.read("book-a/chapters/01-a/01-b.md")).toEqual({ source, sha: written.sha });
     expect(await gh.repo.read("book-a/missing.md")).toBeNull();
   });
 
   it("PLANT: a save against a stale version is a conflict naming the current version, and Git is unchanged", async () => {
     const gh = fakeNovels({ "book-a/book.md": "one" });
-    const stale = await blobSha("one");
+    const stale = await gitBlobSha("one");
     await gh.commitElsewhere("book-a/book.md", "two");
     const attempt = gh.repo.write("book-a/book.md", { source: "mine", expectedSha: stale, message: "m", author: { name: "D", email: "d@test.invalid" } });
     await expect(attempt).rejects.toBeInstanceOf(GitConflict);
-    await expect(attempt).rejects.toMatchObject({ currentSha: await blobSha("two") });
+    await expect(attempt).rejects.toMatchObject({ currentSha: await gitBlobSha("two") });
     expect(gh.files.get("book-a/book.md")!.source).toBe("two");
     expect(gh.commits).toHaveLength(0);
   });

@@ -1,43 +1,14 @@
+import { resetDb as resetTables } from "@dustinedwards/devkit/d1";
 import { env } from "cloudflare:workers";
 import type { D1Migration } from "cloudflare:test";
 
 export const testEnv = env as unknown as Env & { TEST_D1_MIGRATIONS: D1Migration[] };
 
-/** Clears every table, so each test states the people and projects it relies on. */
+/** Clears every table, so each test states the people and projects it relies on. The tables are read from the
+ * schema by devkit, so one a migration adds is cleared without being listed here. mcp_calls is kept: it is
+ * append-only by a trigger that refuses DELETE (drizzle/0012_mcp_calls.sql), which a test asserts. */
 export async function resetDb(): Promise<void> {
-  await testEnv.DB.batch([
-    testEnv.DB.prepare("DELETE FROM ai_publications"),
-    testEnv.DB.prepare("DELETE FROM ai_drafts"),
-    testEnv.DB.prepare("DELETE FROM findings"),
-    testEnv.DB.prepare("DELETE FROM mcp_sessions"),
-    testEnv.DB.prepare("DELETE FROM authorship"),
-    testEnv.DB.prepare("DELETE FROM book_moves"),
-    testEnv.DB.prepare("DELETE FROM untyped_words"),
-    testEnv.DB.prepare("DELETE FROM writing_goals"),
-    testEnv.DB.prepare("DELETE FROM status_labels"),
-    testEnv.DB.prepare("DELETE FROM book_files"),
-    testEnv.DB.prepare("DELETE FROM novels_shared"),
-    testEnv.DB.prepare("DELETE FROM google_keys_seen"),
-    testEnv.DB.prepare("DELETE FROM google_tokens"),
-    testEnv.DB.prepare("DELETE FROM google_oauth_states"),
-    testEnv.DB.prepare("DELETE FROM manuscripts"),
-    testEnv.DB.prepare("DELETE FROM sent_docs"),
-    testEnv.DB.prepare("DELETE FROM search_console_pages"),
-    testEnv.DB.prepare("DELETE FROM social_posts"),
-    testEnv.DB.prepare("DELETE FROM social_events"),
-    testEnv.DB.prepare("DELETE FROM social_routine_runs"),
-    testEnv.DB.prepare("DELETE FROM social_accounts"),
-    testEnv.DB.prepare("DELETE FROM legal_sections"),
-    testEnv.DB.prepare("DELETE FROM mention_decisions"),
-    testEnv.DB.prepare("DELETE FROM changes"),
-    testEnv.DB.prepare("DELETE FROM drafts"),
-    testEnv.DB.prepare("DELETE FROM site_items"),
-    testEnv.DB.prepare("DELETE FROM site_items_fts"),
-    testEnv.DB.prepare("DELETE FROM project_members"),
-    testEnv.DB.prepare("DELETE FROM projects"),
-    testEnv.DB.prepare("DELETE FROM people"),
-    testEnv.DB.prepare("DELETE FROM health_state"),
-  ]);
+  await resetTables(testEnv.DB, { keep: ["mcp_calls"] });
 }
 
 export async function addPerson(email: string, opts: { owner?: boolean; disabled?: boolean; reviewer?: boolean } = {}): Promise<number> {
