@@ -1,10 +1,10 @@
 // "From library": an image already on the site goes into the post, with its alt text. Capsomer's editor
 // uploads (a drop, a paste, its Insert image button) but has no way to pick a file the site already
 // holds, so this is Carrel's: a dialog over the project's media endpoint, then an alt step that starts
-// from the alt the file already has, then one insert at the cursor through CodeMirror's public API.
+// from the alt the file already has, then one insert at the cursor through the writing surface, in
+// whichever editor it shows.
 
-import { EditorView } from "@codemirror/view";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "capsomer/react/button";
 import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
@@ -16,20 +16,7 @@ import type { EditorMedia } from "./upload";
 type Row = { id: string; url: string; src: string; filename: string | null; alt: string; contentType: string };
 type Picked = { url: string; src: string; name: string };
 
-/** Puts a block at the cursor on a line of its own, as the editor's own blocks are put. */
-function insertBlock(view: EditorView, text: string) {
-  const { from, to } = view.state.selection.main;
-  const line = view.state.doc.lineAt(from);
-  const prefix = line.from === from && line.text.trim() === "" ? "" : "\n\n";
-  view.dispatch({
-    changes: { from, to, insert: `${prefix}${text}` },
-    selection: { anchor: from + prefix.length + text.length },
-    scrollIntoView: true,
-  });
-  view.focus();
-}
-
-export function LibraryInsert({ media, editor }: { media: EditorMedia; editor: RefObject<HTMLElement | null> }) {
+export function LibraryInsert({ media, insert: put }: { media: EditorMedia; insert: (markdown: string) => void }) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<Picked | null>(null);
   const [alt, setAlt] = useState("");
@@ -58,10 +45,8 @@ export function LibraryInsert({ media, editor }: { media: EditorMedia; editor: R
   const loading = !list.data;
 
   const insert = () => {
-    const dom = editor.current?.querySelector<HTMLElement>(".cm-editor");
-    const view = dom ? EditorView.findFromDOM(dom) : null;
-    if (!view || !picked || !alt.trim()) return;
-    insertBlock(view, media.figure(picked.url, alt.trim()));
+    if (!picked || !alt.trim()) return;
+    put(media.figure(picked.url, alt.trim()));
     close();
   };
 

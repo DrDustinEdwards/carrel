@@ -1,0 +1,1 @@
+No final newline here, *emphasis* at the end

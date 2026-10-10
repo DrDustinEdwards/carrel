@@ -14,7 +14,7 @@ export function useTypingRecede() {
       if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1) return;
       // Only typing in the editing surface counts; a character typed in a dialog's field does not.
       const target = event.target;
-      if (target instanceof HTMLElement && target.closest(".cm-editor")) root.setAttribute("data-typing", "");
+      if (target instanceof HTMLElement && target.closest(".cm-editor, .app-rich-surface")) root.setAttribute("data-typing", "");
     };
     window.addEventListener("keydown", type);
     window.addEventListener("mousemove", settle);

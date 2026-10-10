@@ -782,3 +782,197 @@ html[data-typing] :is(.cap-admin-strip, .cap-admin-menu, .cap-admin-tabs, .cap-a
     background: var(--surface);
   }
 }
+
+/* The formatted editor (job_1ba8094853f5): the same prose layout as the Markdown editor, set as the
+   page will read it. Source blocks hold Markdown the editor does not format, in the mono face on the
+   sunken surface, each labelled with what it is. */
+.app-rich-host {
+  display: block;
+}
+
+.app-rich-surface {
+  min-height: var(--cap-md-min, 12rem);
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-5) 40vh;
+  font-family: var(--prose);
+  font-size: var(--fs-prose);
+  line-height: 1.75;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  caret-color: var(--accent);
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 var(--ring-width, 2px) var(--ring);
+  }
+  & :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6, hr, .app-src-block) {
+    margin-block: 0 var(--space-6);
+  }
+  & :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--prose);
+    line-height: 1.3;
+  }
+  & h1 { font-size: 1.9em; }
+  & h2 { font-size: var(--fs-prose-h2, 1.5em); }
+  & h3 { font-size: 1.25em; }
+  & :is(h4, h5, h6) { font-size: 1.05em; }
+  & blockquote {
+    margin-inline: 0;
+    padding-inline-start: var(--space-5);
+    border-inline-start: 3px solid var(--line-strong);
+    font-style: italic;
+  }
+  & :is(ul, ol) {
+    padding-inline-start: 1.5em;
+  }
+  & a {
+    color: var(--accent-text);
+    text-decoration: underline;
+  }
+  & code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+  }
+  & hr {
+    border: 0;
+    border-block-start: 1px solid var(--line-strong);
+  }
+  & ::selection {
+    background: color-mix(in srgb, var(--accent) 36%, var(--surface));
+  }
+}
+
+/* Read-only: the text stays selectable and readable, and says so. */
+.app-rich-surface[contenteditable="false"] {
+  cursor: default;
+}
+
+.app-rich-surface p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  pointer-events: none;
+  float: inline-start;
+  height: 0;
+}
+
+.app-src-block {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--sunken);
+  white-space: normal;
+}
+
+.app-src-kind {
+  font-family: var(--ui, inherit);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.app-src-text {
+  width: 100%;
+  /* A one-line block is still a full-size target (WCAG 2.5.8). */
+  min-block-size: max(var(--target, 24px), 1.75rem);
+  padding: 0;
+  border: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.82em;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+
+  &:focus-visible {
+    outline: var(--ring-width, 2px) solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+.app-src-inline {
+  padding: 0 0.25em;
+  border-radius: 4px;
+  background: var(--sunken);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.85em;
+}
+
+.app-tool-slot {
+  display: contents;
+}
+
+.app-writing-tools {
+  justify-content: space-between;
+}
+
+/* Tiptap's own base rules (@tiptap/core 3.31.4), here rather than injected as a style element, which
+   Carrel's CSP refuses. The gap cursor takes the text colour so it shows in both themes. */
+.ProseMirror {
+  position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+}
+.ProseMirror [contenteditable="false"] {
+  white-space: normal;
+}
+.ProseMirror [contenteditable="false"] [contenteditable="true"] {
+  white-space: pre-wrap;
+}
+.ProseMirror pre {
+  white-space: pre-wrap;
+}
+img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  margin: 0;
+}
+.ProseMirror-gapcursor::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid var(--text);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ProseMirror-gapcursor::after {
+    animation: app-gapcursor-blink 1.1s steps(2, start) infinite;
+  }
+}
+@keyframes app-gapcursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+.ProseMirror-hideselection * {
+  caret-color: transparent;
+}
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+.ProseMirror-focused .ProseMirror-selectednode.app-src-block,
+.ProseMirror-focused .ProseMirror-selectednode.app-src-inline {
+  outline: var(--ring-width, 3px) solid var(--ring);
+  outline-offset: 2px;
+}
