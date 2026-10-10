@@ -9,7 +9,7 @@ interface CarrelSecrets {
    */
   SITE_DUSTINEDWARDS_KEY?: string;
   /**
-   * The GitHub App `carrel-writer`, installed on DrDustinEdwards/novels only (setup step 8). Absent
+   * The GitHub App `carrel-writer`, installed on DrDustinEdwards/writing only (setup step 8). Absent
    * until it exists; books then open read-only from Carrel's index. The key is the .pem GitHub
    * downloads, as it is: `Get-Content <file>.pem -Raw | npx wrangler secret put NOVELS_APP_PRIVATE_KEY`.
    */

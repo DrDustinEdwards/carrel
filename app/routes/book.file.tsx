@@ -33,8 +33,9 @@ import { autosave, discardDraft, readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
-import { isBookPath, kindOf, TEMPLATES, titleFromSegment } from "~/lib/novels/layout";
+import { countProseWords, isBookPath, kindOf, TEMPLATES, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
+import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
 
 import type { Route } from "./+types/book.file";
 
@@ -158,10 +159,12 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   switch (intent) {
     case "autosave": {
       const saved = await autosave(env.DB, project, viewer, path, { source, baseVersion: version });
+      await addUntyped(env.DB, project.id, viewer.id, path, untypedField(form.get("untyped")));
       return { intent, updatedAt: saved.updatedAt };
     }
     case "discard":
       await discardDraft(env.DB, project, viewer, path);
+      await clearUntyped(env.DB, project.id, viewer.id, path);
       return { intent, discarded: true };
     case "check":
       return { intent, findings: await checkDraft(env.DB, project, path, source) };
@@ -177,12 +180,14 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       const ai = await readAiDraft(env.DB, project, viewer, path, id);
       await autosave(env.DB, project, viewer, path, { source: ai.source, baseVersion: ai.baseVersion });
+      // The AI's words were not typed, so they never count toward the day (ruling 6).
+      await addUntyped(env.DB, project.id, viewer.id, path, countProseWords(parseFile(ai.source).body));
       return { intent, used: id };
     }
     case "save": {
       const { repo, detail } = bookRepo(env);
       if (!repo) return { intent, outcome: { ok: false, reason: "failed", message: `${detail} Your text is kept here as your draft.` } };
-      return { intent, outcome: await saveBookFile(env.DB, repo, project, viewer, path, { source, expectedVersion: version }) };
+      return { intent, outcome: await saveBookFile(env.DB, repo, project, viewer, path, { source, expectedVersion: version, untyped: untypedField(form.get("untyped")) }) };
     }
     default:
       throw new Response("Bad request", { status: 400 });
@@ -216,12 +221,22 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const readOnly = !data.canEdit;
   const base = `/b/${data.project.slug}`;
 
+  // Words pasted or dropped into the text and not yet reported: they reach the file but were not
+  // typed, so the day's count leaves them out (ruling 6). Each submission carries the count, and the
+  // part a submission carried comes off once the server has it.
+  const untyped = useRef(0);
+  const untypedSent = useRef({ autosave: 0, save: 0 });
+  const countUntyped = (text: string | undefined) => {
+    if (!readOnly && text) untyped.current += countProseWords(text);
+  };
+
   const inFlight = useRef<string | null>(null);
   useEffect(() => {
     if (readOnly || source === savedSource || autosaver.state !== "idle") return;
     const timer = window.setTimeout(() => {
       inFlight.current = source;
-      void autosaver.submit({ intent: "autosave", source, expectedVersion: data.baseVersion ?? "" }, { method: "post" });
+      untypedSent.current.autosave = untyped.current;
+      void autosaver.submit({ intent: "autosave", source, expectedVersion: data.baseVersion ?? "", untyped: String(untyped.current) }, { method: "post" });
     }, AUTOSAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,13 +247,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (autosaver.data?.intent === "autosave") {
       setSavedSource(inFlight.current);
       setSavedAt(autosaver.data.updatedAt);
+      untyped.current = Math.max(0, untyped.current - untypedSent.current.autosave);
     }
+    untypedSent.current.autosave = 0;
     inFlight.current = null;
   }, [autosaver.state, autosaver.data]);
 
   const discarded = writer.data?.intent === "discard" && writer.state === "idle";
   useEffect(() => {
     if (discarded) {
+      untyped.current = 0;
       setSource(data.source);
       setSavedSource(data.source);
       setSavedAt(null);
@@ -249,6 +267,8 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const usedAi = writer.data?.intent === "use-ai-draft" && writer.state === "idle";
   useEffect(() => {
     if (usedAi) {
+      // The text pasted into the draft it replaced is gone with it; the AI's words are counted by the server.
+      untyped.current = 0;
       setSource(data.source);
       setSavedSource(data.source);
       setSavedAt(data.draftAt);
@@ -260,7 +280,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (outcome?.ok && writer.state === "idle") {
       setSavedSource(source);
       setSavedAt(null);
+      untyped.current = Math.max(0, untyped.current - untypedSent.current.save);
     }
+    if (writer.state === "idle") untypedSent.current.save = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcome, writer.state]);
 
@@ -272,8 +294,10 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     say(`Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${outcome.findings.length} flag${outcome.findings.length === 1 ? "" : "s"}; see the list.`}`);
   }, [outcome, writer.state, say]);
 
-  const send = (intent: string, extra: Record<string, string> = {}) =>
-    writer.submit({ intent, source, expectedVersion: data.baseVersion ?? "", ...extra }, { method: "post" });
+  const send = (intent: string, extra: Record<string, string> = {}) => {
+    if (intent === "save") untypedSent.current.save = untyped.current;
+    return writer.submit({ intent, source, expectedVersion: data.baseVersion ?? "", untyped: String(intent === "save" ? untyped.current : 0), ...extra }, { method: "post" });
+  };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -336,7 +360,12 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
       <div className="app-editor-grid">
         <div className="app-editor-main">
-          <section className="app-editor-pane" aria-label="Write">
+          <section
+            className="app-editor-pane"
+            aria-label="Write"
+            onPasteCapture={(event) => countUntyped(event.clipboardData?.getData("text/plain"))}
+            onDropCapture={(event) => countUntyped(event.dataTransfer?.getData("text/plain"))}
+          >
             <WritingSurface label={data.kind === "scene" ? "Scene" : "File"} value={source} onChange={setSource} readOnly={readOnly} linkTargets={[]} />
           </section>
         </div>

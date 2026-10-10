@@ -1,5 +1,5 @@
 // The book routes, driven through their loaders and actions with a real request context and the
-// Worker's own GitHub client (App key and all) against the fake novels repository.
+// Worker's own GitHub client (App key and all) against the fake writing repository.
 
 import { RouterContextProvider } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -121,7 +121,7 @@ describe("the book view", () => {
       ReturnType<typeof bookLoader>
     >;
     expect(data.connected).toBe(false);
-    expect(data.connectionDetail).toMatch(/GitHub App for the novels repository is not set up yet/);
+    expect(data.connectionDetail).toMatch(/GitHub App for the writing repository is not set up yet/);
   });
 });
 
@@ -147,7 +147,7 @@ describe("the file editor", () => {
   it("starts a new file from its template, named from the link", async () => {
     const scene = (await openFile("editor@test.invalid", "chapters/02-a/01-b.md")) as Awaited<ReturnType<typeof fileLoader>>;
     expect(scene.fresh).toBe(true);
-    expect(scene.source).toMatch(/^---\npov:\ndate:\nlocation:\ncharacters: \[\]\ngoal:\nconflict:\noutcome:\n---/);
+    expect(scene.source).toMatch(/^---\nstatus:\nsummary:\ntarget:\npov:\ndate:\nlocation:\ncharacters: \[\]\ngoal:\nconflict:\noutcome:\n---/);
     const person = (await openFile("editor@test.invalid", "bible/characters/june-harlan.md", env, "?name=June%20Harlan")) as Awaited<ReturnType<typeof fileLoader>>;
     expect(person.source).toContain("name: June Harlan");
   });

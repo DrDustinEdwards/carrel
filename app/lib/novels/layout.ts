@@ -1,4 +1,4 @@
-// The novels repository's layout, from the design job: shared/ for voice passages, checks, assembly
+// The writing repository's layout, from the design job: shared/ for voice passages, checks, assembly
 // and templates; one folder per book with bible/, outline/, chapters/NN-name/NN-scene.md, and build/
 // ignored. Paths here are relative to the book's folder unless a name says otherwise.
 
@@ -74,12 +74,18 @@ export type SceneHeader = {
   conflict: string;
   outcome: string;
   flashback: boolean;
+  /** Writing-desk keys (ruling 8): a label from the project's status list, a line for the outliner, a word goal. */
+  status: string;
+  summary: string;
+  target: number | null;
+  /** A ceiling, not a goal: a journal section's word limit. */
+  limit: number | null;
 };
 
 export type CharacterEntry = { name: string; aliases: string[]; born: string; died: string };
 export type PlaceEntry = { name: string; aliases: string[] };
 export type RuleEntry = { name: string; forbidden: string[] };
-export type BookEntry = { title: string; author: string; language: string };
+export type BookEntry = { title: string; author: string; language: string; target: number | null; deadline: string };
 
 export type Meta =
   | { kind: "scene"; header: SceneHeader; hasHeader: boolean }
@@ -93,6 +99,16 @@ export type Meta =
 function fallbackName(path: string): string {
   const file = path.split("/").pop()!.replace(/\.md$/, "");
   return titleFromSegment(file);
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A whole number of words, written as 2000, 2,000 or 2_000. Anything else is no target, not a guess. */
+export function wordCount(data: Record<string, HeaderValue>, key: string): number | null {
+  const raw = text(data, key).replace(/[,_]/g, "");
+  if (!/^\d{1,7}$/.test(raw)) return null;
+  const n = Number(raw);
+  return n > 0 ? n : null;
 }
 
 export function readMeta(path: string, data: Record<string, HeaderValue>, hasHeader: boolean): Meta {
@@ -111,6 +127,10 @@ export function readMeta(path: string, data: Record<string, HeaderValue>, hasHea
           conflict: text(data, "conflict"),
           outcome: text(data, "outcome"),
           flashback: flag(data, "flashback"),
+          status: text(data, "status"),
+          summary: text(data, "summary"),
+          target: wordCount(data, "target"),
+          limit: wordCount(data, "limit"),
         },
       };
     case "character":
@@ -123,7 +143,16 @@ export function readMeta(path: string, data: Record<string, HeaderValue>, hasHea
     case "rule":
       return { kind, entry: { name: text(data, "name") || fallbackName(path), forbidden: list(data, "forbidden") } };
     case "book":
-      return { kind, entry: { title: text(data, "title"), author: text(data, "author"), language: text(data, "language") || "en" } };
+      return {
+        kind,
+        entry: {
+          title: text(data, "title"),
+          author: text(data, "author"),
+          language: text(data, "language") || "en",
+          target: wordCount(data, "target"),
+          deadline: DAY.test(text(data, "deadline")) ? text(data, "deadline") : "",
+        },
+      };
     default:
       return { kind };
   }
@@ -140,7 +169,7 @@ export function countProseWords(body: string): number {
 
 export const TEMPLATES: Record<"scene" | "character" | "place" | "rule", (name: string) => string> = {
   scene: () =>
-    ["---", "pov:", "date:", "location:", "characters: []", "goal:", "conflict:", "outcome:", "---", "", ""].join("\n"),
+    ["---", "status:", "summary:", "target:", "pov:", "date:", "location:", "characters: []", "goal:", "conflict:", "outcome:", "---", "", ""].join("\n"),
   character: (name) => ["---", `name: ${name}`, "aliases: []", "born:", "died:", "---", "", ""].join("\n"),
   place: (name) => ["---", `name: ${name}`, "aliases: []", "---", "", ""].join("\n"),
   rule: (name) =>

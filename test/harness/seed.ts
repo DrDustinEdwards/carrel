@@ -55,6 +55,9 @@ function post(title: string, slug: string, description: string, date: string, ta
 const HEADER = (pov: string, date: string, place: string, present: string[], goal: string, conflict: string, outcome: string) =>
   `---\npov: ${pov}\ndate: ${date}\nlocation: ${place}\ncharacters: [${present.join(", ")}]\ngoal: ${goal}\nconflict: ${conflict}\noutcome: ${outcome}\n---\n\n`;
 
+/** The writing-desk keys (job_50786e609b88) put at the top of a scene's header. */
+const planned = (scene: string, status: string, summary: string, target: number) => scene.replace("---\n", `---\nstatus: ${status}\nsummary: ${summary}\ntarget: ${target}\n`);
+
 const SCENE_ONE = HEADER("Nell", "2024-04-12", "Harlan place", ["Nell", "Wade"], "get her truck towed", "the lock on the gate", "Wade lets her in") + BASELINE[0]!;
 const SCENE_TWO = HEADER("Nell", "2024-04-12 19:00", "Harlan place", ["Nell", "Wade"], "learn why he bought the place", "he will not say", "she stays for supper") + BASELINE[1]!;
 const SCENE_THREE =
@@ -305,19 +308,19 @@ async function build(base: Env): Promise<World> {
     ),
   );
 
-  // Books, indexed from the fake novels repository.
+  // Books, indexed from the fake writing repository.
   gh.files.clear();
   const put = async (path: string, source: string) => {
     await gh.commitElsewhere(path, source);
   };
-  await put(`${BOOK}/book.md`, "---\ntitle: The Paluxy Portal\nauthor: Dustin Edwards\nlanguage: en\n---\n");
+  await put(`${BOOK}/book.md`, "---\ntitle: The Paluxy Portal\nauthor: Dustin Edwards\nlanguage: en\ntarget: 90000\ndeadline: 2027-06-30\n---\n");
   await put(`${BOOK}/bible/characters/nell.md`, "---\nname: Nell Okafor\naliases: [Nell]\nborn: 1986-05-02\n---\nA surveyor who grew up two ranches over. Notices what is missing from a room.\n");
   await put(`${BOOK}/bible/characters/wade.md`, "---\nname: Wade Pruitt\naliases: [Wade]\nborn: 1996-02-11\n---\nBought the Harlan place from the bank in February. Keeps his own counsel.\n");
   await put(`${BOOK}/bible/places/harlan-place.md`, "---\nname: Harlan place\n---\nA ranch house back in the live oaks, porch sagging at the east corner.\n");
   await put(`${BOOK}/bible/places/low-water-crossing.md`, "---\nname: Low-water crossing\n---\nWhere the county road dips through the creek. It floods in April.\n");
   await put(`${BOOK}/bible/rules/no-phones.md`, "---\nname: No phones past the ridge\nforbidden: [phone rang]\n---\nThere is no signal past the ridge, and the story never pretends otherwise.\n");
-  await put(`${BOOK}/chapters/01-arrival/01-the-gate.md`, SCENE_ONE);
-  await put(`${BOOK}/chapters/01-arrival/02-supper.md`, SCENE_TWO);
+  await put(`${BOOK}/chapters/01-arrival/01-the-gate.md`, planned(SCENE_ONE, "Revised", "Nell is let in past the locked gate", 1500));
+  await put(`${BOOK}/chapters/01-arrival/02-supper.md`, planned(SCENE_TWO, "First draft", "Supper, and what Wade will not say", 1500));
   await put(`${BOOK}/chapters/02-the-crossing/01-the-chain.md`, SCENE_THREE);
   await put(`${BOOK}/outline/plan.md`, "# Plan\n\nThree acts. The river is the clock.\n");
   await put("shared/checks/ai-habits.md", "---\nwords: [suddenly]\n---\n");
@@ -328,6 +331,23 @@ async function build(base: Env): Promise<World> {
   await refreshBook(db, novelsRepo(env, gh.fetch), bookPr);
   const rosaBook = (await db.prepare("SELECT id FROM projects WHERE slug = ?").bind(BOOK).first<{ id: number }>())!.id;
   await share(rosaBook, rosa, "editor");
+  // Dustin's last few days of typed words, and his goal: 500 a day, every day.
+  const ownerId = owner.id;
+  const DAY_MS = 86_400_000;
+  const saves: [number, number, number][] = [
+    [4, 610, 40],
+    [3, 540, 0],
+    [2, 720, 90],
+    [1, 505, 0],
+    [0, 220, 15],
+  ];
+  for (const [ago, typed, removed] of saves) {
+    await db
+      .prepare("INSERT INTO authorship (id, project_id, path, person_id, client, words_added, words_removed, version_before, version_after, commit_sha, created_at, words_typed) VALUES (?, ?, ?, ?, NULL, ?, ?, NULL, 'harness', 'harness', ?, ?)")
+      .bind(`harness-${ago}`, rosaBook, "chapters/01-arrival/02-supper.md", ownerId, typed, removed, new Date(Date.now() - ago * DAY_MS).toISOString(), typed)
+      .run();
+  }
+  await db.prepare("INSERT INTO writing_goals (project_id, person_id, mode, daily_target, writing_days, allow_negative) VALUES (?, ?, 'daily', 500, '0123456', 0)").bind(rosaBook, ownerId).run();
   await autosave(db, bookPr, owner, "chapters/02-the-crossing/02-the-bank.md", { source: HEADER("Wade", "2024-04-13", "Low-water crossing", ["Wade"], "get the truck out", "the current", "he waits") + "The water had dropped a hand's width by noon.\n", baseVersion: null });
 
   // Manuscripts, Google, social.

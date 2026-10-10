@@ -1,7 +1,7 @@
 // The dev config for the screen harness (`npm run check:a11y`, `npm run harness`). NEVER DEPLOYED: no
 // routes, no account, a local-only D1. The harness runs the real app (every route, the shell, the
 // Content Security Policy) with the gate replaced by a header that names the viewer, and a site, a
-// novels repository and a Google that are the test fakes. Nothing in it reaches the network.
+// writing repository and a Google that are the test fakes. Nothing in it reaches the network.
 {
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	"name": "carrel-harness",

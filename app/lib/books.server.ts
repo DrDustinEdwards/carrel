@@ -1,4 +1,4 @@
-// Books in the novels repository (design stage 4): the book behind a URL, Carrel's index of its
+// Books in the writing repository (design stage 4): the book behind a URL, Carrel's index of its
 // files, a save that commits to Git with the version it expects to replace, the checks that run on
 // every save, their findings, and the authorship record. Roles are checked here, not only in the
 // routes, so every door (the UI now, MCP tools in stage 5) is held to the same rule.
@@ -15,6 +15,7 @@ import { parseFile } from "~/lib/novels/frontmatter";
 import { describe, isBookFolder, isBookPath, kindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
 import { GitConflict, novelsConnection, novelsRepo, type NovelsRepo } from "~/lib/novels/repo.server";
 import { profileOf } from "~/lib/novels/voice";
+import { takeUntyped } from "~/lib/writing.server";
 
 export type BookProject = { id: number; slug: string; name: string; book: string; role: Role };
 
@@ -48,7 +49,7 @@ export function bookRepo(env: Env): { repo: NovelsRepo; detail: null } | { repo:
   return { repo: novelsRepo(env), detail: null };
 }
 
-/** A new book: a project whose folder in the novels repository is `folder`. Nothing is written to Git. */
+/** A new book: a project whose folder in the writing repository is `folder`. Nothing is written to Git. */
 export async function createBook(db: D1Database, viewer: Viewer, input: { name: string; folder: string }) {
   if (!viewer.isOwner) forbid();
   const name = input.name.trim();
@@ -319,7 +320,13 @@ export async function saveBookFile(
   project: BookProject,
   viewer: Viewer,
   path: string,
-  input: { source: string; expectedVersion: string | null; client?: string | null },
+  input: {
+    source: string;
+    expectedVersion: string | null;
+    client?: string | null;
+    /** Words in this text that were not typed (pasted or dropped since the last autosave), besides those already recorded. */
+    untyped?: number;
+  },
 ): Promise<BookWrite> {
   requireCan(project, "edit");
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
@@ -349,7 +356,14 @@ export async function saveBookFile(
 
   const d = drizzle(db);
   // The index may not hold the version this replaced (a refresh was due); then the words are all counted as added.
-  const delta = wordDelta(before && before.sha === input.expectedVersion ? before.source : null, input.source);
+  const known = input.expectedVersion === null || (before !== null && before.sha === input.expectedVersion);
+  const delta = wordDelta(known ? (before?.source ?? null) : null, input.source);
+  // Only typed words count toward the day (ruling 6). Pastes, drops and an AI draft taken as the
+  // working draft were counted as they arrived, and come off here. An AI client's save counts for
+  // nothing, and so does a save whose starting text the index does not hold: every word would read
+  // as added.
+  const untyped = (await takeUntyped(db, project.id, viewer.id, path)) + Math.max(0, input.untyped ?? 0);
+  const wordsTyped = input.client || !known ? null : Math.max(0, delta.added - untyped);
   await d.insert(authorship).values({
     id: changeId,
     projectId: project.id,
@@ -361,6 +375,7 @@ export async function saveBookFile(
     versionBefore: input.expectedVersion,
     versionAfter: written.sha,
     commitSha: written.commit,
+    wordsTyped,
   });
   await indexFile(db, project.id, path, { source: input.source, sha: written.sha }, new Date().toISOString());
   await d.delete(drafts).where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, path), eq(drafts.personId, viewer.id)));
@@ -501,7 +516,7 @@ export function authorshipReport(project: BookProject, rows: AuthorshipRow[], no
   const lines = [
     `# Authorship record: ${project.name}`,
     "",
-    `Every change Carrel committed to ${project.book}/ in the novels repository, as of ${now.toISOString().slice(0, 10)}. Words are counted as added and removed between versions, so a changed word counts once each way.`,
+    `Every change Carrel committed to ${project.book}/ in the writing repository, as of ${now.toISOString().slice(0, 10)}. Words are counted as added and removed between versions, so a changed word counts once each way.`,
     "",
     "## By person",
     "",

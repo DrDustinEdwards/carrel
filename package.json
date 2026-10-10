@@ -9,7 +9,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "typecheck": "wrangler types --strict-vars=false && react-router typegen && tsc -b",
-    "test": "vitest run && node scripts/check-deploy.mjs",
+    "test": "vitest run && node scripts/check-deploy.mjs && node scripts/check-repo-name.mjs",
     "check:deploy": "node scripts/check-deploy.mjs",
     "check:postinstall": "node scripts/check-postinstall.mjs",
     "check:mcp-roles": "node scripts/check-mcp-roles.mjs",

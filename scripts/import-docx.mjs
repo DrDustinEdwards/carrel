@@ -1,7 +1,7 @@
-// Imports a manuscript from Word files into a book folder in a clone of the novels repository, once,
+// Imports a manuscript from Word files into a book folder in a clone of the writing repository, once,
 // for review as a pull request. Nothing is sent anywhere: it reads the .docx files and writes Markdown.
 //
-//   npm run import:docx -- <file.docx | folder> [more...] --book <folder> --novels <path to novels clone> [--title "Title"]
+//   npm run import:docx -- <file.docx | folder> [more...] --book <folder> --novels <path to writing clone> [--title "Title"]
 //
 // A folder's .docx files are read in name order (so name them 01-..., 02-...). In each file a
 // Heading 1 starts a chapter; a file with none is one chapter named after the file. A paragraph that
@@ -14,7 +14,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { readDocx } from "./lib/docx.mjs";
 import { buildBook, writeBook } from "./lib/manuscript.mjs";
 
-const USAGE = 'usage: npm run import:docx -- <file.docx | folder> [more...] --book <folder> --novels <path to novels clone> [--title "Title"]';
+const USAGE = 'usage: npm run import:docx -- <file.docx | folder> [more...] --book <folder> --novels <path to writing clone> [--title "Title"]';
 
 /** @param {string} message */
 function fail(message) {
@@ -45,7 +45,7 @@ if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(options.book) || options.book === "shared
 }
 
 const novels = resolve(options.novels);
-if (!existsSync(join(novels, ".git"))) fail(`${novels} is not a Git clone; point --novels at a clone of the novels repository.`);
+if (!existsSync(join(novels, ".git"))) fail(`${novels} is not a Git clone; point --novels at a clone of the writing repository.`);
 const bookDir = join(novels, options.book);
 if (existsSync(join(bookDir, "chapters"))) {
   fail(`${join(bookDir, "chapters")} already exists. The importer writes a new book only; import into a new folder or move the old chapters first.`);

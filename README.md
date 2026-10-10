@@ -11,7 +11,7 @@ The design is `carrel/design.md` in Capsid.
   - the site's own render in a sandboxed preview;
   - saving and publishing, by role;
   - a Content Security Policy on every page.
-- **Stage 4, books in the private novels repository:**
+- **Stage 4, books in the private writing repository:**
   - the book view, chapter view and a file editor for scenes, bible entries and outlines (the same editor, autosave to D1, Save commits to Git with the version it expects to replace);
   - the checks on save: scene headers, continuity and timeline against the bible, world rules, the AI-habits lint and voice;
   - the authorship record, as a Markdown report;
@@ -42,7 +42,7 @@ GitHub Actions runs all of these on every push and pull request (`.github/workfl
 
 Carrel's interface is [Capsomer](https://github.com/DrDustinEdwards/capsomer) (tag `v0.4.0`, which carries `DraftPatch`): its shell (rail, top bar, phone tab bar), tokens, components and fonts, with Carrel's own CSS in `app/app.css` limited to the page frame and the few rules the writing screens need. The fonts (Schibsted Grotesk, Martian Mono, Source Serif 4) are self-hosted from the build; nothing loads from another origin, and `workers/csp.ts` is unchanged. Carrel is private, so Web Analytics stays off it. A dashboard exclusion by hostname needs the Pro plan, so instead every HTML response carries `Cache-Control: ..., no-transform` (`workers/gate.ts`, and the consent page in `app/lib/mcp/door.ts`; `test/access.test.ts` and `test/door.test.ts` pin it), which Cloudflare's Web Analytics FAQ says keeps the proxy from injecting the beacon. The cost is that those HTML responses are not compressed by Cloudflare; scripts, styles and fonts still are. The CSP is deliberately not loosened for Cloudflare's beacon, and `test/csp.test.ts` pins that. The only components Carrel keeps are `app/components/editor` (the writing surface around Capsomer's markdown editor) and `app/components/media` (image upload and "Insert from library").
 
-`npm run harness` builds and serves the real app on http://127.0.0.1:5199 with the Access gate replaced by a header naming the viewer (`x-harness-viewer`: `dustin@harness.invalid` the Owner, `rosa@harness.invalid` an Editor, `sam@harness.invalid` a Reader) and a fake site, novels repository and Google (`test/harness`). It needs no Cloudflare credentials. `node scripts/screens.mjs <directory>` writes a screenshot of every screen in both themes at desktop and phone widths, for looking at.
+`npm run harness` builds and serves the real app on http://127.0.0.1:5199 with the Access gate replaced by a header naming the viewer (`x-harness-viewer`: `dustin@harness.invalid` the Owner, `rosa@harness.invalid` an Editor, `sam@harness.invalid` a Reader) and a fake site, writing repository and Google (`test/harness`). It needs no Cloudflare credentials. `node scripts/screens.mjs <directory>` writes a screenshot of every screen in both themes at desktop and phone widths, for looking at.
 
 Every request without a valid Access token is refused, locally too, so the app answers 403 until it runs behind Access.
 
@@ -71,16 +71,16 @@ Until the key is set, the site shows as not connected, and the health check repo
 - the health check runs site-api's conformance suite against the site every 15 minutes and emails on a change of state;
 - the same cron refreshes the one view's index.
 
-## Connecting the novels repository
+## Connecting the writing repository
 
-A project is a book when its `book` column names a folder in `DrDustinEdwards/novels` (New book, on the home page, for the Owner). Carrel reaches the repository only through the GitHub App `carrel-writer` (design setup step 8), installed on `novels` alone with contents read and write. Each installation token Carrel asks for is narrowed again to that repository and to contents.
+A project is a book when its `book` column names a folder in `DrDustinEdwards/writing` (New book, on the home page, for the Owner). Carrel reaches the repository only through the GitHub App `carrel-writer` (design setup step 8), installed on `writing` alone with contents read and write. Each installation token Carrel asks for is narrowed again to that repository and to contents.
 
 ```powershell
 Get-Clipboard | npx wrangler secret put NOVELS_APP_ID                        # the App's numeric id
 Get-Content <the-downloaded-key>.pem -Raw | npx wrangler secret put NOVELS_APP_PRIVATE_KEY
 ```
 
-The key goes in as GitHub downloads it (PKCS#1, "BEGIN RSA PRIVATE KEY"); Carrel converts it. Until both are set, books open read-only from Carrel's index, Save explains why it is waiting, and the health check reports `novels` as not connected rather than failing. Once they are set, the health check asks GitHub for a token every 15 minutes.
+The key goes in as GitHub downloads it (PKCS#1, "BEGIN RSA PRIVATE KEY"); Carrel converts it. Until both are set, books open read-only from Carrel's index, Save explains why it is waiting, and the health check reports `writing` as not connected rather than failing. Once they are set, the health check asks GitHub for a token every 15 minutes.
 
 ### The layout Carrel reads
 
@@ -115,12 +115,12 @@ The voice threshold (`VOICE_THRESHOLD` in `app/lib/novels/voice.ts`) was set on 
 
 ## Importing a manuscript from Word
 
-A manuscript that starts as Word files (exported from Google Docs with File, Download, Microsoft Word) is converted once into a book in the novels repository, then reviewed as a pull request there. Nothing is sent anywhere; the importer reads the files and writes Markdown into a local clone.
+A manuscript that starts as Word files (exported from Google Docs with File, Download, Microsoft Word) is converted once into a book in the writing repository, then reviewed as a pull request there. Nothing is sent anywhere; the importer reads the files and writes Markdown into a local clone.
 
 ```powershell
-git clone https://github.com/DrDustinEdwards/novels.git C:/dev/novels
-git -C C:/dev/novels switch -c import-paluxy-portal
-npm run import:docx -- C:/path/to/manuscript-folder --book paluxy-portal --novels C:/dev/novels
+git clone https://github.com/DrDustinEdwards/writing.git C:/dev/writing
+git -C C:/dev/writing switch -c import-paluxy-portal
+npm run import:docx -- C:/path/to/manuscript-folder --book paluxy-portal --novels C:/dev/writing
 ```
 
 - A folder's `.docx` files are read in name order, so name them `01-...`, `02-...`. Single files can be listed instead.
@@ -130,7 +130,7 @@ npm run import:docx -- C:/path/to/manuscript-folder --book paluxy-portal --novel
 - Anything it cannot convert cleanly (tables, images, footnotes, comments, tracked changes, lists, line breaks inside a paragraph, headings below Heading 1, centered text, text before the first chapter) is **flagged, not guessed**: an `<!-- import: ... -->` line where it happened, and a row in `<book>/build/import-report.md`. Remove every marker before exporting.
 - It refuses to write into a book that already has `chapters/`.
 
-Then review the result in the clone, commit it, and open a pull request in the novels repository. The importer's tests (`test/import.test.ts`) run on a short test document built from `test/fixtures/import/test-manuscript.mjs`.
+Then review the result in the clone, commit it, and open a pull request in the writing repository. The importer's tests (`test/import.test.ts`) run on a short test document built from `test/fixtures/import/test-manuscript.mjs`.
 
 ## The AI door (MCP)
 

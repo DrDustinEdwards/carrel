@@ -1,4 +1,4 @@
-// A novels repository for the tests: files in memory with real Git blob shas, served by a fake of
+// A writing repository for the tests: files in memory with real Git blob shas, served by a fake of
 // the three GitHub endpoints Carrel calls (tree, contents read, contents write) and the two App
 // authentication endpoints. Carrel's GitHub client runs unchanged against it.
 
@@ -42,7 +42,7 @@ export function fakeNovels(initial: Record<string, string> = {}) {
     if (url.origin !== "https://api.github.com") throw new Error(`the tests reach only the fake GitHub, not ${request.url}`);
     const auth = request.headers.get("Authorization") ?? "";
 
-    if (url.pathname === "/repos/DrDustinEdwards/novels/installation") {
+    if (url.pathname === "/repos/DrDustinEdwards/writing/installation") {
       return auth.startsWith("Bearer ey") ? json(200, { id: 4242 }) : json(401, { message: "Bad credentials" });
     }
     if (url.pathname === "/app/installations/4242/access_tokens" && request.method === "POST") {
@@ -50,10 +50,10 @@ export function fakeNovels(initial: Record<string, string> = {}) {
     }
     if (auth !== `Bearer ${TOKEN}`) return json(401, { message: "Bad credentials" });
 
-    if (url.pathname === "/repos/DrDustinEdwards/novels/git/trees/main") {
+    if (url.pathname === "/repos/DrDustinEdwards/writing/git/trees/main") {
       return json(200, { truncated: false, tree: [...files].map(([path, f]) => ({ path, type: "blob", sha: f.sha })) });
     }
-    const contents = /^\/repos\/DrDustinEdwards\/novels\/contents\/(.+)$/.exec(url.pathname);
+    const contents = /^\/repos\/DrDustinEdwards\/writing\/contents\/(.+)$/.exec(url.pathname);
     if (contents) {
       const path = contents[1]!.split("/").map(decodeURIComponent).join("/");
       const file = files.get(path);
