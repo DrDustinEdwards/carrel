@@ -7,8 +7,8 @@
 //
 // PLUS THE AUTHORIZATION SERVER. A second dev process mounts the real door (test/conformance/
 // auth-entry.ts) and the suite's authorization-server-metadata-endpoint scenario runs against it. On
-// top of it the harness pins the door's one client-identity path in both directions: CIMD advertised,
-// and NO registration endpoint (Carrel is CIMD only; a client cannot mint itself an identity here).
+// top of it the harness pins the door's two client-identity paths (ruling 2026-10-10, rule 13): CIMD
+// advertised, and a registration endpoint that registers only the allowlisted callbacks.
 //
 // COUNTS, NOT PASS/FAIL. A scenario with a recorded baseline must not regress, and a count that
 // improves fails too, so the baseline gets tightened. Demanding 100% would be a permanently red gate
@@ -203,27 +203,37 @@ if (!(await waitFor(`http://localhost:${AUTH_PORT}/.well-known/oauth-authorizati
   }
 
   // The official scenario treats registration as optional, so it cannot notice either direction of
-  // the door's one rule. These pin it.
+  // the door's registration rule. These pin it.
   const meta = /** @type {Record<string, unknown>} */ (await (await fetch(`http://localhost:${AUTH_PORT}/.well-known/oauth-authorization-server`)).json());
   if (meta.client_id_metadata_document_supported === true) log("  PASS       metadata advertises CIMD (the path claude.ai and Claude Code take)");
   else {
     failures += 1;
     log("  FAIL       metadata does not advertise client_id_metadata_document_supported");
   }
-  if (meta.registration_endpoint === undefined) log("  PASS       metadata advertises no registration endpoint (CIMD only)");
+  if (meta.registration_endpoint === `http://localhost:${AUTH_PORT}/register`) log("  PASS       metadata advertises the tightened registration endpoint (Grok, Gemini)");
   else {
     failures += 1;
-    log(`  FAIL       metadata advertises registration_endpoint ${meta.registration_endpoint}; the door is CIMD only`);
+    log(`  FAIL       metadata advertises registration_endpoint ${meta.registration_endpoint}, not /register`);
   }
-  const reg = await fetch(`http://localhost:${AUTH_PORT}/register`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ client_name: "check-conformance", redirect_uris: ["http://127.0.0.1:3000/callback"], token_endpoint_auth_method: "none" }),
-  });
-  if (reg.status === 404) log("  PASS       POST /register mints nothing (404)");
+  /** @param {string} uri */
+  const register = (uri) =>
+    fetch(`http://localhost:${AUTH_PORT}/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_name: "check-conformance", redirect_uris: [uri], token_endpoint_auth_method: "none" }),
+    });
+  const offList = await register("http://127.0.0.1:3000/callback");
+  if (offList.status === 400) log("  PASS       POST /register refuses a callback off the allowlist (400)");
   else {
     failures += 1;
-    log(`  FAIL       POST /register answered ${reg.status}; no client may register itself`);
+    log(`  FAIL       POST /register answered ${offList.status} for a callback off the allowlist`);
+  }
+  const grok = await register("https://grok.com/connectors/oauth/callback");
+  const grokBody = /** @type {Record<string, unknown>} */ (await grok.json().catch(() => ({})));
+  if (grok.status === 201 && grokBody.access_token === undefined) log("  PASS       POST /register registers Grok's exact callback, and grants nothing (201, no token)");
+  else {
+    failures += 1;
+    log(`  FAIL       POST /register answered ${grok.status} for Grok's callback`);
   }
   const unauth = await fetch(`http://localhost:${AUTH_PORT}/mcp`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
   if (unauth.status === 401 && (unauth.headers.get("www-authenticate") ?? "").includes("resource_metadata=")) log("  PASS       /mcp without a token answers 401 with a resource_metadata challenge");
@@ -239,4 +249,4 @@ if (failures) {
   log(`check:conformance: ${failures} check(s) failed.`);
   process.exit(1);
 }
-log("check:conformance: no regression against the recorded baseline in either era, and the door serves CIMD and nothing else.");
+log("check:conformance: no regression against the recorded baseline in either era, and the door serves CIMD and the tightened registration only.");

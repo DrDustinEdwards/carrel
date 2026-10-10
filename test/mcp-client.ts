@@ -6,6 +6,7 @@
 import { createExecutionContext } from "cloudflare:test";
 import { expect } from "vitest";
 
+import { SCOPE_READ, SCOPE_WRITE } from "~/lib/mcp/scopes";
 import { handleMcp } from "~/lib/mcp/server";
 import type { ToolDeps } from "~/lib/mcp/tools";
 
@@ -73,14 +74,19 @@ export type Connection = {
 };
 
 /**
- * An AI session for a person, as the door hands it over: the person, and the client the grant was
- * issued to. Calls go out in the 2026-07-28 era unless `era` says otherwise.
+ * An AI session for a person, as the door hands it over: the person, the client the grant was issued
+ * to, and the grant's scopes (read and write unless `scopes` says otherwise). Calls go out in the
+ * 2026-07-28 era unless `era` says otherwise.
  */
-export async function connectAs(email: string, client = "Claude", opts: { env?: Env; deps?: Partial<ToolDeps>; era?: "modern" | "legacy" } = {}): Promise<Connection> {
+export async function connectAs(
+  email: string,
+  client = "Claude",
+  opts: { env?: Env; deps?: Partial<ToolDeps>; era?: "modern" | "legacy"; scopes?: string[] } = {},
+): Promise<Connection> {
   const viewer = await viewerFor(email);
   const env = opts.env ?? testEnv;
   const deps: ToolDeps = { carrelOrigin: "https://carrel.test", ...opts.deps };
-  const send = (request: Request) => handleMcp(request, env, createExecutionContext(), { viewer, client }, deps);
+  const send = (request: Request) => handleMcp(request, env, createExecutionContext(), { viewer, client, scopes: opts.scopes ?? [SCOPE_READ, SCOPE_WRITE] }, deps);
   let id = 1;
   async function rpc(method: string, params: Record<string, unknown>) {
     id += 1;

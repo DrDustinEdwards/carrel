@@ -103,6 +103,21 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
+// The MCP call log (0012_mcp_calls.sql): one row per tool call, append-only (triggers refuse UPDATE
+// and DELETE). No foreign key on the person, so the record outlives them.
+export const mcpCalls = sqliteTable("mcp_calls", {
+  id: integer("id").primaryKey(),
+  personId: integer("person_id").notNull(),
+  caller: text("caller").notNull(),
+  client: text("client").notNull(),
+  tool: text("tool").notNull(),
+  arguments: text("arguments").notNull(),
+  argumentsTruncated: integer("arguments_truncated", { mode: "boolean" }).notNull().default(false),
+  outcome: text("outcome", { enum: ["ok", "refused"] }).notNull(),
+  result: text("result").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
 // No longer written: the MCP endpoint is stateless since the SDK v2 rebuild, and the client is known
 // from the OAuth grant. Kept until a migration drops it, since dropping a table is a migration.
 export const mcpSessions = sqliteTable("mcp_sessions", {

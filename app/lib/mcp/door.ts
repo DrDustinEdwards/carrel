@@ -3,8 +3,9 @@
 // That hostname is exempt from Carrel's Worker-level Access (a hostname Bypass app, setup in the PR),
 // because an MCP client must reach the OAuth endpoints before anyone has signed in. So nothing here
 // trusts Access's own header. Instead this door is an OAuth 2.1 authorization server of its own
-// (@cloudflare/workers-oauth-provider): CIMD only, no registration endpoint, and the person signs in
-// upstream through Cloudflare Access for SaaS (access-login.ts). The verified email must belong to an
+// (@cloudflare/workers-oauth-provider): CIMD for Claude, Claude Code and ChatGPT, a tightened
+// registration for Grok and Gemini (registration.ts), and the person signs in upstream through
+// Cloudflare Access for SaaS (access-login.ts). The verified email must belong to an
 // active person in Carrel, checked when the grant is made and again on every request.
 //
 // Every request through this door is an AI session, told apart by the hostname it arrived on, never
@@ -15,6 +16,7 @@
 //                                 anything else: the provider checks the bearer token, then apiHandler
 //                                 finds the person and hands the request to server.ts
 //   /authorize  /callback         the consent page and the Access sign-in, below
+//   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
 //   /health                       liveness
 //   anything else                 404
@@ -25,10 +27,9 @@ import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 
 import { accessSaas, authorizationUrl, finishSignIn, newSignIn } from "./access-login";
+import { allowedRedirects, checkRegistration, REGISTER_PATH, registrationLimited } from "./registration";
+import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
 import { carrelOrigin, handleMcp, MCP_ROUTE } from "./server";
-
-/** The one scope a grant carries. What a session may do comes from the person's role, not the scope. */
-export const SCOPE = "carrel";
 
 /** What a grant stores, encrypted, and hands to every request made with its tokens. */
 export type DoorProps = { personId: number; email: string; client: string; clientId: string };
@@ -94,14 +95,21 @@ function clientLabel(client: ClientInfo | null, clientId: string): string {
 }
 
 /**
- * The consent page. Consent has to be an act, so it is a real form. Everything from the client is
- * escaped: a CIMD document's name is chosen by whoever serves it.
+ * The consent page, shown for every authorization of every client: nothing remembers an approval.
+ * Consent has to be an act, so it is a real form. Everything from the client is escaped: a CIMD
+ * document's name is chosen by whoever serves it, and a registered client's by whoever registered it.
  */
 function consentPage(client: ClientInfo | null, request: AuthRequest, handle: string): string {
   const name = escape(clientLabel(client, request.clientId));
   const redirectHost = new URL(request.redirectUri).hostname;
   const local = /^(localhost|127(\.\d{1,3}){3}|\[::1\])$/.test(redirectHost);
-  const publisher = request.clientId.startsWith("https://") ? `Published by <strong>${escape(new URL(request.clientId).hostname)}</strong>.` : "";
+  const publisher = request.clientId.startsWith("https://")
+    ? `Published by <strong>${escape(new URL(request.clientId).hostname)}</strong>.`
+    : "This app registered itself with Carrel, so its name is its own claim, not checked.";
+  const writes = grantScopes(request.scope).includes(SCOPE_WRITE);
+  const asks = writes
+    ? "It asks to read, save AI drafts beside yours, and flag problems. You can allow reading only."
+    : "It asks to read only. It will not be able to save drafts or flag problems.";
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -118,11 +126,12 @@ function consentPage(client: ClientInfo | null, request: AuthRequest, handle: st
 <h1>Allow ${name} to use Carrel as you?</h1>
 <p>${publisher} Its access will be sent to <strong>${escape(redirectHost)}</strong>.</p>
 ${local ? "<p><strong>This sends access to an app on your computer.</strong> Continue only if you just started signing in from it.</p>" : ""}
-<p>It can do what your role in Carrel allows, and nothing more: read, save AI drafts beside yours, and flag problems. Publishing is for Dustin's own sessions only, and never while a flag is open.</p>
+<p>${asks} Either way it can do only what your role in Carrel allows. Publishing is for Dustin's own sessions only, and never while a flag is open.</p>
 <p class="fine">Next you sign in with Cloudflare Access. Only people Carrel already knows are let in.</p>
 <form method="post">
   <input type="hidden" name="handle" value="${escape(handle)}">
   <button name="decision" value="approve">Continue to sign in</button>
+  ${writes ? '<button name="decision" value="read-only">Allow reading only</button>' : ""}
   <button name="decision" value="deny">Deny</button>
 </form>
 </body></html>`;
@@ -147,11 +156,15 @@ async function authorizePost(request: Request, env: DoorEnv): Promise<Response> 
   const oauth = env.OAUTH_PROVIDER;
   const form = await request.formData();
   const handle = String(form.get("handle") ?? "");
-  if (form.get("decision") !== "approve") {
+  const decision = form.get("decision");
+  if (decision !== "approve" && decision !== "read-only") {
     const denied = await oauth.denyConsent(request, handle);
     return new Response(null, { status: 302, headers: denied.headers });
   }
-  const approved = await oauth.approveConsent(request, handle, { scope: [SCOPE] });
+  const consented = await oauth.approveConsent(request, handle);
+  // Least scope: read, and write only when the client asked for it and the person did not narrow
+  // the grant to reading. The callback grants exactly this.
+  const approved = { ...consented, request: { ...consented.request, scope: grantScopes(consented.request.scope, { readOnly: decision === "read-only" }) } };
   // Only now, after consent, does the sign-in start. The verifier and nonce stay server-side.
   const signIn = newSignIn();
   const { state, headers } = await oauth.beginUpstream(approved.request, { data: signIn, headers: approved.headers });
@@ -225,15 +238,23 @@ const loginHandler = {
  * person is looked up again on every request: a grant lives for weeks, and a person disabled in
  * Carrel must lose the door at once, not when the grant expires.
  */
-const apiHandler = {
+export const apiHandler = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const props = (ctx as ExecutionContext & { props?: Partial<DoorProps> }).props;
+    const { props, auth } = ctx as ExecutionContext & { props?: Partial<DoorProps>; auth?: { audience?: string; scope?: string[] } };
+    // The token must have been issued for this server (RFC 8707), checked here as well as by the
+    // provider, so a provider set up for a second resource could never hand Carrel a token for it.
+    // Nothing passes the token on: the site and the novels repository take Carrel's own keys.
+    if (auth?.audience !== `${mcpOrigin(env)}${MCP_ROUTE}`) {
+      console.warn(JSON.stringify({ door: "refused", reason: "audience", audience: auth?.audience ?? null }));
+      return text("Forbidden. This token was not issued for Carrel.", 403);
+    }
     const viewer = props?.email ? await findViewer(env.DB, props.email) : null;
     if (!viewer || viewer.id !== props?.personId) {
       console.warn(JSON.stringify({ door: "refused", reason: viewer ? "person-changed" : "unknown-person" }));
       return text("Forbidden. This grant does not belong to an active person in Carrel.", 403);
     }
-    const response = await handleMcp(request, env, ctx, { viewer, client: props.client || "an unnamed AI client" }, { carrelOrigin: carrelOrigin(env) });
+    const session = { viewer, client: props.client || "an unnamed AI client", scopes: effectiveScopes(auth.scope ?? []) };
+    const response = await handleMcp(request, env, ctx, session, { carrelOrigin: carrelOrigin(env) });
     const out = new Response(response.body, response);
     for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(name, value);
     return out;
@@ -254,7 +275,7 @@ async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, n
     return text("Forbidden. This agent key does not belong to an active agent in Carrel.", 403);
   }
   console.log(JSON.stringify({ door: "agent-key-accepted", agent: name }));
-  const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name) }, { carrelOrigin: carrelOrigin(env) });
+  const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES }, { carrelOrigin: carrelOrigin(env) });
   const out = new Response(response.body, response);
   for (const [header, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(header, value);
   return out;
@@ -262,10 +283,15 @@ async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, n
 
 const providers = new Map<string, OAuthProvider<Env>>();
 
-/** One provider per origin: its resource URI is fixed at construction. */
+/**
+ * One provider per origin and registration allowlist: the resource URI and the registration policy
+ * are both fixed at construction, so a changed allowlist gets a new provider, never a stale one.
+ */
 function providerFor(env: Env): OAuthProvider<Env> {
   const origin = mcpOrigin(env);
-  let provider = providers.get(origin);
+  const allowed = allowedRedirects(env);
+  const key = `${origin} ${[...allowed].join(" ")}`;
+  let provider = providers.get(key);
   if (!provider) {
     provider = new OAuthProvider<Env>({
       apiRoute: MCP_ROUTE,
@@ -273,20 +299,23 @@ function providerFor(env: Env): OAuthProvider<Env> {
       defaultHandler: loginHandler as unknown as ExportedHandler<Env>,
       authorizeEndpoint: "/authorize",
       tokenEndpoint: "/token",
-      scopesSupported: [SCOPE],
+      scopesSupported: SCOPES_SUPPORTED,
       resourceMetadata: {
         resource: `${origin}${MCP_ROUTE}`,
         authorization_servers: [origin],
-        scopes_supported: [SCOPE],
+        scopes_supported: SCOPES_SUPPORTED,
         resource_name: "Carrel",
       },
-      // CIMD ONLY. claude.ai and Claude Code send their client_id as a metadata URL and never call a
-      // registration endpoint (measured in dustinedwards-mcp, 2026-07-30), and MCP 2026-07-28
-      // deprecates dynamic registration. There is deliberately no clientRegistrationEndpoint: no
-      // client can mint itself an identity here. Needs global_fetch_strictly_public in wrangler.jsonc.
+      // CIMD first. claude.ai, Claude Code and ChatGPT send their client_id as a metadata URL and
+      // never register (measured in dustinedwards-mcp, 2026-07-30). Needs global_fetch_strictly_public
+      // in wrangler.jsonc.
       clientIdMetadataDocumentEnabled: true,
+      // Tightened registration beside it, for Grok and Gemini (rule 13, registration.ts): exact
+      // callbacks only, a code and refresh grant only, rate limited in aiDoor before it gets here.
+      clientRegistrationEndpoint: REGISTER_PATH,
+      clientRegistrationCallback: ({ clientMetadata }) => checkRegistration(allowed, clientMetadata),
     });
-    providers.set(origin, provider);
+    providers.set(key, provider);
   }
   return provider;
 }
@@ -298,6 +327,10 @@ export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext):
     // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
     const agent = await agentPrincipal(env, request.headers.get("Authorization"));
     if (agent) return agentHandler(request, env, ctx, agent);
+  }
+  if (pathname === REGISTER_PATH && request.method === "POST") {
+    const limited = await registrationLimited(request, env);
+    if (limited) return limited;
   }
   return providerFor(env).fetch(request, env, ctx);
 }

@@ -10,7 +10,8 @@ import { createExecutionContext } from "cloudflare:test";
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { aiDoor, isMcpHost } from "~/lib/mcp/door";
+import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
+import { ALL_PER_DAY, PER_ADDRESS_PER_HOUR } from "~/lib/mcp/registration";
 
 import { gate } from "../workers/gate";
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
@@ -163,21 +164,27 @@ async function door(request: Request, env: Env = doorEnv()) {
  * Walks the whole sign-in. Returns the final redirect to the client (with a code, or an error), and
  * the Access authorization URL the browser was sent to.
  */
-async function signIn(claims: (nonce: string) => IdClaims = () => ({}), opts: { decision?: "approve" | "deny"; accessError?: boolean } = {}) {
+async function signIn(
+  claims: (nonce: string) => IdClaims = () => ({}),
+  opts: { decision?: "approve" | "deny" | "read-only"; accessError?: boolean; scope?: string; resource?: string } = {},
+) {
   const access = fakeAccess(claims);
   vi.stubGlobal("fetch", access.fetch);
   const jar: Jar = new Map();
   const authorize = new URL(`${DOOR}/authorize`);
-  authorize.search = new URLSearchParams({
+  const params = new URLSearchParams({
     response_type: "code",
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT,
     state: "client-state",
     code_challenge: await s256(VERIFIER),
     code_challenge_method: "S256",
-    scope: "carrel",
-    resource: RESOURCE,
-  }).toString();
+    scope: opts.scope ?? "carrel:read carrel:write",
+    resource: opts.resource ?? RESOURCE,
+  });
+  // An empty scope means the client sent none at all.
+  if (opts.scope === "") params.delete("scope");
+  authorize.search = params.toString();
   const page = await door(new Request(authorize));
   expect(page.status, await page.clone().text()).toBe(200);
   // The consent page is HTML: untransformed, so Web Analytics cannot inject its beacon into it.
@@ -239,12 +246,11 @@ describe("the AI door's OAuth surface", () => {
     expect(meta).toMatchObject({ resource: RESOURCE, authorization_servers: [DOOR] });
   });
 
-  it("advertises CIMD and no registration endpoint, and /register does not exist", async () => {
+  it("advertises CIMD, the tightened registration endpoint, and the two scopes", async () => {
     const meta = (await (await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))).json()) as Record<string, unknown>;
     expect(meta.client_id_metadata_document_supported).toBe(true);
-    expect(meta.registration_endpoint).toBeUndefined();
-    const register = await door(new Request(`${DOOR}/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ redirect_uris: [REDIRECT] }) }));
-    expect(register.status).toBe(404);
+    expect(meta.registration_endpoint).toBe(`${DOOR}/register`);
+    expect(meta.scopes_supported).toEqual(["carrel:read", "carrel:write"]);
   });
 
   it("PLANT: never serves Carrel's pages", async () => {
@@ -270,7 +276,7 @@ describe("signing in through Access for SaaS", () => {
     const token = await tokenFor(final.searchParams.get("code")!);
 
     await addProject("de-info", "dustinedwards");
-    const { result } = await callTool(token, "list_projects");
+    const { result } = await callTool(token, "carrel_list_projects");
     expect(result!.structuredContent).toMatchObject({ projects: [{ slug: "de-info", role: "owner" }] });
 
     // The client is credited by its CIMD name on what it writes.
@@ -278,7 +284,7 @@ describe("signing in through Access for SaaS", () => {
     await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: One\n---\nWords.\n", expectedVersion: null, changeId: "seed" });
     const env = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
     vi.stubGlobal("fetch", site.fetch);
-    await callTool(token, "add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env);
+    await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env);
     expect(await testEnv.DB.prepare("SELECT message FROM findings").first()).toEqual({ message: "A flag. (from Claude Code)" });
   });
 
@@ -290,13 +296,13 @@ describe("signing in through Access for SaaS", () => {
     const withKey = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret", AGENT_KEY_GROK: "grok-test-key-0123456789abcdefghijklmnop" });
     const site = fakeSite();
     vi.stubGlobal("fetch", site.fetch);
-    const { status, result } = await callTool(token, "list_projects", {}, withKey);
+    const { status, result } = await callTool(token, "carrel_list_projects", {}, withKey);
     expect(status).toBe(200);
     expect(result!.structuredContent).toMatchObject({ projects: [{ slug: "de-info", role: "owner" }] });
-    await callTool(token, "add_finding", { project: "de-info", item: "post-one", message: "A flag." }, withKey);
+    await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, withKey);
     expect(await testEnv.DB.prepare("SELECT message FROM findings").first()).toEqual({ message: "A flag. (from Claude Code)" });
     // And a token that is not a grant is still refused by the provider, not read as an agent key.
-    expect((await callTool("not-a-token", "list_projects", {}, withKey)).status).toBe(401);
+    expect((await callTool("not-a-token", "carrel_list_projects", {}, withKey)).status).toBe(401);
   });
 
   it("PLANT: Access let someone in whom Carrel does not know: refused, no code", async () => {
@@ -335,18 +341,18 @@ describe("signing in through Access for SaaS", () => {
   it("PLANT: a person disabled after the grant loses the door at once", async () => {
     const { final } = await signIn();
     const token = await tokenFor(final.searchParams.get("code")!);
-    expect((await callTool(token, "list_projects")).status).toBe(200);
+    expect((await callTool(token, "carrel_list_projects")).status).toBe(200);
     await testEnv.DB.prepare("UPDATE people SET disabled_at = '2026-09-27T00:00:00Z' WHERE email = 'owner@test.invalid'").run();
-    expect((await callTool(token, "list_projects")).status).toBe(403);
+    expect((await callTool(token, "carrel_list_projects")).status).toBe(403);
   });
 
   it("PLANT: a grant follows the person, not the email: the email moved to a new person row is refused", async () => {
     const { final } = await signIn();
     const token = await tokenFor(final.searchParams.get("code")!);
-    expect((await callTool(token, "list_projects")).status).toBe(200);
+    expect((await callTool(token, "carrel_list_projects")).status).toBe(200);
     // The same email, now a different person (the row was replaced): the old grant must not carry over.
     await testEnv.DB.prepare("UPDATE people SET id = id + 1000 WHERE email = 'owner@test.invalid'").run();
-    expect((await callTool(token, "list_projects")).status).toBe(403);
+    expect((await callTool(token, "carrel_list_projects")).status).toBe(403);
   });
 
   it("PLANT: a reviewer signs in through the same door and is refused a publish", async () => {
@@ -355,12 +361,237 @@ describe("signing in through Access for SaaS", () => {
     const id = await addProject("de-info", "dustinedwards");
     const reviewer = await testEnv.DB.prepare("SELECT id FROM people WHERE email = 'reviewer@test.invalid'").first<{ id: number }>();
     await share(id, reviewer!.id, "reader");
-    const { result } = await callTool(token, "publish", { project: "de-info", item: "post-one", expected_version: "v1" });
+    const { result } = await callTool(token, "carrel_publish_item", { project: "de-info", item: "post-one", expected_version: "v1" });
     expect(result).toMatchObject({ isError: true, content: [{ text: "A reviewer never publishes." }] });
   });
 
   it("PLANT: a forged or foreign bearer token is refused", async () => {
-    expect((await callTool("not-a-token", "list_projects")).status).toBe(401);
-    expect((await callTool(await accessToken(BROWSER_AUD), "list_projects")).status).toBe(401);
+    expect((await callTool("not-a-token", "carrel_list_projects")).status).toBe(401);
+    expect((await callTool(await accessToken(BROWSER_AUD), "carrel_list_projects")).status).toBe(401);
+  });
+});
+
+// ---------- tightened registration (ruling 2026-10-10, rule 13)
+
+const GROK_CALLBACK = "https://grok.com/connectors/oauth/callback";
+let address = 0;
+
+/** A registration from its own address unless one is given, so the per-address limit never leaks between tests. */
+function register(body: Record<string, unknown>, from = `198.51.100.${(address += 1)}`) {
+  return door(new Request(`${DOOR}/register`, { method: "POST", headers: { "Content-Type": "application/json", "CF-Connecting-IP": from }, body: JSON.stringify(body) }));
+}
+
+const dayKey = () => `dcr-rate:all:${Math.floor(Date.now() / 86_400_000)}`;
+
+describe("tightened registration", () => {
+  beforeEach(async () => {
+    await testEnv.OAUTH_KV.delete(dayKey());
+  });
+
+  it("registers a client whose callbacks are all on the allowlist, and the registration grants nothing", async () => {
+    const response = await register({ client_name: "Grok", redirect_uris: [GROK_CALLBACK], token_endpoint_auth_method: "none" });
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(response.status, JSON.stringify(body)).toBe(201);
+    expect(body.redirect_uris).toEqual([GROK_CALLBACK]);
+    // No token, no scope, no grant: a client id and nothing it can use on its own.
+    expect(body.access_token).toBeUndefined();
+    expect(body.scope).toBeUndefined();
+    expect((await callTool(String(body.client_id), "carrel_list_projects")).status).toBe(401);
+    const machine = await door(
+      new Request(`${DOOR}/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "client_credentials", client_id: String(body.client_id) }) }),
+    );
+    expect(machine.status).toBe(400);
+  });
+
+  it("PLANT: a callback off the allowlist, a prefix of one, a pattern or localhost is refused", async () => {
+    for (const uri of ["https://evil.example/callback", `${GROK_CALLBACK}/x`, "https://grok.com/connectors/oauth/callback?next=https://evil.example", "http://127.0.0.1:3000/callback", "https://grok.com/"]) {
+      const response = await register({ redirect_uris: [uri] });
+      expect(response.status, uri).toBe(400);
+      expect(((await response.json()) as { error: string }).error).toBe("invalid_redirect_uri");
+    }
+    // One bad callback among good ones spoils the registration.
+    expect((await register({ redirect_uris: [GROK_CALLBACK, "https://evil.example/callback"] })).status).toBe(400);
+  });
+
+  it("an exact callback added in DCR_REDIRECT_URIS is allowed, and only that one", async () => {
+    const extra = "https://chatgpt.com/connector/oauth/abc123";
+    const env = { ...doorEnv(), DCR_REDIRECT_URIS: `${extra} http://insecure.example/cb` } as Env;
+    const ok = await door(new Request(`${DOOR}/register`, { method: "POST", headers: { "Content-Type": "application/json", "CF-Connecting-IP": "198.51.100.200" }, body: JSON.stringify({ redirect_uris: [extra] }) }), env);
+    expect(ok.status).toBe(201);
+    for (const uri of [`${extra}x`, "http://insecure.example/cb"]) {
+      const refused = await door(new Request(`${DOOR}/register`, { method: "POST", headers: { "Content-Type": "application/json", "CF-Connecting-IP": "198.51.100.201" }, body: JSON.stringify({ redirect_uris: [uri] }) }), env);
+      expect(refused.status, uri).toBe(400);
+    }
+  });
+
+  it("a client asking for a grant beyond the code and refresh grants is refused (by the provider)", async () => {
+    expect((await register({ redirect_uris: [GROK_CALLBACK], grant_types: ["authorization_code", "client_credentials"] })).status).toBe(400);
+    expect((await register({ redirect_uris: [GROK_CALLBACK], response_types: ["token"] })).status).toBe(400);
+  });
+
+  it("PLANT: registration is rate limited per address, and in all per day", async () => {
+    const from = "192.0.2.50";
+    for (let i = 0; i < PER_ADDRESS_PER_HOUR; i += 1) expect((await register({ redirect_uris: [GROK_CALLBACK] }, from)).status).toBe(201);
+    const limited = await register({ redirect_uris: [GROK_CALLBACK] }, from);
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("Retry-After")).toBe("3600");
+    // Refused attempts count too: an allowlist miss is not a free probe.
+    await testEnv.OAUTH_KV.put(dayKey(), String(ALL_PER_DAY));
+    expect((await register({ redirect_uris: [GROK_CALLBACK] })).status).toBe(429);
+  });
+
+  it("a registered client gets the consent page every time, saying its name is its own claim", async () => {
+    const registered = (await (await register({ client_name: "Grok", redirect_uris: [GROK_CALLBACK], token_endpoint_auth_method: "none" })).json()) as { client_id: string };
+    const authorize = new URL(`${DOOR}/authorize`);
+    authorize.search = new URLSearchParams({
+      response_type: "code",
+      client_id: registered.client_id,
+      redirect_uri: GROK_CALLBACK,
+      state: "s",
+      code_challenge: await s256(VERIFIER),
+      code_challenge_method: "S256",
+      scope: "carrel:read carrel:write",
+      resource: RESOURCE,
+    }).toString();
+    for (let i = 0; i < 2; i += 1) {
+      const page = await door(new Request(authorize));
+      expect(page.status).toBe(200);
+      const html = await page.text();
+      expect(html).toContain("Allow Grok to use Carrel as you?");
+      expect(html).toContain("registered itself with Carrel");
+      expect(html).toContain('value="read-only"');
+    }
+  });
+});
+
+// ---------- least scope (rule 12.3)
+
+describe("least scope", () => {
+  async function seeded() {
+    await addProject("de-info", "dustinedwards");
+    const site = fakeSite();
+    await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: One\n---\nWords.\n", expectedVersion: null, changeId: "seed" });
+    vi.stubGlobal("fetch", site.fetch);
+    return connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
+  }
+
+  it("PLANT: a client that asks only to read gets read: reads work, a write is refused and says how to fix it", async () => {
+    const { final } = await signIn(undefined, { scope: "carrel:read" });
+    const token = await tokenFor(final.searchParams.get("code")!);
+    const env = await seeded();
+    expect((await callTool(token, "carrel_list_projects", {}, env)).result).toMatchObject({ structuredContent: { projects: [{ slug: "de-info" }] } });
+    const { result } = await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env);
+    expect(result).toMatchObject({ isError: true });
+    expect(result!.content[0]!.text).toContain("reading only (no carrel:write)");
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+  });
+
+  it("PLANT: the person narrows a client's write request to reading only on the consent page", async () => {
+    const { final } = await signIn(undefined, { decision: "read-only" });
+    const token = await tokenFor(final.searchParams.get("code")!);
+    const env = await seeded();
+    const { result } = await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env);
+    expect(result).toMatchObject({ isError: true });
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+  });
+
+  it("a client that asked to write, and was allowed, can write", async () => {
+    const { final } = await signIn();
+    const token = await tokenFor(final.searchParams.get("code")!);
+    const env = await seeded();
+    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
+  });
+
+  it("PLANT: a client that asks for no scope gets read and write, and the consent page still offers reading only", async () => {
+    const { final } = await signIn(undefined, { scope: "" });
+    const token = await tokenFor(final.searchParams.get("code")!);
+    const env = await seeded();
+    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
+    // The same request, narrowed by the person, is reading only.
+    const narrowed = await signIn(undefined, { scope: "", decision: "read-only" });
+    const readOnly = await tokenFor(narrowed.final.searchParams.get("code")!);
+    expect((await callTool(readOnly, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).result).toMatchObject({ isError: true });
+  });
+
+  it("PLANT: a token from a grant made before 2026-10-10 (scope carrel) can still write; a read-only one cannot", async () => {
+    // The provider hands the handler the grant's own scope, and a refresh keeps it (it only narrows a
+    // requested scope to the grant's), so an old connection arrives with ["carrel"] until it signs in again.
+    await seeded();
+    const owner = await testEnv.DB.prepare("SELECT id FROM people WHERE email = 'owner@test.invalid'").first<{ id: number }>();
+    const call = async (scope: string[]) => {
+      const ctx = Object.assign(createExecutionContext(), {
+        props: { personId: owner!.id, email: "owner@test.invalid", client: "Claude", clientId: CLIENT_ID },
+        auth: { audience: RESOURCE, scope },
+      });
+      const env = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
+      const response = await apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_add_finding", arguments: { project: "de-info", item: "post-one", message: `As ${scope.join(" ")}.` } }), env, ctx);
+      return (await readMessage(response)).result as unknown as ToolCallResult;
+    };
+    expect(await call(["carrel"])).toMatchObject({ structuredContent: { flagged: true } });
+    expect(await call(["carrel:read"])).toMatchObject({ isError: true });
+  });
+
+  it("a client still sending the legacy scope carrel is asked for both, as its first consent was", async () => {
+    const { final } = await signIn(undefined, { scope: "carrel" });
+    const token = await tokenFor(final.searchParams.get("code")!);
+    const env = await seeded();
+    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
+  });
+});
+
+// ---------- the token's audience (rule 12.2, RFC 8707)
+
+describe("the token's audience", () => {
+  it("PLANT: an authorization asking for another server's resource gets no code", async () => {
+    const access = fakeAccess(() => ({}));
+    vi.stubGlobal("fetch", access.fetch);
+    const authorize = new URL(`${DOOR}/authorize`);
+    authorize.search = new URLSearchParams({
+      response_type: "code",
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT,
+      state: "s",
+      code_challenge: await s256(VERIFIER),
+      code_challenge_method: "S256",
+      scope: "carrel:read",
+      resource: "https://mcp.dustinedwards.info/mcp",
+    }).toString();
+    const response = await door(new Request(authorize));
+    expect(response.status).not.toBe(200);
+    const location = response.headers.get("Location");
+    if (location) expect(new URL(location).searchParams.get("code")).toBeNull();
+  });
+
+  it("PLANT: a token that reached the handler for any other audience is refused before the tools", async () => {
+    const owner = await testEnv.DB.prepare("SELECT id FROM people WHERE email = 'owner@test.invalid'").first<{ id: number }>();
+    const call = (audience: string) => {
+      const ctx = Object.assign(createExecutionContext(), {
+        props: { personId: owner!.id, email: "owner@test.invalid", client: "Claude", clientId: CLIENT_ID },
+        auth: { audience, scope: ["carrel:read"] },
+      });
+      return apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_list_projects", arguments: {} }), doorEnv(), ctx);
+    };
+    expect((await call("https://mcp.dustinedwards.info/mcp")).status).toBe(403);
+    expect((await call(`${DOOR}/other`)).status).toBe(403);
+    expect((await call(RESOURCE)).status).toBe(200);
+  });
+
+  it("never passes the client's token on: the site only ever sees Carrel's own key", async () => {
+    const { final } = await signIn();
+    const token = await tokenFor(final.searchParams.get("code")!);
+    await addProject("de-info", "dustinedwards");
+    const site = fakeSite();
+    await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: One\n---\nWords.\n", expectedVersion: null, changeId: "seed" });
+    const sent: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      sent.push(`${request.headers.get("Authorization") ?? ""} ${request.url}`);
+      return site.fetch(request);
+    });
+    const env = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
+    const { result } = await callTool(token, "carrel_read_item", { project: "de-info", item: "post-one" }, env);
+    expect(result!.isError).toBeFalsy();
+    expect(sent.length).toBeGreaterThan(0);
+    for (const line of sent) expect(line).not.toContain(token);
   });
 });

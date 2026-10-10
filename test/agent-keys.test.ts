@@ -64,22 +64,22 @@ const rows = async (sql: string) => (await testEnv.DB.prepare(sql).all()).result
 describe("what a named agent key does", () => {
   it("lets the agent read, save an AI draft beside Dustin's, flag and preview, credited as agent:grok", async () => {
     await seedPost();
-    const listed = await call("list_projects");
+    const listed = await call("carrel_list_projects");
     expect(listed.result!.structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "editor" }] });
     expect(((listed.result!.structuredContent as { projects: unknown[] }).projects).length).toBe(1);
 
-    const saved = await call("save_draft", { project: SLUG, item: "post-one", source: "---\ntitle: Post one\n---\nGrok's try.\n", note: "A try." });
+    const saved = await call("carrel_save_draft", { project: SLUG, item: "post-one", source: "---\ntitle: Post one\n---\nGrok's try.\n", note: "A try." });
     expect(saved.result!.isError).toBeUndefined();
     expect(await rows("SELECT client, source FROM ai_drafts")).toEqual([{ client: "agent:grok", source: "---\ntitle: Post one\n---\nGrok's try.\n" }]);
     const owner = await viewerFor("owner@test.invalid");
     expect(await rows(`SELECT person_id FROM ai_drafts WHERE person_id = ${owner.id}`)).toEqual([]);
     expect(await rows(`SELECT person_id FROM ai_drafts WHERE person_id = ${agentId}`)).toHaveLength(1);
 
-    const flagged = await call("add_finding", { project: SLUG, item: "post-one", message: "A flag." });
+    const flagged = await call("carrel_add_finding", { project: SLUG, item: "post-one", message: "A flag." });
     expect(flagged.result!.structuredContent).toMatchObject({ flagged: true });
     expect(await rows("SELECT message FROM findings")).toEqual([{ message: "A flag. (from agent:grok)" }]);
 
-    const preview = await call("preview", { project: SLUG, item: "post-one" });
+    const preview = await call("carrel_preview_item", { project: SLUG, item: "post-one" });
     expect(preview.result!.isError).toBeUndefined();
 
     // Nothing reached the site's record: an agent's saved draft lives only in Carrel, and nothing is credited to Dustin.
@@ -89,7 +89,7 @@ describe("what a named agent key does", () => {
 
   it("PLANT: a key trying publish is refused with the Owner-only message, and nothing is published", async () => {
     const version = await seedPost();
-    const { result } = await call("publish", { project: SLUG, item: "post-one", expected_version: version });
+    const { result } = await call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
     expect(result).toMatchObject({ isError: true, content: [{ text: "Only the Owner's own sessions may publish." }] });
     expect((await site.adapter.content.get("post-one"))!.status).not.toBe("published");
     expect(await rows("SELECT * FROM ai_publications")).toEqual([]);
@@ -99,20 +99,20 @@ describe("what a named agent key does", () => {
   it("PLANT: the role is the person's role in People, never the key's: a Reader agent cannot save a draft", async () => {
     await seedPost();
     await testEnv.DB.prepare("UPDATE project_members SET role = 'reader' WHERE person_id = ?").bind(agentId).run();
-    const { result } = await call("save_draft", { project: SLUG, item: "post-one", source: "x" });
+    const { result } = await call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x" });
     expect(result).toMatchObject({ isError: true, content: [{ text: "You may not write drafts on this project." }] });
     expect(await rows("SELECT id FROM ai_drafts")).toEqual([]);
   });
 
   it("PLANT: a project the agent has no role on is not there for it: not listed, not read, not drafted, not flagged", async () => {
-    const { result: listed } = await call("list_projects");
+    const { result: listed } = await call("carrel_list_projects");
     expect(JSON.stringify(listed!.structuredContent)).not.toContain(UNSHARED);
     for (const [name, args] of [
-      ["search_items", {}],
-      ["read_item", { item: "post-one" }],
-      ["save_draft", { item: "post-one", source: "x" }],
-      ["add_finding", { item: "post-one", message: "m" }],
-      ["publish", { item: "post-one", expected_version: "v" }],
+      ["carrel_search_items", {}],
+      ["carrel_read_item", { item: "post-one" }],
+      ["carrel_save_draft", { item: "post-one", source: "x" }],
+      ["carrel_add_finding", { item: "post-one", message: "m" }],
+      ["carrel_publish_item", { item: "post-one", expected_version: "v" }],
     ] as const) {
       const { result } = await call(name, { project: UNSHARED, ...args });
       expect(result, name).toMatchObject({ isError: true, content: [{ text: "Not found, or not shared with this person." }] });
@@ -126,38 +126,38 @@ describe("what a named agent key does", () => {
     await testEnv.DB.prepare("DELETE FROM people WHERE email = 'owner@test.invalid'").run();
     await testEnv.DB.prepare("UPDATE people SET is_owner = 1 WHERE email = 'agent:grok'").run();
     expect(await findAgentViewer(testEnv.DB, "grok")).toBeNull();
-    expect((await call("list_projects")).status).toBe(403);
+    expect((await call("carrel_list_projects")).status).toBe(403);
   });
 });
 
 describe("what a named agent key refuses", () => {
   it("PLANT: an unknown key is refused by the OAuth path: 401 with the Bearer challenge, nothing run", async () => {
-    const response = await door(authed(`Bearer ${OTHER_KEY}`, "list_projects"));
+    const response = await door(authed(`Bearer ${OTHER_KEY}`, "carrel_list_projects"));
     expect(response.status).toBe(401);
     expect(response.headers.get("WWW-Authenticate")).toContain("resource_metadata=");
-    const near = await door(authed(`Bearer ${KEY}x`, "list_projects"));
+    const near = await door(authed(`Bearer ${KEY}x`, "carrel_list_projects"));
     expect(near.status).toBe(401);
-    const short = await door(authed(`Bearer ${KEY.slice(0, -1)}`, "list_projects"));
+    const short = await door(authed(`Bearer ${KEY.slice(0, -1)}`, "carrel_list_projects"));
     expect(short.status).toBe(401);
   });
 
   it("PLANT: a key whose secret is absent is refused, and so is one that was revoked by deleting the secret", async () => {
     const without = connectedEnv();
-    expect((await call("list_projects", {}, { env: without })).status).toBe(401);
+    expect((await call("carrel_list_projects", {}, { env: without })).status).toBe(401);
     const revoked: Env = { ...env() };
     delete revoked.AGENT_KEY_GROK;
-    expect((await call("list_projects", {}, { env: revoked })).status).toBe(401);
+    expect((await call("carrel_list_projects", {}, { env: revoked })).status).toBe(401);
     // A blank secret admits nobody, and is not a key that matches the empty string.
-    expect((await call("list_projects", {}, { env: env({ AGENT_KEY_GROK: "  " }), key: " " })).status).toBe(401);
+    expect((await call("carrel_list_projects", {}, { env: env({ AGENT_KEY_GROK: "  " }), key: " " })).status).toBe(401);
   });
 
   it("PLANT: a key whose person row is disabled, or missing, is refused at once, and never falls through to OAuth", async () => {
-    expect((await call("list_projects")).status).toBe(200);
+    expect((await call("carrel_list_projects")).status).toBe(200);
     await testEnv.DB.prepare("UPDATE people SET disabled_at = '2026-10-07T00:00:00Z' WHERE email = 'agent:grok'").run();
-    expect((await call("list_projects")).status).toBe(403);
+    expect((await call("carrel_list_projects")).status).toBe(403);
     await testEnv.DB.prepare("DELETE FROM project_members").run();
     await testEnv.DB.prepare("DELETE FROM people WHERE email = 'agent:grok'").run();
-    expect((await call("list_projects")).status).toBe(403);
+    expect((await call("carrel_list_projects")).status).toBe(403);
     expect(await rows("SELECT id FROM ai_drafts")).toEqual([]);
   });
 
@@ -174,26 +174,26 @@ describe("what a named agent key refuses", () => {
       "Cf-Access-Jwt-Assertion": "x.y.z",
       "Mcp-Client": "agent:other",
     };
-    const saved = await call("save_draft", { project: SLUG, item: "post-one", source: "x" }, { headers: claims });
+    const saved = await call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x" }, { headers: claims });
     expect(saved.result!.isError).toBeUndefined();
     // A body that claims an identity is refused by the tool's own schema; nothing is written.
     for (const claim of [{ agent: "other" }, { client: "agent:other" }, { person: "owner@test.invalid" }]) {
-      const refused = await door(authed(`Bearer ${KEY}`, "save_draft", { project: SLUG, item: "post-one", source: "y", ...claim }, claims));
+      const refused = await door(authed(`Bearer ${KEY}`, "carrel_save_draft", { project: SLUG, item: "post-one", source: "y", ...claim }, claims));
       expect(JSON.stringify(await readMessage(refused)), JSON.stringify(claim)).toMatch(/error|invalid|unrecognized|additional/i);
     }
     expect(await rows("SELECT client FROM ai_drafts")).toEqual([{ client: "agent:grok" }]);
     // Two agents with two keys: each key is its own name, whichever the request claims to be.
-    const second = await call("save_draft", { project: SLUG, item: "post-one", source: "z" }, { env: env({ AGENT_KEY_OTHER: OTHER_KEY }), key: OTHER_KEY, headers: { "X-Agent-Name": "grok" } });
+    const second = await call("carrel_save_draft", { project: SLUG, item: "post-one", source: "z" }, { env: env({ AGENT_KEY_OTHER: OTHER_KEY }), key: OTHER_KEY, headers: { "X-Agent-Name": "grok" } });
     expect(second.result!.isError).toBeUndefined();
     expect((await rows("SELECT client FROM ai_drafts ORDER BY id")).map((r) => r.client)).toEqual(["agent:grok", "agent:other"]);
   });
 
   it("PLANT: a malformed Authorization header is never an agent: it goes to the OAuth path and is refused there", async () => {
     for (const header of [`Basic ${KEY}`, "Bearer", "Bearer ", `Bearer ${KEY} extra`, `Token ${KEY}`, KEY, `Bearer\t${KEY}`, ""]) {
-      expect((await door(authed(header || null, "list_projects"))).status, header).toBe(401);
+      expect((await door(authed(header || null, "carrel_list_projects"))).status, header).toBe(401);
     }
     // The scheme is case-insensitive, as HTTP's is.
-    expect((await door(authed(`bearer ${KEY}`, "list_projects"))).status).toBe(200);
+    expect((await door(authed(`bearer ${KEY}`, "carrel_list_projects"))).status).toBe(200);
   });
 
   it("is inert until a secret exists: with none, the door answers as it did before", async () => {

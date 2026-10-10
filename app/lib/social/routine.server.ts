@@ -54,7 +54,7 @@ export async function fireRoutine(config: RoutineConfig, text: string, fetcher: 
 /** What the routine is told: the items waiting, per account, and how to store a draft for each. */
 export function routinePrompt(items: { eventId: number; account: string; platform: string; voiceGuide: string; title: string; url: string; summary: string }[]): string {
   const lines = [
-    "Draft one social post for each item below, in that account's voice, and store each with Carrel's draft_social_post tool (event id, text). Do not post anything and do not reply to anyone.",
+    "Draft one social post for each item below, in that account's voice, and store each with Carrel's carrel_draft_social_post tool (event id, text). Do not post anything and do not reply to anyone.",
     "Rules: the post announces the item and links it; plain, direct sentences; no AI-writing tells; no em dashes; nothing the item does not say.",
     "",
   ];
