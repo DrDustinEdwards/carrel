@@ -21,6 +21,7 @@ import { RevisionPicker } from "~/components/history/revision-picker";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
 import { PageHead } from "~/components/page-head";
+import { SiteBinder } from "~/components/writing/binder";
 import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -39,6 +40,7 @@ import { transitionsFor } from "~/lib/publish-transition.mjs";
 import { can } from "~/lib/roles";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
+import { siteBinderTree } from "~/lib/writing/binder";
 
 import type { Route } from "./+types/editor";
 
@@ -109,6 +111,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   return {
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, siteId: project.site },
     itemId,
+    binder: siteBinderTree(targets, `/p/${project.slug}`),
     canEdit: can(project.role, "edit"),
     media: mediaAccept ? { endpoint: `/p/${encodeURIComponent(project.slug)}/media/api`, accept: mediaAccept } : null,
     canPublish: can(project.role, "publish"),
@@ -530,7 +533,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           ) : null}
         </div>
 
-        <aside className="app-editor-side" aria-label="Saving and publishing">
+        <aside className="app-editor-side" aria-label="Binder, saving and publishing">
+          <Panel title="Binder" src="This site's writing">
+            <SiteBinder nodes={data.binder} current={data.itemId} />
+          </Panel>
           {data.canEdit ? (
             <Panel title="This draft" src={data.version ? (data.status === "draft" ? "Draft on the site" : "On the site") : "Only in Carrel so far"}>
               <div className="app-stack" data-tight>

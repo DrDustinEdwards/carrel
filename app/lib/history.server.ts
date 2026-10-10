@@ -48,7 +48,7 @@ export async function revisionPatch(env: Env, project: SiteProject, itemId: stri
  * Puts two picked versions in order, older first, by their place in the site's list (newest first).
  * null unless exactly two different versions that are both in the list were picked.
  */
-export function orderPair(revisions: readonly Revision[], picked: readonly string[]): { from: Revision; to: Revision } | null {
+export function orderPair<R extends Pick<Revision, "version"> = Revision>(revisions: readonly R[], picked: readonly string[]): { from: R; to: R } | null {
   const unique = [...new Set(picked)];
   if (unique.length !== 2) return null;
   const at = (version: string) => revisions.findIndex((r) => r.version === version);

@@ -26,7 +26,8 @@ export function isBookPath(path: string): boolean {
   const [top] = parts;
   if (top === "chapters") return parts.length === 3 && NUMBERED.test(parts[1]!) && NUMBERED.test(parts[2]!);
   if (top === "bible") return parts.length === 2 || (parts.length === 3 && ["characters", "places", "rules"].includes(parts[1]!));
-  if (top === "outline") return parts.length === 2;
+  // Notes (design 4.1): flat like the outline, read by no check and never exported.
+  if (top === "outline" || top === "notes") return parts.length === 2;
   return false;
 }
 

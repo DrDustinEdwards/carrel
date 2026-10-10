@@ -22,6 +22,8 @@ import { bookRepo, draftPaths, exportGate, listFiles, listFindings, refreshBook,
 import { getEnv, getViewer } from "~/lib/context";
 import { chapterOf, nextNumbered, readingOrder, slugify, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
+import { reorderBook } from "~/lib/binder.server";
+import { parseOrder } from "~/lib/writing/binder";
 import { progressEntries, readGoal, saveGoal, statusList } from "~/lib/writing.server";
 
 import type { Route } from "./+types/book";
@@ -120,6 +122,15 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     return { refreshed: null, error: null, goal: saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error } };
   }
 
+  // A move in the binder: the whole new order, which the server turns into one commit of renames.
+  if (intent === "reorder") {
+    const order = parseOrder(String(form.get("order") ?? ""));
+    if (!order) throw new Response("Bad request", { status: 400 });
+    const { repo, detail } = bookRepo(env);
+    if (!repo) return { refreshed: null, error: null, reorder: { ok: false as const, reason: "failed" as const, message: `${detail} Nothing was moved.` } };
+    return { refreshed: null, error: null, reorder: await reorderBook(env.DB, repo, project, getViewer(context), order) };
+  }
+
   if (intent === "refresh") {
     const { repo, detail } = bookRepo(env);
     if (!repo) return { refreshed: null, error: detail };
@@ -179,6 +190,9 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
             ) : null}
             <Link to={`${base}/outliner`} className="cap-btn">
               Outliner
+            </Link>
+            <Link to={`${base}/corkboard`} className="cap-btn">
+              Corkboard
             </Link>
             <Link to={`${base}/authorship`} className="cap-btn" reloadDocument>
               Authorship record

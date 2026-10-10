@@ -16,6 +16,7 @@ import { Time } from "capsomer/react/time";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
 import { PageHead } from "~/components/page-head";
+import { Binder } from "~/components/writing/binder";
 
 import {
   bookRepo,
@@ -36,6 +37,7 @@ import { parseFile } from "~/lib/novels/frontmatter";
 import { countProseWords, isBookPath, kindOf, TEMPLATES, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
+import { binderTree } from "~/lib/writing/binder";
 
 import type { Route } from "./+types/book.file";
 
@@ -89,6 +91,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const kind = kindOf(path);
   const source = draft?.source ?? file?.source ?? starter(path, new URL(request.url).searchParams.get("name"), project.name);
 
+  const indexed = await listFiles(env.DB, project);
   // The bible entries a scene names, and every world rule, for the side panel.
   let bible: { path: string; name: string; kind: string; body: string }[] = [];
   if (kind === "scene") {
@@ -96,8 +99,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     const names = [data.pov, data.location, ...(Array.isArray(data.characters) ? data.characters : [])]
       .filter((n): n is string => typeof n === "string" && n.trim() !== "")
       .map((n) => n.trim().toLowerCase());
-    const files = await listFiles(env.DB, project);
-    const matched = files.flatMap(({ path, kind, meta }) => {
+    const matched = indexed.flatMap(({ path, kind, meta }) => {
       if (meta.kind === "rule") return [{ path, kind, name: meta.entry.name }];
       if (meta.kind !== "character" && meta.kind !== "place") return [];
       const hit = [meta.entry.name, ...meta.entry.aliases].some((n) => names.includes(n.toLowerCase()));
@@ -130,6 +132,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     findings: await listFindings(env.DB, project, { path }),
     problems: parseFile(source).problems,
     bible,
+    binder: binderTree(indexed, `/b/${project.slug}`),
     // AI drafts an AI session saved beside this person's own, with their text: never committed.
     aiDrafts: await Promise.all(
       (await listAiDrafts(env.DB, project, viewer, path)).map(async (d) => ({ ...d, source: (await readAiDraft(env.DB, project, viewer, path, d.id)).source })),
@@ -342,6 +345,13 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
             {data.version ? null : <Pill variant="outline">Not in Git yet</Pill>}
           </>
         }
+        actions={
+          data.version ? (
+            <Link className="cap-btn" to={`${base}/h/${data.path}`}>
+              History
+            </Link>
+          ) : undefined
+        }
       />
 
       <div className="app-notices">
@@ -370,7 +380,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </section>
         </div>
 
-        <aside className="app-editor-side" aria-label="Saving, checks and the bible">
+        <aside className="app-editor-side" aria-label="Binder, saving, checks and the bible">
+          <Panel title="Binder" src="The book in reading order">
+            <Binder nodes={data.binder} book={data.project.slug} current={data.path} canEdit={data.canEdit && data.connected} />
+          </Panel>
+
           {data.canEdit ? (
             <Panel title="This file" src={data.version ? "In Git" : "Only in Carrel so far"}>
               <div className="app-stack" data-tight>
@@ -456,11 +470,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   >
                     {d.note ? <p>{d.note}</p> : null}
                     <p className="app-bible-body">{d.source}</p>
-                    {data.canEdit ? (
-                      <Button size="sm" pending={busy} onClick={(event) => ask("use-ai", event.currentTarget, d.id)}>
-                        Use as my draft
-                      </Button>
-                    ) : null}
+                    <div className="app-actions">
+                      <Link className="cap-btn" data-size="sm" to={`${base}/h/${data.path}?compare=ai&ai=${d.id}`}>
+                        Compare with yours
+                      </Link>
+                      {data.canEdit ? (
+                        <Button size="sm" pending={busy} onClick={(event) => ask("use-ai", event.currentTarget, d.id)}>
+                          Use as my draft
+                        </Button>
+                      ) : null}
+                    </div>
                   </Disclosure>
                 ))}
               </div>
