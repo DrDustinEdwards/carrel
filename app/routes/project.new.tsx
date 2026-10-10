@@ -56,7 +56,7 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
       />
       <Panel title="Address">
         <Form method="post" className="app-form">
-          <Field label="Slug, the post's address on the site" required help="Lower-case letters, digits and single hyphens, such as my-new-post. It becomes /blog/<slug>. It stays a draft in Carrel until you save it to the site." error={actionData?.error} announce>
+          <Field label="Slug, the post's address on the site" required help="Lower-case letters, digits and single hyphens, such as my-new-post. The site gives it its address when it is published. It stays a draft in Carrel until you save it to the site." error={actionData?.error} announce>
             <input className="cap-input" name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" autoComplete="off" spellCheck={false} data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as my-new-post." />
           </Field>
           <div className="app-actions">

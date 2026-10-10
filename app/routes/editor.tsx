@@ -32,7 +32,7 @@ import { importFromDocs, lastSentDoc, sendToDocs } from "~/lib/google/drive.serv
 import { isConnected } from "~/lib/google/oauth.server";
 import { pageStats } from "~/lib/google/search-console.server";
 import { GoogleNotConnected } from "~/lib/google/service-account.server";
-import { searchItems } from "~/lib/index.server";
+import { searchItems, sitePaths } from "~/lib/index.server";
 import { mediaLimits } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { transitionsFor } from "~/lib/publish-transition.mjs";
@@ -101,9 +101,10 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       mediaAccept = null;
     }
   }
-  const linkTargets: { slug: string; title: string; state: "published" | "scheduled" | "draft" }[] = targets
-    .filter((t) => t.itemId !== itemId)
-    .map((t) => ({ slug: t.itemId, title: t.title || t.itemId, state: t.status }));
+  const paths = sitePaths(targets);
+  const linkTargets: { href: string; title: string; state: "published" | "scheduled" | "draft" }[] = targets
+    .filter((t) => t.itemId !== itemId && paths.has(t.itemId))
+    .map((t) => ({ href: paths.get(t.itemId)!, title: t.title || t.itemId, state: t.status }));
 
   return {
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, siteId: project.site },
@@ -446,7 +447,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   value={splitSource(source).body}
                   onChange={(body) => setSource((current) => joinSource({ ...splitSource(current), body }))}
                   readOnly={readOnly}
-                  linkTargets={data.linkTargets.map((t) => ({ href: `/blog/${t.slug}`, title: t.title, hint: `/blog/${t.slug}`, note: t.state !== "published" ? `not live yet (${t.state})` : undefined }))}
+                  linkTargets={data.linkTargets.map((t) => ({ href: t.href, title: t.title, hint: t.href, note: t.state !== "published" ? `not live yet (${t.state})` : undefined }))}
                   media={data.media ? { ...data.media, figure: (url: string, alt: string) => figureMarkup(data.project.siteId, url, alt) } : null}
                 />
               </section>

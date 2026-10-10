@@ -150,7 +150,8 @@ export async function writeToSite(
         message: "The post changed on the site since you opened it. Your text is kept here; reload the site's version to compare before saving.",
       };
     }
-    if (error instanceof SiteApiError && error.body?.error === "refused") {
+    // The site's own words for a refusal, a text it cannot take or a write it does not do for this kind.
+    if (error instanceof SiteApiError && error.body && ["refused", "invalid", "not-implemented"].includes(error.body.error)) {
       return { ok: false, reason: "refused", message: error.body.message };
     }
     console.error(JSON.stringify({ write: "failed", itemId, action: request.action, error: String(error) }));
