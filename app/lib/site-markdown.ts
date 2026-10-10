@@ -8,7 +8,13 @@ const FIGURES: Record<string, (url: string, alt: string) => string> = {
   // The site's figure directive, as its own editor inserts it (dustinedwards-info@f84b978,
   // app/components/admin/use-image-upload.ts).
   dustinedwards: (url, alt) => [`:::figure{src="${url}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ":::"].join("\n"),
+  // germomics stores the article body as HTML, and its sanitizer keeps figure and img.
+  germomics: (url, alt) => `<figure><img src="${attr(url)}" alt="${attr(alt.trim())}"></figure>`,
 };
+
+function attr(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 /** Plain Markdown for a site with no figure syntax of its own. */
 const plain = (url: string, alt: string) => `![${alt.trim().replace(/[[\]]/g, "")}](${url})`;

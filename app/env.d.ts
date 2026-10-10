@@ -8,6 +8,8 @@ interface CarrelSecrets {
    * connected (setup step 10). Set with `Get-Clipboard | npx wrangler secret put SITE_DUSTINEDWARDS_KEY`.
    */
   SITE_DUSTINEDWARDS_KEY?: string;
+  /** germomics's Carrel key, the same value the site holds as CARREL_SITE_KEY. `Get-Clipboard | npx wrangler secret put SITE_GERMOMICS_KEY`. */
+  SITE_GERMOMICS_KEY?: string;
   /**
    * The GitHub App `carrel-writer`, installed on DrDustinEdwards/writing only (setup step 8). Absent
    * until it exists; books then open read-only from Carrel's index. The key is the .pem GitHub
