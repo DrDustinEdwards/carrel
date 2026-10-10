@@ -3,6 +3,7 @@ import { createRequestHandler, RouterContextProvider } from "react-router";
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
+import { reportInbox } from "~/lib/inbox-report.server";
 import { aiDoor, isMcpHost } from "~/lib/mcp/door";
 import { refreshAllSites } from "~/lib/refresh.server";
 import { siteOrigins } from "~/lib/sites.server";
@@ -36,6 +37,7 @@ export default {
     ctx.waitUntil(runHealth(env));
     ctx.waitUntil(refreshAllSites(env));
     ctx.waitUntil(refreshGoogle(env));
+    ctx.waitUntil(reportInbox(env));
     ctx.waitUntil(processSocial(env).catch((error) => console.error(JSON.stringify({ social: "tick-failed", error: String(error) }))));
   },
 } satisfies ExportedHandler<Env>;

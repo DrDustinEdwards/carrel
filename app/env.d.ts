@@ -52,6 +52,12 @@ interface CarrelSecrets {
    * `Get-Content <key file> -Raw | npx wrangler secret put AGENT_KEY_GROK`.
    */
   AGENT_KEY_GROK?: string;
+  /**
+   * Carrel's own Capsid agent key (the agents tool, carrel namespace, write grant): the bearer for
+   * the inbox report that badges Carrel in the AdminShell. Inert until set:
+   * `Get-Clipboard | npx wrangler secret put CAPSID_AGENT_KEY`.
+   */
+  CAPSID_AGENT_KEY?: string;
 }
 
 interface Env extends CarrelSecrets {}
