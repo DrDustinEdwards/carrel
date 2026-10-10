@@ -4,7 +4,7 @@
 
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
-import { createBook, refreshBook, requireBookProject } from "~/lib/books.server";
+import { createBook, refreshBook, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
 import { autosave, writeToSite } from "~/lib/content.server";
 import { refreshIndex } from "~/lib/index.server";
 import { finishAuth, startAuth } from "~/lib/google/oauth.server";
@@ -319,6 +319,8 @@ async function build(base: Env): Promise<World> {
   await put(`${BOOK}/bible/places/harlan-place.md`, "---\nname: Harlan place\n---\nA ranch house back in the live oaks, porch sagging at the east corner.\n");
   await put(`${BOOK}/bible/places/low-water-crossing.md`, "---\nname: Low-water crossing\n---\nWhere the county road dips through the creek. It floods in April.\n");
   await put(`${BOOK}/bible/rules/no-phones.md`, "---\nname: No phones past the ridge\nforbidden: [phone rang]\n---\nThere is no signal past the ridge, and the story never pretends otherwise.\n");
+  // The gate has a history: a first pass committed elsewhere, then the revision (job_b4555715afcf).
+  await put(`${BOOK}/chapters/01-arrival/01-the-gate.md`, planned(SCENE_ONE.split("\n\n").slice(0, 2).join("\n\n") + "\n", "First draft", "Nell is let in past the locked gate", 1500));
   await put(`${BOOK}/chapters/01-arrival/01-the-gate.md`, planned(SCENE_ONE, "Revised", "Nell is let in past the locked gate", 1500));
   await put(`${BOOK}/chapters/01-arrival/02-supper.md`, planned(SCENE_TWO, "First draft", "Supper, and what Wade will not say", 1500));
   await put(`${BOOK}/chapters/02-the-crossing/01-the-chain.md`, SCENE_THREE);
@@ -331,6 +333,11 @@ async function build(base: Env): Promise<World> {
   await refreshBook(db, novelsRepo(env, gh.fetch), bookPr);
   const rosaBook = (await db.prepare("SELECT id FROM projects WHERE slug = ?").bind(BOOK).first<{ id: number }>())!.id;
   await share(rosaBook, rosa, "editor");
+  // An AI draft beside the gate, never committed, for the history page's comparison.
+  await saveBookAiDraft(db, bookPr, claude, "chapters/01-arrival/01-the-gate.md", {
+    source: planned(SCENE_ONE, "Revised", "Nell is let in past the locked gate", 1500).replace(/\n\n([^\n]+)\n?$/, "\n\nThe gate gave on the third try, and Wade did not look up.\n"),
+    note: "A shorter close, for you to take or leave.",
+  });
   // Dustin's last few days of typed words, and his goal: 500 a day, every day.
   const ownerId = owner.id;
   const DAY_MS = 86_400_000;

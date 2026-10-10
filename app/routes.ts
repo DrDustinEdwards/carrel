@@ -17,6 +17,8 @@ export default [
     route("b/:project", "routes/book.tsx"),
     route("b/:project/c/:chapter", "routes/book.chapter.tsx"),
     route("b/:project/outliner", "routes/book.outliner.tsx"),
+    route("b/:project/corkboard", "routes/book.corkboard.tsx"),
+    route("b/:project/h/*", "routes/book.history.tsx"),
     route("b/:project/f/*", "routes/book.file.tsx"),
     route("p/:project/e/:item/unpublish", "routes/unpublish.tsx"),
     route("p/:project/e/:item/ai/:id", "routes/ai-draft.tsx"),

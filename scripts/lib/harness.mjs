@@ -90,6 +90,20 @@ export const SCREENS = [
   { name: "book-outliner-none", viewer: "owner", path: `/b/${BOOK}/outliner?status=final` },
   { name: "book-outliner-labels", viewer: "editor", path: `/b/${BOOK}/outliner`, after: (page) => page.getByText("Edit the list").click() },
   { name: "book-target", viewer: "owner", path: `/b/${BOOK}`, wait: ".cap-meter", after: (page) => page.getByText("Your target").click() },
+  { name: "book-corkboard", viewer: "owner", path: `/b/${BOOK}/corkboard`, wait: ".cap-sortable" },
+  { name: "book-corkboard-lifted", viewer: "editor", path: `/b/${BOOK}/corkboard`, wait: ".cap-sortable", after: (page) => page.getByRole("button", { name: "Move Supper", exact: true }).press("Space") },
+  { name: "book-history", viewer: "owner", path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md` },
+  {
+    name: "book-history-compare",
+    viewer: "owner",
+    path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md`,
+    after: async (page) => {
+      for (const box of await page.getByRole("checkbox").all()) await box.check();
+      await page.getByRole("button", { name: "Compare the two picked" }).click();
+      await page.locator(".cap-compare, .cap-patch").first().waitFor();
+    },
+  },
+  { name: "book-history-ai", viewer: "owner", path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md?compare=ai&ai=3` },
   { name: "book-scene", viewer: "owner", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".cm-editor" },
   { name: "book-scene-flagged", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".cm-editor" },
   { name: "book-bible", viewer: "owner", path: `/b/${BOOK}/f/bible/characters/nell.md`, wait: ".cm-editor" },

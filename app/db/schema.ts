@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql to 0012_writing_progress.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0013_book_moves.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -353,4 +353,15 @@ export const legalSections = sqliteTable("legal_sections", {
   body: text("body").notNull(),
   updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   updatedBy: integer("updated_by").notNull().references(() => people.id),
+});
+
+export const bookMoves = sqliteTable("book_moves", {
+  id: integer("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  changeId: text("change_id").notNull(),
+  fromPath: text("from_path").notNull(),
+  toPath: text("to_path").notNull(),
+  commitSha: text("commit_sha").notNull(),
+  personId: integer("person_id").notNull().references(() => people.id),
+  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });

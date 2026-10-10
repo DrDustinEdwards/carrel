@@ -1,6 +1,8 @@
 // The writing repository, reached through the GitHub App `carrel-writer` (design setup step 8),
 // installed on that one repository with contents read and write and nothing else. Carrel reads the
-// tree and files and commits one file at a time, each with the version it expects to replace.
+// tree and files and commits one file at a time, each with the version it expects to replace. A move
+// that renames several files is one commit made through Git's data API (commitMany), and a file's
+// history is the commits that touched its path.
 
 import { SignJWT } from "jose";
 
@@ -9,6 +11,12 @@ export const NOVELS_BRANCH = "main";
 const API = "https://api.github.com";
 
 export type RepoFile = { source: string; sha: string };
+
+/** One file renamed in a multi-file commit: its blob is kept, only its path changes. */
+export type Rename = { from: string; to: string; sha: string };
+
+/** A commit that touched a path, newest first, as GitHub lists it. */
+export type PathCommit = { sha: string; message: string; author: string; email: string; at: string };
 
 /** A write refused because the file is not at the version the writer expected. */
 export class GitConflict extends Error {
@@ -32,6 +40,16 @@ export interface NovelsRepo {
    * the file is not at that version.
    */
   write(path: string, input: { source: string; expectedSha: string | null; message: string; author: { name: string; email: string } }): Promise<{ sha: string; commit: string }>;
+  /**
+   * Renames several files in ONE commit on the branch. Each file must be at `sha` in the branch head
+   * and no file may already be at a `to` path that is not also moving away; otherwise GitConflict.
+   * The branch moves only forward: a head that moved while the commit was built is a GitConflict too.
+   */
+  commitMany(input: { renames: Rename[]; message: string; author: { name: string; email: string } }): Promise<{ commit: string }>;
+  /** The commits on the branch that touched `path`, newest first, at most `limit`. */
+  history(path: string, limit?: number): Promise<PathCommit[]>;
+  /** The file as it was at a commit, or null when it was not there. */
+  readAt(path: string, commit: string): Promise<RepoFile | null>;
 }
 
 // ---------- the connection
@@ -167,8 +185,12 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = fetch)
       return body.tree.filter((e) => e.type === "blob" && e.path.startsWith(start)).map((e) => ({ path: e.path.slice(start.length), sha: e.sha }));
     },
 
-    async read(path) {
-      const res = await call(`${repoUrl}/contents/${encodePath(path)}?ref=${NOVELS_BRANCH}`);
+    read(path) {
+      return repo.readAt(path, NOVELS_BRANCH);
+    },
+
+    async readAt(path, ref) {
+      const res = await call(`${repoUrl}/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`);
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`GitHub did not return ${path} (${res.status}).`);
       const body = (await res.json()) as { type: string; content?: string; encoding?: string; sha: string };
@@ -198,6 +220,57 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = fetch)
       if (!res.ok) throw new Error(`GitHub did not accept the commit to ${path} (${res.status}).`);
       const body = (await res.json()) as { content: { sha: string }; commit: { sha: string } };
       return { sha: body.content.sha, commit: body.commit.sha };
+    },
+
+    async commitMany(input) {
+      if (input.renames.length === 0) throw new Error("A multi-file commit needs at least one change.");
+      const json = async <T>(res: Response, what: string): Promise<T> => {
+        if (!res.ok) throw new Error(`GitHub did not ${what} (${res.status}).`);
+        return (await res.json()) as T;
+      };
+      const ref = await json<{ object: { sha: string } }>(await call(`${repoUrl}/git/ref/heads/${NOVELS_BRANCH}`), "return the branch head");
+      const head = ref.object.sha;
+      const commit = await json<{ tree: { sha: string } }>(await call(`${repoUrl}/git/commits/${head}`), "return the head commit");
+      const tree = await json<{ truncated: boolean; tree: { path: string; type: string; sha: string; mode: string }[] }>(
+        await call(`${repoUrl}/git/trees/${commit.tree.sha}?recursive=1`),
+        "list the head's tree",
+      );
+      if (tree.truncated) throw new Error("GitHub truncated the writing repository's tree; it is too large to move files in one commit.");
+      const at = new Map(tree.tree.filter((e) => e.type === "blob").map((e) => [e.path, e]));
+      // Every file must be where the mover saw it, and no move may land on a file that stays.
+      const leaving = new Set(input.renames.map((r) => r.from));
+      for (const r of input.renames) {
+        const entry = at.get(r.from);
+        if (!entry || entry.sha !== r.sha) throw new GitConflict(entry?.sha ?? null);
+        if (at.has(r.to) && !leaving.has(r.to)) throw new GitConflict(at.get(r.to)!.sha);
+      }
+      const arriving = new Set(input.renames.map((r) => r.to));
+      const entries = [
+        ...input.renames.filter((r) => !arriving.has(r.from)).map((r) => ({ path: r.from, mode: at.get(r.from)!.mode, type: "blob", sha: null })),
+        ...input.renames.map((r) => ({ path: r.to, mode: at.get(r.from)!.mode, type: "blob", sha: r.sha })),
+      ];
+      const post = (url: string, body: unknown) => call(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const made = await json<{ sha: string }>(await post(`${repoUrl}/git/trees`, { base_tree: commit.tree.sha, tree: entries }), "build the new tree");
+      const next = await json<{ sha: string }>(
+        await post(`${repoUrl}/git/commits`, { message: input.message, tree: made.sha, parents: [head], author: input.author }),
+        "make the commit",
+      );
+      // Never forced: if anyone committed since the head was read, the branch refuses to move.
+      const moved = await call(`${repoUrl}/git/refs/heads/${NOVELS_BRANCH}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sha: next.sha, force: false }),
+      });
+      if (moved.status === 422 || moved.status === 409) throw new GitConflict(null);
+      if (!moved.ok) throw new Error(`GitHub did not move the branch to the new commit (${moved.status}).`);
+      return { commit: next.sha };
+    },
+
+    async history(path, limit = 30) {
+      const res = await call(`${repoUrl}/commits?sha=${NOVELS_BRANCH}&path=${encodeURIComponent(path)}&per_page=${Math.min(100, Math.max(1, limit))}`);
+      if (!res.ok) throw new Error(`GitHub did not list the history of ${path} (${res.status}).`);
+      const body = (await res.json()) as { sha: string; commit: { message: string; author: { name: string; email: string; date: string } } }[];
+      return body.map((c) => ({ sha: c.sha, message: c.commit.message, author: c.commit.author.name, email: c.commit.author.email, at: c.commit.author.date }));
     },
   };
   return repo;

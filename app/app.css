@@ -38,6 +38,8 @@
 @import "capsomer/stat-tile.css";
 @import "capsomer/drop-zone.css";
 @import "capsomer/media.css";
+@import "capsomer/tree.css";
+@import "capsomer/sortable-list.css";
 @import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
 
@@ -722,4 +724,61 @@ html[data-typing] :is(.cap-admin-strip, .cap-admin-menu, .cap-admin-tabs, .cap-a
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3) var(--space-5);
+}
+
+/* The corkboard's card (design 4.2): the scene's title and status, its summary, then its point of
+   view and words, and the one-pointer move to another chapter at the foot. */
+.app-card {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.app-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.app-card-title {
+  font-weight: 600;
+}
+
+.app-card-summary,
+.app-card-facts {
+  margin: 0;
+}
+
+.app-card-facts {
+  font-size: 12px;
+}
+
+.app-card-move {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+
+  & .cap-field {
+    flex: 1 1 9rem;
+  }
+}
+
+/* The read-only corkboard, for a Reader: the same cards in a wrapping grid, with no grips. */
+.app-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  & > li {
+    padding: var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+  }
 }
