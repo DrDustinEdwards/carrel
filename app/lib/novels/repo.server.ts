@@ -1,10 +1,10 @@
-// The novels repository, reached through the GitHub App `carrel-writer` (design setup step 8),
+// The writing repository, reached through the GitHub App `carrel-writer` (design setup step 8),
 // installed on that one repository with contents read and write and nothing else. Carrel reads the
 // tree and files and commits one file at a time, each with the version it expects to replace.
 
 import { SignJWT } from "jose";
 
-export const NOVELS_REPO = "DrDustinEdwards/novels";
+export const NOVELS_REPO = "DrDustinEdwards/writing";
 export const NOVELS_BRANCH = "main";
 const API = "https://api.github.com";
 
@@ -44,7 +44,7 @@ export function novelsConnection(env: Env): NovelsConnection {
   const appId = env.NOVELS_APP_ID?.trim();
   const key = env.NOVELS_APP_PRIVATE_KEY?.trim();
   if (!appId && !key) {
-    return { state: "not-connected", detail: "The GitHub App for the novels repository is not set up yet (NOVELS_APP_ID, NOVELS_APP_PRIVATE_KEY)." };
+    return { state: "not-connected", detail: "The GitHub App for the writing repository is not set up yet (NOVELS_APP_ID, NOVELS_APP_PRIVATE_KEY)." };
   }
   if (!appId || !/^\d+$/.test(appId)) return { state: "misconfigured", detail: "NOVELS_APP_ID is missing or is not the App's numeric id." };
   if (!key || !/-----BEGIN (RSA )?PRIVATE KEY-----/.test(key)) {
@@ -159,10 +159,10 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = fetch)
   const repo: NovelsRepo = {
     async tree(prefix) {
       const res = await call(`${repoUrl}/git/trees/${NOVELS_BRANCH}?recursive=1`);
-      if (!res.ok) throw new Error(`GitHub did not list the novels repository (${res.status}).`);
+      if (!res.ok) throw new Error(`GitHub did not list the writing repository (${res.status}).`);
       const body = (await res.json()) as { truncated: boolean; tree: { path: string; type: string; sha: string }[] };
       // A truncated tree would make files look deleted; refuse it rather than index half a book.
-      if (body.truncated) throw new Error("GitHub truncated the novels repository's tree; it is too large to list in one call.");
+      if (body.truncated) throw new Error("GitHub truncated the writing repository's tree; it is too large to list in one call.");
       const start = `${prefix}/`;
       return body.tree.filter((e) => e.type === "blob" && e.path.startsWith(start)).map((e) => ({ path: e.path.slice(start.length), sha: e.sha }));
     },

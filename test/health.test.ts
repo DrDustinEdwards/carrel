@@ -173,7 +173,7 @@ describe("site health", () => {
   });
 });
 
-// Stage 4: the GitHub App for the novels repository (design section 5, "Health": the GitHub App token).
+// Stage 4: the GitHub App for the writing repository (design section 5, "Health": the GitHub App token).
 describe("novels health", () => {
   beforeEach(() => clearTokenCache());
 
@@ -183,13 +183,13 @@ describe("novels health", () => {
 
   it("counts an App not set up yet as not connected, which is not a failure", async () => {
     const { results } = await runHealth({ ...testEnv, EMAIL: mailbox().EMAIL }, certsOk);
-    expect(results.find((r) => r.name === "novels")).toMatchObject({ ok: true, detail: expect.stringMatching(/^Not connected: /) });
+    expect(results.find((r) => r.name === "writing")).toMatchObject({ ok: true, detail: expect.stringMatching(/^Not connected: /) });
   });
 
   it("PLANT: flags half a setup, an App id with no key", async () => {
     const box = mailbox();
     await runHealth({ ...testEnv, NOVELS_APP_ID: "123", EMAIL: box.EMAIL }, certsOk);
-    expect(box.sent[0]!.text).toContain("FAIL novels: NOVELS_APP_PRIVATE_KEY is missing");
+    expect(box.sent[0]!.text).toContain("FAIL writing: NOVELS_APP_PRIVATE_KEY is missing");
   });
 
   it("passes when the App gets a token for the repository", async () => {
@@ -198,7 +198,7 @@ describe("novels health", () => {
       { ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem, EMAIL: mailbox().EMAIL },
       through(fakeNovels()),
     );
-    expect(results.find((r) => r.name === "novels")).toEqual({ name: "novels", ok: true, detail: "The GitHub App can write to DrDustinEdwards/novels." });
+    expect(results.find((r) => r.name === "writing")).toEqual({ name: "writing", ok: true, detail: "The GitHub App can write to DrDustinEdwards/writing." });
   });
 
   it("PLANT: flags an App GitHub will not answer for", async () => {
@@ -206,6 +206,6 @@ describe("novels health", () => {
     const box = mailbox();
     const refused = async (url: string) => (url.startsWith("https://api.github.com") ? new Response("{}", { status: 404 }) : certsOk());
     await runHealth({ ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem, EMAIL: box.EMAIL }, refused);
-    expect(box.sent[0]!.text).toContain("FAIL novels: The GitHub App could not reach DrDustinEdwards/novels: GitHub did not find the App's installation");
+    expect(box.sent[0]!.text).toContain("FAIL writing: The GitHub App could not reach DrDustinEdwards/writing: GitHub did not find the App's installation");
   });
 });

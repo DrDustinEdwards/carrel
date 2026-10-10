@@ -3,7 +3,7 @@
 //
 // It checks the settings the gate needs, the database and its Owner, the Access signing keys, and
 // each site: its key, and whether the site still conforms to the site-api contract Carrel was built
-// against, the GitHub App for the novels repository, that every AI publish reached Dustin's inbox,
+// against, the GitHub App for the writing repository, that every AI publish reached Dustin's inbox,
 // Google (the service account key's age and whether Google still takes it, and Dustin's drive.file
 // grant), and any template social post that went out, which Dustin should know about (design
 // decision 5, third step).
@@ -98,15 +98,15 @@ async function checkNovels(env: Env, fetcher: Fetch): Promise<CheckResult> {
   const connection = novelsConnection(env);
   if (connection.state !== "connected") {
     return connection.state === "not-connected"
-      ? { name: "novels", ok: true, detail: `Not connected: ${connection.detail}` }
-      : { name: "novels", ok: false, detail: connection.detail };
+      ? { name: "writing", ok: true, detail: `Not connected: ${connection.detail}` }
+      : { name: "writing", ok: false, detail: connection.detail };
   }
   try {
     await installationToken(connection.appId, connection.privateKey, ((input: RequestInfo | URL, init?: RequestInit) =>
       fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch);
-    return { name: "novels", ok: true, detail: `The GitHub App can write to ${NOVELS_REPO}.` };
+    return { name: "writing", ok: true, detail: `The GitHub App can write to ${NOVELS_REPO}.` };
   } catch (error) {
-    return { name: "novels", ok: false, detail: `The GitHub App could not reach ${NOVELS_REPO}: ${message(error)}` };
+    return { name: "writing", ok: false, detail: `The GitHub App could not reach ${NOVELS_REPO}: ${message(error)}` };
   }
 }
 

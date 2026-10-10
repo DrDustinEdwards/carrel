@@ -1,7 +1,7 @@
 // check:a11y. One axe scan of every screen as it renders, in both themes at a desktop and a phone
 // width, for each role that sees it differently. WCAG 2.2 at level A and AA, as the standard defines
 // them: axe's own best-practice rules are not run. The screens come from test/harness, which runs the
-// real app with a fake site, novels repository and Google, so this needs no Cloudflare credentials.
+// real app with a fake site, writing repository and Google, so this needs no Cloudflare credentials.
 //
 // Exit 0: no violation on any screen. Exit 1: violations, listed. Exit 2: the harness did not start.
 //

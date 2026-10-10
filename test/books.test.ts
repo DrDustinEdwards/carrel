@@ -1,4 +1,4 @@
-// Books through Carrel's service layer, against the fake novels repository: who may open, save and
+// Books through Carrel's service layer, against the fake writing repository: who may open, save and
 // export; a save that commits with the version it expects and records who wrote what; the checks
 // that run on save and never stop it; and export held while a flag is open.
 
@@ -133,7 +133,7 @@ describe("refresh from Git", () => {
     const before = gh.requests.length;
     expect(await refreshBook(testEnv.DB, gh.repo, project)).toMatchObject({ read: 1, removed: 1, shared: 0 });
     expect(gh.requests.slice(before).filter((r) => r.includes("/contents/"))).toEqual([
-      `GET /repos/DrDustinEdwards/novels/contents/${SLUG}/chapters/01-arrival/02-supper.md`,
+      `GET /repos/DrDustinEdwards/writing/contents/${SLUG}/chapters/01-arrival/02-supper.md`,
     ]);
     // The checks ran on what changed outside Carrel, with the book's own habits list.
     expect((await listFindings(testEnv.DB, project)).map((f) => f.excerpt)).toEqual(["Suddenly"]);

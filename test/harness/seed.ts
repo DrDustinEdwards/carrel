@@ -305,7 +305,7 @@ async function build(base: Env): Promise<World> {
     ),
   );
 
-  // Books, indexed from the fake novels repository.
+  // Books, indexed from the fake writing repository.
   gh.files.clear();
   const put = async (path: string, source: string) => {
     await gh.commitElsewhere(path, source);

@@ -1,4 +1,4 @@
-// The novels repository's layout, from the design job: shared/ for voice passages, checks, assembly
+// The writing repository's layout, from the design job: shared/ for voice passages, checks, assembly
 // and templates; one folder per book with bible/, outline/, chapters/NN-name/NN-scene.md, and build/
 // ignored. Paths here are relative to the book's folder unless a name says otherwise.
 

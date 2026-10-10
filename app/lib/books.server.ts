@@ -1,4 +1,4 @@
-// Books in the novels repository (design stage 4): the book behind a URL, Carrel's index of its
+// Books in the writing repository (design stage 4): the book behind a URL, Carrel's index of its
 // files, a save that commits to Git with the version it expects to replace, the checks that run on
 // every save, their findings, and the authorship record. Roles are checked here, not only in the
 // routes, so every door (the UI now, MCP tools in stage 5) is held to the same rule.
@@ -48,7 +48,7 @@ export function bookRepo(env: Env): { repo: NovelsRepo; detail: null } | { repo:
   return { repo: novelsRepo(env), detail: null };
 }
 
-/** A new book: a project whose folder in the novels repository is `folder`. Nothing is written to Git. */
+/** A new book: a project whose folder in the writing repository is `folder`. Nothing is written to Git. */
 export async function createBook(db: D1Database, viewer: Viewer, input: { name: string; folder: string }) {
   if (!viewer.isOwner) forbid();
   const name = input.name.trim();
@@ -501,7 +501,7 @@ export function authorshipReport(project: BookProject, rows: AuthorshipRow[], no
   const lines = [
     `# Authorship record: ${project.name}`,
     "",
-    `Every change Carrel committed to ${project.book}/ in the novels repository, as of ${now.toISOString().slice(0, 10)}. Words are counted as added and removed between versions, so a changed word counts once each way.`,
+    `Every change Carrel committed to ${project.book}/ in the writing repository, as of ${now.toISOString().slice(0, 10)}. Words are counted as added and removed between versions, so a changed word counts once each way.`,
     "",
     "## By person",
     "",
