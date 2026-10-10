@@ -172,7 +172,7 @@ async function signIn(
   vi.stubGlobal("fetch", access.fetch);
   const jar: Jar = new Map();
   const authorize = new URL(`${DOOR}/authorize`);
-  authorize.search = new URLSearchParams({
+  const params = new URLSearchParams({
     response_type: "code",
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT,
@@ -181,7 +181,10 @@ async function signIn(
     code_challenge_method: "S256",
     scope: opts.scope ?? "carrel:read carrel:write",
     resource: opts.resource ?? RESOURCE,
-  }).toString();
+  });
+  // An empty scope means the client sent none at all.
+  if (opts.scope === "") params.delete("scope");
+  authorize.search = params.toString();
   const page = await door(new Request(authorize));
   expect(page.status, await page.clone().text()).toBe(200);
   // The consent page is HTML: untransformed, so Web Analytics cannot inject its beacon into it.
@@ -497,6 +500,35 @@ describe("least scope", () => {
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
     expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
+  });
+
+  it("PLANT: a client that asks for no scope gets read and write, and the consent page still offers reading only", async () => {
+    const { final } = await signIn(undefined, { scope: "" });
+    const token = await tokenFor(final.searchParams.get("code")!);
+    const env = await seeded();
+    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
+    // The same request, narrowed by the person, is reading only.
+    const narrowed = await signIn(undefined, { scope: "", decision: "read-only" });
+    const readOnly = await tokenFor(narrowed.final.searchParams.get("code")!);
+    expect((await callTool(readOnly, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).result).toMatchObject({ isError: true });
+  });
+
+  it("PLANT: a token from a grant made before 2026-10-10 (scope carrel) can still write; a read-only one cannot", async () => {
+    // The provider hands the handler the grant's own scope, and a refresh keeps it (it only narrows a
+    // requested scope to the grant's), so an old connection arrives with ["carrel"] until it signs in again.
+    await seeded();
+    const owner = await testEnv.DB.prepare("SELECT id FROM people WHERE email = 'owner@test.invalid'").first<{ id: number }>();
+    const call = async (scope: string[]) => {
+      const ctx = Object.assign(createExecutionContext(), {
+        props: { personId: owner!.id, email: "owner@test.invalid", client: "Claude", clientId: CLIENT_ID },
+        auth: { audience: RESOURCE, scope },
+      });
+      const env = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
+      const response = await apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_add_finding", arguments: { project: "de-info", item: "post-one", message: `As ${scope.join(" ")}.` } }), env, ctx);
+      return (await readMessage(response)).result as unknown as ToolCallResult;
+    };
+    expect(await call(["carrel"])).toMatchObject({ structuredContent: { flagged: true } });
+    expect(await call(["carrel:read"])).toMatchObject({ isError: true });
   });
 
   it("a client still sending the legacy scope carrel is asked for both, as its first consent was", async () => {

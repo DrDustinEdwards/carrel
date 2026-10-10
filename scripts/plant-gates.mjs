@@ -71,6 +71,8 @@ const PLANTS = [
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (auth?.audience !== `${mcpOrigin(env)}${MCP_ROUTE}`) {", replace: "if (auth === null) {", label: "a token for another audience let through" },
   { gate: "tests", file: "app/lib/mcp/tools.ts", find: "if (!tool.annotations.readOnlyHint && !ctx.session.scopes.includes(SCOPE_WRITE)) {", replace: "if (false) {", label: "a read-only grant may write" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: '{ readOnly: decision === "read-only" }', replace: "{}", label: "the consent page's reading-only choice ignored" },
+  { gate: "tests", file: "app/lib/mcp/scopes.ts", find: "  if (!asked.has(SCOPE_READ)) return [SCOPE_READ, SCOPE_WRITE];\n", replace: "", label: "a client naming no scope gets reading only" },
+  { gate: "tests", file: "app/lib/mcp/scopes.ts", find: "    if (scope === LEGACY_SCOPE) {", replace: "    if (false) {", label: "a grant from before the ruling (scope carrel) loses writing" },
   { gate: "tests", file: "app/lib/mcp/tools.ts", find: "  await logCall(ctx.env.DB, ctx.session,", replace: "  void (ctx.env.DB, ctx.session,", label: "a tool call left out of the call log" },
   {
     gate: "tests",
