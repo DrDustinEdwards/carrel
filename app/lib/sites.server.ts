@@ -4,7 +4,7 @@
 import { createSiteClient, type SiteClient } from "@dustinedwards/site-api/client";
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
 
-export type SiteId = "dustinedwards";
+export type SiteId = "dustinedwards" | "germomics";
 
 type SiteEntry = {
   name: string;
@@ -18,6 +18,8 @@ type SiteEntry = {
    * named by the Dataset JSON-LD and the Link header on every download, so Carrel never takes them down.
    */
   keepPublic: readonly string[];
+  /** The Search Console property the service account reads for the site's pages. */
+  searchConsoleProperty: (env: Env) => string;
 };
 
 const SITES: Record<SiteId, SiteEntry> = {
@@ -30,6 +32,18 @@ const SITES: Record<SiteId, SiteEntry> = {
     // The shape of content/posts/*.md on the site: draft until the Owner publishes.
     newSource: (slug, today) =>
       ["---", 'title: ""', `slug: ${slug}`, 'description: ""', `date: ${today}`, "tags: []", "draft: true", "---", "", ""].join("\n"),
+    searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_DUSTINEDWARDS?.trim() || "sc-domain:dustinedwards.info",
+  },
+  germomics: {
+    name: "Germomics",
+    origin: (env) => env.SITE_GERMOMICS_ORIGIN,
+    key: (env) => env.SITE_GERMOMICS_KEY,
+    keyName: "SITE_GERMOMICS_KEY",
+    keepPublic: [],
+    // The shape of germomics's app/lib/carrel/source.ts: JSON front matter, then the article body as
+    // the site's own HTML. The id is the slug, and an item the site has not seen is created a draft.
+    newSource: () => ["---", 'title: ""', 'excerpt: ""', "tags: []", "---", ""].join("\n"),
+    searchConsoleProperty: () => "sc-domain:germomics.com",
   },
 };
 

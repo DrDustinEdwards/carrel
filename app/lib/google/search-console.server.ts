@@ -7,7 +7,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { searchConsolePages } from "~/db/schema";
 import type { SiteProject } from "~/lib/projects.server";
-import { siteConnection, type SiteId } from "~/lib/sites.server";
+import { siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 
 import { saClient } from "./service-account.server";
 
@@ -20,8 +20,7 @@ const WINDOW_DAYS = 28;
 
 /** The Search Console property for a site: a domain property unless a var says otherwise. */
 export function propertyFor(env: Env, site: SiteId): string {
-  const configured = (env as { SEARCH_CONSOLE_PROPERTY_DUSTINEDWARDS?: string }).SEARCH_CONSOLE_PROPERTY_DUSTINEDWARDS?.trim();
-  return site === "dustinedwards" ? configured || "sc-domain:dustinedwards.info" : "";
+  return siteEntry(site).searchConsoleProperty(env);
 }
 
 function day(d: Date): string {
