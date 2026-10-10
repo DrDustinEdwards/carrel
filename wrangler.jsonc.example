@@ -95,6 +95,10 @@
 		"CARREL_ORIGIN": "https://carrel.dustinedwards.info",
 		// The AI door: OAuth and /mcp, and nothing else. Its hostname alone marks a request as AI.
 		"CARREL_MCP_ORIGIN": "https://carrel-mcp.dustinedwards.info",
+		// Callbacks a self-registering AI client (Grok, Gemini) may name beyond the fixed ones in
+		// app/lib/mcp/registration.ts, each exact and https, separated by spaces: ChatGPT's
+		// per-connector https://chatgpt.com/connector/oauth/<id>, the Gemini app's per-user callback.
+		"DCR_REDIRECT_URIS": "",
 		// The Drive folder Dustin shares with the service account (the id in its URL). Stage 6.
 		"GOOGLE_MANUSCRIPTS_FOLDER_ID": "",
 		// The Search Console property for dustinedwards.info, if it is not the domain property.

@@ -7,11 +7,13 @@
 // site. What gets certified is the code that ships. The door is certified separately, against
 // auth-entry.ts, which mounts the real door.
 
+import { SCOPE_READ } from "~/lib/mcp/scopes";
 import { handleMcp } from "~/lib/mcp/server";
 
 const SESSION = {
   viewer: { id: 1, email: "owner@conformance.invalid", name: "Conformance", isOwner: true, isReviewer: false },
   client: "conformance suite",
+  scopes: [SCOPE_READ],
 };
 
 export default {

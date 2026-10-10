@@ -65,7 +65,7 @@ async function seedPost(status: "draft" | "published" = "draft") {
 describe("the protocol", () => {
   it("lists the tools in the 2026-07-28 era, each carrying the rule", async () => {
     const tools = await (await connect("owner@test.invalid")).list();
-    expect(tools.map((t) => t.name)).toEqual(["list_projects", "search_items", "read_item", "save_draft", "preview", "get_checks", "add_finding", "publish", "list_book_files", "read_book_file", "check_book_text", "save_book_draft", "add_book_finding", "draft_social_post"]);
+    expect(tools.map((t) => t.name)).toEqual(["carrel_list_projects", "carrel_search_items", "carrel_read_item", "carrel_save_draft", "carrel_preview_item", "carrel_get_checks", "carrel_add_finding", "carrel_publish_item", "carrel_list_book_files", "carrel_read_book_file", "carrel_check_book_text", "carrel_save_book_draft", "carrel_add_book_finding", "carrel_draft_social_post"]);
     for (const tool of tools) expect(tool.description).toContain("AI never rewrites Dustin's prose unasked.");
   });
 
@@ -77,7 +77,7 @@ describe("the protocol", () => {
     expect(init.result).toMatchObject({ protocolVersion: LEGACY, serverInfo: { name: "carrel" }, capabilities: { tools: {} } });
     const legacy = await connectAs("reader@test.invalid", "Claude", { env, deps: { fetcher: site.fetch, carrelOrigin: CARREL }, era: "legacy" });
     expect((await legacy.list()).length).toBe(14);
-    expect((await legacy.call("list_projects")).structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "reader" }] });
+    expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "reader" }] });
   });
 
   it("answers an unknown protocol version at initialize with one it speaks", async () => {
@@ -107,15 +107,15 @@ describe("reading, drafting, flagging", () => {
   it("lists projects, searches and reads posts through the buttons' own functions", async () => {
     await seedPost();
     const ai = await connect("reader@test.invalid");
-    expect((await ai.call("list_projects")).structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "reader" }] });
-    const read = await ai.call("read_item", { project: SLUG, item: "post-one" });
+    expect((await ai.call("carrel_list_projects")).structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "reader" }] });
+    const read = await ai.call("carrel_read_item", { project: SLUG, item: "post-one" });
     expect(read.isError).toBeUndefined();
     expect(read.structuredContent).toMatchObject({ site: { id: "post-one", title: "Post one" }, dustinsDraft: null, aiDrafts: [], flags: [] });
   });
 
   it("PLANT: a stranger's session reads nothing", async () => {
     const ai = await connect("stranger@test.invalid");
-    const result = await ai.call("read_item", { project: SLUG, item: "post-one" });
+    const result = await ai.call("carrel_read_item", { project: SLUG, item: "post-one" });
     expect(result).toMatchObject({ isError: true, content: [{ text: "Not found, or not shared with this person." }] });
   });
 
@@ -126,24 +126,24 @@ describe("reading, drafting, flagging", () => {
     await autosave(testEnv.DB, project, owner, "post-one", { source: "Dustin's working draft.", baseVersion: version });
 
     const ai = await connect("owner@test.invalid");
-    const saved = await ai.call("save_draft", { project: SLUG, item: "post-one", source: "An AI rewrite.", note: "Tightened the opening." });
+    const saved = await ai.call("carrel_save_draft", { project: SLUG, item: "post-one", source: "An AI rewrite.", note: "Tightened the opening." });
     expect(saved.structuredContent).toMatchObject({ saved: true, basedOnVersion: version });
     expect((await readDraft(testEnv.DB, project, owner, "post-one"))?.source).toBe("Dustin's working draft.");
     expect((await site.adapter.content.get("post-one"))?.source).toBe("---\ntitle: Post one\n---\nDustin's words.\n");
     expect(site.requests.filter((r) => !r.startsWith("GET"))).toEqual([]);
-    const read = await ai.call("read_item", { project: SLUG, item: "post-one" });
+    const read = await ai.call("carrel_read_item", { project: SLUG, item: "post-one" });
     expect(read.structuredContent).toMatchObject({ aiDrafts: [{ client: "Claude", note: "Tightened the opening." }] });
   });
 
   it("PLANT: a Reader's session and a reviewer's cannot save a draft", async () => {
     await seedPost();
-    expect(await (await connect("reader@test.invalid")).call("save_draft", { project: SLUG, item: "post-one", source: "x" })).toMatchObject({
+    expect(await (await connect("reader@test.invalid")).call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x" })).toMatchObject({
       isError: true,
       content: [{ text: "You may not write drafts on this project." }],
     });
-    expect(await (await connect("reviewer@test.invalid")).call("save_draft", { project: SLUG, item: "post-one", source: "x" })).toMatchObject({
+    expect(await (await connect("reviewer@test.invalid")).call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x" })).toMatchObject({
       isError: true,
-      content: [{ text: "A reviewer flags; it does not write text. Use add_finding." }],
+      content: [{ text: "A reviewer flags; it does not write text. Use carrel_add_finding." }],
     });
   });
 
@@ -151,15 +151,15 @@ describe("reading, drafting, flagging", () => {
     await seedPost();
     const reviewer = await connect("reviewer@test.invalid", "Grok Build");
     const args = { project: SLUG, item: "post-one", message: "This number has no source.", excerpt: "Dustin's words." };
-    expect((await reviewer.call("add_finding", args)).structuredContent).toMatchObject({ flagged: true, alreadyFlagged: false });
-    expect((await reviewer.call("add_finding", args)).structuredContent).toMatchObject({ alreadyFlagged: true });
-    const checks = await (await connect("owner@test.invalid")).call("get_checks", { project: SLUG, item: "post-one" });
+    expect((await reviewer.call("carrel_add_finding", args)).structuredContent).toMatchObject({ flagged: true, alreadyFlagged: false });
+    expect((await reviewer.call("carrel_add_finding", args)).structuredContent).toMatchObject({ alreadyFlagged: true });
+    const checks = await (await connect("owner@test.invalid")).call("carrel_get_checks", { project: SLUG, item: "post-one" });
     expect(checks.structuredContent).toMatchObject({ open: 1, flags: [{ check: "review", message: "This number has no source. (from Grok Build)" }] });
   });
 
   it("previews through the site's own renderer", async () => {
     await seedPost();
-    const result = await (await connect("reader@test.invalid")).call("preview", { project: SLUG, item: "post-one", source: "---\ntitle: T\n---\nHello." });
+    const result = await (await connect("reader@test.invalid")).call("carrel_preview_item", { project: SLUG, item: "post-one", source: "---\ntitle: T\n---\nHello." });
     expect(result.isError).toBeUndefined();
     expect(String(result.structuredContent?.html)).toContain("Hello.");
   });
@@ -168,7 +168,7 @@ describe("reading, drafting, flagging", () => {
 describe("publish by instruction (decision 2)", () => {
   it("PLANT: a shared user's session publishing is refused, and the site and inbox hear nothing", async () => {
     const version = await seedPost();
-    const result = await (await connect("editor@test.invalid")).call("publish", { project: SLUG, item: "post-one", expected_version: version });
+    const result = await (await connect("editor@test.invalid")).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
     expect(result).toMatchObject({ isError: true, content: [{ text: "Only the Owner's own sessions may publish." }] });
     expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
     expect(site.requests.filter((r) => !r.startsWith("GET"))).toEqual([]);
@@ -177,15 +177,15 @@ describe("publish by instruction (decision 2)", () => {
 
   it("PLANT: a reviewer publishing is refused", async () => {
     const version = await seedPost();
-    const result = await (await connect("reviewer@test.invalid")).call("publish", { project: SLUG, item: "post-one", expected_version: version });
+    const result = await (await connect("reviewer@test.invalid")).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
     expect(result).toMatchObject({ isError: true, content: [{ text: "A reviewer never publishes." }] });
     expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
   });
 
   it("PLANT: the Owner's AI publish with an open flag is refused, naming the flag", async () => {
     const version = await seedPost();
-    await (await connect("reviewer@test.invalid", "Grok Build")).call("add_finding", { project: SLUG, item: "post-one", message: "Unsourced claim." });
-    const result = await (await connect("owner@test.invalid")).call("publish", { project: SLUG, item: "post-one", expected_version: version });
+    await (await connect("reviewer@test.invalid", "Grok Build")).call("carrel_add_finding", { project: SLUG, item: "post-one", message: "Unsourced claim." });
+    const result = await (await connect("owner@test.invalid")).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toBe(
       "Publish is refused while 1 flag is open on this post: Unsourced claim. (from Grok Build) Dustin fixes the text or dismisses each flag in Carrel first.",
@@ -196,7 +196,7 @@ describe("publish by instruction (decision 2)", () => {
 
   it("the Owner's AI publish with clean checks publishes, credits the client, and emails Dustin an unpublish link", async () => {
     const version = await seedPost();
-    const result = await (await connect("owner@test.invalid", "Claude")).call("publish", { project: SLUG, item: "post-one", expected_version: version });
+    const result = await (await connect("owner@test.invalid", "Claude")).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
     expect(result.structuredContent).toMatchObject({ published: true, dustinEmailed: true });
     expect((await site.adapter.content.get("post-one"))?.status).toBe("published");
 
@@ -215,14 +215,14 @@ describe("publish by instruction (decision 2)", () => {
   it("PLANT: publish sends no text, so an AI draft can never be what goes live", async () => {
     const version = await seedPost();
     const ai = await connect("owner@test.invalid");
-    await ai.call("save_draft", { project: SLUG, item: "post-one", source: "---\ntitle: Post one\n---\nAI words.\n" });
-    await ai.call("publish", { project: SLUG, item: "post-one", expected_version: version });
+    await ai.call("carrel_save_draft", { project: SLUG, item: "post-one", source: "---\ntitle: Post one\n---\nAI words.\n" });
+    await ai.call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
     expect((await site.adapter.content.get("post-one"))?.source).toBe("---\ntitle: Post one\n---\nDustin's words.\n");
   });
 
   it("PLANT: a stale expected version is refused by the site", async () => {
     await seedPost();
-    const result = await (await connect("owner@test.invalid")).call("publish", { project: SLUG, item: "post-one", expected_version: "stale" });
+    const result = await (await connect("owner@test.invalid")).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: "stale" });
     expect(result.isError).toBe(true);
     expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
   });
@@ -231,7 +231,7 @@ describe("publish by instruction (decision 2)", () => {
     const version = await seedPost();
     const failing = mailbox(true);
     const e = { ...env, EMAIL: failing.EMAIL };
-    const result = await (await connect("owner@test.invalid", "Claude", e)).call("publish", { project: SLUG, item: "post-one", expected_version: version });
+    const result = await (await connect("owner@test.invalid", "Claude", e)).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
     expect(result.structuredContent).toMatchObject({ published: true, dustinEmailed: false });
 
     const health = mailbox();

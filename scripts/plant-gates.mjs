@@ -31,7 +31,7 @@ const GATES = {
   conformance: [process.execPath, ["scripts/check-conformance.mjs"]],
 };
 
-const MCP_TESTS = ["test/mcp.test.ts", "test/mcp-followups.test.ts", "test/door.test.ts", "test/agent-keys.test.ts"];
+const MCP_TESTS = ["test/mcp.test.ts", "test/mcp-followups.test.ts", "test/door.test.ts", "test/agent-keys.test.ts", "test/mcp-ruling.test.ts", "test/mcp-ownership.test.ts"];
 
 /** Each plant: the gate that must catch it, the file, the exact text replaced, and what replaces it. */
 const PLANTS = [
@@ -48,7 +48,7 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
-    find: 'if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use add_finding.");',
+    find: 'if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");',
     replace: "",
     label: "a reviewer may write a draft",
   },
@@ -59,10 +59,31 @@ const PLANTS = [
   { gate: "tests", file: "app/lib/agent-keys.server.ts", find: 'if (typeof native === "function") return native.call(crypto.subtle, a, b);', replace: 'if (typeof native === "function") return true;', label: "any presented key matches a configured agent key" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (agent) return agentHandler(request, env, ctx, agent);", replace: 'if (agent || request.headers.get("Authorization")) return agentHandler(request, env, ctx, agent ?? "grok");', label: "an unknown key or an OAuth token is treated as the grok agent" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (agent) return agentHandler(request, env, ctx, agent);", replace: 'if (agent) return agentHandler(request, env, ctx, request.headers.get("X-Agent-Name") ?? agent);', label: "the agent's name taken from the request" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "{ viewer, client: agentClient(name) }", replace: "{ viewer: { ...viewer, isOwner: true }, client: agentClient(name) }", label: "an agent key acts as the Owner" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "{ viewer, client: agentClient(name), scopes: AGENT_SCOPES }", replace: "{ viewer: { ...viewer, isOwner: true }, client: agentClient(name), scopes: AGENT_SCOPES }", label: "an agent key acts as the Owner" },
   { gate: "tests", file: "app/lib/people.server.ts", find: "return viewer && !viewer.isOwner ? viewer : null;", replace: "return viewer;", label: "a person row marked Owner may be an agent" },
   { gate: "tests", file: "app/lib/agent-keys.server.ts", find: "/^Bearer[ ]+(\\S+)$/i.exec(authorization.trim())", replace: "/^\\s*(?:Bearer\\s+)?(\\S+)/i.exec(authorization.trim())", label: "a bare key with no Bearer scheme is read as an agent key" },
   { gate: "tests", file: "app/lib/people.server.ts", find: "and(eq(people.email, email.trim()), isNull(people.disabledAt))", replace: "eq(people.email, email.trim())", label: "a disabled person (or agent) is still found" },
+  // The MCP ruling of 2026-10-10 (job_66496e677746): the security floor (rule 12), the tightened
+  // registration (rule 13), honest hints and a cursor.
+  { gate: "tests", file: "app/lib/projects.server.ts", find: "  const role = await requireAction(db, viewer, row.id, action);", replace: '  const role = "owner" as const;', label: "a site project reachable by anyone who names it" },
+  { gate: "tests", file: "app/lib/books.server.ts", find: "  const role = await requireAction(db, viewer, row.id, action);", replace: '  const role = "owner" as const;', label: "a book reachable by anyone who names it" },
+  { gate: "tests", file: "app/lib/ai.server.ts", find: "if (session.viewer.isReviewer || !session.viewer.isOwner) throw new AiRefusal(\"Social posts", replace: "if (session.viewer.isReviewer) throw new AiRefusal(\"Social posts", label: "a social event reachable by any session" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (auth?.audience !== `${mcpOrigin(env)}${MCP_ROUTE}`) {", replace: "if (auth === null) {", label: "a token for another audience let through" },
+  { gate: "tests", file: "app/lib/mcp/tools.ts", find: "if (!tool.annotations.readOnlyHint && !ctx.session.scopes.includes(SCOPE_WRITE)) {", replace: "if (false) {", label: "a read-only grant may write" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: '{ readOnly: decision === "read-only" }', replace: "{}", label: "the consent page's reading-only choice ignored" },
+  { gate: "tests", file: "app/lib/mcp/tools.ts", find: "  await logCall(ctx.env.DB, ctx.session,", replace: "  void (ctx.env.DB, ctx.session,", label: "a tool call left out of the call log" },
+  {
+    gate: "tests",
+    file: "drizzle/0012_mcp_calls.sql",
+    find: "CREATE TRIGGER mcp_calls_no_delete BEFORE DELETE ON mcp_calls\nBEGIN\n  SELECT RAISE(ABORT, 'mcp_calls is append-only');\nEND;\n",
+    replace: "",
+    label: "the call log may be deleted from",
+  },
+  { gate: "tests", file: "app/lib/mcp/tools.ts", find: "const body = tool.outside ? { notice: OUTSIDE_NOTICE, ...value } : value;", replace: "const body = value;", label: "outside text returned without the data notice" },
+  { gate: "tests", file: "app/lib/mcp/tools.ts", find: "annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },", replace: "annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },", label: "publish no longer marked destructive" },
+  { gate: "tests", file: "app/lib/index.server.ts", find: "hasMore: rows.length > page.limit", replace: "hasMore: false", label: "search pages never say there is more" },
+  { gate: "tests", file: "app/lib/mcp/registration.ts", find: "if (typeof uri !== \"string\" || !allowed.has(uri))", replace: "if (typeof uri !== \"string\")", label: "registration takes any callback" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "    if (limited) return limited;\n", replace: "", label: "registration not rate limited" },
   { gate: "roles", file: "app/lib/mcp/tools.ts", find: "    run: async (args, ctx) => {\n      // Refused on the role", replace: "    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal(\"planted\");\n      // Refused on the role", label: "an Owner check in a tool" },
   {
     gate: "conformance",
@@ -71,7 +92,7 @@ const PLANTS = [
     replace: 'return createMcpHandler(factory, { ...options, legacy: "reject" })(request, env, ctx);',
     label: "the legacy shim routed to the modern-only handler",
   },
-  { gate: "conformance", file: "app/lib/mcp/door.ts", find: "      clientIdMetadataDocumentEnabled: true,\n", replace: '      clientIdMetadataDocumentEnabled: true,\n      clientRegistrationEndpoint: "/register",\n', label: "a registration endpoint on the CIMD-only door" },
+  { gate: "conformance", file: "app/lib/mcp/registration.ts", find: "if (typeof uri !== \"string\" || !allowed.has(uri))", replace: "if (typeof uri !== \"string\")", label: "the door registers a callback off the allowlist" },
 ];
 
 /**
