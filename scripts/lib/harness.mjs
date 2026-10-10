@@ -24,6 +24,43 @@ const REFRESH = "how-the-index-refreshes";
 const BOOK = "paluxy-portal";
 
 /**
+ * Puts back a post a screen typed into: waits out the autosave, then discards the draft, so the next
+ * size or theme opens the same text and not the draft the last one left.
+ */
+async function discardDraft(/** @type {import("playwright").Page} */ page) {
+  await page.waitForTimeout(1800);
+  await page.evaluate(async () => {
+    // In the page: its own globals, which this file's Node types do not describe.
+    const w = /** @type {any} */ (globalThis);
+    const body = new FormData();
+    body.set("intent", "discard");
+    await fetch(w.location.pathname, { method: "POST", body });
+  });
+}
+
+/**
+ * Puts the caret at the end of the formatted editor's last paragraph. Through the browser's selection,
+ * which ProseMirror follows: on a phone the fixed tab bar can sit over the end of the text, and a
+ * click there does not always reach it.
+ */
+async function endOfText(/** @type {import("playwright").Page} */ page) {
+  await page.evaluate(() => {
+    // In the page: its own globals, which this file's Node types do not describe.
+    const w = /** @type {any} */ (globalThis);
+    const surface = w.document.querySelector(".app-rich-surface");
+    const last = [...surface.querySelectorAll(":scope > p")].at(-1) ?? surface;
+    surface.focus();
+    const range = w.document.createRange();
+    range.selectNodeContents(last);
+    range.collapse(false);
+    const selection = w.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  });
+  await page.waitForTimeout(100);
+}
+
+/**
  * Every screen, as who sees it. `after` runs once the page is up (open a dialog, type), and `wait` is a
  * selector that must exist before the page counts as ready.
  */
@@ -43,7 +80,7 @@ export const SCREENS = [
   { name: "flags-reader", viewer: "reader", path: `/p/${SITE}/flags` },
   { name: "legal", viewer: "owner", path: `/p/${SITE}/legal` },
   { name: "legal-editor", viewer: "editor", path: `/p/${SITE}/legal` },
-  { name: "legal-page", viewer: "owner", path: `/p/${SITE}/e/page.privacy`, wait: ".cm-editor" },
+  { name: "legal-page", viewer: "owner", path: `/p/${SITE}/e/page.privacy`, wait: ".app-rich-surface" },
   { name: "media", viewer: "owner", path: `/p/${SITE}/media` },
   { name: "media-detail", viewer: "owner", path: `/p/${SITE}/media`, open: "media" },
   { name: "media-editor", viewer: "editor", path: `/p/${SITE}/media` },
@@ -104,18 +141,18 @@ export const SCREENS = [
     },
   },
   { name: "book-history-ai", viewer: "owner", path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md?compare=ai&ai=3` },
-  { name: "book-scene", viewer: "owner", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".cm-editor" },
-  { name: "book-scene-flagged", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".cm-editor" },
-  { name: "book-bible", viewer: "owner", path: `/b/${BOOK}/f/bible/characters/nell.md`, wait: ".cm-editor" },
-  { name: "book-scene-editor", viewer: "editor", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".cm-editor" },
-  { name: "post-live", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor" },
-  { name: "post-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor" },
-  { name: "post-working-copy", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".cm-editor" },
-  { name: "post-scheduled", viewer: "owner", path: `/p/${SITE}/e/bacterial-genetics-primer`, wait: ".cm-editor" },
-  { name: "post-editor-live", viewer: "editor", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor" },
-  { name: "post-reader", viewer: "reader", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor" },
+  { name: "book-scene", viewer: "owner", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".app-rich-surface" },
+  { name: "book-scene-flagged", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".app-rich-surface" },
+  { name: "book-bible", viewer: "owner", path: `/b/${BOOK}/f/bible/characters/nell.md`, wait: ".app-rich-surface" },
+  { name: "book-scene-editor", viewer: "editor", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".app-rich-surface" },
+  { name: "post-live", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface" },
+  { name: "post-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface" },
+  { name: "post-working-copy", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface" },
+  { name: "post-scheduled", viewer: "owner", path: `/p/${SITE}/e/bacterial-genetics-primer`, wait: ".app-rich-surface" },
+  { name: "post-editor-live", viewer: "editor", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface" },
+  { name: "post-reader", viewer: "reader", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface" },
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
-  { name: "post-history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}`, wait: ".cm-editor" },
+  { name: "post-history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}`, wait: ".app-rich-surface" },
   { name: "history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history` },
   { name: "history-reader", viewer: "reader", path: `/p/${SITE}/e/${REFRESH}/history` },
   { name: "history-source", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history`, after: openOldestSource },
@@ -187,17 +224,17 @@ export const SCREENS = [
   },
   { name: "media-empty-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash`, after: (page) => press(page, "button", /^Empty the trash/, "alertdialog") },
   { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media`, open: "media", after: (page) => press(page, "button", /^Delete/, "alertdialog") },
-  { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".cm-editor", after: (page) => press(page, "button", /^Discard my draft/, "alertdialog") },
-  { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor", after: (page) => press(page, "button", /^Schedule/, "dialog") },
-  { name: "post-first-publish", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".cm-editor", after: (page) => press(page, "button", /^Publish$/, "alertdialog") },
-  { name: "post-library", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor", after: (page) => press(page, "button", /^Insert from library/, "dialog") },
+  { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Discard my draft/, "alertdialog") },
+  { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Schedule/, "dialog") },
+  { name: "post-first-publish", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Publish$/, "alertdialog") },
+  { name: "post-library", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Insert from library/, "dialog") },
   {
     name: "post-link-palette",
     viewer: "owner",
     path: `/p/${SITE}/e/foxhound-waits`,
-    wait: ".cm-editor",
+    wait: ".app-rich-surface",
     after: async (page) => {
-      await page.locator(".cm-content").click();
+      await page.locator(".app-rich-surface").click();
       await page.keyboard.press("Control+K");
       await page.getByRole("combobox").first().waitFor();
     },
@@ -206,20 +243,26 @@ export const SCREENS = [
     name: "post-slash-menu",
     viewer: "owner",
     path: `/p/${SITE}/e/what-a-carrel-is-for`,
-    wait: ".cm-editor",
+    wait: ".app-rich-surface",
     after: async (page) => {
-      await page.locator(".cm-content").click();
-      await page.keyboard.press("Control+End");
+      await endOfText(page);
       await page.keyboard.type("\n\n/");
       await page.getByText("Figure", { exact: false }).first().waitFor();
       // Typing steps the chrome back by design; a mouse move brings it back, and that is the screen scanned.
       await page.mouse.move(180, 300);
       await page.waitForTimeout(400);
     },
+    restore: discardDraft,
   },
-  { name: "post-split", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".cm-editor", after: (page) => page.getByRole("radio", { name: "Split" }).check({ force: true }).then(() => page.waitForTimeout(800)) },
+  { name: "post-markdown-mode", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface", after: (page) => page.getByRole("radio", { name: "Markdown" }).check({ force: true }).then(() => page.locator(".cm-editor").waitFor()), restore: (page) => page.evaluate(() => localStorage.removeItem("carrel:editor-mode")) },
+  { name: "post-source-block", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: async (page) => {
+      await endOfText(page);
+      await page.getByRole("button", { name: "Figure", exact: true }).click();
+      await page.locator(".app-src-text").last().waitFor();
+    }, restore: discardDraft },
+  { name: "post-split", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface", after: (page) => page.getByRole("radio", { name: "Split" }).check({ force: true }).then(() => page.waitForTimeout(800)) },
   { name: "social-reject", viewer: "owner", path: "/social", after: (page) => press(page, "button", /^Reject/, "alertdialog") },
-  { name: "book-dismiss", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".cm-editor", after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
+  { name: "book-dismiss", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
   {
     name: "people-disable",
     viewer: "owner",

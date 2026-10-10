@@ -376,7 +376,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
             onPasteCapture={(event) => countUntyped(event.clipboardData?.getData("text/plain"))}
             onDropCapture={(event) => countUntyped(event.dataTransfer?.getData("text/plain"))}
           >
-            <WritingSurface label={data.kind === "scene" ? "Scene" : "File"} value={source} onChange={setSource} readOnly={readOnly} linkTargets={[]} />
+            <WritingSurface label={data.kind === "scene" ? "Scene" : "File"} value={source} onChange={setSource} readOnly={readOnly} linkTargets={[]} dialect="plain" />
           </section>
         </div>
 

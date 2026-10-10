@@ -17,3 +17,6 @@ worker-configuration.d.ts
 
 # The real Worker config carries the live D1 id; the example is committed.
 /wrangler.jsonc
+
+# The site content CI checks out for check:roundtrip; never committed.
+.roundtrip/

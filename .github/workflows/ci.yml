@@ -30,6 +30,18 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # The formatted editor keeps the Markdown underneath byte for byte (job_1ba8094853f5). The
+      # site's own content is checked out read-only at test time, never committed here (this repo
+      # holds no writing), and every file must come back from the editor unchanged.
+      - name: Check out dustinedwards.info's content (public, read-only)
+        uses: actions/checkout@v4
+        with:
+          repository: DrDustinEdwards/dustinedwards-info
+          path: .roundtrip/dustinedwards-info
+          sparse-checkout: content
+          persist-credentials: false
+      - run: npm run check:roundtrip -- .roundtrip/dustinedwards-info/content
+      - run: npm run check:roundtrip -- test/fixtures/markdown --plain
       - run: npm run check:postinstall
       - run: npm run check:mcp-roles
       - name: Install Chromium for the accessibility scan
