@@ -11,7 +11,7 @@ describe("resetDb", () => {
     await addProject("site");
     await resetDb();
     const { results } = await testEnv.DB.prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'site_items_fts_%' AND name != 'd1_migrations'",
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'site_items_fts_%' AND name NOT IN ('d1_migrations', 'mcp_calls')",
     ).all<{ name: string }>();
     for (const { name } of results) expect(await count(name), name).toBe(0);
   });

@@ -5,9 +5,10 @@ import type { D1Migration } from "cloudflare:test";
 export const testEnv = env as unknown as Env & { TEST_D1_MIGRATIONS: D1Migration[] };
 
 /** Clears every table, so each test states the people and projects it relies on. The tables are read from the
- * schema by devkit, so one a migration adds is cleared without being listed here. */
+ * schema by devkit, so one a migration adds is cleared without being listed here. mcp_calls is kept: it is
+ * append-only by a trigger that refuses DELETE (drizzle/0012_mcp_calls.sql), which a test asserts. */
 export async function resetDb(): Promise<void> {
-  await resetTables(testEnv.DB);
+  await resetTables(testEnv.DB, { keep: ["mcp_calls"] });
 }
 
 export async function addPerson(email: string, opts: { owner?: boolean; disabled?: boolean; reviewer?: boolean } = {}): Promise<number> {
