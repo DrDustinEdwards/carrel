@@ -53,22 +53,22 @@ async function connect(email: string, client = "Claude") {
 describe("books through MCP", () => {
   it("lists a book's files with each scene's header, and reads a file with its version", async () => {
     const call = await connect("reader@test.invalid");
-    const list = await call("list_book_files", { project: SLUG });
+    const list = await call("carrel_list_book_files", { project: SLUG });
     expect(list.structuredContent).toMatchObject({ files: expect.arrayContaining([{ path: SCENE, kind: "scene", words: 4, header: expect.objectContaining({ pov: "Wade" }), openFlags: 0 }]) });
-    const read = await call("read_book_file", { project: SLUG, path: SCENE });
+    const read = await call("carrel_read_book_file", { project: SLUG, path: SCENE });
     expect(read.structuredContent).toMatchObject({ path: SCENE, source: `${HEADER}Wade opened the gate.\n`, version: gh.files.get(`${SLUG}/${SCENE}`)!.sha });
   });
 
   it("PLANT: a stranger's session, and a site's slug, reach no book", async () => {
     await addPerson("stranger@test.invalid");
-    expect(await (await connect("stranger@test.invalid"))("list_book_files", { project: SLUG })).toMatchObject({ isError: true });
+    expect(await (await connect("stranger@test.invalid"))("carrel_list_book_files", { project: SLUG })).toMatchObject({ isError: true });
     await addProject("a-site", "dustinedwards");
-    expect(await (await connect("owner@test.invalid"))("list_book_files", { project: "a-site" })).toMatchObject({ isError: true });
+    expect(await (await connect("owner@test.invalid"))("carrel_list_book_files", { project: "a-site" })).toMatchObject({ isError: true });
   });
 
   it("runs the checks on text without saving or recording anything", async () => {
     const call = await connect("reader@test.invalid");
-    const result = await call("check_book_text", { project: SLUG, path: SCENE, source: `${HEADER}A tapestry.\n` });
+    const result = await call("carrel_check_book_text", { project: SLUG, path: SCENE, source: `${HEADER}A tapestry.\n` });
     expect(result.structuredContent).toMatchObject({ findings: [{ check: "ai-habits", excerpt: "tapestry" }] });
     const owner = await viewerFor("owner@test.invalid");
     expect(await listFindings(testEnv.DB, await requireBookProject(testEnv.DB, owner, SLUG, "read"))).toEqual([]);
@@ -79,23 +79,23 @@ describe("books through MCP", () => {
     const project = await requireBookProject(testEnv.DB, owner, SLUG, "read");
     await autosave(testEnv.DB, project, owner, SCENE, { source: "Dustin's own draft.", baseVersion: null });
 
-    const saved = await (await connect("owner@test.invalid"))("save_book_draft", { project: SLUG, path: SCENE, source: `${HEADER}An AI version.\n`, note: "Tighter." });
+    const saved = await (await connect("owner@test.invalid"))("carrel_save_book_draft", { project: SLUG, path: SCENE, source: `${HEADER}An AI version.\n`, note: "Tighter." });
     expect(saved.structuredContent).toMatchObject({ saved: true, basedOnVersion: gh.files.get(`${SLUG}/${SCENE}`)!.sha });
     expect(await readDraftOnly(project, owner, SCENE)).toBe("Dustin's own draft.");
     expect(gh.commits).toEqual([]);
   });
 
   it("PLANT: a reviewer's and a Reader's sessions cannot save a book draft", async () => {
-    expect(await (await connect("reviewer@test.invalid"))("save_book_draft", { project: SLUG, path: SCENE, source: "x" })).toMatchObject({
+    expect(await (await connect("reviewer@test.invalid"))("carrel_save_book_draft", { project: SLUG, path: SCENE, source: "x" })).toMatchObject({
       isError: true,
-      content: [{ text: "A reviewer flags; it does not write text. Use add_book_finding." }],
+      content: [{ text: "A reviewer flags; it does not write text. Use carrel_add_book_finding." }],
     });
-    expect(await (await connect("reader@test.invalid"))("save_book_draft", { project: SLUG, path: SCENE, source: "x" })).toMatchObject({ isError: true });
+    expect(await (await connect("reader@test.invalid"))("carrel_save_book_draft", { project: SLUG, path: SCENE, source: "x" })).toMatchObject({ isError: true });
   });
 
   it("PLANT: a reviewer's flag on a book file survives the recheck a save runs, and holds export", async () => {
     const reviewer = await connect("reviewer@test.invalid", "Grok Build");
-    const flagged = await reviewer("add_book_finding", { project: SLUG, path: SCENE, message: "Wade could not see the gate from the road.", excerpt: "opened the gate" });
+    const flagged = await reviewer("carrel_add_book_finding", { project: SLUG, path: SCENE, message: "Wade could not see the gate from the road.", excerpt: "opened the gate" });
     expect(flagged.structuredContent).toMatchObject({ flagged: true, alreadyFlagged: false });
 
     const owner = await viewerFor("owner@test.invalid");
@@ -108,13 +108,13 @@ describe("books through MCP", () => {
   });
 
   it("PLANT: a flag on a path outside the layout is refused", async () => {
-    expect(await (await connect("reviewer@test.invalid"))("add_book_finding", { project: SLUG, path: "../x.md", message: "m" })).toMatchObject({ isError: true });
+    expect(await (await connect("reviewer@test.invalid"))("carrel_add_book_finding", { project: SLUG, path: "../x.md", message: "m" })).toMatchObject({ isError: true });
   });
 });
 
 describe("AI drafts in the book editor", () => {
   it("shows them beside the text, and Use as my draft makes one the working copy", async () => {
-    await (await connect("owner@test.invalid"))("save_book_draft", { project: SLUG, path: SCENE, source: `${HEADER}An AI version.\n` });
+    await (await connect("owner@test.invalid"))("carrel_save_book_draft", { project: SLUG, path: SCENE, source: `${HEADER}An AI version.\n` });
     vi.stubGlobal("fetch", gh.fetch);
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env: testEnv, ctx: {} as ExecutionContext });
@@ -150,7 +150,7 @@ describe("export refuses a book with import markers", () => {
   });
 });
 
-describe("draft_social_post", () => {
+describe("carrel_draft_social_post", () => {
   async function socialAccount() {
     const projectId = await addProject("germomics", "dustinedwards");
     const owner = await viewerFor("owner@test.invalid");
@@ -163,21 +163,21 @@ describe("draft_social_post", () => {
 
   it("stores the Owner's session's draft by event id, credited to the client", async () => {
     const eventId = await socialAccount();
-    const result = await (await connect("owner@test.invalid", "Claude Code"))("draft_social_post", { event_id: eventId, text: "Episode 1 is out: https://site.test/ep-1" });
+    const result = await (await connect("owner@test.invalid", "Claude Code"))("carrel_draft_social_post", { event_id: eventId, text: "Episode 1 is out: https://site.test/ep-1" });
     expect(result.structuredContent).toMatchObject({ stored: true });
     expect(await testEnv.DB.prepare("SELECT source, status, created_by FROM social_posts").first()).toEqual({ source: "predrafted", status: "drafted", created_by: "Claude Code" });
   });
 
   it("stores by account, project and item too", async () => {
     await socialAccount();
-    const result = await (await connect("owner@test.invalid"))("draft_social_post", { account: "germomics-bluesky", project: "germomics", item: "ep-2", text: "Episode 2." });
+    const result = await (await connect("owner@test.invalid"))("carrel_draft_social_post", { account: "germomics-bluesky", project: "germomics", item: "ep-2", text: "Episode 2." });
     expect(result.structuredContent).toMatchObject({ stored: true });
   });
 
   it("PLANT: an Editor's or a reviewer's session cannot draft social posts", async () => {
     const eventId = await socialAccount();
     for (const email of ["editor@test.invalid", "reviewer@test.invalid"]) {
-      expect(await (await connect(email))("draft_social_post", { event_id: eventId, text: "x" })).toMatchObject({
+      expect(await (await connect(email))("carrel_draft_social_post", { event_id: eventId, text: "x" })).toMatchObject({
         isError: true,
         content: [{ text: "Social posts are Dustin's: only his own sessions may draft them." }],
       });

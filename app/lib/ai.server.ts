@@ -148,7 +148,7 @@ export async function saveAiDraft(
   input: { source: string; note?: string },
   fetcher?: typeof fetch,
 ): Promise<{ id: number; baseVersion: string | null }> {
-  if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use add_finding.");
+  if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");
   if (!can(project.role, "edit")) throw new AiRefusal("You may not write drafts on this project.");
   if (!input.source.trim()) throw new AiRefusal("The draft is empty.");
   let baseVersion: string | null = null;

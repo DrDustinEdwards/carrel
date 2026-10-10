@@ -204,17 +204,30 @@ function writingKinds(projectId: number): SQL {
 }
 
 export async function searchItems(db: D1Database, projectId: number, filters: Filters): Promise<IndexedItem[]> {
+  return (await searchItemsPage(db, projectId, filters, { offset: 0, limit: 500 })).items;
+}
+
+/**
+ * One page of searchItems, in the same order: `limit` items from `offset`, and whether more follow.
+ * One row past the page is read to answer that, never a count.
+ */
+export async function searchItemsPage(
+  db: D1Database,
+  projectId: number,
+  filters: Filters,
+  page: { offset: number; limit: number },
+): Promise<{ items: IndexedItem[]; hasMore: boolean }> {
   const conditions: SQL[] = [eq(siteItems.projectId, projectId), writingKinds(projectId)];
   if (filters.status) conditions.push(eq(siteItems.status, filters.status));
   if (filters.kind) conditions.push(eq(siteItems.kind, filters.kind));
   const match = filters.q ? ftsQuery(filters.q) : null;
-  if (filters.q && !match) return [];
+  if (filters.q && !match) return { items: [], hasMore: false };
   if (match) {
     conditions.push(
       sql`${siteItems.itemId} IN (SELECT item_id FROM site_items_fts WHERE site_items_fts MATCH ${match} AND project_id = ${projectId})`,
     );
   }
-  return drizzle(db)
+  const rows = await drizzle(db)
     .select({
       itemId: siteItems.itemId,
       kind: siteItems.kind,
@@ -228,8 +241,10 @@ export async function searchItems(db: D1Database, projectId: number, filters: Fi
     .from(siteItems)
     .where(and(...conditions))
     .orderBy(desc(siteItems.updatedAt), asc(siteItems.itemId))
-    .limit(500)
+    .limit(page.limit + 1)
+    .offset(page.offset)
     .all();
+  return { items: rows.slice(0, page.limit), hasMore: rows.length > page.limit };
 }
 
 export async function kindsIn(db: D1Database, projectId: number): Promise<string[]> {
