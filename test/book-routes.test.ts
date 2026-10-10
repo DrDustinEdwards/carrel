@@ -147,7 +147,7 @@ describe("the file editor", () => {
   it("starts a new file from its template, named from the link", async () => {
     const scene = (await openFile("editor@test.invalid", "chapters/02-a/01-b.md")) as Awaited<ReturnType<typeof fileLoader>>;
     expect(scene.fresh).toBe(true);
-    expect(scene.source).toMatch(/^---\npov:\ndate:\nlocation:\ncharacters: \[\]\ngoal:\nconflict:\noutcome:\n---/);
+    expect(scene.source).toMatch(/^---\nstatus:\nsummary:\ntarget:\npov:\ndate:\nlocation:\ncharacters: \[\]\ngoal:\nconflict:\noutcome:\n---/);
     const person = (await openFile("editor@test.invalid", "bible/characters/june-harlan.md", env, "?name=June%20Harlan")) as Awaited<ReturnType<typeof fileLoader>>;
     expect(person.source).toContain("name: June Harlan");
   });

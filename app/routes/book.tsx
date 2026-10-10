@@ -15,11 +15,14 @@ import { StatTile, StatTiles } from "capsomer/react/stat-tile";
 import { Status } from "capsomer/react/status";
 
 import { PageHead } from "~/components/page-head";
+import { ProgressPanel } from "~/components/writing/progress-panel";
+import { StatusLabelPill } from "~/components/writing/status-label";
 
 import { bookRepo, draftPaths, exportGate, listFiles, listFindings, refreshBook, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { chapterOf, nextNumbered, readingOrder, slugify, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
+import { progressEntries, readGoal, saveGoal, statusList } from "~/lib/writing.server";
 
 import type { Route } from "./+types/book";
 
@@ -33,15 +36,18 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireBookProject(env.DB, viewer, params.project, "read");
-  const [files, open, drafts] = await Promise.all([
+  const [files, open, drafts, status, goal, entries] = await Promise.all([
     listFiles(env.DB, project),
     listFindings(env.DB, project, { status: "open" }),
     draftPaths(env.DB, project, viewer),
+    statusList(env.DB, project),
+    readGoal(env.DB, project, viewer),
+    progressEntries(env.DB, project, viewer),
   ]);
   const flags = new Map<string, number>();
   for (const f of open) flags.set(f.path, (flags.get(f.path) ?? 0) + 1);
 
-  const chapters: { slug: string; title: string; words: number; flags: number; scenes: { path: string; name: string; pov: string; date: string; location: string; words: number; flags: number }[] }[] = [];
+  const chapters: { slug: string; title: string; words: number; flags: number; scenes: { path: string; name: string; status: string; pov: string; date: string; location: string; words: number; flags: number }[] }[] = [];
   for (const file of readingOrder(files)) {
     const slug = chapterOf(file.path)!;
     let chapter = chapters.at(-1);
@@ -56,6 +62,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     chapter.scenes.push({
       path: file.path,
       name: titleFromSegment(file.path.split("/")[2]!.replace(/\.md$/, "")),
+      // An index row from before the status key reads as no status until its next save or refresh.
+      status: header?.status ?? "",
       pov: header?.pov ?? "",
       date: header?.date ?? "",
       location: header?.location ?? "",
@@ -71,6 +79,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   );
   const others = files.filter((f) => f.kind === "outline" || f.kind === "note" || f.kind === "book").map((f) => ({ path: f.path, kind: f.kind }));
   const known = new Set(files.map((f) => f.path));
+  const bookMeta = files.find((f) => f.path === "book.md")?.meta;
+  const bookEntry = bookMeta?.kind === "book" ? bookMeta.entry : null;
   const connection = bookRepo(env);
   const canPublish = can(project.role, "publish");
 
@@ -89,6 +99,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     exportReady: canPublish ? (await exportGate(env.DB, project)).ok : false,
     // Drafts of files Git does not have yet, so a started scene is not lost from view.
     unsaved: drafts.filter((p) => !known.has(p)),
+    labels: status.labels,
+    progress: { entries, goal, projectTarget: bookEntry?.target ?? null, deadline: bookEntry?.deadline ?? "" },
   };
 }
 
@@ -97,6 +109,16 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "read");
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
+
+  if (intent === "goal") {
+    const saved = await saveGoal(env.DB, project, getViewer(context), {
+      mode: String(form.get("mode") ?? ""),
+      dailyTarget: String(form.get("dailyTarget") ?? ""),
+      writingDays: form.getAll("writingDays").map(String),
+      allowNegative: form.get("allowNegative") === "1",
+    });
+    return { refreshed: null, error: null, goal: saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error } };
+  }
 
   if (intent === "refresh") {
     const { repo, detail } = bookRepo(env);
@@ -129,7 +151,8 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 }
 
 export default function Book({ loaderData, actionData }: Route.ComponentProps) {
-  const { project, canEdit, canPublish, connected, connectionDetail, chapters, bible, others, words, open, exportReady, unsaved, hasBookFile } = loaderData;
+  const { project, canEdit, canPublish, connected, connectionDetail, chapters, bible, others, words, open, exportReady, unsaved, hasBookFile, labels, progress } = loaderData;
+  const goalResult = actionData && "goal" in actionData ? actionData.goal : null;
   const navigation = useNavigation();
   const refreshing = navigation.state !== "idle" && navigation.formData?.get("intent") === "refresh";
   const base = `/b/${project.slug}`;
@@ -154,6 +177,9 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                 </Button>
               </Form>
             ) : null}
+            <Link to={`${base}/outliner`} className="cap-btn">
+              Outliner
+            </Link>
             <Link to={`${base}/authorship`} className="cap-btn" reloadDocument>
               Authorship record
             </Link>
@@ -193,7 +219,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         </Banner>
       ) : null}
 
-      {actionData?.error ? (
+      {actionData?.error && !goalResult ? (
         <Alert tone="crit">{actionData.error}</Alert>
       ) : actionData?.refreshed ? (
         <Banner tone="ok">
@@ -252,7 +278,10 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                     <thead>
                       <tr>
                         <th scope="col">Scene</th>
-                        <th scope="col">Point of view</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" data-drop="1">
+                          Point of view
+                        </th>
                         <th scope="col" data-drop="1">
                           Date
                         </th>
@@ -273,7 +302,10 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                             </Link>
                             {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
                           </th>
-                          <td>{s.pov}</td>
+                          <td>
+                            <StatusLabelPill labels={labels} status={s.status} />
+                          </td>
+                          <td data-drop="1">{s.pov}</td>
                           <td data-drop="1">{s.date}</td>
                           <td data-drop="2">{s.location}</td>
                           <td data-num>{s.words.toLocaleString()}</td>
@@ -288,6 +320,14 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         </Panel>
 
         <div className="app-stack">
+          <ProgressPanel
+            {...progress}
+            wordsNow={words}
+            canEdit={canEdit}
+            titlePage={file("book.md")}
+            error={goalResult?.error ?? null}
+            saved={goalResult?.saved ?? false}
+          />
           <Panel
             title="Bible"
             count={bible.length}
