@@ -18,7 +18,7 @@ import { createAccount, draftSocialPost, recordPublication, setSwitches } from "
 import { BASELINE } from "../fixtures/voice";
 import { CODE, fakeGoogle, serviceAccountKey } from "../google";
 import { fakeNovels, githubStyleKey } from "../novels";
-import { fakeSite, SITE_KEY, SITE_ORIGIN } from "../site";
+import { fakeSite, kindedAdapter, SITE_KEY, SITE_ORIGIN } from "../site";
 
 export const HARNESS_OWNER = "dustin@harness.invalid";
 export const HARNESS_EDITOR = "rosa@harness.invalid";
@@ -79,7 +79,7 @@ async function build(base: Env): Promise<World> {
   const db = base.DB;
   await migrate(db);
 
-  const [site, gh, saKey, appKey] = [fakeSite(), fakeNovels(), await serviceAccountKey(), await githubStyleKey()];
+  const [site, gh, saKey, appKey] = [fakeSite(kindedAdapter()), fakeNovels(), await serviceAccountKey(), await githubStyleKey()];
   const google = fakeGoogle({
     publicJwk: saKey.publicJwk,
     files: [
@@ -192,6 +192,19 @@ async function build(base: Env): Promise<World> {
   for (const p of posts) {
     const saved = await site.adapter.content.saveDraft(p.slug, { source: p.source, expectedVersion: null, changeId: `seed-${p.slug}` });
     if (p.publish) await writeToSite(env, sitePr, owner, p.slug, { action: "publish", expectedVersion: saved.version }, site.fetch);
+  }
+  // One item of each other kind the real site reports, published, so the walk covers every kind.
+  for (const [id, source] of [
+    ["publication.10-1128-mra-00123-23", '---\ntitle: "Genome sequence of Gordonia phage Acorn15"\njournal: Microbiology Resource Announcements\nyear: 2023\n---\n'],
+    ["document.llms", "# dustinedwards.info\n\n> Writing, research and software by Dustin Edwards.\n"],
+    ["cv.appointments", "---\ntitle: Appointments\n---\n\n- Associate Professor of Biology\n"],
+    ["dictionary.capsid", "---\ntitle: capsid\n---\nThe protein shell of a virus.\n"],
+    ["roster.2017", "---\ntitle: 2017 cohort\nyear: 2017\nresearchers: [Megan Adams, Travis Miller]\n---\n"],
+    ["phage.acorn15", "---\ntitle: Acorn15\nhost: Gordonia terrae\ncluster: DJ\n---\n"],
+    ["procedure.coi-primers", "---\ntitle: \"COI primers: LCO1490 and HCO2198\"\n---\n\nThe PCR protocol for COI barcoding.\n"],
+  ] as const) {
+    const saved = await site.adapter.content.saveDraft(id, { source, expectedVersion: null, changeId: `seed-${id}` });
+    await site.adapter.content.publish(id, { expectedVersion: saved.version, changeId: `seed-pub-${id}` });
   }
   const sched = await site.adapter.content.saveDraft("bacterial-genetics-primer", {
     source: post("A primer on bacterial genetics", "bacterial-genetics-primer", "Plasmids, transposons and the vocabulary a reader needs first.", "2026-10-09", ["genetics", "primer"], "Before phage, a few words about what a bacterium carries."),

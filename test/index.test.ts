@@ -59,21 +59,26 @@ describe("refresh", () => {
 
   it("keeps a site's data kinds out of the writing lists and their kinds, whatever the kind is called", async () => {
     const db = connectedEnv().DB;
-    const row = (itemId: string, kind: string) =>
+    const row = (itemId: string, kind: string, path: string | null, status = "published") =>
       db
-        .prepare("INSERT INTO site_items (project_id, item_id, kind, title, status, synced_at) VALUES (?, ?, ?, ?, 'published', '2026-10-07T00:00:00Z')")
-        .bind(projectId, itemId, kind, itemId);
+        .prepare("INSERT INTO site_items (project_id, item_id, kind, title, status, path, synced_at) VALUES (?, ?, ?, ?, ?, ?, '2026-10-07T00:00:00Z')")
+        .bind(projectId, itemId, kind, itemId, status, path);
     await db.batch([
-      row("a-post", "post"),
-      row("a-page", "page"),
-      row("equipment.heat-block", "equipment"),
-      row("reagent.agar", "reagent"),
-      row("widget.x", "some-kind-no-one-listed"),
+      row("a-post", "post", "/writing/a-post"),
+      row("a-draft", "post", null, "draft"),
+      row("page.about", "page", "/about"),
+      row("phage.acorn15", "phage", "/research/phages#acorn15"),
+      row("roster.2017", "roster", "/teaching/phage-discovery#year-2017"),
+      row("essay.first", "a-kind-only-in-draft", null, "draft"),
+      row("equipment.heat-block", "equipment", null),
+      row("reagent.agar", "reagent", null),
+      row("widget.x", "some-kind-no-one-listed", null),
     ]);
     const listed = await searchItems(db, projectId, {});
-    expect(listed.map((i) => i.itemId).sort()).toEqual(["a-page", "a-post"]);
+    expect(listed.map((i) => i.itemId).sort()).toEqual(["a-draft", "a-post", "essay.first", "page.about", "phage.acorn15", "roster.2017"]);
     expect(await searchItems(db, projectId, { kind: "equipment" })).toEqual([]);
-    expect(await kindsIn(db, projectId)).toEqual(["page", "post"]);
+    expect((await searchItems(db, projectId, { kind: "phage" })).map((i) => i.itemId)).toEqual(["phage.acorn15"]);
+    expect(await kindsIn(db, projectId)).toEqual(["a-kind-only-in-draft", "page", "phage", "post", "roster"]);
   });
 
   it("reads a body again only when the item changed, and drops an item the site no longer lists", async () => {

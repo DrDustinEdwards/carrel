@@ -253,6 +253,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                     </th>
                   ) : null}
                   <th scope="col">Title</th>
+                  {kinds.length > 1 ? <th scope="col">Kind</th> : null}
                   <th scope="col">Status</th>
                   <th scope="col">Updated</th>
                 </tr>
@@ -282,6 +283,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                       </Link>
                       <span className="cap-table-aside">{item.path ?? item.itemId}</span>
                     </th>
+                    {kinds.length > 1 ? <td>{item.kind}</td> : null}
                     <td>
                       {item.status === "published" ? (
                         <Pill tone="ok">Published</Pill>
