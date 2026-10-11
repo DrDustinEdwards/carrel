@@ -1,0 +1,17 @@
+name: ai-author
+
+# Refuses an AI attribution trailer on a commit a push or pull request adds, and a commit authored or
+# committed as Claude. The workflow is devkit's, pinned to the full sha of its v0.5.0 tag (2c5c7a5);
+# the check runs the devkit-check-trailers bin from the same tag in package.json. Move both together.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ai-author:
+    uses: DrDustinEdwards/devkit/.github/workflows/ai-author.yml@2c5c7a5dd2d92b05d005e4f3abc47b001cdc0bf6

@@ -7,7 +7,8 @@
 // endpoint, and a tool call with the token. Each planted refusal must end without a grant.
 
 import { createExecutionContext } from "cloudflare:test";
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
+import { stubAccess } from "@dustinedwards/devkit/access";
+import { createLocalJWKSet } from "jose";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
@@ -28,15 +29,14 @@ const REDIRECT = "https://client.test/callback";
 const RESOURCE = `${DOOR}/mcp`;
 const VERIFIER = "the-mcp-clients-own-pkce-verifier-0123456789abcdefghij";
 
-let signingKey: CryptoKey;
-let otherKey: CryptoKey;
-let jwks: { keys: JWK[] };
+type Access = Awaited<ReturnType<typeof stubAccess>>;
+let access: Access;
+let other: Access;
 
 beforeAll(async () => {
-  const pair = await generateKeyPair("RS256", { extractable: true });
-  signingKey = pair.privateKey;
-  otherKey = (await generateKeyPair("RS256", { extractable: true })).privateKey;
-  jwks = { keys: [{ ...(await exportJWK(pair.publicKey)), kid: "access", alg: "RS256", use: "sig" }] };
+  access = await stubAccess({ issuer: TEAM, audience: BROWSER_AUD, email: "owner@test.invalid", install: false });
+  // A second stub signs with a key Access does not publish.
+  other = await stubAccess({ issuer: TEAM, audience: BROWSER_AUD, email: "owner@test.invalid", install: false });
 });
 
 beforeEach(async () => {
@@ -50,8 +50,8 @@ const doorEnv = (): Env => ({ ...testEnv, ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, AC
 
 // ---------- the browser door
 
-function accessToken(aud: string, email = "owner@test.invalid", key = signingKey) {
-  return new SignJWT({ email }).setProtectedHeader({ alg: "RS256", kid: "access" }).setIssuer(TEAM).setAudience(aud).setIssuedAt().setExpirationTime("5m").sign(key);
+function accessToken(aud: string, email = "owner@test.invalid", signer = access) {
+  return signer.token({ aud, email });
 }
 
 async function browser(path: string, jwt: string) {
@@ -63,7 +63,7 @@ async function browser(path: string, jwt: string) {
       rendered = true;
       return new Response("inside");
     },
-    createLocalJWKSet(jwks),
+    createLocalJWKSet({ keys: [access.jwk] }),
   );
   return { status: response.status, rendered };
 }
@@ -119,7 +119,7 @@ async function s256(value: string) {
   return btoa(String.fromCharCode(...digest)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-type IdClaims = { email?: string; nonce?: string; aud?: string; iss?: string; key?: CryptoKey; email_verified?: boolean };
+type IdClaims = { email?: string; nonce?: string; aud?: string; iss?: string; signer?: Access; email_verified?: boolean };
 
 /** The fake Access for SaaS (and the client's CIMD document), behind the stubbed fetch. */
 function fakeAccess(claims: (nonce: string) => IdClaims) {
@@ -138,18 +138,19 @@ function fakeAccess(claims: (nonce: string) => IdClaims) {
         token_endpoint_auth_method: "none",
       });
     }
-    if (request.url === `${SAAS_ISSUER}/jwks`) return Response.json(jwks);
+    if (request.url === `${SAAS_ISSUER}/jwks`) return Response.json({ keys: [access.jwk] });
     if (request.url === `${SAAS_ISSUER}/token` && request.method === "POST") {
       const form = new URLSearchParams(await request.text());
       if (form.get("client_secret") !== "saas-secret" || form.get("code") !== "access-code" || !form.get("code_verifier")) return Response.json({ error: "invalid_grant" }, { status: 400 });
       const c = claims(nonce);
-      const jwt = new SignJWT({ email: c.email ?? "owner@test.invalid", nonce: c.nonce ?? nonce, ...(c.email_verified === undefined ? {} : { email_verified: c.email_verified }) })
-        .setProtectedHeader({ alg: "RS256", kid: "access" })
-        .setIssuer(c.iss ?? SAAS_ISSUER)
-        .setAudience(c.aud ?? SAAS_CLIENT)
-        .setIssuedAt()
-        .setExpirationTime("5m");
-      return Response.json({ id_token: await jwt.sign(c.key ?? signingKey), access_token: "access-access-token", token_type: "Bearer" });
+      const idToken = await (c.signer ?? access).token({
+        email: c.email ?? "owner@test.invalid",
+        nonce: c.nonce ?? nonce,
+        iss: c.iss ?? SAAS_ISSUER,
+        aud: c.aud ?? SAAS_CLIENT,
+        ...(c.email_verified === undefined ? {} : { email_verified: c.email_verified }),
+      });
+      return Response.json({ id_token: idToken, access_token: "access-access-token", token_type: "Bearer" });
     }
     throw new Error(`the fake Access does not answer ${request.method} ${request.url}`);
   });
@@ -322,7 +323,7 @@ describe("signing in through Access for SaaS", () => {
       { nonce: "replayed" },
       { aud: "some-other-saas-app" },
       { iss: `${TEAM}/cdn-cgi/access/sso/oidc/other` },
-      { key: otherKey },
+      { signer: other },
       { email_verified: false },
     ] satisfies IdClaims[]) {
       const { final } = await signIn(() => claims);
