@@ -1,6 +1,7 @@
 // Planted problems for the gate. Every refusal case must be a bare 403 and must never reach render.
 
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
+import { stubAccess } from "@dustinedwards/devkit/access";
+import { createLocalJWKSet } from "jose";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { gate } from "../workers/gate";
@@ -9,17 +10,17 @@ import { addPerson, resetDb, testEnv } from "./env";
 const ISSUER = "https://test-team.cloudflareaccess.com";
 const AUDIENCE = "test-audience-tag";
 
+const stub = (email = "owner@test.invalid") => stubAccess({ issuer: ISSUER, audience: AUDIENCE, email, install: false });
+
 let keys: ReturnType<typeof createLocalJWKSet>;
-let signingKey: CryptoKey;
-let strangerKey: CryptoKey;
+let team: Awaited<ReturnType<typeof stub>>;
+let stranger: Awaited<ReturnType<typeof stub>>;
 
 beforeAll(async () => {
-  const pair = await generateKeyPair("RS256", { extractable: true });
-  const stranger = await generateKeyPair("RS256", { extractable: true });
-  signingKey = pair.privateKey;
-  strangerKey = stranger.privateKey;
-  const jwk: JWK = { ...(await exportJWK(pair.publicKey)), kid: "test", alg: "RS256" };
-  keys = createLocalJWKSet({ keys: [jwk] });
+  team = await stub();
+  // A second stub signs with a key the team does not publish.
+  stranger = await stub();
+  keys = createLocalJWKSet({ keys: [team.jwk] });
 });
 
 beforeEach(async () => {
@@ -30,15 +31,8 @@ beforeEach(async () => {
 
 type Claims = { email?: string; iss?: string; aud?: string; exp?: number };
 
-async function token(claims: Claims = {}, key: CryptoKey = signingKey): Promise<string> {
-  const { email = "owner@test.invalid", iss = ISSUER, aud = AUDIENCE, exp } = claims;
-  const jwt = new SignJWT(email ? { email } : {})
-    .setProtectedHeader({ alg: "RS256", kid: "test" })
-    .setIssuer(iss)
-    .setAudience(aud)
-    .setIssuedAt();
-  jwt.setExpirationTime(exp ?? "5m");
-  return jwt.sign(key);
+function token(claims: Claims = {}, signer = team): Promise<string> {
+  return signer.token(claims);
 }
 
 function request(jwt?: string): Request {
@@ -78,7 +72,7 @@ describe("gate: refusals (fail closed)", () => {
   });
 
   it("refuses a token signed by a key the team does not publish", async () => {
-    await expectRefused(request(await token({}, strangerKey)));
+    await expectRefused(request(await token({}, stranger)));
   });
 
   it("refuses the wrong audience", async () => {

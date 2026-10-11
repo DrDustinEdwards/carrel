@@ -2,7 +2,8 @@
 // nonce policy with no unsafe script source, the preview alone may be framed and only by Carrel, and
 // the site's page inside it runs sandboxed.
 
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
+import { stubAccess } from "@dustinedwards/devkit/access";
+import { createLocalJWKSet } from "jose";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { previewPolicy, previewResponse, withSiteBase } from "~/lib/preview.server";
@@ -76,16 +77,9 @@ describe("framing through the gate", () => {
   let token: string;
 
   beforeAll(async () => {
-    const pair = await generateKeyPair("RS256", { extractable: true });
-    const jwk: JWK = { ...(await exportJWK(pair.publicKey)), kid: "test", alg: "RS256" };
-    keys = createLocalJWKSet({ keys: [jwk] });
-    token = await new SignJWT({ email: "owner@test.invalid" })
-      .setProtectedHeader({ alg: "RS256", kid: "test" })
-      .setIssuer(testEnv.ACCESS_TEAM_DOMAIN)
-      .setAudience(testEnv.ACCESS_AUD)
-      .setIssuedAt()
-      .setExpirationTime("5m")
-      .sign(pair.privateKey);
+    const access = await stubAccess({ issuer: testEnv.ACCESS_TEAM_DOMAIN, audience: testEnv.ACCESS_AUD, email: "owner@test.invalid", install: false });
+    keys = createLocalJWKSet({ keys: [access.jwk] });
+    token = await access.token();
   });
 
   beforeEach(async () => {
