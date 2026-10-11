@@ -81,6 +81,8 @@ export const SCREENS = [
   { name: "legal", viewer: "owner", path: `/p/${SITE}/legal` },
   { name: "legal-editor", viewer: "editor", path: `/p/${SITE}/legal` },
   { name: "legal-page", viewer: "owner", path: `/p/${SITE}/e/page.privacy`, wait: ".app-rich-surface" },
+  { name: "kind-roster", viewer: "owner", path: `/p/${SITE}/e/roster.2017`, wait: ".app-rich-surface" },
+  { name: "site-kind", viewer: "owner", path: `/p/${SITE}?kind=phage` },
   { name: "media", viewer: "owner", path: `/p/${SITE}/media` },
   { name: "media-detail", viewer: "owner", path: `/p/${SITE}/media`, open: "media" },
   { name: "media-editor", viewer: "editor", path: `/p/${SITE}/media` },

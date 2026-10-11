@@ -20,6 +20,7 @@ import { ProjectTabs } from "~/components/project-tabs";
 import { getEnv, getViewer } from "~/lib/context";
 import { contentDeleteOffered } from "~/lib/content.server";
 import { kindsIn, refreshIndex, searchItems } from "~/lib/index.server";
+import { kindPlural } from "~/lib/kind-words";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteConnection, siteEntry } from "~/lib/sites.server";
@@ -236,14 +237,14 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
         </div>
 
         {items.length === 0 ? (
-          <Empty kind={filtered ? "no-match" : "nothing-yet"} flush title={filtered ? "No posts match" : "No posts in the index yet"} action={filtered ? <Link to="." className="cap-btn">Clear the filter</Link> : undefined}>
+          <Empty kind={filtered ? "no-match" : "nothing-yet"} flush title={filtered ? `No ${filters.kind ? kindPlural(filters.kind).toLowerCase() : "items"} match` : "Nothing in the index yet"} action={filtered ? <Link to="." className="cap-btn">Clear the filter</Link> : undefined}>
             {filtered ? "Nothing on this site fits the search and filters above." : "Refresh from the site to read what it has."}
           </Empty>
         ) : (
           <div className="cap-table-wrap" role="region" aria-labelledby="posts-caption" tabIndex={0}>
             <table className="cap-table">
               <caption id="posts-caption" className="cap-sr-only">
-                Posts on {project.site}
+                {filters.kind ? kindPlural(filters.kind) : kinds.length > 1 ? "Everything" : "Posts"} on {project.site}
               </caption>
               <thead>
                 <tr>
