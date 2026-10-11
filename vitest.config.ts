@@ -20,6 +20,7 @@ export default defineConfig({
         compatibilityFlags: ["global_fetch_strictly_public"],
         d1Databases: ["DB"],
         kvNamespaces: ["OAUTH_KV"],
+        r2Buckets: ["BACKUPS"],
         bindings: {
           ACCESS_TEAM_DOMAIN: "https://test-team.cloudflareaccess.com",
           ACCESS_AUD: "test-audience-tag",

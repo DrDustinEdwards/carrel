@@ -1,6 +1,8 @@
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
+import { BACKUP_CRON } from "~/lib/backup-checks";
+import { runBackup } from "~/lib/backup.server";
 import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
 import { reportInbox } from "~/lib/inbox-report.server";
@@ -33,7 +35,13 @@ export default {
     });
   },
 
-  scheduled(_controller, env, ctx) {
+  scheduled(controller, env, ctx) {
+    // The nightly cron runs the dump alone. A failure is logged and left for the health check, whose
+    // backup age keeps growing, to report; it is never swallowed.
+    if (controller.cron === BACKUP_CRON) {
+      ctx.waitUntil(runBackup(env).catch((error) => console.error(JSON.stringify({ backup: "failed", error: String(error) }))));
+      return;
+    }
     ctx.waitUntil(runHealth(env));
     ctx.waitUntil(refreshAllSites(env));
     ctx.waitUntil(refreshGoogle(env));
