@@ -254,6 +254,24 @@ describe("the AI door's OAuth surface", () => {
     expect(meta.scopes_supported).toEqual(["carrel:read", "carrel:write"]);
   });
 
+  // The deploy's live gate (devkit's worker-deploy.yml) polls this until it names the commit it shipped,
+  // and scripts/verify-live.mjs reads the metadata's issuer and the 404 below from outside.
+  it("/health names the deployed commit from DEPLOY_SHA, and nothing else", async () => {
+    const sha = "4df127439ed3aa19aef8e350ab6311957b8f8611";
+    const live = await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: sha } as Env);
+    expect(live.status).toBe(200);
+    expect(live.headers.get("Cache-Control")).toBe("no-store");
+    expect(await live.json()).toEqual({ ok: true, sha });
+    // A manual deploy sets no DEPLOY_SHA, and a value that is not a sha is never echoed.
+    expect(await (await door(new Request(`${DOOR}/health`))).json()).toEqual({ ok: true, sha: "unknown" });
+    expect(await (await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: "<script>" } as Env)).json()).toEqual({ ok: true, sha: "unknown" });
+  });
+
+  it("names itself as the issuer in its OAuth metadata", async () => {
+    const meta = (await (await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))).json()) as Record<string, unknown>;
+    expect(String(meta.issuer).replace(/\/+$/, "")).toBe(DOOR);
+  });
+
   it("PLANT: never serves Carrel's pages", async () => {
     for (const path of ["/", "/p/de-info", "/p/de-info/e/post-one/unpublish", "/social"]) {
       expect((await door(new Request(`${DOOR}${path}`))).status, path).toBe(404);
