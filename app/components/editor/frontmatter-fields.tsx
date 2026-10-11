@@ -5,6 +5,7 @@
 import { Field } from "capsomer/react/field";
 
 import { BANNER_WORD, FIELDS, readFields, setField, splitSource, joinSource, type FieldKey } from "~/lib/frontmatter";
+import { kindNoun, kindWord } from "~/lib/kind-words";
 import { legalTypeOf, marker, sectionsUsed } from "~/lib/legal";
 
 const HINTS: Partial<Record<FieldKey, string>> = {
@@ -28,11 +29,36 @@ export function withField(source: string, key: FieldKey, value: string): string 
 
 export type SectionChoice = { key: string; title: string };
 
-export function FrontmatterFields({ source, onChange, readOnly, sections = [] }: { source: string; onChange?: (next: string) => void; readOnly?: boolean; sections?: SectionChoice[] }) {
-  const { front, body } = splitSource(source);
+/**
+ * `kind` is the site's kind for the item. A post (or an item with no kind) gets the post's fields and a
+ * legal page the legal fields; any other kind keeps its content in keys of its own (a phage's host, a
+ * cohort's researchers), so it gets its whole frontmatter as written, for the site to check on save.
+ */
+export function FrontmatterFields({ source, onChange, readOnly, sections = [], kind = null }: { source: string; onChange?: (next: string) => void; readOnly?: boolean; sections?: SectionChoice[]; kind?: string | null }) {
+  const parts = splitSource(source);
+  const { front, body } = parts;
   if (front === null) return null;
   const values = readFields(front);
   const legal = legalTypeOf(source) !== null;
+  if (!legal && kind && kind !== "post") {
+    return (
+      <fieldset className="app-fm">
+        <legend>{kindWord(kind)} details</legend>
+        <div className="app-fm-field" data-wide="">
+          <Field label="Frontmatter" help={`The site's own keys for this ${kindNoun(kind)}, as it stores them. The site checks them when you save.`}>
+            <textarea
+              className="cap-input app-fm-raw"
+              value={front}
+              readOnly={readOnly || !onChange}
+              rows={Math.min(Math.max(front.split("\n").length + 1, 4), 24)}
+              spellCheck={false}
+              onChange={(event) => onChange?.(joinSource({ ...parts, front: event.target.value }))}
+            />
+          </Field>
+        </div>
+      </fieldset>
+    );
+  }
   const shown = FIELDS.filter((f) => (f.on === "all" || f.on === (legal ? "legal" : "post")) && (!readOnly || values[f.key] !== ""));
   if (shown.length === 0) return null;
   const used = sectionsUsed(body);

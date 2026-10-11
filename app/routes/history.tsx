@@ -20,6 +20,7 @@ import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions, orderPair, readRevision, revisionPatch } from "~/lib/history.server";
+import { kindNoun } from "~/lib/kind-words";
 import { unifiedPatch } from "~/lib/patch";
 import { requireSiteProject } from "~/lib/projects.server";
 import { SiteNotConnected } from "~/lib/sites.server";
@@ -59,14 +60,15 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const [draft, aiDrafts] = await Promise.all([readDraft(env.DB, project, viewer, itemId), listAiDrafts(env.DB, project, viewer, itemId)]);
   if (!doc && !draft && aiDrafts.length === 0 && !siteError) throw new Response("Not found", { status: 404 });
 
+  const noun = kindNoun(doc?.kind);
   const list = revisions ?? [];
   const picks = query.getAll("v");
   let view: View = { kind: "none" };
   let picked: string[] = [];
 
   if (query.get("compare") === "site") {
-    if (!draft) view = { kind: "problem", message: "You have no working draft of this post in Carrel, so there is nothing to set against the site's text." };
-    else if (!doc) view = { kind: "problem", message: siteError ?? "This post is not on the site yet, so there is no site version to compare with." };
+    if (!draft) view = { kind: "problem", message: `You have no working draft of this ${noun} in Carrel, so there is nothing to set against the site's text.` };
+    else if (!doc) view = { kind: "problem", message: siteError ?? `This ${noun} is not on the site yet, so there is no site version to compare with.` };
     else {
       const before: Side = { title: "On the site", who: doc.status === "published" ? "Published" : doc.status === "scheduled" ? "Scheduled" : "Draft", time: doc.updatedAt ?? undefined, text: doc.source };
       const after: Side = { title: "Your working draft", who: viewer.name, time: draft.updatedAt, text: draft.source };
@@ -75,7 +77,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   } else if (query.get("compare") === "ai") {
     const id = Number(query.get("ai"));
     if (!Number.isInteger(id) || id <= 0) {
-      view = { kind: "problem", message: "That AI draft is not one of yours for this post." };
+      view = { kind: "problem", message: `That AI draft is not one of yours for this ${noun}.` };
     } else {
       const ai = await readAiDraft(env.DB, project, viewer, itemId, id);
       const mine: Side = draft
@@ -83,7 +85,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
         : { title: "On the site", time: doc?.updatedAt ?? undefined, text: doc?.source ?? "" };
       const theirs: Side = { title: `AI draft from ${ai.client}`, who: ai.client, time: ai.createdAt, text: ai.source };
       view = sides(
-        `Your ${draft ? "draft" : "post"} against the AI draft from ${ai.client}`,
+        `Your ${draft ? "draft" : noun} against the AI draft from ${ai.client}`,
         draft ? "Your autosaved copy in Carrel, set against the AI draft saved beside it." : "You have no working draft, so this is the site's text against the AI draft saved beside it.",
         itemId,
         mine,
@@ -97,7 +99,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     const version = query.get("version")!;
     const at = list.findIndex((r) => r.version === version);
     if (at < 0) {
-      view = { kind: "problem", message: "The site has no such revision of this post." };
+      view = { kind: "problem", message: `The site has no such revision of this ${noun}.` };
     } else {
       const revision = list[at]!;
       const source = await readRevision(env, project, itemId, version);
@@ -139,6 +141,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     project: { slug: project.slug, name: project.name },
     itemId,
     title: doc?.title ?? "",
+    noun,
     by,
     view,
     picked,
@@ -157,7 +160,7 @@ function sides(heading: string, lead: string, itemId: string, before: Side, afte
 }
 
 export default function History({ loaderData }: Route.ComponentProps) {
-  const { project, itemId, title, by, view, picked, revisions, siteError, aiDrafts, againstSite } = loaderData;
+  const { project, itemId, title, noun, by, view, picked, revisions, siteError, aiDrafts, againstSite } = loaderData;
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const historyPath = `${editor}/history`;
   const navigate = useNavigate();
@@ -176,7 +179,7 @@ export default function History({ loaderData }: Route.ComponentProps) {
       <PageHead
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: title || itemId, href: editor }, { label: "History" }]}
         title={`History of ${title || itemId}`}
-        lead="What the site remembers of this post, newest first. Looking here changes nothing."
+        lead={`What the site remembers of this ${noun}, newest first. Looking here changes nothing.`}
         actions={
           <Link to={editor} className="cap-btn">
             Back to the editor
@@ -237,10 +240,10 @@ export default function History({ loaderData }: Route.ComponentProps) {
       <Panel title="Revisions" count={revisions.length} src="Saves and publishes on the site">
         {revisions.length === 0 ? (
           <Empty kind="nothing-yet" title="No history to show">
-            {siteError ? "The site is not answering." : "The site has no saved revisions of this post yet."}
+            {siteError ? "The site is not answering." : `The site has no saved revisions of this ${noun} yet.`}
           </Empty>
         ) : (
-          <RevisionPicker revisions={revisions} historyPath={historyPath} picked={picked} label="Revisions of this post" />
+          <RevisionPicker revisions={revisions} historyPath={historyPath} picked={picked} label={`Revisions of this ${noun}`} />
         )}
       </Panel>
     </div>

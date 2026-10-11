@@ -3,6 +3,7 @@
 // is renaming: every chapter and scene after the drop point is renumbered, and all the renames go in
 // one commit. Pure, so the browser, the server and the tests share it.
 
+import { kindPlural } from "~/lib/kind-words";
 import { chapterOf, kindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
 
 /** A row of the binder as the loader sends it; the page turns `meta` into the row's muted note. */
@@ -174,10 +175,9 @@ export function parseOrder(raw: string): ChapterOrder[] | null {
  */
 export function siteBinderTree(items: { itemId: string; kind: string; title: string; status: string }[], base: string): BinderNode[] {
   const kinds = [...new Set(items.map((i) => i.kind))].sort((a, b) => (a === "post" ? -1 : b === "post" ? 1 : a < b ? -1 : 1));
-  const plural = (kind: string) => `${kind.charAt(0).toUpperCase()}${kind.slice(1)}${kind.endsWith("s") ? "" : "s"}`;
   return kinds.map((kind) => ({
     id: `kind:${kind}`,
-    label: plural(kind),
+    label: kindPlural(kind),
     children: items
       .filter((i) => i.kind === kind)
       .map((i) => ({ id: `item:${i.itemId}`, label: i.title || i.itemId, href: `${base}/e/${encodeURIComponent(i.itemId)}`, meta: i.status.charAt(0).toUpperCase() + i.status.slice(1) })),

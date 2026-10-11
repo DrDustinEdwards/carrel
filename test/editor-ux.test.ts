@@ -84,6 +84,6 @@ describe("the save line", () => {
     expect(siteState("draft", false)).toBe("Saved as a draft on the site. Not published yet.");
     expect(siteState("draft", true)).toBe("Matches the site's draft. It is not live.");
     expect(siteState("scheduled", true)).toMatch(/scheduled/);
-    expect(siteState("published", true)).toBe("Matches the live post");
+    expect(siteState("published", true)).toBe("Matches what is live on the site");
   });
 });

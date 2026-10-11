@@ -28,6 +28,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions } from "~/lib/history.server";
 import { joinSource, splitSource } from "~/lib/frontmatter";
 import { listSections } from "~/lib/legal.server";
+import { kindNoun, kindWord } from "~/lib/kind-words";
 import { siteState } from "~/lib/save-state";
 import { importFromDocs, lastSentDoc, sendToDocs } from "~/lib/google/drive.server";
 import { isConnected } from "~/lib/google/oauth.server";
@@ -116,6 +117,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     media: mediaAccept ? { endpoint: `/p/${encodeURIComponent(project.slug)}/media/api`, accept: mediaAccept } : null,
     canPublish: can(project.role, "publish"),
     title: doc?.title ?? "",
+    kind: doc?.kind ?? null,
     status: doc?.status ?? null,
     path: doc?.path ?? null,
     everPublished: Boolean(doc?.publishedAt),
@@ -413,7 +415,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor" data-layout={layout}>
       <PageHead
-        crumbs={[{ label: data.project.name, href: `/p/${data.project.slug}` }, { label: "Post" }]}
+        crumbs={[{ label: data.project.name, href: `/p/${data.project.slug}` }, { label: kindWord(data.kind) }]}
         title={data.title || data.itemId}
         lead={
           <>
@@ -436,7 +438,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             {data.aiPublished.line} <Time at={data.aiPublished.at} format="exact" />
           </Banner>
         ) : null}
-        {data.canEdit && live && !data.canPublish ? <Banner tone="info">This post is live. Your changes autosave here as your draft; sending them to the site is the Owner's step.</Banner> : null}
+        {data.canEdit && live && !data.canPublish ? <Banner tone="info">This {kindNoun(data.kind)} is live. Your changes autosave here as your draft; sending them to the site is the Owner's step.</Banner> : null}
       </div>
 
       <div className="app-editor-grid">
@@ -444,9 +446,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           <div className="app-editor-body" data-layout={layout}>
             {layout !== "preview" ? (
               <section className="app-editor-pane" aria-label="Write">
-                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly} sections={data.sections} />
+                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly} sections={data.sections} kind={data.kind} />
                 <WritingSurface
-                  label="Post"
+                  label={kindWord(data.kind)}
                   value={splitSource(source).body}
                   onChange={(body) => setSource((current) => joinSource({ ...splitSource(current), body }))}
                   readOnly={readOnly}
@@ -525,7 +527,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 {data.revisions && data.revisions.length > 0 ? (
                   <RevisionPicker revisions={data.revisions} historyPath={historyPath} label="Recent revisions" />
                 ) : data.revisions ? (
-                  <p className="cap-muted">The site has no saved revisions of this post yet.</p>
+                  <p className="cap-muted">The site has no saved revisions of this {kindNoun(data.kind)} yet.</p>
                 ) : null}
                 <DraftLinks historyPath={historyPath} againstSite={Boolean(savedAt) && onSite} aiDrafts={data.aiDrafts} />
               </div>
@@ -660,7 +662,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       />
       <Dialog open={asking?.kind === "schedule"} onOpenChange={(o) => !o && setAsking(null)} placement="center" size="sm" returnTo={asking?.opener} aria-labelledby="schedule-title">
         <DialogHeader divider>
-          <DialogTitle id="schedule-title">Schedule this post</DialogTitle>
+          <DialogTitle id="schedule-title">Schedule this {kindNoun(data.kind)}</DialogTitle>
           <DialogDescription>The site publishes it at the time you choose. Revert to draft takes it back.</DialogDescription>
         </DialogHeader>
         <DialogBody>
