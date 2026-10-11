@@ -9,6 +9,7 @@ import { getEnv } from "~/lib/context";
 import type { Route } from "./+types/health";
 
 export async function loader({ context }: Route.LoaderArgs) {
-  const { last_ok, age_hours } = await backupHealth(getEnv(context).BACKUPS);
-  return Response.json({ backup: { last_ok, age_hours } });
+  const { last_ok, age_hours, warning } = await backupHealth(getEnv(context).BACKUPS);
+  // A stale, missing or unreadable dump answers 503 so a status monitor sees it; the warning text stays out of the body.
+  return Response.json({ backup: { last_ok, age_hours } }, { status: warning ? 503 : 200 });
 }
