@@ -18,6 +18,10 @@
 // local run can never replace a real config. It also turns on the two custom-domain routes, which the
 // example keeps commented out for the first, never-public deploy.
 //
+// --prepare runs every step but the last and stops before `wrangler deploy`. CI runs it as the pre-deploy
+// guard of devkit's shared deploy workflow (.github/workflows/ci.yml), which then deploys the build this
+// left, verifies it live and rolls it back on a refusal. Without the flag it deploys, as before.
+//
 // WRANGLER_ENTRY, BUILD_ENTRY and CARREL_ROOT exist for scripts/check-deploy.mjs, which stands stubs
 // in for wrangler and the build.
 
@@ -156,7 +160,11 @@ step("checking that no migration is pending");
 const pending = must("wrangler d1 migrations list", wrangler, ["d1", "migrations", "list", "DB", "--remote"]);
 if (!/No migrations to apply/i.test(pending.stdout)) fail("migrations are still pending after the apply. Refusing to deploy.");
 
-// 6. The new code goes live.
+// 6. The new code goes live, unless the caller deploys it.
+if (process.argv.includes("--prepare")) {
+  console.log("deploy: prepared. Migrations applied, none pending, build ready; the deploy is the caller's.");
+  process.exit(0);
+}
 step("deploying");
 must("wrangler deploy", wrangler, ["deploy"]);
 console.log("deploy: done. Migrations applied, none pending, Worker deployed.");

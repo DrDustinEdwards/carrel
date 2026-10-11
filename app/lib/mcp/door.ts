@@ -18,12 +18,13 @@
 //   /authorize  /callback         the consent page and the Access sign-in, below
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
-//   /health                       liveness
+//   /health                       liveness, and the deployed commit for the deploy's live gate
 //   anything else                 404
 
 import OAuthProvider, { AuthorizationError, CimdFetchError, type AuthRequest, type ClientInfo, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
+import { deployedSha } from "~/lib/deployed";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 
 import { accessSaas, authorizationUrl, finishSignIn, newSignIn } from "./access-login";
@@ -79,6 +80,17 @@ function redirectError(request: AuthRequest, description: string, headers?: Head
   url.searchParams.set("state", request.state);
   if (request.issuer) url.searchParams.set("iss", request.issuer);
   return redirect(url.href, headers);
+}
+
+/**
+ * Liveness on the AI door, the one Carrel host outside Access, so CI can read it before anyone signs in.
+ * The live gate polls it until `sha` is the commit it deployed. It says nothing else: no backup age, no
+ * table, no error text (the backup health stays on the browser host's /health, behind Access).
+ */
+function liveness(env: Env): Response {
+  const out = new Headers({ "Content-Type": "application/json; charset=utf-8" });
+  for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.set(name, value);
+  return new Response(JSON.stringify({ ok: true, sha: deployedSha(env) }), { status: 200, headers: out });
 }
 
 const escape = (value: string) => value.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -211,7 +223,7 @@ const loginHandler = {
   async fetch(request: Request, env: DoorEnv): Promise<Response> {
     const { pathname } = new URL(request.url);
     try {
-      if (pathname === "/health") return text("ok", 200);
+      if (pathname === "/health") return liveness(env);
       if (pathname === "/authorize" && request.method === "GET") return await authorizeGet(request, env);
       if (pathname === "/authorize" && request.method === "POST") return await authorizePost(request, env);
       if (pathname === "/callback" && request.method === "GET") return await callback(request, env);

@@ -41,15 +41,15 @@ writeFileSync(join(dir, "build-stub.cjs"), buildStub);
 
 /**
  * Runs deploy.mjs in a fresh scratch project. Returns the exit code, the calls made and the config.
- * @param {Record<string, string>} env @param {{ realConfig?: boolean }} [opts]
+ * @param {Record<string, string>} env @param {{ realConfig?: boolean, args?: string[] }} [opts]
  */
-function attempt(env, { realConfig = false } = {}) {
+function attempt(env, { realConfig = false, args = [] } = {}) {
   const proj = mkdtempSync(join(dir, "proj-"));
   copyFileSync(join(repo, "wrangler.jsonc.example"), join(proj, "wrangler.jsonc.example"));
   copyFileSync(join(repo, "wrangler.jsonc.example"), join(proj, "wrangler.jsonc"));
   if (realConfig) writeFileSync(join(proj, "wrangler.jsonc"), "{ /* a real config */ }\n");
   const log = join(proj, "calls.log");
-  const result = spawnSync(process.execPath, [join(repo, "scripts", "deploy.mjs")], {
+  const result = spawnSync(process.execPath, [join(repo, "scripts", "deploy.mjs"), ...args], {
     env: {
       PATH: process.env.PATH,
       CARREL_ROOT: proj,
@@ -100,6 +100,17 @@ const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
       !r.config.includes("example.com"),
     r.config.slice(0, 400),
   );
+}
+{
+  // CI's pre-deploy guard: every step, then stop. devkit's workflow deploys the build it leaves.
+  const r = attempt(GOOD, { args: ["--prepare"] });
+  const m = idx(r, "wrangler d1 migrations list DB --remote");
+  expect("--prepare: exits 0 after the migrations check, and never deploys", r.code === 0 && m >= 0 && !deployed(r), `exit ${r.code} ${JSON.stringify(r.calls)}`);
+  expect("--prepare: builds and applies migrations first", idx(r, "build") >= 0 && idx(r, "wrangler d1 migrations apply DB --remote") > idx(r, "build"), JSON.stringify(r.calls));
+}
+{
+  const r = attempt({ ...GOOD, STUB_PENDING: "1" }, { args: ["--prepare"] });
+  expect("--prepare with a migration still pending: exit nonzero", r.code !== 0 && !deployed(r), JSON.stringify(r.calls));
 }
 {
   const r = attempt({ ...GOOD, STUB_FAIL: "migrate" });

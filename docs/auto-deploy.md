@@ -11,7 +11,9 @@ Decision (2026-10-07): Carrel deploys itself when a pull request merges to main.
 
 ## What the job runs
 
-`npm run deploy:ci` is `scripts/deploy.mjs`. Every step stops the run on a nonzero exit:
+Since 2026-10-11 (merge pipeline PR 8, part 2) the `deploy` job in `.github/workflows/ci.yml` calls devkit's shared workflow, `worker-deploy.yml`, pinned to the full sha of devkit's v0.6.0 tag. Its inputs, secrets and limits are in devkit's README, "The shared deploy". It has two jobs.
+
+`deploy`, with Carrel's guard first. The `pre-deploy` input runs `scripts/deploy.mjs --prepare`, and every step stops the run on a nonzero exit:
 
 1. Check `CARREL_D1_DATABASE_ID`, `CARREL_KV_OAUTH_ID` and `CARREL_ALERT_EMAIL` are set and not placeholders.
 2. Render `wrangler.jsonc` from `wrangler.jsonc.example` (real ids and email, both custom-domain routes on). It refuses to overwrite a `wrangler.jsonc` that is not the placeholder copy.
@@ -19,52 +21,31 @@ Decision (2026-10-07): Carrel deploys itself when a pull request merges to main.
 4. Build.
 5. `wrangler d1 migrations apply DB --remote`.
 6. `wrangler d1 migrations list DB --remote` must report `No migrations to apply`.
-7. `wrangler deploy`.
 
-Secrets set with `wrangler secret put` live in the Worker and survive deploys. `scripts/check-deploy.mjs` (run by `npm test`) drives the script against stubs and pins each refusal and the order.
+Then devkit's workflow runs `wrangler deploy --name carrel --var DEPLOY_SHA:<commit>` on the build step 4 left, with its own pinned wrangler.
+
+`live gate`. It polls `https://carrel-mcp.dustinedwards.info/health`, the AI door's liveness, until its `sha` is the commit just deployed. The browser host's `/health` is behind Access, so CI could never read it. Then it runs `scripts/verify-live.mjs`, which needs no secret and no install:
+
+- the AI door's `/health` names the commit;
+- its OAuth metadata is served with Carrel's issuer;
+- its `/mcp` refuses a request with no token;
+- an unknown path there is a 404;
+- the browser host answers someone who has not signed in with Access (a redirect to the team's sign-in, or 401 or 403), never with Carrel.
+
+Exit 1 is a refusal, and the step "Roll back the deploy this run shipped" puts the previous version back. Exit 3 is "could not run" and rolls nothing back. A rollback swaps code and bindings only: it is refused when D1 or KV resources changed between the versions, and it never undoes a migration. Data recovery is D1 Time Travel, by hand.
+
+`scripts/check-deploy.mjs` and `scripts/check-verify-live.mjs` (run by `npm test`) drive both scripts against stubs and pin each refusal and the order. `test/deploy-workflow.test.ts` pins the call: the devkit sha, the Worker, the health URL, the verify command and the guard.
+
+Secrets set with `wrangler secret put` live in the Worker and survive deploys.
 
 ## Settings
 
 GitHub repository, Settings, Secrets and variables, Actions:
 
-- Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `CARREL_ALERT_EMAIL`.
+- Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. devkit's workflow takes these two secrets and no others.
+- Variables: `CARREL_D1_DATABASE_ID` (07402005-1960-4bf3-9532-5e28aebacaa5), `CARREL_KV_OAUTH_ID` (16485b7142b949a1bb9e242da6b9177f), and `CARREL_ALERT_EMAIL`, the address health alerts go to. The alert address was a secret before the shared workflow; it is a variable now because the workflow cannot pass a third secret to the guard.
 - The R2 bucket `carrel-backups` (binding `BACKUPS`) must exist before the first deploy that carries it: `npx wrangler r2 bucket create carrel-backups`. A missing bucket fails `wrangler deploy`, after the migrations.
-- Variables: `CARREL_D1_DATABASE_ID` (07402005-1960-4bf3-9532-5e28aebacaa5), `CARREL_KV_OAUTH_ID` (16485b7142b949a1bb9e242da6b9177f).
 
-Token (Cloudflare dashboard, Manage Account, Account API tokens): the "Edit Cloudflare Workers" template plus Account, D1, Edit, scoped to this one account and the dustinedwards.info zone. The KV list in step 3 is covered by the template's Workers KV Storage permission.
+Token (Cloudflare dashboard, Manage Account, Account API tokens): the "Edit Cloudflare Workers" template plus Account, D1, Edit, scoped to this one account and the dustinedwards.info zone. The KV list in step 3 is covered by the template's Workers KV Storage permission, and `wrangler rollback` by Workers Scripts, Edit.
 
-## The workflow change
-
-In `.github/workflows/ci.yml`, replace the `concurrency` block so a second push to main cannot cancel a deploy halfway:
-
-```yaml
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-```
-
-and add this job after `gates`:
-
-```yaml
-  deploy:
-    needs: [check, gates]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: package.json
-          cache: npm
-      - run: npm ci
-      - run: npm run deploy:ci
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CARREL_ALERT_EMAIL: ${{ secrets.CARREL_ALERT_EMAIL }}
-          CARREL_D1_DATABASE_ID: ${{ vars.CARREL_D1_DATABASE_ID }}
-          CARREL_KV_OAUTH_ID: ${{ vars.CARREL_KV_OAUTH_ID }}
-```
-
-`npm test` already runs `check:deploy`, so `check` covers the script without another step.
+`npm run deploy:ci` still runs `scripts/deploy.mjs` without `--prepare`, which deploys at the end with the repository's own wrangler, for a deploy by hand from a machine that has the variables.

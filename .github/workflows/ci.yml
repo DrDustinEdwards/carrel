@@ -78,25 +78,34 @@ jobs:
       - run: npm ci
       - run: npm run check:bloat
 
-  # Migrations first, then the Worker, and any failed step stops the run (scripts/deploy.mjs, tested by
-  # check:deploy in `npm test`). It never runs on a pull request or on a branch other than main.
-  # Actions here are pinned by full commit sha; the comment names the tag.
+  # THE DEPLOY, VERIFIED LIVE AND ROLLED BACK ON A REFUSAL: devkit's shared workflow (worker-deploy.yml),
+  # pinned to the full sha of its v0.6.0 tag. Its `deploy` job runs Carrel's own guard first,
+  # `scripts/deploy.mjs --prepare` (render the config, check the ids against the account, build, apply
+  # the D1 migrations, confirm none is pending; any failure stops the run before the deploy), then
+  # deploys the build with DEPLOY_SHA set to this commit. Its `live gate` job polls the AI door's /health,
+  # the one Carrel host outside Access, until it names this commit, runs scripts/verify-live.mjs, and on a
+  # refusal runs "Roll back the deploy this run shipped". A rollback swaps code and bindings only and
+  # never undoes a D1 migration (devkit's README, "The shared deploy"). It never runs on a pull request or
+  # on a branch other than main. test/deploy-workflow.test.ts pins the call; move the sha and the comment
+  # together.
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version-file: package.json
-          cache: npm
-      - run: npm ci
-      - run: npm run deploy:ci
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CARREL_ALERT_EMAIL: ${{ secrets.CARREL_ALERT_EMAIL }}
-          CARREL_D1_DATABASE_ID: ${{ vars.CARREL_D1_DATABASE_ID }}
-          CARREL_KV_OAUTH_ID: ${{ vars.CARREL_KV_OAUTH_ID }}
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@491b6cc552a80cdfcb4c0b5184e51682f907eda3 # v0.6.0
+    with:
+      worker-name: carrel
+      health-url: https://carrel-mcp.dustinedwards.info/health
+      verify-command: node scripts/verify-live.mjs
+      # The version in package.json's engines field.
+      node-version-file: package.json
+      # The ids and the alert address are repository variables, not secrets: devkit's workflow takes only
+      # the two Cloudflare secrets, and scripts/deploy.mjs checks each value before it uses it.
+      pre-deploy: >-
+        CARREL_D1_DATABASE_ID='${{ vars.CARREL_D1_DATABASE_ID }}'
+        CARREL_KV_OAUTH_ID='${{ vars.CARREL_KV_OAUTH_ID }}'
+        CARREL_ALERT_EMAIL='${{ vars.CARREL_ALERT_EMAIL }}'
+        node scripts/deploy.mjs --prepare
+      sha-var: DEPLOY_SHA
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
