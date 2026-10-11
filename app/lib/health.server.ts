@@ -8,6 +8,7 @@
 // grant), and any template social post that went out, which Dustin should know about (design
 // decision 5, third step).
 
+import { backupHealth } from "@dustinedwards/d1-dump";
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -90,6 +91,17 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
     return { name, ok: false, detail: `${site} does not conform. ${failed.join(" | ")}` };
   } catch (error) {
     return { name, ok: false, detail: `${site} could not be checked: ${message(error)}` };
+  }
+}
+
+/** The newest complete D1 dump must be under 26 hours old (d1-dump's default). No complete dump at all fails too. */
+async function checkBackup(env: Env, now: Date): Promise<CheckResult> {
+  try {
+    const { last_ok, age_hours, warning } = await backupHealth(env.BACKUPS, { now });
+    if (last_ok === null || warning) return { name: "backup", ok: false, detail: warning ?? "No complete D1 dump exists yet." };
+    return { name: "backup", ok: true, detail: `The newest complete D1 dump finished ${last_ok}, ${age_hours} hours ago.` };
+  } catch (error) {
+    return { name: "backup", ok: false, detail: `The backup bucket could not be read: ${message(error)}` };
   }
 }
 
@@ -208,6 +220,7 @@ export async function runChecks(
     ...SITE_IDS.map((id) => checkSite(env, id, fetcher)),
     checkNovels(env, fetcher),
     checkAiPublishEmails(env),
+    checkBackup(env, now),
     checkServiceAccount(env, fetcher, now),
     checkDriveFile(env, fetcher),
     checkSocialTemplates(env),

@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { runBackup } from "~/lib/backup.server";
 import { writeToSite } from "~/lib/content.server";
 import { runHealth } from "~/lib/health.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -83,6 +84,7 @@ beforeEach(async () => {
   clearBlueskySessions();
   await resetDb();
   await addPerson("owner@test.invalid", { owner: true });
+  await runBackup(testEnv); // the health check wants a fresh dump
   projectId = await addProject("germomics", "dustinedwards");
   env = {
     ...connectedEnv(),

@@ -4,6 +4,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
 
+import { runBackup } from "~/lib/backup.server";
 import { runHealth } from "~/lib/health.server";
 import { clearTokenCache } from "~/lib/novels/repo.server";
 import { addPerson, resetDb, testEnv } from "./env";
@@ -30,6 +31,8 @@ const certsDown = async () => new Response("down", { status: 503 });
 beforeEach(async () => {
   await resetDb();
   await addPerson("owner@test.invalid", { owner: true });
+  // The backup check needs a fresh complete dump; each test below states when it should not have one.
+  await runBackup(testEnv);
 });
 
 describe("health", () => {

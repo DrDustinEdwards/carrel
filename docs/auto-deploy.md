@@ -28,6 +28,7 @@ Secrets set with `wrangler secret put` live in the Worker and survive deploys. `
 GitHub repository, Settings, Secrets and variables, Actions:
 
 - Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `CARREL_ALERT_EMAIL`.
+- The R2 bucket `carrel-backups` (binding `BACKUPS`) must exist before the first deploy that carries it: `npx wrangler r2 bucket create carrel-backups`. A missing bucket fails `wrangler deploy`, after the migrations.
 - Variables: `CARREL_D1_DATABASE_ID` (07402005-1960-4bf3-9532-5e28aebacaa5), `CARREL_KV_OAUTH_ID` (16485b7142b949a1bb9e242da6b9177f).
 
 Token (Cloudflare dashboard, Manage Account, Account API tokens): the "Edit Cloudflare Workers" template plus Account, D1, Edit, scoped to this one account and the dustinedwards.info zone. The KV list in step 3 is covered by the template's Workers KV Storage permission.

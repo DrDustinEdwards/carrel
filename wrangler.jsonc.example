@@ -63,8 +63,11 @@
 			"head_sampling_rate": 1
 		}
 	},
+	// The first runs every 15 minutes (health, refresh, inbox, social). The second is the nightly D1 dump
+	// into BACKUPS (app/lib/backup.server.ts); it runs the dump alone. Its text is pinned by
+	// BACKUP_CRON in app/lib/backup-checks.ts and by test/backup.test.ts.
 	"triggers": {
-		"crons": ["*/15 * * * *"]
+		"crons": ["*/15 * * * *", "17 3 * * *"]
 	},
 	"d1_databases": [
 		{
@@ -80,6 +83,13 @@
 		{
 			"binding": "OAUTH_KV",
 			"id": "00000000000000000000000000000000"
+		}
+	],
+	// Nightly D1 dumps (d1-dump), under backups/json/. Carrel's own bucket: `npx wrangler r2 bucket create carrel-backups`.
+	"r2_buckets": [
+		{
+			"binding": "BACKUPS",
+			"bucket_name": "carrel-backups"
 		}
 	],
 	"send_email": [

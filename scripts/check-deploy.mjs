@@ -87,12 +87,15 @@ const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
   expect("success: migrations apply runs, then deploy", m >= 0 && d > m, JSON.stringify(r.calls));
   expect("success: build runs before migrations", idx(r, "build") >= 0 && idx(r, "build") < m, JSON.stringify(r.calls));
   expect(
-    "success: rendered config has the real ids, email and both routes",
+    "success: rendered config has the real ids, email, both routes, the BACKUPS bucket and the nightly cron",
     r.config.includes(D1) &&
       r.config.includes(KV) &&
       r.config.includes('"ALERT_EMAIL": "owner@test.invalid"') &&
       /^\s*"routes": \[/m.test(r.config) &&
       r.config.includes('"pattern": "carrel-mcp.dustinedwards.info"') &&
+      // The nightly dump's bucket binding and its cron ride the same render.
+      /"binding": "BACKUPS",\s*"bucket_name": "carrel-backups"/.test(r.config) &&
+      r.config.includes('"17 3 * * *"') &&
       !r.config.includes("00000000") &&
       !r.config.includes("example.com"),
     r.config.slice(0, 400),
