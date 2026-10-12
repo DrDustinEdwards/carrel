@@ -72,7 +72,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
-    "@cloudflare/vite-plugin": "1.60.2",
+    "@cloudflare/vite-plugin": "1.63.1",
     "@cloudflare/vitest-plugin": "1.2.8",
     "@dustinedwards/devkit": "github:DrDustinEdwards/devkit#v0.6.0",
     "@modelcontextprotocol/conformance": "0.2.0-alpha.11",
