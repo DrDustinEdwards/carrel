@@ -14,7 +14,8 @@ permissions:
 
 jobs:
   pr-footer:
-    # A called workflow holds no more than this job grants.
+    # A called workflow holds no more than this job grants, contents: read included, which the shared file declares.
     permissions:
+      contents: read
       pull-requests: write
     uses: DrDustinEdwards/devkit/.github/workflows/pr-footer.yml@839b4e28fd2bed4895c33df0755520267d983c11 # devkit #23
