@@ -1,11 +1,12 @@
-// Carrel inside Capsomer's shell: the same rail, top bar and phone tab bar as Capsomer's own site.
-// Only the contents differ: Carrel's name and mark, its projects and its Owner-only views.
+// Carrel inside Capsomer's shell: the same site header, app strip, menu, top bar and phone tab bar as
+// Capsomer's own site. Only the contents differ: Carrel's projects and its Owner-only views. The strip,
+// the logo and the tab title come from Capsomer's FAMILY_APPS (app="carrel"); the theme is the header's
+// button (Capsomer 0.9.0).
 
 import { useMemo, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { MessageProvider } from "capsomer/react/message";
-import { AdminShell, type AdminApp, type AdminEntry, type LinkProps } from "capsomer/react/admin-shell";
-import { ThemeSwitch } from "capsomer/react/theme-switch";
+import { AdminShell, type AdminEntry, type LinkProps } from "capsomer/react/admin-shell";
 
 export type FrameProject = { slug: string; name: string; kind: "site" | "book" | null };
 
@@ -31,20 +32,6 @@ const ICONS = {
   social: <Icon d="M2.5 9.5V6.5l8-3.5v10l-8-3.5zM5 10.5l.8 3h2" stroke />,
 };
 
-const BRAND_MARK = (
-  <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-    <path fill="var(--accent)" d="M2.5 4.2C5.2 3 8 3.3 10 5c2-1.7 4.8-2 7.5-.8v11.6C14.8 14.6 12 14.9 10 16.6 8 14.9 5.2 14.6 2.5 15.8z" />
-    <path stroke="var(--surface)" strokeWidth="1.5" fill="none" d="M10 5.5v10.5" />
-  </svg>
-);
-
-// The strip's apps. Carrel is the one we are in; the others are the family's other admin areas.
-const APPS: AdminApp[] = [
-  { id: "carrel", label: "Carrel", href: "/", logo: BRAND_MARK, current: true },
-  { id: "portal", label: "Capsid Portal", href: "https://portal.dustinedwards.info/", mono: "P" },
-  { id: "info", label: "dustinedwards.info", href: "https://dustinedwards.info/admin", mono: "D" },
-];
-
 const initialsOf = (name: string) =>
   name
     .split(/[\s@.]+/)
@@ -67,7 +54,7 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
   const { pathname } = useLocation();
   const owner = data?.isOwner ?? false;
 
-  const { nav, tabs, more } = useMemo(() => {
+  const { nav, tabs } = useMemo(() => {
     const at = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
     const home: AdminEntry = { id: "home", label: "Home", href: "/", icon: ICONS.home, current: pathname === "/" };
     const projects = (data?.projects ?? [])
@@ -91,20 +78,16 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
       : [];
     return {
       nav: [home, ...sites, ...books, ...library],
-      // The phone's bar holds the views everyone reaches first; every project is under More.
+      // The phone's bar holds the views everyone reaches first; every project is in the header's sheet.
       tabs: [home, ...library.map((e) => ({ ...e, group: undefined }))],
-      more: [...sites, ...books].map((e) => ({ ...e, group: undefined })),
     };
   }, [data, owner, pathname]);
 
   return (
     <AdminShell
-      title="Carrel"
-      mark={BRAND_MARK}
-      apps={APPS}
+      app="carrel"
       nav={nav}
       tabs={tabs}
-      more={more}
       renderLink={RouterLink}
       account={{
         name: data?.name ?? "Signed out",
@@ -113,7 +96,6 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
         appLinks: owner ? [{ label: "Settings", href: "/people", current: pathname === "/people" }] : undefined,
         onSignOut: data ? () => location.assign("/cdn-cgi/access/logout") : undefined,
       }}
-      actions={<ThemeSwitch />}
       prefKey="carrel-rail"
     >
       <MessageProvider>
