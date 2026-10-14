@@ -201,14 +201,14 @@ export const SCREENS = [
 
   // The states a person reaches by acting: dialogs, menus and the publish controls.
   {
-    name: "more-sheet",
+    name: "menu-sheet",
     viewer: "owner",
     path: "/",
-    // The tab bar, and so More, exists only on a phone.
+    // The header's Menu button, and so its sheet, exists only on a phone.
     after: async (page) => {
-      const more = page.getByRole("button", { name: /^More/ });
-      if (!(await more.isVisible())) return;
-      await more.click();
+      const menu = page.getByRole("button", { name: /^Menu$/ });
+      if (!(await menu.isVisible())) return;
+      await menu.click();
       await page.getByRole("dialog").first().waitFor();
       await page.waitForTimeout(300);
     },
