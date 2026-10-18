@@ -15,6 +15,9 @@ build/
 worker-configuration.d.ts
 *.tsbuildinfo
 
+# Test coverage the code-map workflow writes.
+coverage/
+
 # The real Worker config carries the live D1 id; the example is committed.
 /wrangler.jsonc
 
