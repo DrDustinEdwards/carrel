@@ -1,0 +1,43 @@
+name: code-map
+
+# The code map: for every module of app/ and workers/, its size, imports and import cycles, and for every function its
+# cyclomatic complexity, test coverage and CRAP score. The work is devkit's shared code-map.yml, pinned by full sha; it
+# replaces code-map.json on the orphan branch `code-map`, which Capsid's daily build reads for the system explorer. That
+# branch holds no code and nothing runs from it.
+#
+# Not a gate: it runs after a push to main, so a failure here is a red run on main and never a red pull request. No
+# mutation run yet (Carrel has no Stryker), so there is no schedule.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  code-map:
+    # A called workflow holds no more than this job grants: the write lets it push code-map.json to the code-map branch.
+    permissions:
+      contents: write
+    # One run at a time, so an older push's map never lands after a newer one's.
+    concurrency:
+      group: code-map
+      cancel-in-progress: false
+    uses: DrDustinEdwards/devkit/.github/workflows/code-map.yml@5c870d43ebcde321c1afd2d9c2759dc2a479487c # devkit #30
+    with:
+      # The version in package.json's engines field, as ci.yml reads it.
+      node-version-file: package.json
+      # tsconfig.json only holds references; the app's own project names the files and the ~/ alias.
+      tsconfig: tsconfig.cloudflare.json
+      include: app/ workers/
+      # The tests run in workerd, where only istanbul coverage works. Its provider is installed for this run only, at the
+      # exact version of the installed vitest, so package.json and the lockfile stay as they are and a vitest bump needs no
+      # edit here.
+      coverage-command: >-
+        npm i --no-save --no-package-lock --ignore-scripts
+        "@vitest/coverage-istanbul@$(node -p "require('./node_modules/vitest/package.json').version")" &&
+        npx vitest run --coverage.enabled --coverage.provider=istanbul --coverage.reporter=json
+        --coverage.include='app/**' --coverage.include='workers/**'
+      timeout-minutes: 30
