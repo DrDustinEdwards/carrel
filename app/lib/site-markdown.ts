@@ -7,7 +7,7 @@ import type { Scaffold } from "capsomer/react/markdown-editor";
 const FIGURES: Record<string, (url: string, alt: string) => string> = {
   // The site's figure directive, as its own editor inserts it (dustinedwards-info@f84b978,
   // app/components/admin/use-image-upload.ts).
-  dustinedwards: (url, alt) => [`:::figure{src="${url}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ":::"].join("\n"),
+  dustinedwards: (url, alt) => [`:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ":::"].join("\n"),
   // germomics stores the article body as HTML, and its sanitizer keeps figure and img.
   germomics: (url, alt) => `<figure><img src="${attr(url)}" alt="${attr(alt.trim())}"></figure>`,
 };
@@ -16,8 +16,15 @@ function attr(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** The URL with the characters that would end a directive attribute or a Markdown link percent-encoded: a quote, a
+ *  space, parentheses, angle brackets. Encoding keeps the URL the same address, where an entity relies on the
+ *  site's parser decoding it. */
+function urlPart(url: string): string {
+  return url.replace(/["\s()<>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`);
+}
+
 /** Plain Markdown for a site with no figure syntax of its own. */
-const plain = (url: string, alt: string) => `![${alt.trim().replace(/[[\]]/g, "")}](${url})`;
+const plain = (url: string, alt: string) => `![${alt.trim().replace(/[[\]]/g, "")}](${urlPart(url)})`;
 
 export function figureMarkup(site: string, url: string, alt: string): string {
   return (FIGURES[site] ?? plain)(url, alt);
