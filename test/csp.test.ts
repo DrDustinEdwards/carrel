@@ -203,20 +203,48 @@ describe("rendered responses on the AI door", () => {
 });
 
 describe("the report sink", () => {
-  it("logs one compact line per report and answers 204, with CORS for Carrel's own pages", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const body = JSON.stringify({ "csp-report": { "document-uri": "https://carrel.test/p/x", "effective-directive": "script-src-elem", "blocked-uri": "inline" } });
-    const response = await cspReport(new Request(`${DOOR}/csp-report`, { method: "POST", body, headers: { "Content-Type": "application/csp-report", "Content-Length": String(body.length) } }), "https://carrel.test");
+  const sink = (init: RequestInit) => cspReport(new Request(`${DOOR}/csp-report`, init), "https://carrel.test");
+  const post = (body: string, headers: Record<string, string> = {}) =>
+    sink({ method: "POST", body, headers: { "Content-Type": "application/csp-report", ...headers } });
+
+  it("logs one line per violation, URLs cut to origin and path, and answers 204 with CORS for Carrel's own pages", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const body = JSON.stringify({
+      "csp-report": { "document-uri": "https://carrel.test/p/x?draft=secret", "effective-directive": "script-src-elem", "blocked-uri": "inline" },
+    });
+    const response = await post(body, { Origin: "https://carrel.test" });
     expect(response.status).toBe(204);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("https://carrel.test");
-    expect(warn).toHaveBeenCalledWith(JSON.stringify({ csp: "violation", page: "https://carrel.test/p/x", directive: "script-src-elem", blocked: "inline" }));
-    warn.mockRestore();
-    const preflight = await cspReport(new Request(`${DOOR}/csp-report`, { method: "OPTIONS" }), "https://carrel.test");
-    expect(preflight.status).toBe(204);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("X-Content-Type-Options")).toBe(doorSecurityHeaders["X-Content-Type-Options"]);
+    expect(log).toHaveBeenCalledTimes(1);
+    const line = JSON.parse(log.mock.calls[0]![0] as string);
+    expect(line).toMatchObject({ event: "csp-violation", page: "https://carrel.test/p/x", directive: "script-src-elem", blocked: "inline" });
+    expect(JSON.stringify(line)).not.toContain("secret");
+    log.mockRestore();
   });
 
-  it("refuses an oversized or unsized body without reading it", async () => {
-    const response = await cspReport(new Request(`${DOOR}/csp-report`, { method: "POST", body: "x".repeat(20000), headers: { "Content-Length": "20000" } }), "https://carrel.test");
-    expect(response.status).toBe(413);
+  it("answers the Reporting API's preflight for Carrel's origin alone", async () => {
+    const ours = await sink({ method: "OPTIONS", headers: { Origin: "https://carrel.test" } });
+    expect(ours.status).toBe(204);
+    expect(ours.headers.get("Access-Control-Allow-Origin")).toBe("https://carrel.test");
+    const theirs = await sink({ method: "OPTIONS", headers: { Origin: "https://evil.test" } });
+    expect(theirs.status).toBe(204);
+    expect(theirs.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  it("PLANT: answers 204 to an oversized, malformed or empty report, and logs nothing", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    expect((await post("x".repeat(20000), { "Content-Length": "20000" })).status).toBe(204);
+    expect((await post("not json")).status).toBe(204);
+    expect((await post("")).status).toBe(204);
+    expect(log).not.toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  it("refuses any method but POST and OPTIONS", async () => {
+    const response = await sink({ method: "GET" });
+    expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("POST, OPTIONS");
   });
 });
