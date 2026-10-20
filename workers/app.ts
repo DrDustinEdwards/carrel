@@ -6,13 +6,15 @@ import { runBackup } from "~/lib/backup.server";
 import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
 import { reportInbox } from "~/lib/inbox-report.server";
-import { aiDoor, isMcpHost } from "~/lib/mcp/door";
+import { aiDoor, isMcpHost, mcpOrigin } from "~/lib/mcp/door";
+import { carrelOrigin } from "~/lib/mcp/server";
 import { refreshAllSites } from "~/lib/refresh.server";
 import { siteOrigins } from "~/lib/sites.server";
 import { processSocial } from "~/lib/social/queue.server";
 
-import { newNonce, withPolicy } from "./csp";
+import { cspReport, isCspReport } from "./csp-report";
 import { gate } from "./gate";
+import { newNonce, withDoorSecurityHeaders, withSecurityHeaders } from "./security-headers";
 
 const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
@@ -20,19 +22,24 @@ const requestHandler = createRequestHandler(
 );
 
 export default {
-  fetch(request, env, ctx) {
+  async fetch(request, env, ctx) {
     // Two doors, told apart by the hostname alone. The AI door (carrel-mcp.dustinedwards.info) speaks
-    // OAuth and MCP and nothing else; the pages are never served there. Everything else is the
-    // browser door, behind Access.
-    if (isMcpHost(request, env)) return aiDoor(request, env, ctx);
-    return gate(request, env, async (req, viewer) => {
-      const nonce = newNonce();
+    // OAuth and MCP and nothing else, plus the CSP report sink; the pages are never served there.
+    // Everything else is the browser door, behind Access. Every response on either carries the
+    // security headers (workers/security-headers.ts), refusals and redirects included.
+    if (isMcpHost(request, env)) {
+      const response = isCspReport(request) ? await cspReport(request, carrelOrigin(env)) : await aiDoor(request, env, ctx);
+      return withDoorSecurityHeaders(response, mcpOrigin(env));
+    }
+    const nonce = newNonce();
+    const response = await gate(request, env, async (req, viewer) => {
       const context = new RouterContextProvider();
       context.set(cloudflareContext, { env, ctx });
       context.set(viewerContext, viewer);
       context.set(nonceContext, nonce);
-      return withPolicy(await requestHandler(req, context), nonce, siteOrigins(env));
+      return requestHandler(req, context);
     });
+    return withSecurityHeaders(response, nonce, { imageOrigins: siteOrigins(env), reportOrigin: mcpOrigin(env) });
   },
 
   scheduled(controller, env, ctx) {

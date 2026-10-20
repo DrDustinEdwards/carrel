@@ -15,26 +15,17 @@ import { findViewer, type Viewer } from "~/lib/people.server";
 
 export type Render = (request: Request, viewer: Viewer) => Promise<Response>;
 
-const PRIVATE_HEADERS: Record<string, string> = {
-  "Cache-Control": "private, no-store",
-  "Strict-Transport-Security": "max-age=31536000",
-  "X-Content-Type-Options": "nosniff",
-  "X-Frame-Options": "DENY",
-  "Referrer-Policy": "no-referrer",
-};
+// Caching only. The security headers (HSTS, framing, nosniff, Referrer-Policy and the rest) are
+// workers/security-headers.ts's, applied by app.ts to everything this returns, refusals included.
+const PRIVATE_CACHE = "private, no-store";
 
 function withPrivateHeaders(response: Response): Response {
   const out = new Response(response.body, response);
-  // The preview route alone may be framed, and only by Carrel itself; nothing can loosen it further.
-  const framedByCarrel = response.headers.get("X-Frame-Options")?.toUpperCase() === "SAMEORIGIN";
-  for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(name, value);
   // An HTML page is left as it is: Cloudflare does not touch a response that says no-transform, which
   // keeps the Web Analytics beacon out of private pages (a dashboard exclusion needs the Pro plan).
   // Scripts, styles and fonts stay compressible. One Cache-Control header, never two.
-  if (out.headers.get("Content-Type")?.toLowerCase().startsWith("text/html")) {
-    out.headers.set("Cache-Control", `${PRIVATE_HEADERS["Cache-Control"]}, no-transform`);
-  }
-  if (framedByCarrel) out.headers.set("X-Frame-Options", "SAMEORIGIN");
+  const html = out.headers.get("Content-Type")?.toLowerCase().startsWith("text/html");
+  out.headers.set("Cache-Control", html ? `${PRIVATE_CACHE}, no-transform` : PRIVATE_CACHE);
   return out;
 }
 
