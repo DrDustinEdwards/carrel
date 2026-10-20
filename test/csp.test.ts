@@ -4,9 +4,9 @@
 // it runs sandboxed. The shared check (@dustinedwards/site-runtime) grades the rendered responses.
 
 import { checkSecurityHeaders, failures, STANDARD_SECURITY_HEADERS } from "@dustinedwards/site-runtime";
+import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { stubAccess } from "@dustinedwards/devkit/access";
 import { createExecutionContext } from "cloudflare:test";
-import { createLocalJWKSet } from "jose";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aiDoor } from "~/lib/mcp/door";
@@ -24,7 +24,7 @@ import {
   withSecurityHeaders,
 } from "../workers/security-headers";
 
-import { addPerson, resetDb, testEnv } from "./env";
+import { addPerson, localKeys, resetDb, testEnv } from "./env";
 import { MCP_HOST } from "./mcp-client";
 
 const NONCE = "bm9uY2Utbm9uY2Utbm9uY2U=";
@@ -112,12 +112,12 @@ describe("the preview", () => {
 });
 
 describe("rendered responses through the gate", () => {
-  let keys: ReturnType<typeof createLocalJWKSet>;
+  let keys: KeySource;
   let token: string;
 
   beforeAll(async () => {
     const access = await stubAccess({ issuer: testEnv.ACCESS_TEAM_DOMAIN, audience: testEnv.ACCESS_AUD, email: "owner@test.invalid", install: false });
-    keys = createLocalJWKSet({ keys: [access.jwk] });
+    keys = localKeys(access.jwk);
     token = await access.token();
   });
 

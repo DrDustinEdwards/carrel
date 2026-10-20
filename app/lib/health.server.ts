@@ -10,11 +10,11 @@
 
 import { backupHealth } from "@dustinedwards/d1-dump";
 import { runConformance } from "@dustinedwards/site-api/conformance";
+import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { aiPublications, googleKeysSeen, googleTokens, healthState, people } from "~/db/schema";
-import { teamIssuer } from "~/lib/access.server";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
 import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
@@ -49,7 +49,7 @@ async function checkOwner(env: Env): Promise<CheckResult> {
 }
 
 async function checkAccessKeys(env: Env, fetcher: Fetch): Promise<CheckResult> {
-  const url = `${teamIssuer(env.ACCESS_TEAM_DOMAIN ?? "")}/cdn-cgi/access/certs`;
+  const url = `${accessIssuer(env.ACCESS_TEAM_DOMAIN) ?? ""}/cdn-cgi/access/certs`;
   try {
     const response = await fetcher(url);
     if (!response.ok) return { name: "access-keys", ok: false, detail: `${url} answered ${response.status}.` };

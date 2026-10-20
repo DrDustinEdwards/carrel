@@ -1,18 +1,18 @@
 // Planted problems for the gate. Every refusal case must be a bare 403 and must never reach render.
 
 import { stubAccess } from "@dustinedwards/devkit/access";
-import { createLocalJWKSet } from "jose";
+import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { gate } from "../workers/gate";
-import { addPerson, resetDb, testEnv } from "./env";
+import { addPerson, localKeys, resetDb, testEnv } from "./env";
 
 const ISSUER = "https://test-team.cloudflareaccess.com";
 const AUDIENCE = "test-audience-tag";
 
 const stub = (email = "owner@test.invalid") => stubAccess({ issuer: ISSUER, audience: AUDIENCE, email, install: false });
 
-let keys: ReturnType<typeof createLocalJWKSet>;
+let keys: KeySource;
 let team: Awaited<ReturnType<typeof stub>>;
 let stranger: Awaited<ReturnType<typeof stub>>;
 
@@ -20,7 +20,7 @@ beforeAll(async () => {
   team = await stub();
   // A second stub signs with a key the team does not publish.
   stranger = await stub();
-  keys = createLocalJWKSet({ keys: [team.jwk] });
+  keys = localKeys(team.jwk);
 });
 
 beforeEach(async () => {

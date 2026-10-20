@@ -8,9 +8,8 @@
 // dashboard shows them, so the only settings are the two secrets. Fails closed: a missing setting
 // keeps the door shut.
 
+import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
-
-import { teamIssuer } from "~/lib/access.server";
 
 export type AccessSaas = {
   clientId: string;
@@ -28,7 +27,7 @@ export function accessSaas(env: Env): AccessSaas | null {
   const clientId = env.ACCESS_SAAS_CLIENT_ID?.trim();
   const clientSecret = env.ACCESS_SAAS_CLIENT_SECRET?.trim();
   if (!team || !clientId || !clientSecret) return null;
-  const issuer = `${teamIssuer(team)}/cdn-cgi/access/sso/oidc/${encodeURIComponent(clientId)}`;
+  const issuer = `${accessIssuer(team)}/cdn-cgi/access/sso/oidc/${encodeURIComponent(clientId)}`;
   return { clientId, clientSecret, issuer, authorizationUrl: `${issuer}/authorization`, tokenUrl: `${issuer}/token`, jwksUrl: `${issuer}/jwks` };
 }
 
