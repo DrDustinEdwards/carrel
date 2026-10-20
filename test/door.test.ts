@@ -8,14 +8,13 @@
 
 import { createExecutionContext } from "cloudflare:test";
 import { stubAccess } from "@dustinedwards/devkit/access";
-import { createLocalJWKSet } from "jose";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
 import { ALL_PER_DAY, PER_ADDRESS_PER_HOUR } from "~/lib/mcp/registration";
 
 import { gate } from "../workers/gate";
-import { addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { addPerson, addProject, localKeys, resetDb, share, testEnv } from "./env";
 import { MCP_HOST, modernRequest, readMessage, type ToolCallResult } from "./mcp-client";
 import { connectedEnv, fakeSite } from "./site";
 
@@ -63,7 +62,7 @@ async function browser(path: string, jwt: string) {
       rendered = true;
       return new Response("inside");
     },
-    createLocalJWKSet({ keys: [access.jwk] }),
+    localKeys(access.jwk),
   );
   return { status: response.status, rendered };
 }

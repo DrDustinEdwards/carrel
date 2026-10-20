@@ -1,8 +1,14 @@
 import { resetDb as resetTables } from "@dustinedwards/devkit/d1";
+import type { Jwk, KeySource } from "@dustinedwards/site-runtime/access-login";
 import { env } from "cloudflare:workers";
 import type { D1Migration } from "cloudflare:test";
 
 export const testEnv = env as unknown as Env & { TEST_D1_MIGRATIONS: D1Migration[] };
+
+/** The Access team's published keys, as the gate reads them, served from these public keys instead of the network. */
+export function localKeys(...keys: Jwk[]): KeySource {
+  return async (kid) => keys.find((key) => key.kid === kid);
+}
 
 /** Clears every table, so each test states the people and projects it relies on. The tables are read from the
  * schema by devkit, so one a migration adds is cleared without being listed here. mcp_calls is kept: it is

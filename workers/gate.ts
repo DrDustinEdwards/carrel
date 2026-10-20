@@ -8,9 +8,9 @@
 // an AI session never reaches the buttons: /mcp here is just a page that does not exist, behind
 // Access like every other.
 
-import type { JWTVerifyGetKey } from "jose";
+import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 
-import { accessKeys, verifyAccess } from "~/lib/access.server";
+import { verifyAccess } from "~/lib/access.server";
 import { findViewer, type Viewer } from "~/lib/people.server";
 
 export type Render = (request: Request, viewer: Viewer) => Promise<Response>;
@@ -41,7 +41,7 @@ export async function gate(
   request: Request,
   env: Env,
   render: Render,
-  keys: JWTVerifyGetKey = accessKeys(env.ACCESS_TEAM_DOMAIN),
+  keys?: KeySource,
 ): Promise<Response> {
   let viewer: Viewer | null;
   try {
