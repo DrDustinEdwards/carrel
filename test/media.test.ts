@@ -16,7 +16,7 @@ import { loader as editorLoader } from "~/routes/editor";
 import { action as mediaAction, loader as mediaLoader } from "~/routes/media";
 import { action as apiAction, loader as apiLoader } from "~/routes/media.api";
 
-import { appPolicy } from "../workers/csp";
+import { appPolicy } from "../workers/security-headers";
 import { addPerson, addProject, resetDb, share } from "./env";
 import { connectedEnv, fakeSite, SITE_ORIGIN, viewerFor } from "./site";
 
@@ -257,7 +257,7 @@ describe("the editor's image tools", () => {
 
 describe("the image policy", () => {
   it("loads images from the configured sites, and drops anything that is not a plain https origin", () => {
-    const policy = appPolicy("n", ["https://site.test", "https://evil.test; script-src *", "http://plain.test"]);
+    const policy = appPolicy("AAAAAAAAAAAAAAAAAAAAAA==", ["https://site.test", "https://evil.test; script-src *", "http://plain.test"]);
     expect(policy).toContain("img-src 'self' data: https://site.test;");
     expect(policy).not.toContain("evil.test");
     expect(policy).not.toContain("plain.test");

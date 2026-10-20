@@ -51,10 +51,10 @@ export function isMcpHost(request: Request, env: Env): boolean {
   return new URL(request.url).host.toLowerCase() === new URL(mcpOrigin(env)).host.toLowerCase();
 }
 
+// Caching and indexing only. The security headers are workers/security-headers.ts's, applied by
+// workers/app.ts to every response on this host.
 const PRIVATE_HEADERS: Record<string, string> = {
   "Cache-Control": "no-store",
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "no-referrer",
   "X-Robots-Tag": "noindex, nofollow",
 };
 
