@@ -84,6 +84,15 @@ describe("germomics", () => {
     );
   });
 
+  it("PLANT: a URL cannot end the figure's src attribute or the Markdown link", () => {
+    const url = 'https://media.example.com/a b"(c)<d>.png';
+    expect(figureMarkup("dustinedwards", url, "A figure")).toBe(
+      ':::figure{src="https://media.example.com/a%20b%22%28c%29%3Cd%3E.png" alt="A figure"}\n:::',
+    );
+    expect(figureMarkup("unknown-site", url, "A figure")).toBe("![A figure](https://media.example.com/a%20b%22%28c%29%3Cd%3E.png)");
+    expect(figureMarkup("dustinedwards", "https://media.example.com/plain.png", "x")).toContain('src="https://media.example.com/plain.png"');
+  });
+
   it("reads its own Search Console property", () => {
     expect(propertyFor(testEnv, "germomics")).toBe("sc-domain:germomics.com");
     expect(propertyFor({ ...testEnv, SEARCH_CONSOLE_PROPERTY_DUSTINEDWARDS: "" }, "dustinedwards")).toBe("sc-domain:dustinedwards.info");
