@@ -137,6 +137,13 @@ describe("gate: admission", () => {
     expect(response.status).toBe(200);
   });
 
+  it("allows 60 seconds of clock skew, and no more", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const { response } = await run(request(await token({ exp: now - 30 })));
+    expect(response.status).toBe(200);
+    await expectRefused(request(await token({ exp: now - 120 })));
+  });
+
   it("accepts the team domain written with a trailing slash", async () => {
     const env = { ...testEnv, ACCESS_TEAM_DOMAIN: `${ISSUER}/` };
     const { response } = await run(request(await token()), env);

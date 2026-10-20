@@ -52,6 +52,9 @@ export async function verifyAccess(
       issuer: teamIssuer(teamDomain),
       audience,
       algorithms: ["RS256"],
+      // Access and the Workers runtime keep different clocks; the family allows 60 seconds either way
+      // (@dustinedwards/site-runtime/access-login, dustinedwards.info's Access check).
+      clockTolerance: 60,
     }));
   } catch {
     return { ok: false, reason: "invalid-token" };
