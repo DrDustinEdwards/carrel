@@ -1,12 +1,12 @@
 // The nightly D1 dump: it leaves credential tables out, requires the authorship and AI draft tables,
 // and is marked complete only after its own checks. Each failure is planted here and must be seen red.
 
-import { backupHealth, dumpDatabase, latestDump } from "@dustinedwards/d1-dump";
+import { BackupIncomplete, backupHealth, dumpDatabase, latestDump, standardProblems, type DumpResult } from "@dustinedwards/d1-dump";
 import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { BACKUP_CRON, checkDump, EXCLUDED_TABLES, REQUIRED_TABLES } from "~/lib/backup-checks";
-import { BackupFailed, runBackup } from "~/lib/backup.server";
+import { BACKUP_CRON, BACKUP_OPTIONS, EXCLUDED_TABLES, REQUIRED_TABLES } from "~/lib/backup-checks";
+import { runBackup } from "~/lib/backup.server";
 import { cloudflareContext } from "~/lib/context";
 import { loader as healthLoader } from "~/routes/health";
 import example from "../wrangler.jsonc.example?raw";
@@ -24,7 +24,7 @@ beforeEach(async () => {
   await addPerson("owner@test.invalid", { owner: true });
 });
 
-const failing = (dump: Parameters<typeof checkDump>[0]) => checkDump(dump).filter((c) => !c.ok).map((c) => c.name);
+const problems = (dump: DumpResult) => [...standardProblems(dump, BACKUP_OPTIONS), ...BACKUP_OPTIONS.check(dump)];
 
 describe("the nightly dump", () => {
   it("writes a complete run without the credential tables, keeps the required ones, and reports its age", async () => {
@@ -43,23 +43,21 @@ describe("the nightly dump", () => {
 
   it("PLANT empty dump: the run is not marked complete and the bucket has no newest dump", async () => {
     await testEnv.DB.prepare("DELETE FROM people").run();
-    await expect(runBackup(testEnv)).rejects.toThrow(BackupFailed);
+    await expect(runBackup(testEnv)).rejects.toThrow(BackupIncomplete);
     expect(await latestDump(testEnv.BACKUPS)).toBeNull();
     expect((await backupHealth(testEnv.BACKUPS)).last_ok).toBeNull();
     const dump = await dumpDatabase(testEnv.DB, testEnv.BACKUPS, { exclude: [...EXCLUDED_TABLES], markComplete: false });
-    expect(failing(dump)).toEqual(["not-empty"]);
+    expect(problems(dump)).toEqual(["the dump holds no people, so not even the Owner"]);
   });
 
   it("PLANT credential table left in: the check names it", async () => {
     const dump = await dumpDatabase(testEnv.DB, testEnv.BACKUPS, { markComplete: false });
-    expect(failing(dump)).toEqual(["no-credential-tables"]);
-    expect(checkDump(dump).find((c) => c.name === "no-credential-tables")?.detail).toContain("google_tokens");
+    expect(problems(dump)).toEqual(["google_tokens is in the dump but must be excluded", "google_oauth_states is in the dump but must be excluded"]);
   });
 
   it("PLANT missing required table: the check names it", async () => {
     const dump = await dumpDatabase(testEnv.DB, testEnv.BACKUPS, { exclude: [...EXCLUDED_TABLES, "authorship"], markComplete: false });
-    expect(failing(dump)).toEqual(["required-tables"]);
-    expect(checkDump(dump).find((c) => c.name === "required-tables")?.detail).toContain("authorship");
+    expect(problems(dump)).toEqual(["authorship is missing from the dump"]);
   });
 
   it("every table that looks like a credential is excluded or reviewed, and every excluded name is a table", async () => {
