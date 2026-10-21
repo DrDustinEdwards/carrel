@@ -13,7 +13,7 @@ import { chromium } from "playwright";
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const VITE = join(ROOT, "node_modules", "vite", "bin", "vite.js");
 
-export const VIEWERS = {
+const VIEWERS = {
   owner: "dustin@harness.invalid",
   editor: "rosa@harness.invalid",
   reader: "sam@harness.invalid",

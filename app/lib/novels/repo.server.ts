@@ -7,16 +7,16 @@
 import { SignJWT } from "jose";
 
 export const NOVELS_REPO = "DrDustinEdwards/writing";
-export const NOVELS_BRANCH = "main";
+const NOVELS_BRANCH = "main";
 const API = "https://api.github.com";
 
-export type RepoFile = { source: string; sha: string };
+type RepoFile = { source: string; sha: string };
 
 /** One file renamed in a multi-file commit: its blob is kept, only its path changes. */
-export type Rename = { from: string; to: string; sha: string };
+type Rename = { from: string; to: string; sha: string };
 
 /** A commit that touched a path, newest first, as GitHub lists it. */
-export type PathCommit = { sha: string; message: string; author: string; email: string; at: string };
+type PathCommit = { sha: string; message: string; author: string; email: string; at: string };
 
 /** A write refused because the file is not at the version the writer expected. */
 export class GitConflict extends Error {

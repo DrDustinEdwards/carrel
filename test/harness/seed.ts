@@ -55,7 +55,7 @@ function post(title: string, slug: string, description: string, date: string, ta
 const HEADER = (pov: string, date: string, place: string, present: string[], goal: string, conflict: string, outcome: string) =>
   `---\npov: ${pov}\ndate: ${date}\nlocation: ${place}\ncharacters: [${present.join(", ")}]\ngoal: ${goal}\nconflict: ${conflict}\noutcome: ${outcome}\n---\n\n`;
 
-/** The writing-desk keys (job_50786e609b88) put at the top of a scene's header. */
+/** The writing-desk keys put at the top of a scene's header. */
 const planned = (scene: string, status: string, summary: string, target: number) => scene.replace("---\n", `---\nstatus: ${status}\nsummary: ${summary}\ntarget: ${target}\n`);
 
 const SCENE_ONE = HEADER("Nell", "2024-04-12", "Harlan place", ["Nell", "Wade"], "get her truck towed", "the lock on the gate", "Wade lets her in") + BASELINE[0]!;
@@ -319,7 +319,7 @@ async function build(base: Env): Promise<World> {
   await put(`${BOOK}/bible/places/harlan-place.md`, "---\nname: Harlan place\n---\nA ranch house back in the live oaks, porch sagging at the east corner.\n");
   await put(`${BOOK}/bible/places/low-water-crossing.md`, "---\nname: Low-water crossing\n---\nWhere the county road dips through the creek. It floods in April.\n");
   await put(`${BOOK}/bible/rules/no-phones.md`, "---\nname: No phones past the ridge\nforbidden: [phone rang]\n---\nThere is no signal past the ridge, and the story never pretends otherwise.\n");
-  // The gate has a history: a first pass committed elsewhere, then the revision (job_b4555715afcf).
+  // The gate has a history: a first pass committed elsewhere, then the revision.
   await put(`${BOOK}/chapters/01-arrival/01-the-gate.md`, planned(SCENE_ONE.split("\n\n").slice(0, 2).join("\n\n") + "\n", "First draft", "Nell is let in past the locked gate", 1500));
   await put(`${BOOK}/chapters/01-arrival/01-the-gate.md`, planned(SCENE_ONE, "Revised", "Nell is let in past the locked gate", 1500));
   await put(`${BOOK}/chapters/01-arrival/02-supper.md`, planned(SCENE_TWO, "First draft", "Supper, and what Wade will not say", 1500));

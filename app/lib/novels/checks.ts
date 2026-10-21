@@ -15,7 +15,7 @@ import {
 } from "./layout";
 import { describeFeature, distanceFrom, VOICE_THRESHOLD, type Profile } from "./voice";
 
-export type CheckName = "header" | "continuity" | "timeline" | "world-rules" | "ai-habits" | "voice";
+type CheckName = "header" | "continuity" | "timeline" | "world-rules" | "ai-habits" | "voice";
 
 export type Finding = {
   path: string;
@@ -108,7 +108,7 @@ function escapeRegExp(s: string): string {
 // ---------- the checks
 
 /** The header is where the other checks get their facts; a missing field makes them silent, so it is flagged. */
-export function checkHeader(path: string, source: string, header: SceneHeader, hasHeader: boolean): Finding[] {
+function checkHeader(path: string, source: string, header: SceneHeader, hasHeader: boolean): Finding[] {
   if (!hasHeader) {
     return [{ path, check: "header", message: "This scene has no header, so the continuity and timeline checks cannot run.", line: 1, excerpt: null }];
   }

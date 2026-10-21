@@ -1,4 +1,4 @@
-// Named agent keys at the AI door (job_77fd33040bdd). An agent that cannot complete OAuth (Grok Build)
+// Named agent keys at the AI door. An agent that cannot complete OAuth (Grok Build)
 // presents a key, and the key's Worker secret NAME is the agent: AGENT_KEY_GROK is "grok". The key
 // says who is knocking and grants nothing: the agent is the person row "agent:grok" in People, its
 // role comes from there, and it is credited as "agent:grok", never as Dustin. Every refusal below

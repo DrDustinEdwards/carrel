@@ -1,4 +1,4 @@
-// The formatted editor's Markdown underneath (job_1ba8094853f5): a file opened and saved with no
+// The formatted editor's Markdown underneath: a file opened and saved with no
 // edit comes back byte for byte, and an edit changes only the bytes of the block it touched. The
 // corpus in test/fixtures/markdown is written for this test (every construct, in each spelling); real
 // content is checked by scripts/check-roundtrip.mjs, which CI runs over dustinedwards.info's content.

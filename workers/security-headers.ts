@@ -11,7 +11,7 @@ import { applyHeaderSet, buildSecurityHeaders } from "@dustinedwards/site-runtim
 /** Where browsers send violation reports: a path on the AI door, the one Carrel host outside Access. */
 export const CSP_REPORT_PATH = "/csp-report";
 /** The `report-to` group name, declared by the Reporting-Endpoints header. */
-export const CSP_REPORT_GROUP = "csp";
+const CSP_REPORT_GROUP = "csp";
 
 /** The browser host's set: the shared standard exactly. A header not overridden is OSHP's value. */
 export const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders());

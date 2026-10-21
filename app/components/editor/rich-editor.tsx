@@ -1,4 +1,4 @@
-// The formatted editor (ruling point 3, job_1ba8094853f5): Tiptap's MIT core over ProseMirror, showing
+// The formatted editor (ruling point 3): Tiptap's MIT core over ProseMirror, showing
 // formatted text with the Markdown underneath kept byte for byte (lib/editor/markdown.mjs). It keeps
 // what the Markdown editor did: the APG toolbar (bold, italic, link, heading, code, footnote, the app's
 // blocks, an image), Ctrl or Cmd B, I, E, K and S, the link palette over the app's pages, the block

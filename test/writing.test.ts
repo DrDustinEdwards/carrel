@@ -1,4 +1,4 @@
-// Writing 1 (job_50786e609b88): the status, summary, target and limit header keys; each project's
+// Writing 1: the status, summary, target and limit header keys; each project's
 // status list; the outliner; and daily progress, which counts only typed words, by the local day,
 // with deletions held at zero unless the goal allows otherwise, a target by hand or from a deadline
 // over the chosen writing days, and streaks.

@@ -1,4 +1,4 @@
-// Writing 2 and 3 (job_b4555715afcf): the binder and corkboard reorder a book by renaming its numbered
+// Writing 2 and 3: the binder and corkboard reorder a book by renaming its numbered
 // files in ONE commit, carrying Carrel's records to the new paths; a file's history lists its
 // versions (saved in Carrel, moved, or committed elsewhere) back through its moves, and any two, or
 // Dustin's text and an AI draft, compare.

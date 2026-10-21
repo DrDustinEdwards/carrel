@@ -30,7 +30,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      # The formatted editor keeps the Markdown underneath byte for byte (job_1ba8094853f5). The
+      # The formatted editor keeps the Markdown underneath byte for byte. The
       # site's own content is checked out read-only at test time, never committed here (this repo
       # holds no writing), and every file must come back from the editor unchanged.
       - name: Check out dustinedwards.info's content (public, read-only)

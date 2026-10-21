@@ -1,4 +1,4 @@
-// One book file's history (job_b4555715afcf), the twin of the site posts' history page: its versions
+// One book file's history, the twin of the site posts' history page: its versions
 // newest first (saved in Carrel, moved in the binder, or committed elsewhere), each opening its text;
 // any two set side by side or as a patch; and the person's own text against Git's or against an AI
 // draft saved beside it. Read-only, and it works for a Reader. The compare components and the patch

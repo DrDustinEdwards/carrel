@@ -34,7 +34,7 @@ export function fakeSite<A extends SiteAdapter = ReturnType<typeof memoryAdapter
  * other id is a post. A writing kind has a page on the site once published; a data kind (the lab
  * registry) never has one, and the site refuses to write it through Carrel.
  */
-export const SITE_KINDS = {
+const SITE_KINDS = {
   page: (name: string) => `/${name.replaceAll("-", "/")}`,
   publication: (name: string) => `/research/publications/${name}/`,
   document: (name: string) => `/${name}.txt`,

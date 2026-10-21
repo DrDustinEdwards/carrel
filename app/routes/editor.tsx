@@ -37,7 +37,7 @@ import { GoogleNotConnected } from "~/lib/google/service-account.server";
 import { searchItems, sitePaths } from "~/lib/index.server";
 import { mediaLimits } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { transitionsFor } from "~/lib/publish-transition.mjs";
+import { transitionsFor } from "capsomer/publish-transition";
 import { can } from "~/lib/roles";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";

@@ -17,10 +17,10 @@ export type Rename = { from: string; to: string };
 const NUMBERED = /^(\d{2,3})-([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 
 export const ROOT = { chapters: "group:chapters", bible: "group:bible", outline: "group:outline", notes: "group:notes" } as const;
-export const chapterId = (slug: string) => `ch:${slug}`;
+const chapterId = (slug: string) => `ch:${slug}`;
 export const fileId = (path: string) => `f:${path}`;
-export const pathOf = (id: string) => (id.startsWith("f:") ? id.slice(2) : null);
-export const chapterOfId = (id: string) => (id.startsWith("ch:") ? id.slice(3) : null);
+const pathOf = (id: string) => (id.startsWith("f:") ? id.slice(2) : null);
+const chapterOfId = (id: string) => (id.startsWith("ch:") ? id.slice(3) : null);
 
 type IndexedLike = { path: string; words: number; meta: Meta };
 

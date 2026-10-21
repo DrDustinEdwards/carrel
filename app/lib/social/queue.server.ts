@@ -29,9 +29,9 @@ export const BATCH_DELAY_MS = 30 * 60_000;
 /** How long the routine has to store its drafts before the template is used. */
 export const ROUTINE_WAIT_MS = 3 * 60 * 60_000;
 /** Routine runs a day: one to three, under the subscription's routine cap (design decision 5). */
-export const ROUTINE_DAILY_CAP = 3;
+const ROUTINE_DAILY_CAP = 3;
 /** The nightly sweep's hour, UTC (3 a.m. Central in daylight time). */
-export const NIGHTLY_HOUR_UTC = 8;
+const NIGHTLY_HOUR_UTC = 8;
 
 const DEFAULT_TEMPLATE = "New: {title}. {summary} {link}";
 

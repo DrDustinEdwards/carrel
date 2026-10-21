@@ -12,10 +12,10 @@ const FUNCTION_WORDS = [
 /** "sentence length", a punctuation mark per 1,000 words, or a quoted function word per 1,000 words. */
 type FeatureName = string;
 
-export type Features = Record<FeatureName, number>;
+type Features = Record<FeatureName, number>;
 
 /** How far a passage needs to be before its profile means anything. */
-export const MIN_WORDS = 250;
+const MIN_WORDS = 250;
 /** The chunk size the baseline passages are cut into, so their spread can be measured. */
 const CHUNK_WORDS = 300;
 /** The most one feature can add to the distance, in standard deviations. */
@@ -39,7 +39,7 @@ function per1000(count: number, total: number): number {
   return total === 0 ? 0 : (count * 1000) / total;
 }
 
-export function features(text: string): Features {
+function features(text: string): Features {
   const all = words(text);
   const total = all.length;
   const sents = sentences(text);

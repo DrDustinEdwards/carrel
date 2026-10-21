@@ -1,4 +1,4 @@
-// The people page, the project flags list and media in the authorship record (job_11a70a5353a3).
+// The people page, the project flags list and media in the authorship record.
 // Each refusal the job names is planted, and each checks that nothing changed.
 
 import { RouterContextProvider } from "react-router";

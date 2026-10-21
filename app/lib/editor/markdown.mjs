@@ -1,4 +1,4 @@
-// Markdown in and out of the formatted editor (job_1ba8094853f5, carrel/research/editor-spike.md).
+// Markdown in and out of the formatted editor (carrel/research/editor-spike.md).
 // The source stays the truth. Parsing splits a file into its top-level blocks with the parser family
 // the site renders with (micromark and mdast, as remark), and every block remembers its exact bytes
 // and the bytes before it. Saving writes each block the editor did not change as those bytes, and
@@ -40,7 +40,7 @@ export const BLOCK_TYPES = ["paragraph", "heading", "bulletList", "orderedList",
  * @param {string} source
  * @param {Dialect} dialect
  */
-export function parseTree(source, dialect) {
+function parseTree(source, dialect) {
   const site = dialect === "site";
   return fromMarkdown(source, {
     extensions: [frontmatter(["yaml"]), gfm(), ...(site ? [directive(), math()] : [])],
@@ -219,7 +219,7 @@ export function toDoc(source, dialect) {
  * A node with its origins taken out, as a string: two blocks with the same print are the same text.
  * @param {JsonNode} node
  */
-export function print(node) {
+function print(node) {
   return JSON.stringify(node, (key, value) => (key === "md" ? undefined : value));
 }
 

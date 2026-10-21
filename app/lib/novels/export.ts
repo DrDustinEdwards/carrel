@@ -79,7 +79,7 @@ export function parseProse(body: string): Block[] {
 
 // ---------- XHTML, for ePub and the print page
 
-export function escapeXml(text: string): string {
+function escapeXml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
@@ -115,7 +115,7 @@ export function blocksToHtml(blocks: Block[]): string {
 }
 
 /** A chapter's scenes, separated by scene breaks, as the chapter's body. */
-export function chapterBlocks(chapter: Assembled["chapters"][number]): Block[] {
+function chapterBlocks(chapter: Assembled["chapters"][number]): Block[] {
   const out: Block[] = [];
   chapter.scenes.forEach((scene, i) => {
     if (i > 0) out.push({ type: "break" });

@@ -1,4 +1,4 @@
-// The writing desk's own records in D1 (job_50786e609b88): each project's status list, each person's
+// The writing desk's own records in D1: each project's status list, each person's
 // writing goal, the running count of words that reached a file without being typed, and the saves a
 // day's progress is counted from. Git holds the text and the headers; none of this is in Git.
 
@@ -56,7 +56,7 @@ export async function readGoal(db: D1Database, project: BookProject, viewer: Vie
   return { mode: row.mode, dailyTarget: row.dailyTarget, writingDays: parseWritingDays(row.writingDays), allowNegative: row.allowNegative };
 }
 
-export const MAX_DAILY_TARGET = 100_000;
+const MAX_DAILY_TARGET = 100_000;
 
 /** A person's own goal: anyone who may write in the project sets theirs, and no one else's. */
 export async function saveGoal(db: D1Database, project: BookProject, viewer: Viewer, input: { mode: string; dailyTarget: string; writingDays: string[]; allowNegative: boolean }) {

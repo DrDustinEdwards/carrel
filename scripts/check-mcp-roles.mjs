@@ -1,4 +1,4 @@
-// check:mcp-roles. The MCP layer holds no role logic (design decision 7, corrected; job_9ceeb5b44aa1).
+// check:mcp-roles. The MCP layer holds no role logic (design decision 7, corrected).
 //
 // Every rule about who may do what lives in the functions the buttons call (content.server.ts,
 // ai.server.ts, books.server.ts, people.server.ts, roles.ts). The MCP layer, app/lib/mcp/, names the
