@@ -300,7 +300,6 @@ The editor is copied from `DrDustinEdwards/dustinedwards-info@6e0f8c9`. Each fil
 | `app/components/editor/roving-focus.ts` | `app/components/admin/roving-focus.ts` | Import path only. |
 | `app/lib/roving.mjs` | `app/lib/admin/roving.mjs` | Nothing. |
 | `app/lib/reading-time.mjs` | `app/lib/content/reading-time.mjs` | Nothing. |
-| `app/lib/publish-transition.mjs` | `app/lib/editor/publish-transition.mjs` | Nothing. |
 | `app/app.css` (the `md-*` rules) | `app/styles/admin-editor.css` | Mapped onto Carrel's tokens. |
 
 Some of the site's editor is deliberately not copied:
