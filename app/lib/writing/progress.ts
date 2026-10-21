@@ -39,11 +39,11 @@ export function dayKey(at: string | Date, timeZone: string): string {
 }
 
 /** The weekday of a calendar day, 0 Sunday. Computed at noon UTC, which every zone shares as the same date. */
-export function weekdayOf(day: string): number {
+function weekdayOf(day: string): number {
   return new Date(`${day}T12:00:00Z`).getUTCDay();
 }
 
-export function addDays(day: string, n: number): string {
+function addDays(day: string, n: number): string {
   const d = new Date(`${day}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);

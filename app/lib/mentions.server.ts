@@ -11,7 +11,7 @@
 // with the change id Carrel sent the site so the two histories join. A refused write writes nothing.
 // The write and the site's cache purge are one unit on the site's side; Carrel reports its answer.
 
-import { MentionId, Version, type MentionItem, type MentionList, type MentionStatus } from "@dustinedwards/site-api";
+import { MentionId, Version, type MentionList, type MentionStatus } from "@dustinedwards/site-api";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -22,10 +22,10 @@ import { can, type Action } from "~/lib/roles";
 import { siteClient, SiteNotConnected } from "~/lib/sites.server";
 
 export const MAX_MENTION_BATCH = 100;
-export const MENTIONS_PER_PAGE = 50;
+const MENTIONS_PER_PAGE = 50;
 
 /** The views of the queue, pending first because it is the one that wants an action. */
-export const MENTION_FILTERS = ["pending", "failed", "approved", "rejected", "unverified", "all"] as const;
+const MENTION_FILTERS = ["pending", "failed", "approved", "rejected", "unverified", "all"] as const;
 export type MentionFilter = (typeof MENTION_FILTERS)[number];
 
 export function isMentionFilter(value: string | null | undefined): value is MentionFilter {
@@ -224,4 +224,4 @@ export async function sweepMentions(env: Env, project: SiteProject, actor: Menti
   }
 }
 
-export type { MentionItem, MentionList };
+export type { MentionList };

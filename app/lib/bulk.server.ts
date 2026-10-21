@@ -31,7 +31,7 @@ export function cleanTag(raw: string): string | null {
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
 /** The ids to act on: unique, each one an id a site could hold. An id that could not be one is reported, not sent. */
-export function parseIds(raw: readonly string[]): { ids: string[]; invalid: string[] } {
+function parseIds(raw: readonly string[]): { ids: string[]; invalid: string[] } {
   const ids: string[] = [];
   const invalid: string[] = [];
   for (const id of new Set(raw)) (ContentId.safeParse(id).success ? ids : invalid).push(id);

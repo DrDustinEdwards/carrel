@@ -18,7 +18,7 @@ import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
 
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
 
-export type WriteAction = "save" | "publish" | "schedule" | "unpublish";
+type WriteAction = "save" | "publish" | "schedule" | "unpublish";
 
 export type WriteOutcome =
   | { ok: true; action: WriteAction; version: string; status: ContentDoc["status"]; changeId: string }
@@ -89,7 +89,7 @@ export async function discardDraft(db: D1Database, project: ProjectRole, viewer:
  * What a write needs. Saving changes to a published or scheduled item changes the public site, so it
  * is a publish, not an edit: an Editor may save drafts only.
  */
-export function actionNeeded(action: WriteAction, current: ContentDoc | null): Action {
+function actionNeeded(action: WriteAction, current: ContentDoc | null): Action {
   if (action !== "save") return "publish";
   return current && current.status !== "draft" ? "publish" : "edit";
 }

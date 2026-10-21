@@ -1,4 +1,4 @@
-// The media library's v0.4.0 writes (job_b4acbaabf747): alt text, tags, the trash, bulk actions and
+// The media library's v0.4.0 writes: alt text, tags, the trash, bulk actions and
 // emptying the trash, over site-api's own handler and its reference adapter. Planted: the Owner-only
 // boundary (a delete, a bulk delete and an empty-trash by an Editor are refused before the site hears
 // anything), a stale version (plain conflict, nothing recorded), per-file bulk reporting (a file a post

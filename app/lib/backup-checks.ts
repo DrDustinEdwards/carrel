@@ -19,7 +19,7 @@ export const EXCLUDED_TABLES = ["google_tokens", "google_oauth_states"] as const
 export const REQUIRED_TABLES = ["authorship", "ai_drafts"] as const;
 
 /** Carrel cannot run without its Owner, so a dump with no people row is an emptied or wrong database. */
-export function ownerProblems(dump: DumpResult): string[] {
+function ownerProblems(dump: DumpResult): string[] {
   const people = dump.tables.find((t) => t.name === "people")?.rows ?? 0;
   return people > 0 ? [] : ["the dump holds no people, so not even the Owner"];
 }

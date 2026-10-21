@@ -22,7 +22,7 @@ export const SUBREQUEST_LIMIT = 10_000;
 export const REFRESH_SUBREQUEST_BUDGET = SUBREQUEST_LIMIT / 10;
 
 const PAGE_SIZE = 200;
-export const MAX_PAGES = 10;
+const MAX_PAGES = 10;
 
 /**
  * Bodies read per refresh. A refresh costs at most MAX_PAGES list calls, two D1 calls (the known

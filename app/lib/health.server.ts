@@ -144,7 +144,7 @@ async function checkAiPublishEmails(env: Env): Promise<CheckResult> {
 }
 
 /** Google recommends rotating service account keys at least every 90 days. */
-export const KEY_MAX_AGE_DAYS = 90;
+const KEY_MAX_AGE_DAYS = 90;
 
 /**
  * The service account key: absent is "not connected" (its stage's setup is Dustin's), a key Google

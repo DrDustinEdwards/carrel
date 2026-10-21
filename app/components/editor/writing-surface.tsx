@@ -1,4 +1,4 @@
-// Carrel's writing surface: the formatted editor by default (ruling point 3, job_1ba8094853f5), with
+// Carrel's writing surface: the formatted editor by default (ruling point 3), with
 // the Markdown kept byte for byte underneath, and "Markdown" beside it, which is Capsomer's Markdown
 // editor exactly as before. Both get Carrel's blocks, its link targets and its image upload, set in
 // the serif prose layout, with "Insert from library" beside them. The choice is remembered on this

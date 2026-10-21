@@ -22,7 +22,7 @@
  * Gemini Enterprise redirect. A callback with an id in it (ChatGPT's per-connector one, the
  * consumer Gemini app's per-user one) is added exactly, in DCR_REDIRECT_URIS.
  */
-export const DCR_REDIRECT_URIS: readonly string[] = [
+const DCR_REDIRECT_URIS: readonly string[] = [
   "https://grok.com/connectors/oauth/callback",
   "https://grok.com/connectors-oauth-exchange-code/",
   "https://chatgpt.com/connector_platform_oauth_redirect",

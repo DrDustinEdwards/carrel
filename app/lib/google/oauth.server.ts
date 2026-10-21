@@ -10,7 +10,7 @@ import type { Viewer } from "~/lib/people.server";
 
 import { GOOGLE_TOKEN_URL, GoogleNotConnected } from "./service-account.server";
 
-export const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const STATE_TTL_MS = 10 * 60_000;
 
@@ -61,7 +61,7 @@ function unb64(s: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 }
 
-export async function encryptToken(key: CryptoKey, token: string): Promise<{ data: string; iv: string }> {
+async function encryptToken(key: CryptoKey, token: string): Promise<{ data: string; iv: string }> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(token)));
   return { data: b64(data), iv: b64(iv) };
@@ -78,7 +78,7 @@ function requireOwner(viewer: Viewer) {
 }
 
 /** Where Google sends the browser back: the browser door's own origin. */
-export function redirectUri(origin: string): string {
+function redirectUri(origin: string): string {
   return `${origin}/auth/google/callback`;
 }
 

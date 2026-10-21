@@ -47,7 +47,7 @@ export async function findAgentViewer(db: D1Database, name: string): Promise<Vie
   return viewer && !viewer.isOwner ? viewer : null;
 }
 
-export async function roleOn(db: D1Database, viewer: Viewer, projectId: number): Promise<Role | null> {
+async function roleOn(db: D1Database, viewer: Viewer, projectId: number): Promise<Role | null> {
   if (viewer.isOwner) return "owner";
   const row = await drizzle(db)
     .select({ role: projectMembers.role })

@@ -22,7 +22,7 @@ const HINTS: Partial<Record<FieldKey, string>> = {
 };
 
 /** Sets one field in a source and returns the whole source. A source with no frontmatter is returned as it was. */
-export function withField(source: string, key: FieldKey, value: string): string {
+function withField(source: string, key: FieldKey, value: string): string {
   const parts = splitSource(source);
   return parts.front === null ? source : joinSource({ ...parts, front: setField(parts.front, key, value) });
 }

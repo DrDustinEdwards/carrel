@@ -1,4 +1,4 @@
-// The formatted editor's schema (job_1ba8094853f5): Tiptap's MIT StarterKit for prose, with what
+// The formatted editor's schema: Tiptap's MIT StarterKit for prose, with what
 // Markdown underneath needs. Every top-level block carries `md`, its origin (the bytes it was read
 // from and the bytes before it), never rendered and never copied onto the half of a split block. A
 // source block and a source atom hold Markdown the editor does not format, exactly as written.
@@ -11,7 +11,7 @@ import StarterKit from "@tiptap/starter-kit";
 
 import { BLOCK_TYPES } from "./markdown.mjs";
 
-export const MdOrigin = Extension.create({
+const MdOrigin = Extension.create({
   name: "mdOrigin",
   addGlobalAttributes() {
     return [{ types: BLOCK_TYPES, attributes: { md: { default: null, rendered: false, keepOnSplit: false } } }];

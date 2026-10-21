@@ -1,4 +1,4 @@
-// Reordering a book from the binder or the corkboard (job_b4555715afcf). The new order becomes
+// Reordering a book from the binder or the corkboard. The new order becomes
 // renames of the numbered files, all in ONE commit with the version of each file Carrel indexed, so a
 // move never splits across commits and never overwrites a change made elsewhere. After the commit,
 // Carrel's own records that name a path follow the file: the index, the flags, the AI drafts beside
