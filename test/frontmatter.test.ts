@@ -1,9 +1,12 @@
-// The frontmatter fields in the editor: the source goes out and comes back unchanged unless a
-// field was changed, and an unknown key, a comment or a list the fields do not show survives.
+// The frontmatter fields in the editor: the source comes back unchanged unless a field was changed,
+// and an unknown key, a comment or a list the fields do not show survives. The block reader and
+// writer under them are site-api's, tested there.
 
 import { describe, expect, it } from "vitest";
 
-import { joinSource, readFields, setField, setRawKey, setTags, splitSource, tagsOf } from "~/lib/frontmatter";
+import { joinSource, splitSource } from "@dustinedwards/site-api/frontmatter";
+
+import { readFields, setField } from "~/lib/frontmatter";
 
 const SOURCE = [
   "---",
@@ -25,15 +28,6 @@ const SOURCE = [
   "The body.",
   "",
 ].join("\n");
-
-describe("splitSource and joinSource", () => {
-  it("round-trips every shape of source byte for byte", () => {
-    for (const source of [SOURCE, "no frontmatter\n", "---\ntitle: x\n---", "---\r\ntitle: x\r\n---\r\nBody\r\n", "---\n---\nBody", ""]) {
-      expect(joinSource(splitSource(source))).toBe(source);
-    }
-    expect(splitSource(SOURCE).body).toBe("The body.\n");
-  });
-});
 
 describe("the fields", () => {
   it("reads them, quoted or not, with tags and takeaways as lists", () => {
@@ -64,36 +58,5 @@ describe("the fields", () => {
     expect(setField(front, "assumed_audience", "Developers.")).toContain('assumed_audience: "Developers."');
     expect(setField(front, "description", "")).not.toContain("description:");
     expect(setField(front, "key_takeaways", "One\nTwo")).toContain('key_takeaways:\n  - "One"\n  - "Two"');
-  });
-});
-
-describe("bulk edits: tags and one raw key", () => {
-  const parts = splitSource(SOURCE);
-
-  it("changes only the tags line and returns every other byte of the file as it was", () => {
-    expect(tagsOf(parts.front)).toEqual(["cloudflare", "workers"]);
-    const out = joinSource({ ...parts, front: setTags(parts.front!, ["cloudflare", "workers", "edge"]) });
-    expect(out).toBe(SOURCE.replace("tags: [cloudflare, workers]", "tags: [cloudflare, workers, edge]"));
-  });
-
-  it("writes an emptied list as tags: [], where setField would drop the key", () => {
-    expect(setTags(parts.front!, [])).toContain("tags: []");
-    expect(setField(parts.front!, "tags", "")).not.toContain("tags:");
-  });
-
-  it("leaves the frontmatter as it was when the tags are already that list, and adds the key when it is missing", () => {
-    expect(setTags(parts.front!, ["cloudflare", "workers"])).toBe(parts.front);
-    expect(setTags("title: x", ["a"])).toBe("title: x\ntags: [a]");
-  });
-
-  it("turns a block-form list into the flow form and touches nothing else", () => {
-    const front = "title: x\ntags:\n  - a\n  - b\nslug: y";
-    expect(setTags(front, ["a", "b", "c"])).toBe("title: x\ntags: [a, b, c]\nslug: y");
-  });
-
-  it("sets one raw key in place or at the end, and never rewrites a line that already says it", () => {
-    expect(setRawKey(parts.front!, "draft", "true")).toBe(parts.front!.replace("draft: false", "draft: true"));
-    expect(setRawKey("title: x", "draft", "true")).toBe("title: x\ndraft: true");
-    expect(setRawKey(parts.front!, "draft", "false")).toBe(parts.front);
   });
 });
