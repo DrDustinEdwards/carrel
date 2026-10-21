@@ -13,7 +13,7 @@ export type LegalType = (typeof LEGAL_TYPES)[number];
 export const legalItemId = (type: LegalType) => `page.${type}`;
 
 /** The fields a shared section may name as `{{site_name}}`: the site's own facts. */
-export const VARIABLES = ["site_name", "operator_name", "contact", "jurisdiction", "data_held"] as const;
+const VARIABLES = ["site_name", "operator_name", "contact", "jurisdiction", "data_held"] as const;
 type Variable = (typeof VARIABLES)[number];
 
 export const SECTION_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

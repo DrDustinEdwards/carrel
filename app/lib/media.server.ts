@@ -256,7 +256,7 @@ export function restoreMedia(env: Env, project: SiteProject, actor: MediaActor, 
 }
 
 export type BulkOp = MediaBulkInput["op"];
-export const MAX_MEDIA_BULK = 100;
+const MAX_MEDIA_BULK = 100;
 
 /** One file's outcome in a bulk action: this file was done, or left as it was and why. */
 export type FileResult = { id: string; ok: boolean; message: string; usedBy?: MediaUse[] };

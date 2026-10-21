@@ -10,7 +10,7 @@
 // from the key, and the functions every tool calls refuse what the role does not allow.
 
 /** The prefix that makes a Worker secret an agent key. */
-export const AGENT_KEY_PREFIX = "AGENT_KEY_";
+const AGENT_KEY_PREFIX = "AGENT_KEY_";
 
 /** The shape of an agent's name: what follows the prefix, lower-cased. */
 const AGENT_NAME = /^[a-z0-9][a-z0-9_-]{0,31}$/;

@@ -7,8 +7,8 @@ import { exportJWK, importJWK, jwtVerify, type JWK } from "jose";
 
 export const CLIENT_EMAIL = "carrel-reader@carrel-test.iam.gserviceaccount.com";
 export const KEY_ID = "0123456789abcdef0123456789abcdef01234567";
-export const SA_TOKEN = "ya29.sa-test-token";
-export const USER_TOKEN = "ya29.user-test-token";
+const SA_TOKEN = "ya29.sa-test-token";
+const USER_TOKEN = "ya29.user-test-token";
 export const CODE = "4/test-authorization-code";
 export const REFRESH = "1//test-refresh-token";
 

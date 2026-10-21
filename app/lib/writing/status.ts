@@ -21,7 +21,7 @@ export const STARTING_STATUSES: Record<ProjectKind, StatusLabel[]> = {
 export const COLOR_NAMES = ["Violet", "Orange", "Teal", "Green", "Indigo", "Pine", "Pink", "Wine"] as const;
 
 export const MAX_LABELS = 12;
-export const MAX_LABEL_LENGTH = 40;
+const MAX_LABEL_LENGTH = 40;
 
 /** The label a file's `status:` names, or null for an empty or unknown value. */
 export function labelFor(labels: StatusLabel[], status: string): StatusLabel | null {

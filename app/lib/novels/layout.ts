@@ -86,7 +86,7 @@ export type SceneHeader = {
 export type CharacterEntry = { name: string; aliases: string[]; born: string; died: string };
 export type PlaceEntry = { name: string; aliases: string[] };
 export type RuleEntry = { name: string; forbidden: string[] };
-export type BookEntry = { title: string; author: string; language: string; target: number | null; deadline: string };
+type BookEntry = { title: string; author: string; language: string; target: number | null; deadline: string };
 
 export type Meta =
   | { kind: "scene"; header: SceneHeader; hasHeader: boolean }
@@ -105,7 +105,7 @@ function fallbackName(path: string): string {
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** A whole number of words, written as 2000, 2,000 or 2_000. Anything else is no target, not a guess. */
-export function wordCount(data: Record<string, HeaderValue>, key: string): number | null {
+function wordCount(data: Record<string, HeaderValue>, key: string): number | null {
   const raw = text(data, key).replace(/[,_]/g, "");
   if (!/^\d{1,7}$/.test(raw)) return null;
   const n = Number(raw);

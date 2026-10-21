@@ -1,4 +1,4 @@
-// A book file's history (job_b4555715afcf): every version Carrel saved, every move that renamed it,
+// A book file's history: every version Carrel saved, every move that renamed it,
 // and every commit made to it outside Carrel, newest first. Carrel's own records come first (the
 // authorship rows and book_moves, no GitHub call); Git adds what Carrel did not do, path by path back
 // through the file's old names, since GitHub's history of a path stops where it was renamed. Any

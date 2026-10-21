@@ -112,7 +112,7 @@ async function indexFile(db: D1Database, projectId: number, path: string, file: 
 }
 
 /** The context every check reads, from D1 alone, so a save costs no extra Git calls. */
-export async function bookContext(db: D1Database, projectId: number): Promise<BookContext> {
+async function bookContext(db: D1Database, projectId: number): Promise<BookContext> {
   const d = drizzle(db);
   const rows = await d
     .select({ path: bookFiles.path, meta: bookFiles.meta })
@@ -229,7 +229,7 @@ export async function dismissFinding(db: D1Database, project: BookProject, viewe
 export type BookRefresh = { files: number; read: number; removed: number; shared: number; more: boolean };
 
 /** How many files one refresh reads from Git; the rest wait for the next one. */
-export const REFRESH_READ_CAP = 150;
+const REFRESH_READ_CAP = 150;
 
 /**
  * Brings the index in line with Git: files whose blob sha changed are read again, files gone from
@@ -405,7 +405,7 @@ export async function checkDraft(db: D1Database, project: BookProject, path: str
 // ---------- export and the authorship record
 
 /** What scripts/import-docx.mjs writes where it could not convert something. */
-export const IMPORT_MARKER = "<!-- import:";
+const IMPORT_MARKER = "<!-- import:";
 
 /** Export sends a book out, so, like publish, it is the Owner's, and waits while any flag is open. */
 export async function exportGate(db: D1Database, project: BookProject): Promise<{ ok: true } | { ok: false; open: number; message: string }> {

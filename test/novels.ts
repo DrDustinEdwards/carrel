@@ -23,7 +23,7 @@ function fromBase64(b64: string): string {
   return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
 }
 
-export type Commit = { path: string; message: string; author: { name: string; email: string }; sha: string; paths?: string[] };
+type Commit = { path: string; message: string; author: { name: string; email: string }; sha: string; paths?: string[] };
 
 type Snapshot = Map<string, { source: string; sha: string }>;
 type GitCommit = { sha: string; parent: string | null; files: Snapshot; message: string; author: { name: string; email: string }; at: string };

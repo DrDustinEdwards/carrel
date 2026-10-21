@@ -10,9 +10,9 @@ import { drizzle } from "drizzle-orm/d1";
 import { aiDrafts } from "~/db/schema";
 import { carrelOrigin } from "~/lib/mcp/server";
 
-export const CAPSID_REPORT_URL = "https://mcp.dustinedwards.info/ops/inbox/report";
+const CAPSID_REPORT_URL = "https://mcp.dustinedwards.info/ops/inbox/report";
 
-export type InboxItem = { title: string; link?: string; since?: string };
+type InboxItem = { title: string; link?: string; since?: string };
 export type InboxReport = { namespace: "carrel"; items: InboxItem[] };
 
 /** The report body for `waiting` AI drafts, the oldest made at `since`. None waiting: no items. */

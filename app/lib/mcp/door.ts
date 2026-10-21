@@ -33,7 +33,7 @@ import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_WRITE, SCOPES_SUPPORT
 import { carrelOrigin, handleMcp, MCP_ROUTE } from "./server";
 
 /** What a grant stores, encrypted, and hands to every request made with its tokens. */
-export type DoorProps = { personId: number; email: string; client: string; clientId: string };
+type DoorProps = { personId: number; email: string; client: string; clientId: string };
 
 type DoorEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 

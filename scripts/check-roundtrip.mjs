@@ -1,5 +1,5 @@
 // check:roundtrip. Every Markdown file under the folders given must come back from the formatted
-// editor byte for byte when it is opened and saved with no edit (job_1ba8094853f5). It runs the
+// editor byte for byte when it is opened and saved with no edit. It runs the
 // editor's own parser, schema and writer (app/lib/editor), with no browser: the document is loaded
 // into the editor's schema and read back out of it, as the editor does.
 //

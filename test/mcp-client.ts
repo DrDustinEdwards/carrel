@@ -15,7 +15,7 @@ import { viewerFor } from "./site";
 
 export const MCP_HOST = "carrel-mcp.test";
 export const MCP_URL = `https://${MCP_HOST}/mcp`;
-export const MODERN = "2026-07-28";
+const MODERN = "2026-07-28";
 export const LEGACY = "2025-11-25";
 
 export type ToolCallResult = { content: { type: string; text: string }[]; isError?: boolean; structuredContent?: Record<string, unknown> };
