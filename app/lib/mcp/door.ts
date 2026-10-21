@@ -5,7 +5,7 @@
 // trusts Access's own header. Instead this door is an OAuth 2.1 authorization server of its own
 // (@cloudflare/workers-oauth-provider): CIMD for Claude, Claude Code and ChatGPT, a tightened
 // registration for Grok and Gemini (registration.ts), and the person signs in upstream through
-// Cloudflare Access for SaaS (access-login.ts). The verified email must belong to an
+// Cloudflare Access for SaaS (site-runtime's access-login). The verified email must belong to an
 // active person in Carrel, checked when the grant is made and again on every request.
 //
 // Every request through this door is an AI session, told apart by the hostname it arrived on, never
@@ -27,7 +27,7 @@ import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
 import { deployedSha } from "~/lib/deployed";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 
-import { accessSaas, authorizationUrl, finishSignIn, newSignIn } from "./access-login";
+import { accessSaas, authorizationUrl, finishSignIn, newSignIn } from "@dustinedwards/site-runtime/access-login";
 import { allowedRedirects, checkRegistration, REGISTER_PATH, registrationLimited } from "./registration";
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
 import { carrelOrigin, handleMcp, MCP_ROUTE } from "./server";
