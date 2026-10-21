@@ -9,16 +9,16 @@ import ci from "../.github/workflows/ci.yml?raw";
 import pkg from "../package.json?raw";
 import verify from "../scripts/verify-live.mjs?raw";
 
-// devkit v0.6.0, the first release with worker-deploy.yml. A move to a newer tag changes both.
-const DEVKIT_SHA = "491b6cc552a80cdfcb4c0b5184e51682f907eda3";
-const DEVKIT_TAG = "v0.6.0";
+// The devkit tag ci.yml pins. A move to a newer tag changes both.
+const DEVKIT_SHA = "27e0a1ca0747b5839bf7e0433c307ae671de8501";
+const DEVKIT_TAG = "v0.7.0";
 
 /** The deploy job's text, from its key to the end of the file (it is the last job). */
 const deployJob = ci.slice(ci.indexOf("\n  deploy:\n"));
 const uncommented = (text: string) => text.split("\n").filter((line) => !/^\s*#/.test(line)).join("\n");
 
 describe("the deploy", () => {
-  it("calls devkit's worker-deploy.yml pinned to the full sha of its v0.6.0 tag", () => {
+  it("calls devkit's worker-deploy.yml pinned to the full sha of its devkit tag", () => {
     expect(ci.indexOf("\n  deploy:\n")).toBeGreaterThan(0);
     const uses = /\n {4}uses: DrDustinEdwards\/devkit\/\.github\/workflows\/worker-deploy\.yml@(\S+) # (\S+)\n/.exec(deployJob);
     expect(uses, "the deploy job does not call devkit's worker-deploy.yml").not.toBeNull();
