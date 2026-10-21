@@ -245,7 +245,7 @@ export function checkRuleFile(path: string, source: string, rule: RuleEntry): Fi
 
 // The conditions behind the AI habits. A word list alone teaches renaming (the site's ruling 117),
 // so the constructions are matched too.
-const NOT_JUST = [
+export const NOT_JUST = [
   // "It's not just a house, it's a promise." / "This isn't only about money; it's about pride."
   /(?:\bnot|n['\u2019]t)\s+(?:just|only|merely|simply)\s+[^.!?;:,]{1,60}[,;:]\s*(?:it|this|that|he|she|they|we|you)(?:['\u2019](?:s|re)|\s+(?:is|was|are|were))\b/iu,
   // "It wasn't about money. It was about pride." / "It's not a house, it's a promise."
