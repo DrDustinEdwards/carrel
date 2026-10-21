@@ -14,6 +14,7 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 
 import { WritingSurface } from "~/components/editor/writing-surface";
+import { AUTOSAVE_DELAY_MS, useSaveShortcut } from "~/components/editor/save-keys";
 import { useTypingRecede } from "~/components/editor/typing";
 import { PageHead } from "~/components/page-head";
 import { Binder } from "~/components/writing/binder";
@@ -41,7 +42,6 @@ import { binderTree } from "~/lib/writing/binder";
 
 import type { Route } from "./+types/book.file";
 
-const AUTOSAVE_DELAY_MS = 1200;
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel" }];
@@ -302,15 +302,8 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     return writer.submit({ intent, source, expectedVersion: data.baseVersion ?? "", untyped: String(intent === "save" ? untyped.current : 0), ...extra }, { method: "post" });
   };
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        if (data.canEdit && data.connected && writer.state === "idle") void send("save");
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+  useSaveShortcut(() => {
+    if (data.canEdit && data.connected && writer.state === "idle") void send("save");
   });
 
   const busy = writer.state !== "idle";

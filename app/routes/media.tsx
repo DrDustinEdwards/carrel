@@ -27,6 +27,9 @@ import { Status } from "capsomer/react/status";
 
 import { PageHead } from "~/components/page-head";
 import { ProjectTabs } from "~/components/project-tabs";
+import { MediaDetailPanel } from "~/components/media/detail-panel";
+import { size } from "~/components/media/format";
+import { BulkResultPanel, TrashEmptiedPanel, type FileOutcome } from "~/components/media/results";
 
 import { getEnv, getViewer } from "~/lib/context";
 import {
@@ -222,18 +225,6 @@ async function writeOutcome(run: () => Promise<WriteOutcome>): Promise<WriteOutc
   }
 }
 
-function size(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${bytes} bytes`;
-}
-
-function dims(width: number | null, height: number | null): string {
-  return width && height ? `${width} by ${height}` : "not measured";
-}
-
-
-type FileOutcome = { id: string; ok: boolean; message: string; usedBy?: { type: string; id: string; title: string; detail: string }[] };
 type BulkOp = "trash" | "restore" | "delete" | "add-tags" | "remove-tags";
 
 const WRITE_INTENTS: readonly string[] = ["set-alt", "set-tags", "trash", "restore"];
@@ -275,8 +266,6 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
   const written = result && WRITE_INTENTS.includes(result.intent) && "ok" in result ? (result as Extract<ActionResult, { intent: WriteIntent }>) : null;
   const emptied = result?.intent === "empty-trash" ? result : null;
   const name = detail ? (detail.filename ?? detail.id) : "";
-  const writable = canUpload && Boolean(detail?.version);
-  const inTrash = Boolean(detail?.trashedAt);
 
   // Selection and the bulk bar: only where the site has the v0.4.0 routes and the person may write.
   const bulkOffered = canUpload && (offers.tags || offers.trash);
@@ -345,63 +334,9 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
           ) : null}
           {result?.intent === "delete" && "ok" in result && result.ok ? <Banner tone="ok">Deleted {result.id} from the site.</Banner> : null}
 
-          {bulkResult ? (
-            <Panel
-              title="Result"
-              id="media-result"
-              ref={resultRef}
-              src={`${bulkResult.what}: ${bulkResult.outcomes.filter((o) => o.ok).length} of ${bulkResult.outcomes.length} done`}
-              actions={
-                <Button size="sm" onClick={() => setBulkResult(null)}>
-                  Clear this result
-                </Button>
-              }
-            >
-              <ul className="app-flags" aria-label="Result for each file">
-                {bulkResult.outcomes.map((o) => (
-                  <li key={o.id}>
-                    {o.ok ? <Status tone="ok">Done</Status> : <Status tone="crit">Left as it was</Status>}
-                    <span>
-                      <strong className="cap-mono">{o.id}</strong>
-                      <br />
-                      {o.message}
-                      {o.usedBy && o.usedBy.length > 0 ? (
-                        <ul className="app-list">
-                          {o.usedBy.map((use) => (
-                            <li key={`${use.id}:${use.detail}`}>
-                              Used by {use.title || use.id} ({use.detail})
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Panel>
-          ) : null}
+          {bulkResult ? <BulkResultPanel bulkResult={bulkResult} resultRef={resultRef} onClear={() => setBulkResult(null)} /> : null}
 
-          {emptied && "ok" in emptied && emptied.ok ? (
-            <Panel title="Trash emptied" src={`${emptied.deleted.length} deleted, ${emptied.refused.length} kept`}>
-              <p>
-                {emptied.deleted.length === 0 ? "No file was deleted." : `Deleted ${emptied.deleted.length} ${emptied.deleted.length === 1 ? "file" : "files"} from the site.`}
-                {emptied.more ? " More files remain in the trash; empty it again to continue." : ""}
-                {emptied.unrecorded > 0 ? ` The site deleted them, but Carrel could not save the authorship record for ${emptied.unrecorded}.` : ""}
-              </p>
-              {emptied.refused.length > 0 ? (
-                <Alert tone="warn" title="Kept in the trash">
-                  <ul className="app-list">
-                    {emptied.refused.map((r) => (
-                      <li key={r.id}>
-                        <span className="cap-mono">{r.id}</span>: {r.message}
-                        {r.usedBy.length > 0 ? ` Used by ${r.usedBy.map((u) => `${u.title || u.id} (${u.detail})`).join(", ")}.` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                </Alert>
-              ) : null}
-            </Panel>
-          ) : null}
+          {emptied && "ok" in emptied && emptied.ok ? <TrashEmptiedPanel emptied={emptied} /> : null}
           {emptied && "ok" in emptied && !emptied.ok ? <Alert tone="crit">{emptied.message}</Alert> : null}
           {emptied && "needsConfirm" in emptied ? (
             <Alert tone="warn" title={`Delete everything in the trash from ${project.site}?`}>
@@ -591,171 +526,23 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
             ) : null}
 
             {detail ? (
-              <Panel title={name} level={2} headingId="detail-title" actions={<Link to={here({})} className="cap-btn" data-variant="quiet" data-size="sm" preventScrollReset>Close<span className="cap-sr-only"> the details</span></Link>}>
-                <div className="app-detail">
-                  {detail.contentType.startsWith("image/") ? (
-                    <div className="cap-media-preview">
-                      <img src={detail.src} alt="" width={640} height={427} />
-                    </div>
-                  ) : null}
-                  {inTrash ? <Status tone="info">In the trash</Status> : null}
-                  <dl className="app-facts">
-                    <dt>Address on the site</dt>
-                    <dd>
-                      <code className="cap-mono">{detail.url}</code>
-                    </dd>
-                    <dt>Type</dt>
-                    <dd>{detail.contentType}</dd>
-                    <dt>Size</dt>
-                    <dd>
-                      {size(detail.bytes)}, {dims(detail.width, detail.height)}
-                    </dd>
-                    <dt>Uploaded</dt>
-                    <dd>{detail.uploadedAt ? detail.uploadedAt.slice(0, 10) : "unknown"}</dd>
-                    {!(offers.alt && writable && !inTrash) ? (
-                      <>
-                        <dt>Alt text</dt>
-                        <dd>{detail.alt || <span className="cap-muted">none</span>}</dd>
-                      </>
-                    ) : null}
-                    {offers.tags && !(writable && !inTrash) ? (
-                      <>
-                        <dt>Tags</dt>
-                        <dd>{detail.tags && detail.tags.length > 0 ? detail.tags.join(", ") : <span className="cap-muted">none</span>}</dd>
-                      </>
-                    ) : null}
-                  </dl>
-
-                  {written && written.id === detail.id ? (
-                    written.ok ? (
-                      <Banner tone="ok">{written.intent === "trash" ? "Moved to the trash." : written.intent === "restore" ? "Restored to the library." : "Saved."}
-                        {written.recorded ? "" : " The site has it, but Carrel could not save the authorship record."}
-                      </Banner>
-                    ) : (
-                      <Alert tone={written.conflict ? "warn" : "crit"} title={written.conflict ? "The file changed" : "Not saved"}>
-                        {written.message}
-                      </Alert>
-                    )
-                  ) : null}
-
-                  {offers.alt && writable && !inTrash ? (
-                    <Form method="post" className="app-form" key={`alt:${detail.id}:${detail.version}`}>
-                      <input type="hidden" name="id" value={detail.id} />
-                      <input type="hidden" name="version" value={detail.version} />
-                      <Field label="Alt text" help="What the image shows, for someone who cannot see it. Leave it empty for a picture that is only decoration.">
-                        <textarea className="cap-input" name="alt" rows={3} defaultValue={detail.alt} maxLength={2000} />
-                      </Field>
-                      <div className="app-actions">
-                        <Button type="submit" name="intent" value="set-alt" pending={busy && navigation.formData?.get("intent") === "set-alt"}>
-                          Save alt text
-                        </Button>
-                      </div>
-                    </Form>
-                  ) : null}
-
-                  {offers.tags && writable && !inTrash ? (
-                    <Form method="post" className="app-form" key={`tags:${detail.id}:${detail.version}`}>
-                      <input type="hidden" name="id" value={detail.id} />
-                      <input type="hidden" name="version" value={detail.version} />
-                      <Field label="Tags" help="Separate tags with commas. Lower case words joined by hyphens, up to 12.">
-                        <input className="cap-input" type="text" name="tags" defaultValue={(detail.tags ?? []).join(", ")} autoComplete="off" />
-                      </Field>
-                      <div className="app-actions">
-                        <Button type="submit" name="intent" value="set-tags" pending={busy && navigation.formData?.get("intent") === "set-tags"}>
-                          Save tags
-                        </Button>
-                      </div>
-                    </Form>
-                  ) : null}
-                  {offers.tags && detail.tags && detail.tags.length > 0 ? (
-                    <p className="app-actions">
-                      {detail.tags.map((t) => (
-                        <Link key={t} to={here({ tag: t, id: "" })} className="cap-btn" data-size="sm">
-                          Files tagged {t}
-                        </Link>
-                      ))}
-                    </p>
-                  ) : null}
-
-                  <section aria-labelledby="used-title" className="app-section">
-                    <h3 id="used-title">Used in</h3>
-                    {detail.usedBy.length === 0 ? (
-                      <p className="cap-muted">No post on the site uses it, as far as the site's check can see. A page elsewhere linking to it would not show here.</p>
-                    ) : (
-                      <ul className="app-list">
-                        {detail.usedBy.map((use) => (
-                          <li key={`${use.type}:${use.id}:${use.detail}`}>
-                            {use.title || use.id} <span className="cap-muted">({use.detail})</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-
-                  {refused && refused.id === detail.id ? (
-                    <Alert tone="crit" title="Not deleted">
-                      {refused.message}
-                      {refused.usedBy.length > 0 ? (
-                        <ul className="app-list">
-                          {refused.usedBy.map((use) => (
-                            <li key={`${use.id}:${use.detail}`}>
-                              {use.title || use.id} ({use.detail})
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </Alert>
-                  ) : null}
-
-                  {offers.trash && writable ? (
-                    <Form method="post">
-                      <input type="hidden" name="id" value={detail.id} />
-                      <input type="hidden" name="version" value={detail.version} />
-                      <Button type="submit" name="intent" value={inTrash ? "restore" : "trash"} pending={busy && (navigation.formData?.get("intent") === "trash" || navigation.formData?.get("intent") === "restore")}>
-                        {inTrash ? "Restore" : "Move to trash"}
-                        <span className="cap-sr-only"> {name}</span>
-                      </Button>
-                    </Form>
-                  ) : null}
-
-                  {canDelete && detail.deletable ? (
-                    serverAsks === detail.id ? (
-                      <Alert tone="warn" title={`Delete ${name} from ${project.site}?`}>
-                        <Form method="post" className="app-form">
-                          <p>The file leaves the site's storage, and nothing in Carrel can bring it back.</p>
-                          <input type="hidden" name="id" value={detail.id} />
-                          <input type="hidden" name="confirm" value="delete" />
-                          <div className="app-actions">
-                            <Button type="submit" name="intent" value="delete" variant="danger" pending={busy}>
-                              Delete from the site
-                            </Button>
-                            <Link to={here({ id: detail.id })} className="cap-btn" preventScrollReset>
-                              Keep it
-                            </Link>
-                          </div>
-                        </Form>
-                      </Alert>
-                    ) : (
-                      <Form method="post">
-                        <input type="hidden" name="id" value={detail.id} />
-                        <Button
-                          type="submit"
-                          name="intent"
-                          value="delete"
-                          variant="danger"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            setConfirming(event.currentTarget);
-                            setAsking(true);
-                          }}
-                        >
-                          Delete<span className="cap-sr-only"> {name}</span>
-                        </Button>
-                      </Form>
-                    )
-                  ) : null}
-                </div>
-              </Panel>
+              <MediaDetailPanel
+                detail={detail}
+                site={project.site}
+                offers={offers}
+                canUpload={canUpload}
+                canDelete={canDelete}
+                written={written}
+                refused={refused}
+                serverAsks={serverAsks}
+                busy={busy}
+                pending={busy ? String(navigation.formData?.get("intent") ?? "") : null}
+                here={here}
+                onAskDelete={(button) => {
+                  setConfirming(button);
+                  setAsking(true);
+                }}
+              />
             ) : null}
           </div>
 

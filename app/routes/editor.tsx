@@ -2,22 +2,23 @@
 // you type, the site's own render in a sandboxed preview, and the writes the viewer's role allows.
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
+import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
-import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
-import { Field } from "capsomer/react/field";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import { PublishGate, type GateCheck, type GateSite } from "capsomer/react/publish-gate";
 import { Segmented } from "capsomer/react/segmented";
-import { Pill, Status } from "capsomer/react/status";
+import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 
+import { FlagsPanel } from "~/components/editor/flags-panel";
+import { useEditorLayout } from "~/components/editor/layout";
+import { ScheduleDialog } from "~/components/editor/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
-import { DraftLinks } from "~/components/history/draft-links";
-import { RevisionPicker } from "~/components/history/revision-picker";
+import { AUTOSAVE_DELAY_MS, useSaveShortcut } from "~/components/editor/save-keys";
+import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
 import { PageHead } from "~/components/page-head";
@@ -45,11 +46,8 @@ import { siteBinderTree } from "~/lib/writing/binder";
 
 import type { Route } from "./+types/editor";
 
-const AUTOSAVE_DELAY_MS = 1200;
 /** The editor shows the newest revisions; the history page lists them all. */
 const HISTORY_SHOWN = 8;
-const LAYOUT_KEY = "carrel:editor-layout";
-type Layout = "write" | "split" | "preview";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.title || data.itemId} · Carrel` : "Carrel" }];
@@ -246,8 +244,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [source, setSource] = useState(data.source);
   const [savedSource, setSavedSource] = useState(data.source);
   const [savedAt, setSavedAt] = useState<string | null>(data.draftAt);
-  const [layout, setLayout] = useState<Layout>("write");
-  const [scheduleAt, setScheduleAt] = useState("");
+  const [layout, chooseLayout] = useEditorLayout();
   const [asking, setAsking] = useState<null | { kind: "discard" | "import" | "schedule" | "dismiss"; flag?: number; opener: HTMLElement | null }>(null);
   const autosaver = useFetcher<ActionResult>();
   const writer = useFetcher<ActionResult>();
@@ -255,29 +252,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   useTypingRecede();
 
   const readOnly = !data.canEdit;
-  const openFlags = data.flags.filter((f) => f.status === "open").length;
   const live = data.status === "published" || data.status === "scheduled";
   const onSite = data.version !== null;
   // Changes to a live post change the public site, which is the Owner's to do.
   const maySave = data.canEdit && (!live || data.canPublish);
 
-  // Remembered in this browser; read after mount so the server and the first client paint agree.
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(LAYOUT_KEY);
-      if (stored === "write" || stored === "split" || stored === "preview") setLayout(stored);
-    } catch {
-      // Storage disabled: Write, the default.
-    }
-  }, []);
-  const chooseLayout = (next: Layout) => {
-    setLayout(next);
-    try {
-      window.localStorage.setItem(LAYOUT_KEY, next);
-    } catch {
-      // As above.
-    }
-  };
 
   // Autosave a beat after typing stops. The base version travels with it, so a later save is checked
   // against the version this draft started from.
@@ -369,15 +348,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   }, [outcome, writer.state, say]);
 
   // Cmd+S saves in place: a draft stays a draft, a live post is updated.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        if (maySave && writer.state === "idle") void send("save");
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+  useSaveShortcut(() => {
+    if (maySave && writer.state === "idle") void send("save");
   });
 
   const busy = writer.state !== "idle";
@@ -465,73 +437,18 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             ) : null}
           </div>
           {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
-            <Panel title="Flags and AI drafts" id="flags" count={openFlags} src={`${data.aiDrafts.length} AI draft${data.aiDrafts.length === 1 ? "" : "s"} beside yours`}>
-              <div className="app-stack" data-tight>
-                {data.flags.length > 0 ? (
-                  <ul className="app-flags" aria-label="Flags">
-                    {data.flags.map((f) => (
-                      <li key={f.id}>
-                        {f.status === "open" ? <Status tone="warn">Open</Status> : <Pill variant="secondary">Dismissed</Pill>}
-                        <span>
-                          {f.message}
-                          {f.excerpt ? (
-                            <>
-                              {" "}
-                              <q className="cap-muted">{f.excerpt}</q>
-                            </>
-                          ) : null}
-                        </span>
-                        {f.status === "open" && data.canPublish ? (
-                          <Button size="sm" onClick={(event) => ask("dismiss", event.currentTarget, f.id)}>
-                            Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                          </Button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {data.aiDrafts.length > 0 ? (
-                  <ul className="app-flags" aria-label="AI drafts beside yours">
-                    {data.aiDrafts.map((d) => (
-                      <li key={d.id}>
-                        <span>
-                          <Link to={`ai/${d.id}`}>AI draft from {d.client}</Link>{" "}
-                          <span className="cap-muted">
-                            <Time at={d.createdAt} /> · {d.words} words
-                          </span>
-                          {d.note ? <span> · {d.note}</span> : null}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                            </div>
-            </Panel>
+            <FlagsPanel flags={data.flags} aiDrafts={data.aiDrafts} canPublish={data.canPublish} onDismiss={(button, flag) => ask("dismiss", button, flag)} />
           ) : null}
           {data.revisions || data.historyError ? (
-            <Panel
-              title="History"
-              id="history"
-              count={data.revisionCount}
-              src="Saves and publishes on the site"
-              actions={
-                data.revisionCount > 0 ? (
-                  <Link className="cap-btn" data-size="sm" to={historyPath}>
-                    All revisions
-                  </Link>
-                ) : undefined
-              }
-            >
-              <div className="app-stack" data-tight>
-                {data.historyError ? <Banner tone="warn">{data.historyError}</Banner> : null}
-                {data.revisions && data.revisions.length > 0 ? (
-                  <RevisionPicker revisions={data.revisions} historyPath={historyPath} label="Recent revisions" />
-                ) : data.revisions ? (
-                  <p className="cap-muted">The site has no saved revisions of this {kindNoun(data.kind)} yet.</p>
-                ) : null}
-                <DraftLinks historyPath={historyPath} againstSite={Boolean(savedAt) && onSite} aiDrafts={data.aiDrafts} />
-              </div>
-            </Panel>
+            <HistoryPanel
+              revisions={data.revisions}
+              revisionCount={data.revisionCount}
+              historyError={data.historyError}
+              historyPath={historyPath}
+              noun={kindNoun(data.kind)}
+              againstSite={Boolean(savedAt) && onSite}
+              aiDrafts={data.aiDrafts}
+            />
           ) : null}
         </div>
 
@@ -660,30 +577,16 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         }}
         onClose={() => setAsking(null)}
       />
-      <Dialog open={asking?.kind === "schedule"} onOpenChange={(o) => !o && setAsking(null)} placement="center" size="sm" returnTo={asking?.opener} aria-labelledby="schedule-title">
-        <DialogHeader divider>
-          <DialogTitle id="schedule-title">Schedule this {kindNoun(data.kind)}</DialogTitle>
-          <DialogDescription>The site publishes it at the time you choose. Revert to draft takes it back.</DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <Field label="Publish at" required>
-            <input className="cap-input" type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
-          </Field>
-        </DialogBody>
-        <DialogFooter align="between">
-          <DialogClose part="cancel">Cancel</DialogClose>
-          <Button
-            variant="primary"
-            disabledReason={!scheduleAt ? "Choose a time first." : undefined}
-            onClick={async () => {
-              await send("schedule", { publishAt: new Date(scheduleAt).toISOString() });
-              setAsking(null);
-            }}
-          >
-            Schedule
-          </Button>
-        </DialogFooter>
-      </Dialog>
+      <ScheduleDialog
+        open={asking?.kind === "schedule"}
+        noun={kindNoun(data.kind)}
+        returnTo={asking?.opener}
+        onClose={() => setAsking(null)}
+        schedule={async (publishAt) => {
+          await send("schedule", { publishAt });
+          setAsking(null);
+        }}
+      />
     </div>
   );
 }
