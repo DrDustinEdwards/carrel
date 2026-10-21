@@ -43,7 +43,7 @@ const SITES: Record<SiteId, SiteEntry> = {
     // The shape of germomics's app/lib/carrel/source.ts: JSON front matter, then the article body as
     // the site's own HTML. The id is the slug, and an item the site has not seen is created a draft.
     newSource: () => ["---", 'title: ""', 'excerpt: ""', "tags: []", "---", ""].join("\n"),
-    searchConsoleProperty: () => "sc-domain:germomics.com",
+    searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_GERMOMICS?: string }).SEARCH_CONSOLE_PROPERTY_GERMOMICS?.trim() || "sc-domain:germomics.com",
   },
 };
 

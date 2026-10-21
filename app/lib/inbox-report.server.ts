@@ -10,7 +10,11 @@ import { drizzle } from "drizzle-orm/d1";
 import { aiDrafts } from "~/db/schema";
 import { carrelOrigin } from "~/lib/mcp/server";
 
-const CAPSID_REPORT_URL = "https://mcp.dustinedwards.info/ops/inbox/report";
+/** Capsid's origin, from the var CAPSID_ORIGIN; read loosely, as carrelOrigin does, for an older wrangler.jsonc without it. */
+export function capsidOrigin(env: Env): string {
+  const configured = (env as { CAPSID_ORIGIN?: string }).CAPSID_ORIGIN?.trim();
+  return (configured || "https://mcp.dustinedwards.info").replace(/\/+$/, "");
+}
 
 type InboxItem = { title: string; link?: string; since?: string };
 export type InboxReport = { namespace: "carrel"; items: InboxItem[] };
@@ -38,7 +42,7 @@ export async function reportInbox(env: Env, fetcher: typeof fetch = fetch): Prom
       .from(aiDrafts)
       .get();
     const body = inboxReport(row?.waiting ?? 0, row?.since ?? null, carrelOrigin(env));
-    const response = await fetcher(CAPSID_REPORT_URL, {
+    const response = await fetcher(`${capsidOrigin(env)}/ops/inbox/report`, {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
       body: JSON.stringify(body),

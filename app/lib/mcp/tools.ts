@@ -67,6 +67,9 @@ export const OUTSIDE_NOTICE =
 const PAGE_DEFAULT = 50;
 const PAGE_MAX = 100;
 
+/** Longest accepted inputs, in characters: a whole file or post, a finding's message and excerpt, a draft's note, a path or id. */
+const MAX = { source: 500_000, message: 2000, excerpt: 1000, note: 500, path: 200 } as const;
+
 /** Read-only, and nothing outside Carrel changes. */
 const READ = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 
@@ -200,7 +203,7 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
-      const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source: str(args, "source", { max: 500_000 }), note: str(args, "note", { optional: true, max: 500 }) }, ctx.deps.fetcher);
+      const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source: str(args, "source", { max: MAX.source }), note: str(args, "note", { optional: true, max: MAX.note }) }, ctx.deps.fetcher);
       return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts." };
     },
   },
@@ -221,7 +224,7 @@ export const TOOLS: Tool[] = [
       const p = await project(ctx, args, "read");
       const item = str(args, "item");
       const source =
-        str(args, "source", { optional: true, max: 500_000 }) ||
+        str(args, "source", { optional: true, max: MAX.source }) ||
         (await readDraft(ctx.env.DB, p, ctx.session.viewer, item))?.source ||
         (await readDoc(ctx.env, p, item, ctx.deps.fetcher))?.source;
       if (!source) throw new AiRefusal("There is nothing to preview yet.");
@@ -263,8 +266,8 @@ export const TOOLS: Tool[] = [
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
       const added = await addFinding(ctx.env.DB, p, ctx.session, str(args, "item"), {
-        message: str(args, "message", { max: 2000 }),
-        excerpt: str(args, "excerpt", { optional: true, max: 1000 }) || null,
+        message: str(args, "message", { max: MAX.message }),
+        excerpt: str(args, "excerpt", { optional: true, max: MAX.excerpt }) || null,
       });
       return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };
     },
@@ -286,7 +289,7 @@ export const TOOLS: Tool[] = [
     run: async (args, ctx) => {
       // Refused on the role before anything else is read, as the button is.
       const p = await project(ctx, args, "read");
-      const result = await aiPublish(ctx.env, p, ctx.session, str(args, "item"), str(args, "expected_version", { max: 200 }), {
+      const result = await aiPublish(ctx.env, p, ctx.session, str(args, "item"), str(args, "expected_version", { max: MAX.path }), {
         fetcher: ctx.deps.fetcher,
         carrelOrigin: ctx.deps.carrelOrigin,
       });
@@ -327,7 +330,7 @@ export const TOOLS: Tool[] = [
     outside: true,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
-      const path = str(args, "path", { max: 200 });
+      const path = str(args, "path", { max: MAX.path });
       const [file, flags, aiDrafts] = await Promise.all([
         indexedFile(ctx.env.DB, b, path),
         listFindings(ctx.env.DB, b, { path }),
@@ -352,7 +355,7 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
-      return { findings: await checkDraft(ctx.env.DB, b, str(args, "path", { max: 200 }), str(args, "source", { max: 500_000 })) };
+      return { findings: await checkDraft(ctx.env.DB, b, str(args, "path", { max: MAX.path }), str(args, "source", { max: MAX.source })) };
     },
   },
   {
@@ -374,9 +377,9 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
-      const saved = await saveBookAiDraft(ctx.env.DB, b, ctx.session, str(args, "path", { max: 200 }), {
-        source: str(args, "source", { max: 500_000 }),
-        note: str(args, "note", { optional: true, max: 500 }),
+      const saved = await saveBookAiDraft(ctx.env.DB, b, ctx.session, str(args, "path", { max: MAX.path }), {
+        source: str(args, "source", { max: MAX.source }),
+        note: str(args, "note", { optional: true, max: MAX.note }),
       });
       return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in the book file's editor, under AI drafts." };
     },
@@ -400,11 +403,11 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
-      const path = str(args, "path", { max: 200 });
+      const path = str(args, "path", { max: MAX.path });
       if (!isBookPath(path)) throw new AiRefusal(`${path} is not a file in the novels layout.`);
       const added = await addFinding(ctx.env.DB, b, ctx.session, path, {
-        message: str(args, "message", { max: 2000 }),
-        excerpt: str(args, "excerpt", { optional: true, max: 1000 }) || null,
+        message: str(args, "message", { max: MAX.message }),
+        excerpt: str(args, "excerpt", { optional: true, max: MAX.excerpt }) || null,
       });
       return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };
     },
@@ -441,7 +444,7 @@ export const TOOLS: Tool[] = [
         result = await aiDraftSocialPost(ctx.env.DB, ctx.session, { eventId, text });
       } else {
         const p = await project(ctx, args, "read");
-        result = await aiDraftSocialPost(ctx.env.DB, ctx.session, { accountKey: str(args, "account", { max: 80 }), projectId: p.id, itemId: str(args, "item", { max: 200 }), text });
+        result = await aiDraftSocialPost(ctx.env.DB, ctx.session, { accountKey: str(args, "account", { max: 80 }), projectId: p.id, itemId: str(args, "item", { max: MAX.path }), text });
       }
       return { stored: true, postId: result.postId, next: "Carrel lints it and, by the account's switch, queues it or holds it for Dustin's approval once the piece is live." };
     },

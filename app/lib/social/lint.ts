@@ -3,16 +3,11 @@
 // finding is held for Dustin; the lint flags and he decides.
 //
 // The word list is stage 4's (SEED_WORDS, the AI-tells list first kept in capsid/conventions.md): one list for
-// books and posts.
+// books and posts, and one copy of the "not just X, it's Y" patterns (NOT_JUST).
 
-import { SEED_WORDS } from "~/lib/novels/checks";
+import { NOT_JUST, SEED_WORDS } from "~/lib/novels/checks";
 
 import { graphemes, type Platform } from "./platforms.server";
-
-const NOT_JUST = [
-  /(?:\bnot|n['\u2019]t)\s+(?:just|only|merely|simply)\s+[^.!?;:,]{1,60}[,;:]\s*(?:it|this|that|he|she|they|we|you)(?:['\u2019](?:s|re)|\s+(?:is|was|are|were))\b/iu,
-  /\b(?:it|this|that)(?:['\u2019]s\s+not|\s+is\s+not|\s+was\s+not|\s+isn['\u2019]t|\s+wasn['\u2019]t)\s+[^.!?;:]{1,50}[.,;:]\s*(?:it|this|that)(?:['\u2019]s|\s+(?:is|was))\b/iu,
-];
 
 /** X counts every link as 23 characters, however long; Bluesky counts graphemes. */
 function length(text: string, platform: Platform): number {
