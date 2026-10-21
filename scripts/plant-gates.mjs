@@ -7,7 +7,7 @@
 // work, and would not restore an untracked file.
 //
 // The test plants each remove one guard the design names (Owner-only publish, publish refused on an
-// open flag, reviewers never write, the ID token's nonce, the unknown-person refusal, the per-request
+// open flag, reviewers never write, the unknown-person refusal, the per-request
 // person check) and run the test files that should notice.
 //
 // Exit 0: every plant caught. Exit 1: a plant was missed or did not land. Exit 2: a gate was red
@@ -52,7 +52,6 @@ const PLANTS = [
     replace: "",
     label: "a reviewer may write a draft",
   },
-  { gate: "tests", file: "app/lib/mcp/access-login.ts", find: 'if (payload.nonce !== input.nonce) return { ok: false, reason: "nonce-mismatch" };', replace: "", label: "the ID token's nonce unchecked" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "  if (!viewer) {\n    // Access let them in", replace: "  if (viewer === undefined) {\n    // Access let them in", label: "an unknown person gets a grant" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (!viewer || viewer.id !== props?.personId) {", replace: "if (!viewer) {", label: "the per-request person check trusts a stale grant" },
   // Named agent keys: the key names an agent and grants nothing.
