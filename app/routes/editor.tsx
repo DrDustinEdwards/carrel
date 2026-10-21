@@ -26,7 +26,7 @@ import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publ
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions } from "~/lib/history.server";
-import { joinSource, splitSource } from "~/lib/frontmatter";
+import { joinSource, splitSource } from "@dustinedwards/site-api/frontmatter";
 import { listSections } from "~/lib/legal.server";
 import { kindNoun, kindWord } from "~/lib/kind-words";
 import { siteState } from "~/lib/save-state";

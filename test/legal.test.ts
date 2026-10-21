@@ -7,7 +7,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { writeToSite } from "~/lib/content.server";
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
-import { readFields, splitSource } from "~/lib/frontmatter";
+import { splitSource } from "@dustinedwards/site-api/frontmatter";
+import { readFields } from "~/lib/frontmatter";
 import { expandShared, legalTypeOf, prepareLegalWrite, sectionsUsed, type SharedSection } from "~/lib/legal";
 import { deleteSection, listSections, saveSection } from "~/lib/legal.server";
 import { requireSiteProject } from "~/lib/projects.server";

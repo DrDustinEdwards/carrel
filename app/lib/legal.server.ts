@@ -7,7 +7,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { legalSections } from "~/db/schema";
 import type { ContentDoc } from "@dustinedwards/site-api";
 import { expandShared, legalTypeOf, pathOf, prepareLegalWrite, SECTION_KEY, valuesOf, type SharedSection } from "~/lib/legal";
-import { splitSource } from "~/lib/frontmatter";
+import { splitSource } from "@dustinedwards/site-api/frontmatter";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";

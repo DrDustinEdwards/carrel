@@ -7,7 +7,8 @@ import { ContentId } from "@dustinedwards/site-api";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 
 import { deleteFromSite, readDoc, readDraft, writeToSite } from "~/lib/content.server";
-import { joinSource, readFields, setField, setRawKey, setTags, splitSource, tagsOf } from "~/lib/frontmatter";
+import { joinSource, setRawKey, setTags, splitSource, tagsOf } from "@dustinedwards/site-api/frontmatter";
+import { readFields, setField } from "~/lib/frontmatter";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
