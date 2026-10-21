@@ -4,22 +4,22 @@ Carrel: a private writing hub for articles across sites, books and manuscripts (
 
 Current state is `carrel/core.md` in Capsid.
 
-- **Stage 1, the private shell:** a React Router Worker that admits a request only when Cloudflare Access has signed it and its email belongs to an active person in Carrel. It adds per-project roles and a health check that emails on a change of state.
-- **Stage 2, dustinedwards.info through [site-api](https://github.com/DrDustinEdwards/site-api) `v0.1.0`:**
+- **The private shell:** a React Router Worker that admits a request only when Cloudflare Access has signed it and its email belongs to an active person in Carrel. It adds per-project roles and a health check that emails on a change of state.
+- **Sites through [site-api](https://github.com/DrDustinEdwards/site-api):**
   - the one view of the site's posts, with status and kind filters and FTS5 search;
   - the site's CodeMirror editor in a prose layout, with autosave to D1;
   - the site's own render in a sandboxed preview;
   - saving and publishing, by role;
   - a Content Security Policy on every page.
-- **Security headers:** every response on both hosts, redirects and refusals included, carries the portfolio's shared set from [site-runtime](https://github.com/DrDustinEdwards/site-runtime) `v0.3.0` (the OWASP Secure Headers Project's values: HSTS, framing refused, nosniff, Referrer-Policy, Permissions-Policy, COOP, CORP and the rest) and a Content-Security-Policy built from Carrel's own list, all in `workers/security-headers.ts`. Violations are reported to `/csp-report` on the AI door, the one host a browser reaches without Access (`workers/csp-report.ts`, which logs and stores nothing). `test/csp.test.ts` runs site-runtime's `checkSecurityHeaders` on rendered responses.
-- **Stage 4, books in the private writing repository:**
+- **Security headers:** every response on both hosts, redirects and refusals included, carries the portfolio's shared set from [site-runtime](https://github.com/DrDustinEdwards/site-runtime) (the OWASP Secure Headers Project's values: HSTS, framing refused, nosniff, Referrer-Policy, Permissions-Policy, COOP, CORP and the rest) and a Content-Security-Policy built from Carrel's own list, all in `workers/security-headers.ts`. Violations are reported to `/csp-report` on the AI door, the one host a browser reaches without Access (`workers/csp-report.ts`, which logs and stores nothing). `test/csp.test.ts` runs site-runtime's `checkSecurityHeaders` on rendered responses.
+- **Books in the private writing repository:**
   - the book view, chapter view and a file editor for scenes, bible entries and outlines (the same editor, autosave to D1, Save commits to Git with the version it expects to replace);
   - the checks on save: scene headers, continuity and timeline against the bible, world rules, the AI-habits lint and voice;
   - the authorship record, as a Markdown report;
   - export to ePub and Word, and a print page for PDF.
-- **Stage 5, AI work through MCP tools in the Worker:** read, search, preview, AI drafts beside yours, flags from checks and reviewers, and publish by instruction for the Owner's own sessions, refused while a flag is open and emailed with an unpublish link.
-- **Stage 6, Google:** the manuscripts index and search through a read-only service account, Send to Docs and Import through a `drive.file` grant, and Search Console per page.
-- **Stage 9, social (nothing posted until accounts are connected):** a queue that announces pieces that went live, from a draft stored ahead, else a Claude Code routine, else a template, with the AI-habits lint, per-account switches and caps, and no reply code at all.
+- **AI work through MCP tools in the Worker:** read, search, preview, AI drafts beside yours, flags from checks and reviewers, and publish by instruction for the Owner's own sessions, refused while a flag is open and emailed with an unpublish link.
+- **Google:** the manuscripts index and search through a read-only service account, Send to Docs and Import through a `drive.file` grant, and Search Console per page.
+- **Social (nothing posted until accounts are connected):** a queue that announces pieces that went live, from a draft stored ahead, else a Claude Code routine, else a template, with the AI-habits lint, per-account switches and caps, and no reply code at all.
 
 ## Develop
 
@@ -41,7 +41,7 @@ GitHub Actions runs all of these on every push and pull request (`.github/workfl
 
 ## The look
 
-Carrel's interface is [Capsomer](https://github.com/DrDustinEdwards/capsomer) (tag `v0.4.0`, which carries `DraftPatch`): its shell (rail, top bar, phone tab bar), tokens, components and fonts, with Carrel's own CSS in `app/app.css` limited to the page frame and the few rules the writing screens need. The fonts (Schibsted Grotesk, Martian Mono, Source Serif 4) are self-hosted from the build; nothing loads from another origin, so the policy (`workers/security-headers.ts`) names no font or style host. Carrel is private, so Web Analytics stays off it. A dashboard exclusion by hostname needs the Pro plan, so instead every HTML response carries `Cache-Control: ..., no-transform` (`workers/gate.ts`, and the consent page in `app/lib/mcp/door.ts`; `test/access.test.ts` and `test/door.test.ts` pin it), which Cloudflare's Web Analytics FAQ says keeps the proxy from injecting the beacon. The cost is that those HTML responses are not compressed by Cloudflare; scripts, styles and fonts still are. The CSP is deliberately not loosened for Cloudflare's beacon, and `test/csp.test.ts` pins that. The only components Carrel keeps are `app/components/editor` (the writing surface around Capsomer's markdown editor) and `app/components/media` (image upload and "Insert from library").
+Carrel's interface is [Capsomer](https://github.com/DrDustinEdwards/capsomer): its shell (rail, top bar, phone tab bar), tokens, components and fonts, with Carrel's own CSS in `app/app.css` limited to the page frame and the few rules the writing screens need. The fonts (Schibsted Grotesk, Martian Mono, Source Serif 4) are self-hosted from the build; nothing loads from another origin, so the policy (`workers/security-headers.ts`) names no font or style host. Carrel is private, so Web Analytics stays off it. A dashboard exclusion by hostname needs the Pro plan, so instead every HTML response carries `Cache-Control: ..., no-transform` (`workers/gate.ts`, and the consent page in `app/lib/mcp/door.ts`; `test/access.test.ts` and `test/door.test.ts` pin it), which Cloudflare's Web Analytics FAQ says keeps the proxy from injecting the beacon. The cost is that those HTML responses are not compressed by Cloudflare; scripts, styles and fonts still are. The CSP is deliberately not loosened for Cloudflare's beacon, and `test/csp.test.ts` pins that. The only components Carrel keeps are `app/components/editor` (the writing surface around Capsomer's markdown editor) and `app/components/media` (image upload and "Insert from library").
 
 `npm run harness` builds and serves the real app on http://127.0.0.1:5199 with the Access gate replaced by a header naming the viewer (`x-harness-viewer`: `dustin@harness.invalid` the Owner, `rosa@harness.invalid` an Editor, `sam@harness.invalid` a Reader) and a fake site, writing repository and Google (`test/harness`). It needs no Cloudflare credentials. `node scripts/screens.mjs <directory>` writes a screenshot of every screen in both themes at desktop and phone widths, for looking at.
 
@@ -55,7 +55,7 @@ The tests never reach the network. Site tests run Carrel's code against site-api
 2. `npm run deploy` with no route: `workers_dev` and `preview_urls` are false, so nothing reaches the Worker yet.
 3. Turn on Access for the Worker (Workers & Pages, carrel, Access, All traffic) and `Get-Clipboard | npx wrangler secret put ACCESS_AUD`.
 4. Uncomment `routes` in `wrangler.jsonc` and deploy again to add `carrel.dustinedwards.info`.
-5. From then on a merge to main deploys itself (`npm run deploy:ci`, run by the `deploy` job in CI): it renders `wrangler.jsonc` from the example and the variables `CARREL_D1_DATABASE_ID`, `CARREL_KV_OAUTH_ID` and `CARREL_ALERT_EMAIL` (both routes on), checks the ids against the names `carrel` and `carrel-oauth`, builds, runs `wrangler d1 migrations apply DB --remote`, checks nothing is pending, and only then runs `wrangler deploy`. A failed step stops the run before the deploy. Secrets set with `wrangler secret put` live in the Worker and survive deploys. See `docs/auto-deploy.md`.
+5. From then on a merge to main deploys itself, migrations first: see `docs/auto-deploy.md`.
 
 ## Connecting a site
 
@@ -112,7 +112,7 @@ They run on every save, on the saved text, and after a refresh that finds change
 | continuity | someone present who is not in the bible, dead at the scene's date or not yet born; a location not in the bible |
 | timeline | a scene dated before the scene it follows, unless it is marked flashback (a flashback does not move the clock) |
 | world-rules | a match for any rule's forbidden patterns; on the rule itself, a pattern that cannot compile |
-| ai-habits | a word from the AI-tells list (first kept in `capsid/conventions.md`) (plus the book's additions); the "not X, it's Y" construction; a paragraph closing on a rule-of-three list |
+| ai-habits | a word from the AI-tells list (plus the book's additions); the "not X, it's Y" construction; a paragraph closing on a rule-of-three list |
 | voice | a scene of 250 words or more that reads unlike `shared/voice/`: sentence length, function words and punctuation, a Burrows' Delta-style distance |
 
 The voice threshold (`VOICE_THRESHOLD` in `app/lib/novels/voice.ts`) was set on test fixtures that stand in for Dustin's passages; it needs setting again once `shared/voice/` holds his own text. Every check has a planted problem that must be flagged and a clean twin that must not (`test/checks.test.ts`).
@@ -138,7 +138,7 @@ Then review the result in the clone, commit it, and open a pull request in the w
 
 ## The AI door (MCP)
 
-The AI door is its own hostname, `carrel-mcp.dustinedwards.info` (design decision 7, corrected 2026-09-27). Every request that arrives there is an AI session, and every other hostname is the browser door behind Access; the hostname alone decides, never the email. The pages are never served on the AI host, and `/mcp` on the browser's host is just a page that does not exist.
+The AI door is its own hostname, `carrel-mcp.dustinedwards.info` (design decision 7, corrected). Every request that arrives there is an AI session, and every other hostname is the browser door behind Access; the hostname alone decides, never the email. The pages are never served on the AI host, and `/mcp` on the browser's host is just a page that does not exist.
 
 - **Protocol:** the official MCP SDK v2 (`@modelcontextprotocol/server` 2.0.0) through `agents`, stateless, at `/mcp`. The design-center era is 2026-07-28; 2025-era clients (Claude Code and claude.ai, as last measured) are answered by the shim in `app/lib/mcp/legacy-era.ts`, which carries its own removal condition.
 - **Sign-in:** the door is an OAuth 2.1 authorization server (`@cloudflare/workers-oauth-provider` 1.1.0, exact). Claude, Claude Code and ChatGPT present a metadata URL as their `client_id` (CIMD). Grok and Gemini, which still need Dynamic Client Registration as of 2026-10-09, use a tightened `/register` (`app/lib/mcp/registration.ts`, ruling 2026-10-10 rule 13): only exact allowlisted callbacks (the fixed ones in that file, plus any exact https callbacks in the var `DCR_REDIRECT_URIS`), only the code and refresh grants, a few registrations an hour per address and a ceiling a day, and a registration grants nothing by itself. After a consent page, shown for every authorization of every client, the person signs in with Cloudflare Access for SaaS (OIDC; secrets `ACCESS_SAAS_CLIENT_ID` and `ACCESS_SAAS_CLIENT_SECRET`). The ID token's email must belong to an active person in Carrel; an unknown or disabled email gets no grant, and a person disabled later loses the door on their next request.
@@ -179,7 +179,7 @@ Each site's files stay in that site's own storage and are served by the site; Ca
 - **Only the Owner deletes for good or empties the trash** (`delete_media`, checked in `media.server.ts` before the site is asked). Alt text, tags, trash and restore are the Editor's (`edit`). `test/media-writes.test.ts` names each refusal.
 - **Each write is optional per site.** Carrel reads `mediaAlt`, `mediaTags` and `mediaTrash` from the site's meta and hides the alt form, the tag form and filter, the Trash view and the selection tools for what the site lacks; a write that arrives anyway and is answered 501 says "This site does not offer that." The site's adapter for dustinedwards.info is specified in [docs/dustinedwards-media-adapter.md](docs/dustinedwards-media-adapter.md).
 - **Not here:** folders (the dustinedwards media schema has none; a site whose schema grows them gets a contract change first) and "rebuild from the bucket" (a repair, in Capsid's allowlist work, not a Carrel screen). Capsomer's own media inspector autosaves through a client call; this page keeps server forms, so the versioned writes, their refusals and the authorship record are one path.
-- **Authorship:** every media action the site carried out writes one row in `changes`: the person, the AI client when it came through the AI door, the project, the site's media id, and the same change id Carrel sent the site, so the two histories join. Upload and delete since migration 0007; alt text, tags, trash and restore (`media-alt`, `media-tags`, `media-trash`, `media-restore`, with the file's version before and after) since migration 0010. A bulk action writes one row per file, each under its own change id; emptying the trash writes a `media-delete` row per deleted file under the id the site gave it (`<change id>-<n>`). A refused action writes nothing. Apply migration 0010 before deploying the code that writes: until then the site's write happens and the screen says the record was not saved.
+- **Authorship:** every media action the site carried out writes one row in `changes`: the person, the AI client when it came through the AI door, the project, the site's media id, and the same change id Carrel sent the site, so the two histories join. Alt text, tags, trash and restore are recorded as `media-alt`, `media-tags`, `media-trash` and `media-restore`, with the file's version before and after. A bulk action writes one row per file, each under its own change id; emptying the trash writes a `media-delete` row per deleted file under the id the site gave it (`<change id>-<n>`). A refused action writes nothing.
 
 ## History
 
@@ -198,7 +198,7 @@ On the posts list, Editors and the Owner can tick posts and use Capsomer's bulk 
 
 - **One post at a time, nothing aborts.** Each post is its own write through `writeToSite`, so the editor's rules apply to it: a change to a live or scheduled post is the Owner's, and an Editor's tag on one is refused for that post alone. A stale version, a refusal, a post the site does not have, or a post you have an unsaved working draft of (a save to the site would clear that draft) leaves that post as it was. The response lists every post's outcome, and the page shows them under "Result".
 - **Delete needs the site to offer it.** It uses site-api v0.3.0's `DELETE /content/:id` with the version the site holds and a change id. A site whose adapter has no `delete` answers 501 and `meta.capabilities.contentDelete` is absent: the Owner then sees "Delete is not offered" with the reason, and the action is not shown. A deleted post leaves Carrel's index; your working drafts of it stay in Carrel.
-- **Authorship:** a delete writes one row in `changes` with action `content-delete` (migration 0009, the same rebuild as 0007): the person, the project, the post, the version deleted, and the change id sent to the site. Apply the migration before deploying the code that deletes; until then the site's delete still happens and the screen says the record could not be saved. Tag and duplicate are ordinary saves and write their usual rows.
+- **Authorship:** a delete writes one row in `changes` with action `content-delete`: the person, the project, the post, the version deleted, and the change id sent to the site. Tag and duplicate are ordinary saves and write their usual rows.
 - **Roles** are checked in `bulk.server.ts` and `content.server.ts` (`delete_content` in `app/lib/roles.ts` is the Owner's alone), before any post is read. `test/bulk.test.ts` names each refusal.
 
 ## Mentions
@@ -210,7 +210,7 @@ The **Mentions** tab of a site project is the queue of webmentions other sites s
 - **One mention at a time, nothing aborts.** Each is its own site write with its own change id, in order. A stale version (the mention was re-sent or decided elsewhere since the page loaded), a mention the site no longer has, and one the site refuses (it will not decide an unverified or failed mention) leave that mention as it was; the others go on, and the page lists every outcome under "Result". The site saves the decision and clears the post's cache as one step; if the clear fails Carrel says so.
 - **A version** is the site's own opaque string for the mention; it must move when the status, the verification or the decision does.
 - **Offered per site.** `meta.capabilities.mentions` says the site has the group; without it the screen says so and the routes answer 501. The health check runs the mentions conformance checks on a site that declares the group (none changes the site) and expects 501 from one that does not.
-- **Authorship:** every write the site carried out writes one row in `mention_decisions` (migration 0011, a table of its own because the `changes` table holds posts and files): the person, the AI client if one ever decides, the project, the site's mention id (empty for a sweep), the status before and after, and the change id sent to the site. **Apply migration 0011 before deploying this code**; until then the site's decision still happens and the screen says the record could not be saved. A refused write writes nothing.
+- **Authorship:** every write the site carried out writes one row in `mention_decisions` (migration 0011, a table of its own because the `changes` table holds posts and files): the person, the AI client if one ever decides, the project, the site's mention id (empty for a sweep), the status before and after, and the change id sent to the site. A refused write writes nothing.
 
 ## Google
 
@@ -279,31 +279,9 @@ A privacy or terms page is an ordinary page on the site (item `page.privacy` or 
 | See a project's flags list | yes | yes | yes |
 | See the Legal tab and the shared sections | yes | yes | yes |
 | Change or remove a shared section | | | yes |
-| Dismiss a flag | | | yes |
 | See a site's mention queue; approve, reject or delete a mention; sweep the expired ones | | | yes |
 | Manage people and their roles | | | yes |
 
 A person with no role on a project gets the same 404 as for a project that does not exist.
 
 The roles are checked in `app/lib/content.server.ts`, `app/lib/books.server.ts` and `app/lib/ai.server.ts`, not in the routes or the MCP tools, so both doors meet the same rule. A first publish asks for confirmation, as the site's own editor does.
-
-## Copied code
-
-The editor is copied from `DrDustinEdwards/dustinedwards-info@6e0f8c9`. Each file's header names its source and what changed.
-
-| Carrel file | Site source | Changed |
-|---|---|---|
-| `app/components/editor/markdown-editor.tsx` | `app/components/admin/markdown-editor.tsx` | Image upload removed until media arrives in stage 3; prose theme; read-only mode for Readers. |
-| `app/components/editor/md-editor-toolbar.tsx` | `app/components/admin/md-editor-toolbar.tsx` | Insert image button removed. |
-| `app/components/editor/md-editor-commands.ts` | `app/components/admin/md-editor-commands.ts` | Nothing. |
-| `app/components/editor/use-link-palette.ts` | `app/components/admin/use-link-palette.ts` | Nothing. |
-| `app/components/editor/roving-focus.ts` | `app/components/admin/roving-focus.ts` | Import path only. |
-| `app/lib/roving.mjs` | `app/lib/admin/roving.mjs` | Nothing. |
-| `app/lib/reading-time.mjs` | `app/lib/content/reading-time.mjs` | Nothing. |
-| `app/lib/publish-transition.mjs` | `app/lib/editor/publish-transition.mjs` | Nothing. |
-| `app/app.css` (the `md-*` rules) | `app/styles/admin-editor.css` | Mapped onto Carrel's tokens. |
-
-Some of the site's editor is deliberately not copied:
-
-- **`frontmatter.ts` and `publish-policy.mjs`:** Carrel edits the post's whole file, frontmatter included, as the site stores it. The site's adapter parses it and enforces the publish policy, so there is one authority for both.
-- **`draft-buffer`:** replaced by autosave to D1.
