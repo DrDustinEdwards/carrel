@@ -2,7 +2,7 @@
 
 Carrel: a private writing hub for articles across sites, books and manuscripts (app code only; no writing is stored here).
 
-The design is `carrel/design.md` in Capsid.
+Current state is `carrel/core.md` in Capsid.
 
 - **Stage 1, the private shell:** a React Router Worker that admits a request only when Cloudflare Access has signed it and its email belongs to an active person in Carrel. It adds per-project roles and a health check that emails on a change of state.
 - **Stage 2, dustinedwards.info through [site-api](https://github.com/DrDustinEdwards/site-api) `v0.1.0`:**
@@ -112,7 +112,7 @@ They run on every save, on the saved text, and after a refresh that finds change
 | continuity | someone present who is not in the bible, dead at the scene's date or not yet born; a location not in the bible |
 | timeline | a scene dated before the scene it follows, unless it is marked flashback (a flashback does not move the clock) |
 | world-rules | a match for any rule's forbidden patterns; on the rule itself, a pattern that cannot compile |
-| ai-habits | a word from the AI-tells list in `capsid/conventions.md` (plus the book's additions); the "not X, it's Y" construction; a paragraph closing on a rule-of-three list |
+| ai-habits | a word from the AI-tells list (first kept in `capsid/conventions.md`) (plus the book's additions); the "not X, it's Y" construction; a paragraph closing on a rule-of-three list |
 | voice | a scene of 250 words or more that reads unlike `shared/voice/`: sentence length, function words and punctuation, a Burrows' Delta-style distance |
 
 The voice threshold (`VOICE_THRESHOLD` in `app/lib/novels/voice.ts`) was set on test fixtures that stand in for Dustin's passages; it needs setting again once `shared/voice/` holds his own text. Every check has a planted problem that must be flagged and a clean twin that must not (`test/checks.test.ts`).
@@ -206,7 +206,7 @@ On the posts list, Editors and the Owner can tick posts and use Capsomer's bulk 
 The **Mentions** tab of a site project is the queue of webmentions other sites sent about its posts, over site-api v0.5.0's mentions group. Moderation stays on the site until Dustin confirms it has moved here; Carrel is the screen, and the site keeps the table and the rules. Files: `app/lib/mentions.server.ts`, `app/routes/mentions.tsx`, `POST /p/<project>/mentions/api` (JSON), `test/mentions.test.ts`.
 
 - **The screen.** A table of the mentions in one status (a filter with counts: Pending, Failed, Approved, Rejected, Unverified, All; it opens on Pending, or All when none is pending), 50 to a page. Tick rows and use Capsomer's bulk bar: **Approve** and **Reject** (a decision can be changed later) and **Delete** (the confirm dialog names every mention; it removes the only copy of what the sender sent). A Retention panel shows how many failed and rejected mentions are past the site's window and **Remove N expired** sweeps them behind a confirm. Everything a stranger sent is drawn as text; the source address is never a link.
-- **Who may.** The Owner alone, to read and to decide: `carrel/design.md` says the inbox belongs to Dustin alone, and the site reserves deleting a mention to its admin. `read_mentions` and `decide_mention` in `app/lib/roles.ts` are separate actions, so opening the queue to Editors or Readers to read is one line there. The tab is shown only to a person who may open it; anyone else who asks for the page gets 403, and the site is never asked.
+- **Who may.** The Owner alone, to read and to decide: the inbox belongs to Dustin alone (his design decision, 2026-09-26), and the site reserves deleting a mention to its admin. `read_mentions` and `decide_mention` in `app/lib/roles.ts` are separate actions, so opening the queue to Editors or Readers to read is one line there. The tab is shown only to a person who may open it; anyone else who asks for the page gets 403, and the site is never asked.
 - **One mention at a time, nothing aborts.** Each is its own site write with its own change id, in order. A stale version (the mention was re-sent or decided elsewhere since the page loaded), a mention the site no longer has, and one the site refuses (it will not decide an unverified or failed mention) leave that mention as it was; the others go on, and the page lists every outcome under "Result". The site saves the decision and clears the post's cache as one step; if the clear fails Carrel says so.
 - **A version** is the site's own opaque string for the mention; it must move when the status, the verification or the decision does.
 - **Offered per site.** `meta.capabilities.mentions` says the site has the group; without it the screen says so and the routes answer 501. The health check runs the mentions conformance checks on a site that declares the group (none changes the site) and expects 501 from one that does not.

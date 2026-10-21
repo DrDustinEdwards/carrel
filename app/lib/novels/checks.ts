@@ -40,7 +40,7 @@ export type BookContext = {
 };
 
 /**
- * The AI-tells list in capsid/conventions.md (Writing style, 2026-09-25), as the seed. Dustin adds
+ * The AI-tells list first kept in capsid/conventions.md (Writing style, 2026-09-25), as the seed. Dustin adds
  * words or allows one back in shared/checks/ai-habits.md. In fiction several of these are ordinary
  * words, which is why a hit is a flag for him to weigh, not a rule.
  */

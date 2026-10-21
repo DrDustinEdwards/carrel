@@ -4,8 +4,8 @@ Carrel is Dustin's private writing hub at https://carrel.dustinedwards.info, beh
 
 ## Rules that come first
 
-- The portfolio rules are in Capsid: `capsid/conventions.md` (Capsid's brief delivers it to this namespace). Read it with this file and `carrel/core.md`. Where they disagree, conventions wins.
-- The design is `carrel/design.md` in Capsid (approved 2026-09-26). The look is Capsomer.
+- Current state is `carrel/core.md` in Capsid. The look is Capsomer.
+- Tests: keep the minimal set (a few browser tests for flows that must never break, one integration test per real behaviour, unit tests only for tricky logic, shared code tested once where it lives), and remove any test that pins design, repeats coverage or has never caught a real mistake, unless it guards a harm that cannot be undone.
 - Checks and reviewers flag; they never decide. AI never rewrites Dustin's prose unasked; drafting continues from his own passages. Only the Owner publishes or sends anything outside Carrel.
 
 ## Commands
