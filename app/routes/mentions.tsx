@@ -50,7 +50,7 @@ const EMPTY_LINE: Record<MentionFilter, string> = {
 
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
-  // The Owner's alone, as carrel/design.md puts the inbox: anyone else is refused before the site is asked.
+  // The Owner's alone, as Dustin ruled for the inbox (2026-09-26): anyone else is refused before the site is asked.
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read_mentions");
   const head = { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: true };
   const support = await mentionsOffered(env, project);

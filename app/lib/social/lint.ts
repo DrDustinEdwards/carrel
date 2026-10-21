@@ -2,7 +2,7 @@
 // it can go: it fits the platform, it is not a reply in disguise, it is not empty. A post with any
 // finding is held for Dustin; the lint flags and he decides.
 //
-// The word list is stage 4's (SEED_WORDS, the AI-tells list in capsid/conventions.md): one list for
+// The word list is stage 4's (SEED_WORDS, the AI-tells list first kept in capsid/conventions.md): one list for
 // books and posts.
 
 import { SEED_WORDS } from "~/lib/novels/checks";

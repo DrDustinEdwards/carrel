@@ -4,7 +4,7 @@
 // is said in plain words.
 //
 // Roles, checked here so the page, the JSON endpoint and any later tool meet the same rule:
-// carrel/design.md says the inbox belongs to Dustin alone, so reading the queue (read_mentions) and
+// the inbox belongs to Dustin alone (his design decision, 2026-09-26), so reading the queue (read_mentions) and
 // deciding (decide_mention) are both the Owner's. Change roles.ts, not this file, to open it wider.
 //
 // Authorship: every write the site carried out writes one row in mention_decisions (migration 0011),

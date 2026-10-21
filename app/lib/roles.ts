@@ -8,7 +8,7 @@ export type Role = "reader" | "editor" | "owner";
  * be in use on pages the site's reference check cannot see, such as another site linking it.
  * `delete_content` removes a post from a site. Also the Owner's alone: unlike unpublish, it takes the
  * post off the site's list altogether.
- * `read_mentions` and `decide_mention` are the Owner's alone: carrel/design.md says the inbox belongs to
+ * `read_mentions` and `decide_mention` are the Owner's alone: Dustin ruled (2026-09-26) that the inbox belongs to
  * Dustin alone (a mention is text a stranger sent, and the site reserves deleting one to its admin).
  * They are two actions so the page can be opened to Editors and Readers by changing one line here.
  */
