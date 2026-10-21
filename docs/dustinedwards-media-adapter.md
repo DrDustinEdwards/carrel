@@ -1,6 +1,6 @@
 # dustinedwards.info: the media writes adapter (site-api v0.4.0)
 
-For the seat to post as a dustinedwards job once site-api has a `v0.4.0` tag. Carrel's side is done and waits on this: until the site's adapter has these methods, the site's meta omits `mediaAlt`, `mediaTags` and `mediaTrash`, and Carrel hides alt-text editing, tags, the trash and selection for that site. Nothing breaks in the meantime.
+The spec for a dustinedwards-info job. Carrel's side is done and waits on it: until the site's adapter has these methods, the site's meta omits `mediaAlt`, `mediaTags` and `mediaTrash`, and Carrel hides alt-text editing, tags, the trash and selection for that site. Nothing breaks in the meantime.
 
 The site's own media screen (`app/routes/admin.media._index.tsx`) is not touched by this job. The point is one write path: the new adapter methods and the admin action handlers in `app/lib/media/actions.server.ts` both call the same small functions, so a rule changed in one place changes in both.
 
