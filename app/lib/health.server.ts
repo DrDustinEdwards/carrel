@@ -20,6 +20,7 @@ import { saAccessToken, saConnection } from "~/lib/google/service-account.server
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 import { unseenTemplates } from "~/lib/social/queue.server";
+import { timedFetch } from "~/lib/timed-fetch.server";
 
 export type CheckResult = { name: string; ok: boolean; detail: string };
 
@@ -210,7 +211,7 @@ async function checkSocialTemplates(env: Env): Promise<CheckResult> {
 
 export async function runChecks(
   env: Env,
-  fetcher: Fetch = (url, init) => fetch(url, init),
+  fetcher: Fetch = (url, init) => timedFetch(url, init),
   now: Date = new Date(),
 ): Promise<CheckResult[]> {
   return Promise.all([

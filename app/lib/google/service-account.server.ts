@@ -4,6 +4,7 @@
 // before anything is sent, whatever the scopes would allow.
 
 import { SignJWT } from "jose";
+import { timedFetch } from "~/lib/timed-fetch.server";
 
 /** Read-only, and no drive.readonly: the index takes metadata, and search asks Drive each time. */
 export const SA_SCOPES = ["https://www.googleapis.com/auth/drive.metadata.readonly", "https://www.googleapis.com/auth/webmasters.readonly"];
@@ -75,7 +76,7 @@ export function clearSaTokenCache(): void {
 }
 
 /** A signed JWT exchanged at Google's token endpoint for an hour's access token, cached per key. */
-export async function saAccessToken(key: ServiceAccountKey, fetcher: Fetch = fetch, now = Date.now()): Promise<string> {
+export async function saAccessToken(key: ServiceAccountKey, fetcher: Fetch = timedFetch, now = Date.now()): Promise<string> {
   const cached = tokenCache.get(key.privateKeyId);
   if (cached && cached.expires - 5 * 60_000 > now) return cached.token;
   const pem = key.privateKey.replace(/-----(BEGIN|END) PRIVATE KEY-----/g, "").replace(/\s+/g, "");
@@ -105,7 +106,7 @@ export async function saAccessToken(key: ServiceAccountKey, fetcher: Fetch = fet
 }
 
 /** The service account's only way to reach Google: read-only by allowlist, then authenticated. */
-export function saClient(env: Env, fetcher: Fetch = fetch) {
+export function saClient(env: Env, fetcher: Fetch = timedFetch) {
   const connection = saConnection(env);
   if (connection.state !== "connected") throw new GoogleNotConnected(connection.detail);
   return {

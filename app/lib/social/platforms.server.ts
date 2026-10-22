@@ -8,6 +8,8 @@
 // kept per account. X: OAuth 1.0a user context for POST /2/tweets, signed here with Web Crypto
 // instead of Recova's twitter-api-v2 package.
 
+import { timedFetch } from "~/lib/timed-fetch.server";
+
 type Fetch = typeof fetch;
 
 export type Platform = "bluesky" | "x";
@@ -148,7 +150,7 @@ async function postToX(creds: Extract<Credentials, { platform: "x" }>, text: str
 }
 
 /** The only exported way to post: an original post, text only. There is no reply parameter to pass. */
-export async function postOriginal(creds: Credentials, text: string, fetcher: Fetch = fetch, now = Date.now()): Promise<string> {
+export async function postOriginal(creds: Credentials, text: string, fetcher: Fetch = timedFetch, now = Date.now()): Promise<string> {
   return creds.platform === "bluesky" ? postToBluesky(creds, text, fetcher, now) : postToX(creds, text, fetcher, now);
 }
 

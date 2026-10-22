@@ -28,6 +28,8 @@ jobs:
           node-version-file: package.json
           cache: npm
       - run: npm ci
+      - name: No high advisory in the shipped dependencies
+        run: npm audit --omit=dev --audit-level=high
       - run: npm run typecheck
       - run: npm test
       # The formatted editor keeps the Markdown underneath byte for byte. The
