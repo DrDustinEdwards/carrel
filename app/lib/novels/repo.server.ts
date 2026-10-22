@@ -5,6 +5,7 @@
 // history is the commits that touched its path.
 
 import { SignJWT } from "jose";
+import { timedFetch } from "~/lib/timed-fetch.server";
 
 export const NOVELS_REPO = "DrDustinEdwards/writing";
 const NOVELS_BRANCH = "main";
@@ -133,7 +134,7 @@ function headers(token: string): HeadersInit {
 /** Installation tokens last an hour; one per isolate, renewed five minutes early. */
 const tokenCache = new Map<string, { token: string; expires: number }>();
 
-export async function installationToken(appId: string, pem: string, fetcher: Fetch = fetch, now = Date.now()): Promise<string> {
+export async function installationToken(appId: string, pem: string, fetcher: Fetch = timedFetch, now = Date.now()): Promise<string> {
   const cached = tokenCache.get(appId);
   if (cached && cached.expires - 5 * 60_000 > now) return cached.token;
   const jwt = await appJwt(appId, pem, now);
@@ -170,7 +171,7 @@ function base64ToUtf8(b64: string): string {
   return new TextDecoder().decode(base64ToBytes(b64));
 }
 
-export function githubRepo(token: () => Promise<string>, fetcher: Fetch = fetch): NovelsRepo {
+export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedFetch): NovelsRepo {
   const repoUrl = `${API}/repos/${NOVELS_REPO}`;
   const call = async (url: string, init: RequestInit = {}) => fetcher(url, { ...init, headers: { ...headers(await token()), ...init.headers } });
 
@@ -277,7 +278,7 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = fetch)
 }
 
 /** The repository for this Worker's credentials; throws NovelsNotConnected until the App is set up. */
-export function novelsRepo(env: Env, fetcher: Fetch = fetch): NovelsRepo {
+export function novelsRepo(env: Env, fetcher: Fetch = timedFetch): NovelsRepo {
   const connection = novelsConnection(env);
   if (connection.state !== "connected") throw new NovelsNotConnected(connection.detail);
   return githubRepo(() => installationToken(connection.appId, connection.privateKey, fetcher), fetcher);

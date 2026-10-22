@@ -8,6 +8,8 @@
 // with `Authorization: Bearer <token>` and `anthropic-version: 2023-06-01`, body `{ "text": ... }` of
 // at most 65,536 characters; 200 returns the session; 429 is the hourly limit, with Retry-After.
 
+import { timedFetch } from "~/lib/timed-fetch.server";
+
 type Fetch = typeof fetch;
 
 const FIRE_URL = /^https:\/\/api\.anthropic\.com\/v1\/claude_code\/routines\/trig_[A-Za-z0-9_-]+\/fire$/;
@@ -30,7 +32,7 @@ export type FireResult =
   /** Will not work until something changes: bad token, paused routine, no access. */
   | { ok: false; retry: false; error: string };
 
-export async function fireRoutine(config: RoutineConfig, text: string, fetcher: Fetch = fetch): Promise<FireResult> {
+export async function fireRoutine(config: RoutineConfig, text: string, fetcher: Fetch = timedFetch): Promise<FireResult> {
   let res: Response;
   try {
     res = await fetcher(config.url, {

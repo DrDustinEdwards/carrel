@@ -9,6 +9,7 @@ import { googleOauthStates, googleTokens } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 
 import { GOOGLE_TOKEN_URL, GoogleNotConnected } from "./service-account.server";
+import { timedFetch } from "~/lib/timed-fetch.server";
 
 const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -108,7 +109,7 @@ export async function startAuth(env: Env, viewer: Viewer, origin: string, now = 
  * Finishes the round trip: the state must be one Carrel issued to this person in the last ten
  * minutes, used once; the grant must be drive.file and nothing wider.
  */
-export async function finishAuth(env: Env, viewer: Viewer, params: URLSearchParams, origin: string, fetcher: Fetch = fetch, now = new Date()) {
+export async function finishAuth(env: Env, viewer: Viewer, params: URLSearchParams, origin: string, fetcher: Fetch = timedFetch, now = new Date()) {
   requireOwner(viewer);
   const { clientId, clientSecret, key } = await configured(env);
   const d = drizzle(env.DB);
@@ -152,7 +153,7 @@ export async function isConnected(db: D1Database, viewer: Viewer): Promise<boole
 }
 
 /** An access token from the stored grant. A revoked grant is recorded, so the health check can say so. */
-export async function userAccessToken(env: Env, personId: number, fetcher: Fetch = fetch): Promise<string> {
+export async function userAccessToken(env: Env, personId: number, fetcher: Fetch = timedFetch): Promise<string> {
   const { clientId, clientSecret, key } = await configured(env);
   const d = drizzle(env.DB);
   const row = await d.select().from(googleTokens).where(eq(googleTokens.personId, personId)).get();

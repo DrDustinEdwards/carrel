@@ -9,6 +9,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { aiDrafts } from "~/db/schema";
 import { carrelOrigin } from "~/lib/mcp/server";
+import { timedFetch } from "~/lib/timed-fetch.server";
 
 /** Capsid's origin, from the var CAPSID_ORIGIN; read loosely, as carrelOrigin does, for an older wrangler.jsonc without it. */
 export function capsidOrigin(env: Env): string {
@@ -33,7 +34,7 @@ export function inboxReport(waiting: number, since: string | null, origin: strin
 export type ReportResult = { state: "skipped" | "sent" | "failed"; detail: string };
 
 /** Counts the waiting AI drafts and reports them. Never throws; a failure is logged and returned. */
-export async function reportInbox(env: Env, fetcher: typeof fetch = fetch): Promise<ReportResult> {
+export async function reportInbox(env: Env, fetcher: typeof fetch = timedFetch): Promise<ReportResult> {
   const key = env.CAPSID_AGENT_KEY?.trim();
   if (!key) return { state: "skipped", detail: "CAPSID_AGENT_KEY is not set." };
   try {

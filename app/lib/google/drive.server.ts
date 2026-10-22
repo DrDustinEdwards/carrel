@@ -17,6 +17,7 @@ import { can } from "~/lib/roles";
 
 import { userAccessToken } from "./oauth.server";
 import { GoogleNotConnected, saClient } from "./service-account.server";
+import { timedFetch } from "~/lib/timed-fetch.server";
 
 type Fetch = typeof fetch;
 
@@ -172,7 +173,7 @@ function requireSend(project: SiteProject) {
  * Copies a post into a new Google Doc in Dustin's Drive: his working draft if he has one, else the
  * site's text. Only the body goes; the frontmatter stays in Carrel for Import to put back.
  */
-export async function sendToDocs(env: Env, project: SiteProject, viewer: Viewer, itemId: string, fetcher: Fetch = fetch) {
+export async function sendToDocs(env: Env, project: SiteProject, viewer: Viewer, itemId: string, fetcher: Fetch = timedFetch) {
   requireSend(project);
   const draft = await readDraft(env.DB, project, viewer, itemId);
   const doc = draft ? null : await readDoc(env, project, itemId, fetcher);
@@ -222,7 +223,7 @@ export async function lastSentDoc(db: D1Database, project: SiteProject, itemId: 
  * Brings the Doc's text back as a new draft, never over one: with a working draft open, it is
  * refused until that draft is saved or discarded. The frontmatter kept at Send goes back on top.
  */
-export async function importFromDocs(env: Env, project: SiteProject, viewer: Viewer, itemId: string, fetcher: Fetch = fetch) {
+export async function importFromDocs(env: Env, project: SiteProject, viewer: Viewer, itemId: string, fetcher: Fetch = timedFetch) {
   requireSend(project);
   const sent = await lastSentDoc(env.DB, project, itemId);
   if (!sent) return { ok: false as const, message: "This post has not been sent to Google Docs from Carrel, so there is no Doc to import." };

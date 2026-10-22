@@ -3,6 +3,7 @@
 
 import { createSiteClient, type SiteClient } from "@dustinedwards/site-api/client";
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
+import { timedFetch } from "~/lib/timed-fetch.server";
 
 export type SiteId = "dustinedwards" | "germomics";
 
@@ -120,5 +121,5 @@ export class SiteNotConnected extends Error {
 export function siteClient(env: Env, id: SiteId, fetcher?: typeof fetch): SiteClient {
   const connection = siteConnection(env, id);
   if (connection.state !== "connected") throw new SiteNotConnected(connection.detail);
-  return createSiteClient({ baseUrl: connection.origin, key: connection.key, fetch: fetcher });
+  return createSiteClient({ baseUrl: connection.origin, key: connection.key, fetch: fetcher ?? timedFetch });
 }

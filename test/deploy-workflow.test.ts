@@ -5,13 +5,16 @@
 
 import { describe, expect, it } from "vitest";
 
-import ci from "../.github/workflows/ci.yml?raw";
+import ciText from "../.github/workflows/ci.yml?raw";
 import pkg from "../package.json?raw";
 import verify from "../scripts/verify-live.mjs?raw";
 
 // The devkit tag ci.yml pins. A move to a newer tag changes both.
 const DEVKIT_SHA = "27e0a1ca0747b5839bf7e0433c307ae671de8501";
 const DEVKIT_TAG = "v0.7.0";
+
+// A Windows checkout with core.autocrlf has CRLF in the working tree; the anchors below are LF.
+const ci = ciText.replace(/\r\n/g, "\n");
 
 /** The deploy job's text, from its key to the end of the file (it is the last job). */
 const deployJob = ci.slice(ci.indexOf("\n  deploy:\n"));

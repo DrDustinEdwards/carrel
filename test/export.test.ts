@@ -43,7 +43,7 @@ describe("the layout", () => {
     for (const ok of ["book.md", "chapters/01-arrival/01-the-gate.md", "chapters/100-late/12-end.md", "bible/characters/wade.md", "bible/world.md", "outline/plan.md"]) {
       expect(isBookPath(ok), ok).toBe(true);
     }
-    for (const bad of ["../x.md", "build/x.md", "chapters/arrival/01-a.md", "chapters/01-a/b.md", "bible/other/x.md", "notes.md", "Book.md", "chapters/01-a/01-b.txt", "outline/a/b.md"]) {
+    for (const bad of ["../x.md", "build/x.md", "chapters/arrival/01-a.md", "chapters/01-a/b.md", "bible/other/x.md", "notes.md", "Book.md", "chapters/01-a/01-b.txt", "outline/a/b.md", "chapters/01-arrival/01-the-gateabc", `chapters/01-a/${"x".repeat(200)}.md`]) {
       expect(isBookPath(bad), bad).toBe(false);
     }
   });

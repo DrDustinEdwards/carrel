@@ -21,6 +21,7 @@ import type { Viewer } from "~/lib/people.server";
 import { lintPost } from "./lint";
 import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
 import { fireRoutine, routineConfig, routinePrompt } from "./routine.server";
+import { timedFetch } from "~/lib/timed-fetch.server";
 
 type Fetch = typeof fetch;
 
@@ -237,7 +238,7 @@ async function sendQueued(env: Env, account: Account, now: Date, fetcher: Fetch,
 
 /** One pass of the queue, run by the cron. Every step is idempotent, so a missed run loses nothing. */
 export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Date } = {}): Promise<TickResult> {
-  const fetcher = deps.fetcher ?? fetch;
+  const fetcher = deps.fetcher ?? timedFetch;
   const now = deps.now ?? new Date();
   const d = drizzle(env.DB);
   const result: TickResult = { linted: 0, routineFired: 0, templated: 0, sent: 0, waitingOnCaps: 0, errors: [] };
