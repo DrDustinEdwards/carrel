@@ -21,7 +21,7 @@ import { AUTOSAVE_DELAY_MS, useSaveShortcut } from "~/components/editor/save-key
 import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 import { SiteBinder } from "~/components/writing/binder";
 import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
 import { autosave, discardDraft, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
@@ -39,6 +39,7 @@ import { searchItems, sitePaths } from "~/lib/index.server";
 import { mediaLimits } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { transitionsFor } from "capsomer/publish-transition";
+import { PageHead } from "capsomer/react/page-head";
 import { can } from "~/lib/roles";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
@@ -387,6 +388,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor" data-layout={layout}>
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: data.project.name, href: `/p/${data.project.slug}` }, { label: kindWord(data.kind) }]}
         title={data.title || data.itemId}
         lead={

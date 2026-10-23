@@ -12,10 +12,11 @@ import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
+import { PageHead } from "capsomer/react/page-head";
 
 import { DraftLinks } from "~/components/history/draft-links";
 import { RevisionPicker } from "~/components/history/revision-picker";
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { bookVersions, readVersion } from "~/lib/book-history.server";
 import { bookRepo, indexedFile, requireBookProject } from "~/lib/books.server";
@@ -181,6 +182,7 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
   return (
     <div className="app-page">
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: project.name, href: base }, { label, href: editor }, { label: "History" }]}
         title={`History of ${label}`}
         lead={

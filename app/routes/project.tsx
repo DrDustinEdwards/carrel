@@ -13,8 +13,8 @@ import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
 import { ProjectTabs } from "~/components/project-tabs";
 
 import { getEnv, getViewer } from "~/lib/context";

@@ -5,8 +5,7 @@ import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Pill, Status } from "capsomer/react/status";
-
-import { PageHead } from "~/components/page-head";
+import { PageHead } from "capsomer/react/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { isConnected, oauthConnection } from "~/lib/google/oauth.server";

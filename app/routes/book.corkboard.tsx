@@ -12,8 +12,9 @@ import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 import { SortableList, moveId } from "capsomer/react/sortable-list";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 import { StatusLabelPill } from "~/components/writing/status-label";
 
 import { reorderBook, chapterSources, type ReorderResult } from "~/lib/binder.server";
@@ -159,6 +160,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
   return (
     <div className="app-page">
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: project.name, href: base }, { label: "Corkboard" }]}
         title="Corkboard"
         lead="Each chapter's scenes as cards, in reading order. Moving a card or a chapter renumbers the files after it, in one commit."

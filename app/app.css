@@ -28,6 +28,7 @@
 @import "capsomer/row-list.css";
 @import "capsomer/disclosure.css";
 @import "capsomer/breadcrumb.css";
+@import "capsomer/page-head.css";
 @import "capsomer/tabs.css";
 @import "capsomer/tooltip.css";
 @import "capsomer/theme-switch.css";
@@ -52,32 +53,6 @@
   padding: var(--space-6) var(--space-6) var(--space-9);
   max-width: 1320px;
   min-width: 0;
-}
-
-.app-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3) var(--space-5);
-
-  & > div:first-child {
-    display: grid;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-  & h1 {
-    margin: 0;
-    font-size: var(--fs-h2);
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    overflow-wrap: anywhere;
-  }
-  & p {
-    margin: 0;
-    max-width: 75ch;
-    color: var(--muted);
-  }
 }
 
 .app-actions {
@@ -559,12 +534,12 @@
 }
 
 /* While someone types, the rest of the screen falls quiet; a mouse move or focus brings it back. */
-html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-site-tabs, .cap-admin-bar, .app-editor .app-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar):not(:focus-within) {
+html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-site-tabs, .cap-admin-bar, .app-editor .cap-page-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar):not(:focus-within) {
   opacity: 0.08;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-site-tabs, .cap-admin-bar, .app-editor .app-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar) {
+  :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-site-tabs, .cap-admin-bar, .app-editor .cap-page-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar) {
     transition: opacity var(--dur-base) var(--ease-out);
   }
 }

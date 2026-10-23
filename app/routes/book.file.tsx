@@ -12,11 +12,12 @@ import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
+import { PageHead } from "capsomer/react/page-head";
 
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { AUTOSAVE_DELAY_MS, useSaveShortcut } from "~/components/editor/save-keys";
 import { useTypingRecede } from "~/components/editor/typing";
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 import { Binder } from "~/components/writing/binder";
 
 import {
@@ -41,7 +42,6 @@ import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
 
 import type { Route } from "./+types/book.file";
-
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel" }];
@@ -328,6 +328,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor">
       <PageHead
+        renderLink={RouterLink}
         crumbs={crumbs}
         title={data.label}
         lead={

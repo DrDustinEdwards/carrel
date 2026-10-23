@@ -9,8 +9,7 @@ import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Time } from "capsomer/react/time";
-
-import { PageHead } from "~/components/page-head";
+import { PageHead } from "capsomer/react/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { listManuscripts, manuscriptsFolder, refreshManuscripts, searchManuscripts } from "~/lib/google/drive.server";

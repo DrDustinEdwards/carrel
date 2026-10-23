@@ -7,8 +7,9 @@ import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 
 import { lastAiPublication, publishedByLine } from "~/lib/ai.server";
 import { readDoc, writeToSite } from "~/lib/content.server";
@@ -53,6 +54,7 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
   return (
     <div className="app-page" data-narrow>
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: item.title }]}
         title={item.title}
         lead={

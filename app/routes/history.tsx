@@ -12,10 +12,11 @@ import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
+import { PageHead } from "capsomer/react/page-head";
 
 import { DraftLinks } from "~/components/history/draft-links";
 import { RevisionPicker } from "~/components/history/revision-picker";
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -177,6 +178,7 @@ export default function History({ loaderData }: Route.ComponentProps) {
   return (
     <div className="app-page">
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: title || itemId, href: editor }, { label: "History" }]}
         title={`History of ${title || itemId}`}
         lead={`What the site remembers of this ${noun}, newest first. Looking here changes nothing.`}

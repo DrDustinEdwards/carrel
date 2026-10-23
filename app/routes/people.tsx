@@ -18,8 +18,7 @@ import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 import { Pill } from "capsomer/react/status";
-
-import { PageHead } from "~/components/page-head";
+import { PageHead } from "capsomer/react/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { addAgent, addPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
