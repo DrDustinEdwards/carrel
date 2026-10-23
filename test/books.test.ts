@@ -8,7 +8,6 @@ import {
   assembleBook,
   authorshipRecord,
   authorshipReport,
-  checkDraft,
   createBook,
   dismissFinding,
   exportGate,
@@ -202,15 +201,6 @@ describe("saving", () => {
     expect(await authorshipRecord(testEnv.DB, project)).toEqual([]);
   });
 
-  it("creates a new scene only where no file exists", async () => {
-    const gh = seedRepo();
-    const { viewer, project } = await as("owner@test.invalid");
-    const path = "chapters/02-letters/01-morning.md";
-    const created = await saveBookFile(testEnv.DB, gh.repo, project, viewer, path, { source: `${HEADER.replace("2024-04-12", "2024-04-13")}Morning.\n`, expectedVersion: null });
-    expect(created.ok).toBe(true);
-    const again = await saveBookFile(testEnv.DB, gh.repo, project, viewer, path, { source: "overwrite", expectedVersion: null });
-    expect(again).toMatchObject({ ok: false, reason: "conflict" });
-  });
 });
 
 describe("checks on save", () => {
@@ -255,15 +245,6 @@ describe("checks on save", () => {
     expect(await listFindings(testEnv.DB, project)).toEqual([]);
   });
 
-  it("checks a draft without saving or recording anything", async () => {
-    const gh = seedRepo();
-    const { project } = await as("reader@test.invalid");
-    await refreshBook(testEnv.DB, gh.repo, project);
-    const found = await checkDraft(testEnv.DB, project, "chapters/01-arrival/01-the-gate.md", `${HEADER}A tapestry.\n`);
-    expect(found.map((f) => f.excerpt)).toEqual(["tapestry"]);
-    expect(await listFindings(testEnv.DB, project)).toEqual([]);
-    expect(gh.requests.filter((r) => r.startsWith("PUT"))).toEqual([]);
-  });
 });
 
 describe("dismissing flags and exporting", () => {

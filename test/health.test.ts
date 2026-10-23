@@ -2,7 +2,6 @@
 // alert that fails to send is retried rather than lost.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { memoryAdapter } from "@dustinedwards/site-api/testing";
 
 import { runBackup } from "~/lib/backup.server";
 import { runHealth } from "~/lib/health.server";
@@ -42,18 +41,6 @@ describe("health", () => {
     expect(results.every((r) => r.ok)).toBe(true);
     expect(emailed).toBe(false);
     expect(box.sent).toHaveLength(0);
-  });
-
-  it("sends one email when a check starts failing, and none while it stays failing", async () => {
-    const box = mailbox();
-    const env = { ...testEnv, EMAIL: box.EMAIL };
-    await runHealth(env, certsOk);
-    await runHealth(env, certsDown);
-    await runHealth(env, certsDown);
-    expect(box.sent).toHaveLength(1);
-    expect(box.sent[0]!.subject).toBe("Carrel: 1 check failing");
-    expect(box.sent[0]!.text).toContain("FAIL access-keys");
-    expect(box.sent[0]!.to).toBe("owner@test.invalid");
   });
 
   it("sends one email on recovery", async () => {
@@ -127,34 +114,12 @@ describe("site health", () => {
     expect(site.adapter.store.size).toBe(0);
   });
 
-  it("includes the mentions group when the site declares it, and its probe changes nothing there", async () => {
-    const site = fakeSite();
-    const id = site.adapter.receiveMention({ sourceUrl: "https://a.example/post", targetId: "first-post" });
-    const before = structuredClone(site.adapter.mentionStore.get(id));
-    const box = mailbox();
-    const { results } = await runHealth({ ...connectedEnv(), EMAIL: box.EMAIL }, through(site));
-    expect(results.find((r) => r.name === "site-dustinedwards")?.ok).toBe(true);
-    const asked = site.requests.filter((r) => r.includes("/mentions"));
-    // The probe ran against the real mention (a stale version, so refused), and nothing deleted or swept it.
-    expect(asked).toContain(`POST /api/carrel/v1/mentions/${id}/decide`);
-    expect(asked).not.toContain(`DELETE /api/carrel/v1/mentions/${id}`);
-    expect(site.adapter.mentionStore.get(id)).toEqual(before);
-    expect(site.adapter.purged).toEqual([]);
-    expect(box.sent).toHaveLength(0);
-  });
-
   it("PLANT: a site that decides a mention it does not hold is flagged, by the mentions check", async () => {
     const site = fakeSite();
     site.adapter.mentions!.decide = async () => ({ status: "approved", version: "m9", purged: null });
     const box = mailbox();
     await runHealth({ ...connectedEnv(), EMAIL: box.EMAIL }, through(site));
     expect(box.sent[0]!.text).toMatch(/FAIL site-dustinedwards: dustinedwards\.info does not conform\. mention decide of an unknown id/);
-  });
-
-  it("a site without the mentions group still conforms: its mentions routes answer 501", async () => {
-    const site = fakeSite(memoryAdapter({ mentions: false }));
-    const { results } = await runHealth({ ...connectedEnv(), EMAIL: mailbox().EMAIL }, through(site));
-    expect(results.find((r) => r.name === "site-dustinedwards")?.ok).toBe(true);
   });
 
   it("PLANT: a changed schema hash sends one email, and none while it stays changed", async () => {

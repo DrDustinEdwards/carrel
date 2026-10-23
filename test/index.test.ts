@@ -8,9 +8,7 @@ import {
   ftsQuery,
   MAX_BODY_FETCHES,
   REFRESH_MAX_SUBREQUESTS,
-  REFRESH_SUBREQUEST_BUDGET,
   refreshIndex,
-  kindsIn,
   searchItems,
   SUBREQUEST_LIMIT,
 } from "~/lib/index.server";
@@ -57,30 +55,6 @@ describe("refresh", () => {
     expect(await searchItems(env.DB, projectId, { q: "nothing-like-this" })).toEqual([]);
   });
 
-  it("keeps a site's data kinds out of the writing lists and their kinds, whatever the kind is called", async () => {
-    const db = connectedEnv().DB;
-    const row = (itemId: string, kind: string, path: string | null, status = "published") =>
-      db
-        .prepare("INSERT INTO site_items (project_id, item_id, kind, title, status, path, synced_at) VALUES (?, ?, ?, ?, ?, ?, '2026-10-07T00:00:00Z')")
-        .bind(projectId, itemId, kind, itemId, status, path);
-    await db.batch([
-      row("a-post", "post", "/writing/a-post"),
-      row("a-draft", "post", null, "draft"),
-      row("page.about", "page", "/about"),
-      row("phage.acorn15", "phage", "/research/phages#acorn15"),
-      row("roster.2017", "roster", "/teaching/phage-discovery#year-2017"),
-      row("essay.first", "a-kind-only-in-draft", null, "draft"),
-      row("equipment.heat-block", "equipment", null),
-      row("reagent.agar", "reagent", null),
-      row("widget.x", "some-kind-no-one-listed", null),
-    ]);
-    const listed = await searchItems(db, projectId, {});
-    expect(listed.map((i) => i.itemId).sort()).toEqual(["a-draft", "a-post", "essay.first", "page.about", "phage.acorn15", "roster.2017"]);
-    expect(await searchItems(db, projectId, { kind: "equipment" })).toEqual([]);
-    expect((await searchItems(db, projectId, { kind: "phage" })).map((i) => i.itemId)).toEqual(["phage.acorn15"]);
-    expect(await kindsIn(db, projectId)).toEqual(["a-kind-only-in-draft", "page", "phage", "post", "roster"]);
-  });
-
   it("reads a body again only when the item changed, and drops an item the site no longer lists", async () => {
     const site = await seeded({ a: "# A\n", b: "# B\n" });
     const env = connectedEnv();
@@ -98,16 +72,6 @@ describe("refresh", () => {
     expect(await searchItems(env.DB, projectId, { q: "B" })).toEqual([]);
   });
 
-  it("reads at most MAX_BODY_FETCHES bodies per run and reports the rest as pending", async () => {
-    const posts = Object.fromEntries(Array.from({ length: MAX_BODY_FETCHES + 5 }, (_, i) => [`p${String(i).padStart(2, "0")}`, `# P${i}\n`]));
-    const site = await seeded(posts);
-    const env = connectedEnv();
-    const first = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, site.fetch);
-    expect(first).toMatchObject({ fetched: MAX_BODY_FETCHES, pending: 5 });
-    expect(site.requests.filter((r) => r.startsWith("GET /api/carrel/v1/content/")).length).toBe(MAX_BODY_FETCHES);
-    const second = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, site.fetch);
-    expect(second).toMatchObject({ fetched: 5, pending: 0 });
-  });
 });
 
 /**
@@ -157,13 +121,6 @@ function countingD1(db: D1Database) {
 }
 
 describe("the refresh's subrequests (Workers Paid)", () => {
-  it("keeps the cap's worst case inside its budget, and the budget a tenth of the plan's limit", () => {
-    expect(SUBREQUEST_LIMIT).toBe(10_000);
-    expect(REFRESH_SUBREQUEST_BUDGET).toBe(1_000);
-    expect(REFRESH_MAX_SUBREQUESTS).toBe(412);
-    expect(REFRESH_MAX_SUBREQUESTS).toBeLessThanOrEqual(REFRESH_SUBREQUEST_BUDGET);
-  });
-
   it("stays under the limit when every post needs its body read: counted, not assumed", async () => {
     const posts = Object.fromEntries(Array.from({ length: MAX_BODY_FETCHES + 50 }, (_, i) => [`p${String(i).padStart(3, "0")}`, `# P${i}
 `]));

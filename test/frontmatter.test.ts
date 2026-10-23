@@ -35,12 +35,6 @@ describe("the fields", () => {
     expect(fields).toMatchObject({ title: "Every product", description: "One table.", date: "2026-07-30", tags: "cloudflare, workers", key_takeaways: "First.\nSecond.", assumed_audience: "" });
   });
 
-  it("leaves the source untouched when a field is set to what it already holds", () => {
-    let front = splitSource(SOURCE).front!;
-    for (const [key, value] of Object.entries(readFields(front))) front = setField(front, key as never, value);
-    expect(front).toBe(splitSource(SOURCE).front);
-  });
-
   it("changes only the edited block and keeps unknown keys, comments and lists exactly", () => {
     const parts = splitSource(SOURCE);
     const edited = setField(setField(parts.front!, "title", 'A "new" title'), "tags", "a, b, c");

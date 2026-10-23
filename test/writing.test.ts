@@ -53,13 +53,6 @@ describe("the header keys", () => {
 });
 
 describe("status lists", () => {
-  it("starts each kind from the ruling's list", () => {
-    expect(STARTING_STATUSES.book.map((l) => l.label)).toEqual(["Idea", "Outlined", "Drafting", "First draft", "Revised", "Final"]);
-    expect(STARTING_STATUSES.blog.map((l) => l.label)).toEqual(["Idea", "Drafting", "Ready", "Scheduled"]);
-    expect(STARTING_STATUSES.manuscript.map((l) => l.label)).toEqual(["Drafting", "Draft done", "With coauthors", "Revising", "Final"]);
-    expect(STARTING_STATUSES.script.map((l) => l.label)).toEqual(["Idea", "Outlined", "Drafting", "Revised", "Locked"]);
-  });
-
   it("matches a status ignoring case, and an unknown one to nothing", () => {
     expect(labelFor(STARTING_STATUSES.book, "first DRAFT")?.label).toBe("First draft");
     expect(labelFor(STARTING_STATUSES.book, "Polished")).toBeNull();

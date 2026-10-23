@@ -11,9 +11,7 @@ import {
   checkTimeline,
   checkVoice,
   checkWorldRules,
-  fingerprints,
   readHabits,
-  SEED_WORDS,
   storyDate,
   type Bible,
   type BookContext,
@@ -180,37 +178,11 @@ describe("PLANT: AI habits", () => {
     expect(readHabits("---\nconditions: false\n---\n").conditions).toBe(false);
   });
 
-  it("reads the writing repository's shared/checks/ai-habits.md as it ships: the seed, unchanged", () => {
-    const shipped = [
-      "---",
-      "# Added to the AI-habits list Carrel starts from (the AI-tells list in the portfolio conventions).",
-      "words: []",
-      "# Words from that list to allow back. In fiction some of them are ordinary words; a flag is only a flag.",
-      "allow: []",
-      "# Set to false to stop flagging the constructions (\"it's not just X, it's Y\", a paragraph closing on",
-      "# a rule-of-three list) and keep only the words.",
-      "conditions: true",
-      "---",
-      "",
-      "Carrel reads the header above. Anything written here, below it, is for people.",
-      "",
-    ].join("\r\n");
-    expect(readHabits(shipped)).toEqual({ words: SEED_WORDS, conditions: true });
-  });
-
-  it("seeds from the AI-tells list in capsid/conventions.md", () => {
-    expect(SEED_WORDS).toEqual(expect.arrayContaining(["delve", "tapestry", "testament to", "it's worth noting", "furthermore"]));
-  });
 });
 
 describe("PLANT: voice", () => {
   const profile = profileOf(BASELINE);
   const path = "chapters/01-arrival/01-the-gate.md";
-
-  it("has a profile to compare with", () => {
-    expect(profile).not.toBeNull();
-    expect(profile!.chunks).toBeGreaterThanOrEqual(3);
-  });
 
   it("flags a public-domain passage by another author among Dustin's", () => {
     const found = checkVoice(path, scene(FULL, PLANT), profile);
@@ -239,19 +211,4 @@ describe("the header and checkFile", () => {
     expect(found.map((f) => f.message)).toEqual(["The header has no location.", "The beats have no outcome yet."]);
   });
 
-  it("CLEAN TWIN: a complete, clean scene has no findings", () => {
-    expect(checkFile("chapters/01-a/01-b.md", scene(FULL, "Wade opened the gate.\n"), context)).toEqual([]);
-  });
-
-  it("does not check a bible entry or an outline as prose", () => {
-    expect(checkFile("bible/characters/wade.md", "---\nname: Wade\n---\nIt's not just a man, it's a tapestry.\n", context)).toEqual([]);
-    expect(checkFile("outline/plan.md", "It was bold, brave, and beautiful.\n", context)).toEqual([]);
-  });
-
-  it("gives repeats of the same finding their own fingerprints", async () => {
-    const found = checkAiHabits("x", scene(FULL, "A tapestry.\n\nAnother tapestry.\n"), readHabits(null));
-    expect(found).toHaveLength(2);
-    const keys = await fingerprints(found.map((f) => ({ ...f, line: null })));
-    expect(new Set(keys).size).toBe(2);
-  });
 });

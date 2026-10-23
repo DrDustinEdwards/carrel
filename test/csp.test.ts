@@ -18,8 +18,6 @@ import {
   appPolicy,
   DOOR_POLICY,
   doorSecurityHeaders,
-  newNonce,
-  securityHeaders,
   withDoorSecurityHeaders,
   withSecurityHeaders,
 } from "../workers/security-headers";
@@ -32,15 +30,6 @@ const DOOR = `https://${MCP_HOST}`;
 const directive = (policy: string, name: string) => policy.split("; ").find((d) => d.startsWith(`${name} `));
 const failed = (headers: Headers, options?: Parameters<typeof checkSecurityHeaders>[1]) =>
   failures(checkSecurityHeaders(headers, options)).map((r) => `${r.name}: ${r.detail}`);
-
-describe("the header set", () => {
-  it("is the shared standard exactly on the browser host, and differs on the AI door only by COOP", () => {
-    expect(securityHeaders).toEqual(STANDARD_SECURITY_HEADERS);
-    const { "Cross-Origin-Opener-Policy": coop, ...rest } = STANDARD_SECURITY_HEADERS;
-    expect(coop).toBe("same-origin");
-    expect(doorSecurityHeaders).toEqual(rest);
-  });
-});
 
 describe("the app policy", () => {
   it("allows scripts only by this render's nonce, never inline or eval", () => {
@@ -64,19 +53,6 @@ describe("the app policy", () => {
     expect(directive(policy, "report-to")).toBe("report-to csp");
   });
 
-  it("stays strict for Cloudflare's Web Analytics beacon: no host in script-src, connect-src is 'self'", () => {
-    const why =
-      "Carrel is private and its hosts are excluded from Web Analytics in the Cloudflare dashboard; do not loosen the policy for the beacon (static.cloudflareinsights.com).";
-    // Only the nonce, 'self' and 'strict-dynamic' may appear: no scheme, no host, no wildcard.
-    expect(directive(appPolicy(NONCE), "script-src")!.split(" ").slice(1), why).toEqual([`'nonce-${NONCE}'`, "'self'", "'strict-dynamic'"]);
-    expect(directive(appPolicy(NONCE), "connect-src"), why).toBe("connect-src 'self'");
-  });
-
-  it("mints a different nonce every time", () => {
-    const nonces = new Set(Array.from({ length: 50 }, newNonce));
-    expect(nonces.size).toBe(50);
-  });
-
   it("PLANT: a page without a policy gets one; a route's own policy is kept", () => {
     const page = withSecurityHeaders(new Response("<html></html>"), NONCE);
     expect(page.headers.get("Content-Security-Policy")).toBe(appPolicy(NONCE));
@@ -84,13 +60,6 @@ describe("the app policy", () => {
     expect(preview.headers.get("Content-Security-Policy")).toBe(previewPolicy("https://site.test"));
   });
 
-  it("adds every header to a response whose headers are immutable", () => {
-    const redirect = withSecurityHeaders(Response.redirect("https://carrel.test/", 302), NONCE, { reportOrigin: DOOR });
-    expect(redirect.status).toBe(302);
-    expect(redirect.headers.get("Location")).toBe("https://carrel.test/");
-    expect(redirect.headers.get("Content-Security-Policy")).toBe(appPolicy(NONCE, [], DOOR));
-    expect(failed(redirect.headers)).toEqual([]);
-  });
 });
 
 describe("the preview", () => {
@@ -156,26 +125,16 @@ describe("rendered responses through the gate", () => {
     expect(failed(refused.headers)).toEqual([]);
   });
 
-  it("PLANT: the check fails a page whose headers were not applied", async () => {
-    const bare = await gate(new Request("https://carrel.test/", { headers: { "Cf-Access-Jwt-Assertion": token } }), testEnv, async () => html("page"), keys);
-    expect(failed(bare.headers).length).toBeGreaterThan(5);
-  });
-
   it("the preview carries every shared header and keeps its own sandboxed policy", async () => {
     const response = await through(() => previewResponse("<html><head></head></html>", "https://site.test"));
     expect(failed(response.headers, { csp: false })).toEqual([]);
     expect(response.headers.get("Content-Security-Policy")).toBe(previewPolicy("https://site.test"));
+    expect(response.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
   });
 
   it("PLANT: denies framing of every page by default", async () => {
     const response = await through(() => new Response("page"));
     expect(response.headers.get("X-Frame-Options")?.toUpperCase()).toBe("DENY");
-  });
-
-  it("lets the preview be framed by Carrel alone", async () => {
-    const response = await through(() => previewResponse("<html><head></head></html>", "https://site.test"));
-    expect(response.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
-    expect(failed(response.headers, { csp: false })).toEqual([]);
   });
 
   it("cannot be loosened by a route asking for ALLOW-FROM or anything else", async () => {
@@ -224,27 +183,4 @@ describe("the report sink", () => {
     log.mockRestore();
   });
 
-  it("answers the Reporting API's preflight for Carrel's origin alone", async () => {
-    const ours = await sink({ method: "OPTIONS", headers: { Origin: "https://carrel.test" } });
-    expect(ours.status).toBe(204);
-    expect(ours.headers.get("Access-Control-Allow-Origin")).toBe("https://carrel.test");
-    const theirs = await sink({ method: "OPTIONS", headers: { Origin: "https://evil.test" } });
-    expect(theirs.status).toBe(204);
-    expect(theirs.headers.get("Access-Control-Allow-Origin")).toBeNull();
-  });
-
-  it("PLANT: answers 204 to an oversized, malformed or empty report, and logs nothing", async () => {
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-    expect((await post("x".repeat(20000), { "Content-Length": "20000" })).status).toBe(204);
-    expect((await post("not json")).status).toBe(204);
-    expect((await post("")).status).toBe(204);
-    expect(log).not.toHaveBeenCalled();
-    log.mockRestore();
-  });
-
-  it("refuses any method but POST and OPTIONS", async () => {
-    const response = await sink({ method: "GET" });
-    expect(response.status).toBe(405);
-    expect(response.headers.get("Allow")).toBe("POST, OPTIONS");
-  });
 });

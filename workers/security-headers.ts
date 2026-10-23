@@ -14,7 +14,7 @@ export const CSP_REPORT_PATH = "/csp-report";
 const CSP_REPORT_GROUP = "csp";
 
 /** The browser host's set: the shared standard exactly. A header not overridden is OSHP's value. */
-export const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders());
+const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders());
 
 /** The AI door's set: the standard with one deviation. */
 export const doorSecurityHeaders: Readonly<Record<string, string>> = Object.freeze(

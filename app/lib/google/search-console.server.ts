@@ -19,7 +19,7 @@ const LAG_DAYS = 3;
 const WINDOW_DAYS = 28;
 
 /** The Search Console property for a site: a domain property unless a var says otherwise. */
-export function propertyFor(env: Env, site: SiteId): string {
+function propertyFor(env: Env, site: SiteId): string {
   return siteEntry(site).searchConsoleProperty(env);
 }
 
