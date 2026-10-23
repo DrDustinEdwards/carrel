@@ -1,6 +1,24 @@
 {
   "$schema": "https://unpkg.com/knip@6.39.0/schema.json",
-  "entry": ["scripts/*.mjs", "test/**/*.test.ts", "test/entry.ts", "test/conformance/*entry.ts", "test/harness/*.ts"],
-  "ignoreDependencies": ["cloudflare"],
-  "project": ["app/**/*.{ts,tsx,mjs}", "workers/**/*.ts", "scripts/**/*.mjs", "test/**/*.ts", "*.{ts,mjs}"]
+  "entry": [
+    "scripts/*.mjs",
+    "test/**/*.test.ts",
+    "test/entry.ts",
+    "test/conformance/*entry.ts",
+    "test/harness/*.ts"
+  ],
+  "ignoreDependencies": [
+    "cloudflare",
+    "@modelcontextprotocol/conformance"
+  ],
+  "project": [
+    "app/**/*.{ts,tsx,mjs}",
+    "workers/**/*.ts",
+    "scripts/**/*.mjs",
+    "test/**/*.ts",
+    "*.{ts,mjs}"
+  ],
+  "ignoreUnresolved": [
+    "^\\./\\+types/"
+  ]
 }

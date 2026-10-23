@@ -28,7 +28,7 @@ const GATES = {
   typecheck: [NPM, ["run", "typecheck"]],
   build: [NPM, ["run", "build"]],
   roles: [process.execPath, ["scripts/check-mcp-roles.mjs"]],
-  conformance: [process.execPath, ["scripts/check-conformance.mjs"]],
+  conformance: [process.execPath, ["node_modules/@dustinedwards/devkit/bin/conformance.mjs"]],
 };
 
 const MCP_TESTS = ["test/mcp.test.ts", "test/mcp-followups.test.ts", "test/door.test.ts", "test/agent-keys.test.ts", "test/mcp-ruling.test.ts", "test/mcp-ownership.test.ts"];
