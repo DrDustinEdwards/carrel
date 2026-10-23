@@ -79,7 +79,7 @@ jobs:
       - run: npm run check:bloat
 
   # THE DEPLOY, VERIFIED LIVE AND ROLLED BACK ON A REFUSAL: devkit's shared workflow (worker-deploy.yml),
-  # pinned to the full sha of its v0.7.0 tag. Its `deploy` job runs Carrel's own guard first,
+  # pinned to the full sha of its v0.8.0 tag. Its `deploy` job runs Carrel's own guard first,
   # `scripts/deploy.mjs --prepare` (render the config, check the ids against the account, build, apply
   # the D1 migrations, confirm none is pending; any failure stops the run before the deploy), then
   # deploys the build with DEPLOY_SHA set to this commit. Its `live gate` job polls the AI door's /health,
