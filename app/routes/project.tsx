@@ -59,6 +59,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     deleteReason: deleteSupport && !deleteSupport.offered ? deleteSupport.reason : null,
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
     canEdit: can(project.role, "edit"),
+    canCreate: can(project.role, "edit") && siteEntry(project.site).newSource !== undefined,
     connected: connection.state === "connected",
     connectionDetail: connection.state === "connected" ? null : connection.detail,
     filters,
@@ -92,7 +93,7 @@ type BulkOp = "tag-add" | "tag-remove" | "duplicate" | "delete";
 const DONE = "Done. The result for each post is listed below the table.";
 
 export default function Project({ loaderData, actionData }: Route.ComponentProps) {
-  const { project, canEdit, canDelete, deleteOffered, deleteReason, connected, connectionDetail, filters, kinds, items } = loaderData;
+  const { project, canEdit, canCreate, canDelete, deleteOffered, deleteReason, connected, connectionDetail, filters, kinds, items } = loaderData;
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   // The selection is by post id; a post no longer listed (a filter, a delete) drops out of it.
@@ -141,7 +142,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                 </Button>
               </Form>
             ) : null}
-            {canEdit && connected ? (
+            {canCreate && connected ? (
               <Link to="new" className="cap-btn" data-variant="primary">
                 New post
               </Link>

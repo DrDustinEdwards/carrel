@@ -37,10 +37,6 @@ describe("germomics", () => {
     expect(siteOrigins(germomicsEnv())).toContain(SITE_ORIGIN);
   });
 
-  it("starts a new article in the site's own source shape: JSON front matter, then an HTML body", () => {
-    expect(siteEntry("germomics").newSource("a-slug", "2026-10-10")).toBe('---\ntitle: ""\nexcerpt: ""\ntags: []\n---\n');
-  });
-
   it("places an image as HTML the site's sanitizer keeps, with the alt text escaped", () => {
     expect(figureMarkup("germomics", "https://images.germomics.com/carrel/a.png", ' A "quoted" <alt> & more ')).toBe(
       '<figure><img src="https://images.germomics.com/carrel/a.png" alt="A &quot;quoted&quot; &lt;alt&gt; &amp; more"></figure>',
