@@ -1,7 +1,7 @@
 // The CI deploy: render the real Worker config, check it, build, apply D1 migrations, then deploy.
 //
 // wrangler.jsonc is gitignored (it carries the live ids and the alert email), so a fresh clone has
-// only the placeholder copy that scripts/bootstrap-config.mjs made. This script renders the real one
+// only the placeholder copy that devkit-bootstrap (the postinstall) made. This script renders the real one
 // from the example and these variables, and refuses to go on when any is missing or still a
 // placeholder:
 //

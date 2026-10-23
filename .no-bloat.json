@@ -1,0 +1,17 @@
+{
+  "tools": {
+    "knip": "knip@6.39.0",
+    "jscpd": "jscpd@5.4.0"
+  },
+  "baseline": {
+    "measured_at": "946f578",
+    "knip": {
+      "Unused exports": 2,
+      "Unused exported types": 1
+    },
+    "jscpd": {
+      "clones": 68,
+      "percentage": 2.17
+    }
+  }
+}
