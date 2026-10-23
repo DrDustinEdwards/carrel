@@ -3,6 +3,7 @@
 // they use is small: paragraphs, headings, block quotes, scene breaks, *emphasis* and **strong**.
 // Anything else passes through as text rather than being guessed at.
 
+import { escapeHtml } from "@dustinedwards/site-runtime/html";
 import { AlignmentType, Document, HeadingLevel, Packer, PageBreak, Paragraph, TextRun } from "docx";
 import { strToU8, zipSync, type Zippable } from "fflate";
 
@@ -79,14 +80,10 @@ export function parseProse(body: string): Block[] {
 
 // ---------- XHTML, for ePub and the print page
 
-function escapeXml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
 function inlineHtml(inlines: Inline[]): string {
   return inlines
     .map((i) => {
-      let html = escapeXml(i.text);
+      let html = escapeHtml(i.text);
       if (i.em) html = `<em>${html}</em>`;
       if (i.strong) html = `<strong>${html}</strong>`;
       return html;
@@ -143,8 +140,8 @@ export function buildEpub(book: Assembled, opts: { id: string; modified: Date })
   const xhtml = (title: string, body: string) =>
     `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${escapeXml(book.language)}" xml:lang="${escapeXml(book.language)}">
-<head><meta charset="UTF-8"/><title>${escapeXml(title)}</title><link rel="stylesheet" type="text/css" href="book.css"/></head>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${escapeHtml(book.language)}" xml:lang="${escapeHtml(book.language)}">
+<head><meta charset="UTF-8"/><title>${escapeHtml(title)}</title><link rel="stylesheet" type="text/css" href="book.css"/></head>
 <body>
 ${body}
 </body>
@@ -152,12 +149,12 @@ ${body}
 `;
   const modified = opts.modified.toISOString().replace(/\.\d{3}Z$/, "Z");
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${escapeXml(book.language)}">
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${escapeHtml(book.language)}">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:identifier id="book-id">urn:uuid:${escapeXml(opts.id)}</dc:identifier>
-    <dc:title>${escapeXml(book.title)}</dc:title>
-    <dc:creator>${escapeXml(book.author)}</dc:creator>
-    <dc:language>${escapeXml(book.language)}</dc:language>
+    <dc:identifier id="book-id">urn:uuid:${escapeHtml(opts.id)}</dc:identifier>
+    <dc:title>${escapeHtml(book.title)}</dc:title>
+    <dc:creator>${escapeHtml(book.author)}</dc:creator>
+    <dc:language>${escapeHtml(book.language)}</dc:language>
     <meta property="dcterms:modified">${modified}</meta>
   </metadata>
   <manifest>
@@ -175,7 +172,7 @@ ${chapterFiles.map((_, i) => `    <itemref idref="c${i + 1}"/>`).join("\n")}
   const nav = xhtml(
     book.title,
     `<nav epub:type="toc" id="toc"><h1>Contents</h1><ol>
-${chapterFiles.map((c) => `<li><a href="${c.file}">${escapeXml(c.chapter.title)}</a></li>`).join("\n")}
+${chapterFiles.map((c) => `<li><a href="${c.file}">${escapeHtml(c.chapter.title)}</a></li>`).join("\n")}
 </ol></nav>`,
   );
   const files: Zippable = {
@@ -189,10 +186,10 @@ ${chapterFiles.map((c) => `<li><a href="${c.file}">${escapeXml(c.chapter.title)}
     "OEBPS/content.opf": strToU8(opf),
     "OEBPS/nav.xhtml": strToU8(nav),
     "OEBPS/book.css": strToU8(BOOK_CSS),
-    "OEBPS/title.xhtml": strToU8(xhtml(book.title, `<h1>${escapeXml(book.title)}</h1>\n<p class="scene-break">${escapeXml(book.author)}</p>`)),
+    "OEBPS/title.xhtml": strToU8(xhtml(book.title, `<h1>${escapeHtml(book.title)}</h1>\n<p class="scene-break">${escapeHtml(book.author)}</p>`)),
   };
   for (const c of chapterFiles) {
-    files[`OEBPS/${c.file}`] = strToU8(xhtml(c.chapter.title, `<h1>${escapeXml(c.chapter.title)}</h1>\n${blocksToHtml(chapterBlocks(c.chapter))}`));
+    files[`OEBPS/${c.file}`] = strToU8(xhtml(c.chapter.title, `<h1>${escapeHtml(c.chapter.title)}</h1>\n${blocksToHtml(chapterBlocks(c.chapter))}`));
   }
   // Copied into an ArrayBuffer-backed array, which a Response body requires.
   return new Uint8Array(zipSync(files));
@@ -227,14 +224,14 @@ export async function buildDocx(book: Assembled): Promise<ArrayBuffer> {
 
 export function printHtml(book: Assembled): string {
   const chapters = book.chapters
-    .map((c) => `<section class="chapter"><h1>${escapeXml(c.title)}</h1>\n${blocksToHtml(chapterBlocks(c))}</section>`)
+    .map((c) => `<section class="chapter"><h1>${escapeHtml(c.title)}</h1>\n${blocksToHtml(chapterBlocks(c))}</section>`)
     .join("\n");
   return `<!doctype html>
-<html lang="${escapeXml(book.language)}">
+<html lang="${escapeHtml(book.language)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeXml(book.title)}</title>
+<title>${escapeHtml(book.title)}</title>
 <style>
 ${BOOK_CSS}
 body { max-width: 34rem; margin: 2rem auto; padding: 0 1rem; font-size: 12pt; }
@@ -247,7 +244,7 @@ body { max-width: 34rem; margin: 2rem auto; padding: 0 1rem; font-size: 12pt; }
 </head>
 <body>
 <p class="hint">Print this page and choose Save as PDF. The page size is 6 by 9 inches.</p>
-<section class="title-page"><h1>${escapeXml(book.title)}</h1><p class="scene-break">${escapeXml(book.author)}</p></section>
+<section class="title-page"><h1>${escapeHtml(book.title)}</h1><p class="scene-break">${escapeHtml(book.author)}</p></section>
 ${chapters}
 </body>
 </html>
