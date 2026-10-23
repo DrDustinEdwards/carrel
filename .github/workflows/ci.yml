@@ -80,19 +80,18 @@ jobs:
       - run: npm run check:bloat
 
   # THE DEPLOY, VERIFIED LIVE AND ROLLED BACK ON A REFUSAL: devkit's shared workflow (worker-deploy.yml),
-  # pinned to the full sha of its v0.9.0 tag. Its `deploy` job runs Carrel's own guard first,
+  # pinned to the full sha of its tag. Its `deploy` job runs Carrel's own guard first,
   # `scripts/deploy.mjs --prepare` (render the config, check the ids against the account, build, apply
   # the D1 migrations, confirm none is pending; any failure stops the run before the deploy), then
   # deploys the build with DEPLOY_SHA set to this commit. Its `live gate` job polls the AI door's /health,
   # the one Carrel host outside Access, until it names this commit, runs scripts/verify-live.mjs, and on a
   # refusal runs "Roll back the deploy this run shipped". A rollback swaps code and bindings only and
   # never undoes a D1 migration (devkit's README, "The shared deploy"). It never runs on a pull request or
-  # on a branch other than main. test/deploy-workflow.test.ts pins the call; move the sha and the comment
-  # together.
+  # on a branch other than main.
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@6f4c67e69cc34285f2bdc63a1883912dc7f0c06e # v0.9.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@9458af9d1521d77ed5bca0f7454c07eea3869221 # v0.11.0
     with:
       worker-name: carrel
       health-url: https://carrel-mcp.dustinedwards.info/health
