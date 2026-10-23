@@ -14,6 +14,10 @@ interface CarrelSecrets {
   SITE_FOXHOUND_KEY?: string;
   /** Foxing's Carrel key, the same value the site holds as CARREL_SITE_KEY. `Get-Clipboard | npx wrangler secret put SITE_FOXING_KEY`. */
   SITE_FOXING_KEY?: string;
+  /** txasm's Carrel key, the same value the site holds as CARREL_SITE_KEY. `Get-Clipboard | npx wrangler secret put SITE_TXASM_KEY`. */
+  SITE_TXASM_KEY?: string;
+  /** julieedwards.info's Carrel key, the same value the site holds as CARREL_SITE_KEY. `Get-Clipboard | npx wrangler secret put SITE_JULIEEDWARDS_KEY`. */
+  SITE_JULIEEDWARDS_KEY?: string;
   /**
    * The GitHub App `carrel-writer`, installed on DrDustinEdwards/writing only (setup step 8). Absent
    * until it exists; books then open read-only from Carrel's index. The key is the .pem GitHub
