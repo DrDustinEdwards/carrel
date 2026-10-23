@@ -1,17 +1,15 @@
 // The editor's routes, driven through their loaders and actions with a real request context: the
 // preview is private to each person and sandboxed, and a first publish asks before it acts.
 
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { autosave } from "~/lib/content.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as editorAction } from "~/routes/editor";
 import { loader as previewLoader } from "~/routes/preview";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, routeContext } from "./site";
 
 const SLUG = "de-info";
 
@@ -26,13 +24,7 @@ beforeEach(async () => {
   await share(projectId, reader, "reader");
 });
 
-async function contextFor(email: string, env: Env) {
-  const context = new RouterContextProvider();
-  context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "test-nonce");
-  return context;
-}
+const contextFor = (email: string, env: Env) => routeContext(env, email);
 
 async function preview(email: string, env: Env) {
   const context = await contextFor(email, env);

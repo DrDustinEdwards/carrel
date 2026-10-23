@@ -3,7 +3,9 @@
 
 import { createSiteApi, RefusedError, type SiteAdapter } from "@dustinedwards/site-api";
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
+import { RouterContextProvider } from "react-router";
 
+import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import type { Viewer } from "~/lib/people.server";
 
 import { testEnv } from "./env";
@@ -93,4 +95,34 @@ export async function viewerFor(email: string): Promise<Viewer> {
     .bind(email)
     .first<{ id: number; email: string; name: string; is_owner: number; is_reviewer: number }>();
   return { id: row!.id, email: row!.email, name: row!.name, isOwner: row!.is_owner === 1, isReviewer: row!.is_reviewer === 1 };
+}
+
+/** The context a route's loader or action gets: the env, the signed-in person and a nonce. */
+export async function routeContext(env: Env, email: string): Promise<RouterContextProvider> {
+  const context = new RouterContextProvider();
+  context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
+  context.set(viewerContext, await viewerFor(email));
+  context.set(nonceContext, "test-nonce");
+  return context;
+}
+
+/** What a call settles to, with a thrown Response (a route's refusal or redirect) as its value. */
+export async function settle<T>(p: Promise<T>): Promise<T | Response> {
+  try {
+    return await p;
+  } catch (thrown) {
+    if (thrown instanceof Response) return thrown;
+    throw thrown;
+  }
+}
+
+/** The status of the Response a call throws, or 200 when it succeeds. */
+export async function refusal(promise: Promise<unknown>): Promise<number> {
+  try {
+    await promise;
+    return 200;
+  } catch (thrown) {
+    if (thrown instanceof Response) return thrown.status;
+    throw thrown;
+  }
 }

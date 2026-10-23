@@ -4,10 +4,8 @@
 // the post named), an upload the site would refuse (never sent), and bytes the site API refuses.
 
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { runHealth } from "~/lib/health.server";
 import { deleteMedia, listMedia, mediaDetail, mediaLimits, uploadMedia } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -18,7 +16,7 @@ import { action as apiAction, loader as apiLoader } from "~/routes/media.api";
 
 import { appPolicy } from "../workers/security-headers";
 import { addPerson, addProject, resetDb, share } from "./env";
-import { connectedEnv, fakeSite, SITE_ORIGIN, viewerFor } from "./site";
+import { connectedEnv, fakeSite, SITE_ORIGIN, viewerFor, routeContext, refusal } from "./site";
 
 const SLUG = "de-info";
 const PNG = Uint8Array.from(
@@ -55,23 +53,9 @@ function file(bytes: Uint8Array, name = "river.png", type = "image/png") {
   return { name, type, size: bytes.byteLength, bytes: async () => bytes.slice().buffer };
 }
 
-async function status(run: () => Promise<unknown>): Promise<number> {
-  try {
-    await run();
-    return 200;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown.status;
-    throw thrown;
-  }
-}
+const status = (run: () => Promise<unknown>) => refusal(run());
 
-async function contextFor(email: string, e: Env = env) {
-  const context = new RouterContextProvider();
-  context.set(cloudflareContext, { env: e, ctx: {} as ExecutionContext });
-  context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "n");
-  return context;
-}
+const contextFor = (email: string, e: Env = env) => routeContext(e, email);
 
 /** A file on the site, uploaded as the site would take it from anyone. */
 async function seedFile(name = "river.png") {

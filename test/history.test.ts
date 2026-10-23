@@ -14,7 +14,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { loader as historyLoader } from "~/routes/history";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, refusal } from "./site";
 
 const SLUG = "de-info";
 let site: ReturnType<typeof fakeSite>;
@@ -55,16 +55,6 @@ async function load(email: string, search = "") {
   context.set(nonceContext, "n");
   const request = new Request(`https://carrel.test/p/${SLUG}/e/post-one/history${search}`);
   return historyLoader({ request, params: { project: SLUG, item: "post-one" }, context } as never);
-}
-
-async function refusal(promise: Promise<unknown>): Promise<number> {
-  try {
-    await promise;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown.status;
-    throw thrown;
-  }
-  throw new Error("expected a refusal, and the call succeeded");
 }
 
 const changeRows = async () => (await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM changes").first<{ n: number }>())!.n;

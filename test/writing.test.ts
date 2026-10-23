@@ -3,11 +3,9 @@
 // with deletions held at zero unless the goal allows otherwise, a target by hand or from a deadline
 // over the chosen writing days, and streaks.
 
-import { RouterContextProvider } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { authorshipRecord, refreshBook, requireBookProject, saveBookFile } from "~/lib/books.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { describe as describeFile, readMeta } from "~/lib/novels/layout";
 import { parseFile } from "~/lib/novels/frontmatter";
 import { clearTokenCache } from "~/lib/novels/repo.server";
@@ -20,7 +18,7 @@ import { action as outlinerAction, loader as outlinerLoader } from "~/routes/boo
 
 import { addBook, addPerson, resetDb, share, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
-import { viewerFor } from "./site";
+import { viewerFor, routeContext, settle } from "./site";
 
 const SLUG = "test-book";
 const HEADER = (status: string, extra = "") => `---\nstatus: ${status}\nsummary: Wade at the gate\ntarget: 2,000\n${extra}pov: Wade\n---\n\n`;
@@ -189,22 +187,7 @@ async function as(email: string, action: "read" | "edit" = "read") {
   return { viewer, project: await requireBookProject(testEnv.DB, viewer, SLUG, action) };
 }
 
-async function contextFor(email: string) {
-  const context = new RouterContextProvider();
-  context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "test-nonce");
-  return context;
-}
-
-async function settle<T>(p: Promise<T>): Promise<T | Response> {
-  try {
-    return await p;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown;
-    throw thrown;
-  }
-}
+const contextFor = (email: string) => routeContext(env, email);
 
 function body(fields: Record<string, string | string[]>) {
   const form = new FormData();

@@ -1,10 +1,8 @@
 // The book routes, driven through their loaders and actions with a real request context and the
 // Worker's own GitHub client (App key and all) against the fake writing repository.
 
-import { RouterContextProvider } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { clearTokenCache } from "~/lib/novels/repo.server";
 import { loader as authorshipLoader } from "~/routes/book.authorship";
 import { loader as chapterLoader } from "~/routes/book.chapter";
@@ -16,7 +14,7 @@ import { loader as homeLoader } from "~/routes/home";
 
 import { addBook, addPerson, resetDb, share, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
-import { viewerFor } from "./site";
+import { routeContext, settle } from "./site";
 
 const SLUG = "test-book";
 const HEADER = "---\npov: Wade\ndate: 2024-04-12\nlocation: Harlan place\ncharacters: [Wade]\ngoal: g\nconflict: c\noutcome: o\n---\n\n";
@@ -48,22 +46,7 @@ beforeEach(async () => {
   env = { ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key };
 });
 
-async function contextFor(email: string, e: Env = env) {
-  const context = new RouterContextProvider();
-  context.set(cloudflareContext, { env: e, ctx: {} as ExecutionContext });
-  context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "test-nonce");
-  return context;
-}
-
-async function settle<T>(p: Promise<T>): Promise<T | Response> {
-  try {
-    return await p;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown;
-    throw thrown;
-  }
-}
+const contextFor = (email: string, e: Env = env) => routeContext(e, email);
 
 function form(fields: Record<string, string>) {
   const body = new FormData();

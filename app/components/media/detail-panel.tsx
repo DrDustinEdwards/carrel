@@ -14,7 +14,7 @@ import type { MediaOffers } from "~/lib/media.server";
 
 import { dims, size, type MediaUse } from "./format";
 
-export type Written =
+type Written =
   | { intent: string; ok: true; id: string; recorded: boolean }
   | { intent: string; ok: false; id: string; message: string; conflict: boolean };
 

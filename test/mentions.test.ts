@@ -14,7 +14,7 @@ import { action as mentionsApi } from "~/routes/mentions.api";
 import { loader as mentionsLoader } from "~/routes/mentions";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, refusal } from "./site";
 
 const SLUG = "de-info";
 type Site = ReturnType<typeof fakeSite<ReturnType<typeof memoryAdapter>>>;
@@ -67,16 +67,6 @@ const decisions = async () =>
     ).all<{ mentionId: string | null; action: string; before: string | null; after: string | null; changeId: string; who: number; client: string | null }>()
   ).results;
 const writes = () => site.requests.filter((r) => !r.startsWith("GET"));
-
-async function refusal(promise: Promise<unknown>): Promise<number> {
-  try {
-    await promise;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown.status;
-    throw thrown;
-  }
-  return 200;
-}
 
 describe("roles: the queue is the Owner's alone (carrel/design.md: the inbox belongs to Dustin alone)", () => {
   it("PLANT: refuses an Editor and a Reader who open the queue, and the site is never asked", async () => {

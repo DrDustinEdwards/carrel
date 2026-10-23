@@ -1,10 +1,8 @@
 // The Google routes through their loaders: manuscripts and Connect Google are the Owner's, and the
 // OAuth round trip runs through the real route with the fake Google behind it.
 
-import { RouterContextProvider } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { clearSaTokenCache } from "~/lib/google/service-account.server";
 import { loader as authLoader } from "~/routes/auth.google";
 import { loader as homeLoader } from "~/routes/home";
@@ -12,7 +10,7 @@ import { loader as manuscriptsLoader } from "~/routes/manuscripts";
 
 import { addPerson, resetDb, testEnv } from "./env";
 import { CODE, fakeGoogle, serviceAccountKey } from "./google";
-import { viewerFor } from "./site";
+import { routeContext, settle } from "./site";
 
 let key: Awaited<ReturnType<typeof serviceAccountKey>>;
 beforeAll(async () => {
@@ -36,22 +34,7 @@ beforeEach(async () => {
   } as Env;
 });
 
-async function context(email: string) {
-  const c = new RouterContextProvider();
-  c.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  c.set(viewerContext, await viewerFor(email));
-  c.set(nonceContext, "n");
-  return c;
-}
-
-async function settle<T>(p: Promise<T>): Promise<T | Response> {
-  try {
-    return await p;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown;
-    throw thrown;
-  }
-}
+const context = (email: string) => routeContext(env, email);
 
 describe("Google routes", () => {
   it("PLANT: manuscripts and Connect Google are 404 to anyone but the Owner", async () => {

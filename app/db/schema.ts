@@ -118,18 +118,6 @@ export const mcpCalls = sqliteTable("mcp_calls", {
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// No longer written: the MCP endpoint is stateless since the SDK v2 rebuild, and the client is known
-// from the OAuth grant. Kept until a migration drops it, since dropping a table is a migration.
-export const mcpSessions = sqliteTable("mcp_sessions", {
-  id: text("id").primaryKey(),
-  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
-  clientName: text("client_name").notNull(),
-  clientVersion: text("client_version"),
-  protocolVersion: text("protocol_version").notNull(),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-  lastSeenAt: text("last_seen_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-});
-
 export const aiDrafts = sqliteTable("ai_drafts", {
   id: integer("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
