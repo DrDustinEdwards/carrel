@@ -13,9 +13,16 @@ import { RouterLink } from "~/components/frame";
 import { autosave, readDoc } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteEntry } from "~/lib/sites.server";
+import { siteEntry, type SiteId } from "~/lib/sites.server";
 
 import type { Route } from "./+types/project.new";
+
+/** A site with a fixed set of items refuses a new one, so Carrel has no New post for it. */
+function newSourceFor(site: SiteId) {
+  const newSource = siteEntry(site).newSource;
+  if (!newSource) throw new Response("This site has a fixed set of items; Carrel cannot add one.", { status: 404 });
+  return newSource;
+}
 
 /** Stricter than the contract's id: lower case, digits and single hyphens, as the site's slugs are. */
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -27,6 +34,7 @@ export function meta() {
 export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "edit");
+  newSourceFor(project.site);
   return { project: { slug: project.slug, name: project.name } };
 }
 
@@ -34,6 +42,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
+  const newSource = newSourceFor(project.site);
   const slug = String((await request.formData()).get("slug") ?? "").trim();
   if (!SLUG.test(slug) || slug.length > 120) {
     return { error: "Use lower-case letters, digits and single hyphens, such as my-new-post." };
@@ -42,7 +51,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     return { error: `The site already has a post at ${slug}. Open it from the list instead.` };
   }
   const today = new Date().toISOString().slice(0, 10);
-  await autosave(env.DB, project, viewer, slug, { source: siteEntry(project.site).newSource(slug, today), baseVersion: null });
+  await autosave(env.DB, project, viewer, slug, { source: newSource(slug, today), baseVersion: null });
   return redirect(`/p/${project.slug}/e/${slug}`);
 }
 
