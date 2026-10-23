@@ -59,15 +59,17 @@ The tests never reach the network. Site tests run Carrel's code against site-api
 
 ## Connecting a site
 
-A project is a site when its `site` column names an entry in `app/lib/sites.server.ts`. Migration `0002` creates the dustinedwards.info project, `0014` the germomics one and `0016` the Foxhound and Foxing ones.
+A project is a site when its `site` column names an entry in `app/lib/sites.server.ts`. Migration `0002` creates the dustinedwards.info project, `0014` the germomics one, `0016` the Foxhound and Foxing ones and `0017` the txasm and julieedwards.info ones.
 
-Each site's origin is a var in `wrangler.jsonc.example` (`SITE_DUSTINEDWARDS_ORIGIN`, `SITE_GERMOMICS_ORIGIN`, `SITE_FOXHOUND_ORIGIN`, `SITE_FOXING_ORIGIN`), exactly the domain the site's own job confirmed its Worker serves. Its key is a secret, the same value the site holds:
+Each site's origin is a var in `wrangler.jsonc.example` (`SITE_DUSTINEDWARDS_ORIGIN`, `SITE_GERMOMICS_ORIGIN`, `SITE_FOXHOUND_ORIGIN`, `SITE_FOXING_ORIGIN`, `SITE_TXASM_ORIGIN`, `SITE_JULIEEDWARDS_ORIGIN`), exactly the domain the site's own job confirmed its Worker serves. Its key is a secret, the same value the site holds:
 
 ```powershell
 Get-Clipboard | npx wrangler secret put SITE_DUSTINEDWARDS_KEY
 Get-Clipboard | npx wrangler secret put SITE_GERMOMICS_KEY
 Get-Clipboard | npx wrangler secret put SITE_FOXHOUND_KEY
 Get-Clipboard | npx wrangler secret put SITE_FOXING_KEY
+Get-Clipboard | npx wrangler secret put SITE_TXASM_KEY
+Get-Clipboard | npx wrangler secret put SITE_JULIEEDWARDS_KEY
 ```
 
 Adding a site is config: an entry in `SITES` (name, origin var, key secret, the site's own new-item source, the items it keeps public, its Search Console property), the origin var and key in `app/env.d.ts` and the example config, a migration inserting its project, and, when the site has its own figure syntax, one line in `FIGURES` in `app/lib/site-markdown.ts` (without one, an image goes in as plain Markdown). The health check, the image policy and the cron's index refresh loop over every entry. `test/sites.test.ts` covers germomics.

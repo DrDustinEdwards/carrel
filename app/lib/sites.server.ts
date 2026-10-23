@@ -5,7 +5,7 @@ import { createSiteClient, type SiteClient } from "@dustinedwards/site-api/clien
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
-export type SiteId = "dustinedwards" | "germomics" | "foxhound" | "foxing";
+export type SiteId = "dustinedwards" | "germomics" | "foxhound" | "foxing" | "txasm" | "julieedwards";
 
 type SiteEntry = {
   name: string;
@@ -69,6 +69,26 @@ const SITES: Record<SiteId, SiteEntry> = {
     newSource: () =>
       ["---", 'title: ""', "excerpt: null", "cover_image_url: null", "cover_image_alt: null", "tags: []", "featured: false", "---", "", ""].join("\n"),
     searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_FOXING?: string }).SEARCH_CONSOLE_PROPERTY_FOXING?.trim() || "sc-domain:foxing.app",
+  },
+  txasm: {
+    name: "Texas Branch ASM",
+    origin: (env) => env.SITE_TXASM_ORIGIN,
+    key: (env) => env.SITE_TXASM_KEY,
+    keyName: "SITE_TXASM_KEY",
+    keepPublic: ["home", "award-nominations"],
+    // The shape of txasm's two site pages: front matter, then the Markdown body. The site refuses new ids.
+    newSource: () => ["---", 'title: ""', 'description: ""', "---", "", ""].join("\n"),
+    searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_TXASM?.trim() || "sc-domain:txasm.org",
+  },
+  julieedwards: {
+    name: "julieedwards.info",
+    origin: (env) => env.SITE_JULIEEDWARDS_ORIGIN,
+    key: (env) => env.SITE_JULIEEDWARDS_KEY,
+    keyName: "SITE_JULIEEDWARDS_KEY",
+    keepPublic: ["profile", "priorities", "about", "experience", "contact", "site"],
+    // The shape of julieedwards.info's sections: a heading in front matter, then the section's copy.
+    newSource: () => ["---", 'heading: ""', "---", ""].join("\n"),
+    searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_JULIEEDWARDS?.trim() || "sc-domain:julieedwards.info",
   },
 };
 
