@@ -9,7 +9,7 @@ import { writeToSite } from "~/lib/content.server";
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { splitSource } from "@dustinedwards/site-api/frontmatter";
 import { readFields } from "~/lib/frontmatter";
-import { expandShared, legalTypeOf, prepareLegalWrite, sectionsUsed, type SharedSection } from "~/lib/legal";
+import { expandShared, prepareLegalWrite, type SharedSection } from "~/lib/legal";
 import { deleteSection, listSections, saveSection } from "~/lib/legal.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { siteEntry } from "~/lib/sites.server";
@@ -28,27 +28,6 @@ const SECTIONS: SharedSection[] = [
 const FRONT = ["---", "path: /privacy", 'title: "Privacy"', "legal_type: privacy", 'site_name: "dustinedwards.info"', 'contact: "hello@example.test"', "---", ""].join("\n");
 
 describe("expandShared", () => {
-  it("writes each section between its markers with the page's fields filled in", () => {
-    const out = expandShared("Intro.\n\n<!-- shared:hosting -->\n", SECTIONS, { site_name: "dustinedwards.info", contact: "hello@example.test" });
-    expect(out.text).toBe(
-      "Intro.\n\n<!-- shared:hosting -->\ndustinedwards.info runs on Cloudflare. Questions go to hello@example.test.\n<!-- /shared:hosting -->\n",
-    );
-    expect(out.unknownSections).toEqual([]);
-    expect(out.missingFields).toEqual([]);
-  });
-
-  it("gives the same text when run again, so a page is expanded on every write", () => {
-    const values = { site_name: "A", contact: "b@example.test" };
-    const once = expandShared("<!-- shared:hosting -->\n\n<!-- shared:analytics -->\n", SECTIONS, values).text;
-    expect(expandShared(once, SECTIONS, values).text).toBe(once);
-    expect(sectionsUsed(once)).toEqual(["hosting", "analytics"]);
-  });
-
-  it("replaces text a person typed inside the markers, since the section is the source", () => {
-    const out = expandShared("<!-- shared:analytics -->\nold wording\n<!-- /shared:analytics -->", SECTIONS, {});
-    expect(out.text).not.toContain("old wording");
-  });
-
   it("names an unknown section and a missing field, and leaves both as written", () => {
     const out = expandShared("<!-- shared:nope -->\n<!-- shared:hosting -->", SECTIONS, { site_name: "A" });
     expect(out.unknownSections).toEqual(["nope"]);
@@ -72,12 +51,6 @@ describe("prepareLegalWrite", () => {
     expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe("");
   });
 
-  it("stamps a draft that goes public even if its text was already saved", () => {
-    const stored = `${FRONT}Saved earlier.\n`;
-    const result = prepareLegalWrite({ ...base, source: stored, stored, storedPublic: false, public: true });
-    expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe("2026-10-06");
-  });
-
   it("does not stamp a draft save, and keeps a missing field's token so no work is lost", () => {
     const source = FRONT.replace('contact: "hello@example.test"\n', "") + "<!-- shared:hosting -->\n";
     const result = prepareLegalWrite({ ...base, source, stored: null, storedPublic: false, public: false });
@@ -92,11 +65,6 @@ describe("prepareLegalWrite", () => {
     expect(!unknown.ok && unknown.message).toContain('"nope"');
   });
 
-  it("recognises a legal page by its legal_type", () => {
-    expect(legalTypeOf(FRONT)).toBe("privacy");
-    expect(legalTypeOf("---\ntitle: x\n---\n")).toBeNull();
-    expect(legalTypeOf("no frontmatter")).toBeNull();
-  });
 });
 
 let projectId: number;

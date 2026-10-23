@@ -18,10 +18,10 @@ export function capsidOrigin(env: Env): string {
 }
 
 type InboxItem = { title: string; link?: string; since?: string };
-export type InboxReport = { namespace: "carrel"; items: InboxItem[] };
+type InboxReport = { namespace: "carrel"; items: InboxItem[] };
 
 /** The report body for `waiting` AI drafts, the oldest made at `since`. None waiting: no items. */
-export function inboxReport(waiting: number, since: string | null, origin: string): InboxReport {
+function inboxReport(waiting: number, since: string | null, origin: string): InboxReport {
   if (waiting <= 0) return { namespace: "carrel", items: [] };
   const item: InboxItem = {
     title: waiting === 1 ? "1 AI draft waits for review" : `${waiting} AI drafts wait for review`,

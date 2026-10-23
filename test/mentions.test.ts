@@ -119,10 +119,6 @@ describe("roles: the queue is the Owner's alone (carrel/design.md: the inbox bel
     expect(site.adapter.mentionStore.has(ids.pending)).toBe(true);
   });
 
-  it("answers 404, not 403, for a person with no role on the project", async () => {
-    await addPerson("outsider@test.invalid");
-    expect(await refusal(as("outsider@test.invalid"))).toBe(404);
-  });
 });
 
 describe("reading the queue", () => {

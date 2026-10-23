@@ -15,19 +15,14 @@ import { siteClient, type SiteId } from "~/lib/sites.server";
  */
 export const SUBREQUEST_LIMIT = 10_000;
 
-/**
- * What one site's refresh may spend: a tenth of the limit, so the cron's other work in the same
- * invocation (the health check, other sites' refreshes) always has room.
- */
-export const REFRESH_SUBREQUEST_BUDGET = SUBREQUEST_LIMIT / 10;
-
 const PAGE_SIZE = 200;
 const MAX_PAGES = 10;
 
 /**
  * Bodies read per refresh. A refresh costs at most MAX_PAGES list calls, two D1 calls (the known
  * rows and the summaries' batch), and two per body (its fetch and its batch): 12 + 2 x 200 = 412,
- * inside REFRESH_SUBREQUEST_BUDGET. The rest are reported as pending and read on the next run.
+ * inside a tenth of SUBREQUEST_LIMIT, so the cron's other work in the same invocation (the health check,
+ * other sites' refreshes) always has room. The rest are reported as pending and read on the next run.
  */
 export const MAX_BODY_FETCHES = 200;
 

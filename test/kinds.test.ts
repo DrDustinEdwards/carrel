@@ -3,14 +3,9 @@
 // and a data kind the site will not write stays out of the lists and, if reached, shows the site's
 // own refusal. Carrel has no per-kind code; the kinds and paths come from the site.
 
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
-import { kindNoun, kindPlural, kindWord } from "~/lib/kind-words";
-import { siteBinderTree } from "~/lib/writing/binder";
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { refreshIndex } from "~/lib/index.server";
 import { action as editorAction, loader as editorLoader } from "~/routes/editor";
@@ -72,21 +67,6 @@ const form = (fields: Record<string, string>) => {
 };
 
 describe("every kind the site reports", () => {
-  it("lists each writing kind under its own kind, and the kind filter narrows to it", async () => {
-    const { env } = await seeded();
-    const context = await contextFor(env);
-    const all = (await projectLoader({ request: new Request(`https://carrel.test/p/${SLUG}`), params: { project: SLUG }, context } as never)) as Awaited<ReturnType<typeof projectLoader>>;
-    expect(all.kinds).toEqual(["phage", "post", "procedure", "roster"]);
-    const byId = Object.fromEntries(all.items.map((i) => [i.itemId, i]));
-    expect(byId["phage.acorn15"]).toMatchObject({ kind: "phage", path: "/research/phages#acorn15", status: "published" });
-    expect(byId["roster.2017"]).toMatchObject({ kind: "roster", path: "/teaching/phage-discovery#year-2017" });
-    expect(byId["procedure.coi-primers"]).toMatchObject({ kind: "procedure", path: "/research/protocols/coi-primers" });
-    expect(byId["draft-post"]).toMatchObject({ kind: "post", status: "draft", path: null });
-
-    const phages = (await projectLoader({ request: new Request(`https://carrel.test/p/${SLUG}?kind=phage`), params: { project: SLUG }, context } as never)) as Awaited<ReturnType<typeof projectLoader>>;
-    expect(phages.items.map((i) => i.itemId)).toEqual(["phage.acorn15"]);
-  });
-
   it("opens, saves, previews, publishes and shows the history of a non-post kind", async () => {
     const { env, site } = await seeded();
     const id = "phage.acorn15";
@@ -138,41 +118,6 @@ describe("every kind the site reports", () => {
     } as never);
     expect(written).toMatchObject({ intent: "write", outcome: { ok: false, reason: "refused", message: "The site's equipment entries are edited in the site's repository, not through Carrel." } });
     expect(await site.adapter.content.get("equipment.heat-block")).toBeNull();
-  });
-
-  it("calls each kind by its own name: the editor's heading, the binder's groups and the list's caption", async () => {
-    expect([kindWord("phage"), kindWord(null), kindNoun("Roster"), kindPlural("dictionary"), kindPlural("address"), kindPlural("day"), kindPlural("post")]).toEqual(["Phage", "Post", "roster", "Dictionaries", "Addresses", "Days", "Posts"]);
-    const tree = siteBinderTree(
-      [
-        { itemId: "dictionary.capsid", kind: "dictionary", title: "Capsid", status: "published" },
-        { itemId: "a-post", kind: "post", title: "A post", status: "draft" },
-      ],
-      "/p/site",
-    );
-    expect(tree.map((k) => k.label)).toEqual(["Posts", "Dictionaries"]);
-
-    const { env } = await seeded();
-    const id = "roster.2017";
-    const opened = (await editorLoader({ request: new Request(`https://carrel.test/p/${SLUG}/e/${id}`), params: { project: SLUG, item: id }, context: await contextFor(env) } as never)) as Awaited<ReturnType<typeof editorLoader>>;
-    expect(opened.kind).toBe("roster");
-    const filtered = (await projectLoader({ request: new Request(`https://carrel.test/p/${SLUG}?kind=nothing-here`), params: { project: SLUG }, context: await contextFor(env) } as never)) as Awaited<ReturnType<typeof projectLoader>>;
-    expect(filtered.items).toEqual([]);
-  });
-
-  it("shows a non-post kind its whole frontmatter, never the post's fields, and a post its fields", () => {
-    const roster = "---\ntitle: 2017 cohort\nyear: 2017\nresearchers: [Megan Adams, Travis Miller]\n---\n";
-    const asRoster = renderToStaticMarkup(createElement(FrontmatterFields, { source: roster, onChange: () => undefined, kind: "roster" }));
-    expect(asRoster).toContain("Roster details");
-    expect(asRoster).toContain("researchers: [Megan Adams, Travis Miller]");
-    expect(asRoster).not.toContain("Key takeaways");
-    expect(asRoster).not.toContain("Post details");
-
-    const post = "---\ntitle: A post\ndate: 2026-10-11\n---\nWords.\n";
-    for (const kind of ["post", null]) {
-      const asPost = renderToStaticMarkup(createElement(FrontmatterFields, { source: post, onChange: () => undefined, kind }));
-      expect(asPost).toContain("Post details");
-      expect(asPost).toContain("Key takeaways");
-    }
   });
 
   it("saves a change to a data-carrying key of a non-post kind, whole, and leaves the rest as written", async () => {

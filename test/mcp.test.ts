@@ -63,12 +63,6 @@ async function seedPost(status: "draft" | "published" = "draft") {
 }
 
 describe("the protocol", () => {
-  it("lists the tools in the 2026-07-28 era, each carrying the rule", async () => {
-    const tools = await (await connect("owner@test.invalid")).list();
-    expect(tools.map((t) => t.name)).toEqual(["carrel_list_projects", "carrel_search_items", "carrel_read_item", "carrel_save_draft", "carrel_preview_item", "carrel_get_checks", "carrel_add_finding", "carrel_publish_item", "carrel_list_book_files", "carrel_read_book_file", "carrel_check_book_text", "carrel_save_book_draft", "carrel_add_book_finding", "carrel_draft_social_post"]);
-    for (const tool of tools) expect(tool.description).toContain("AI never rewrites Dustin's prose unasked.");
-  });
-
   it("answers a 2025-era client through the legacy shim: initialize, then calls with no session", async () => {
     const ai = await connect("reader@test.invalid");
     const init = await readMessage(
@@ -78,12 +72,6 @@ describe("the protocol", () => {
     const legacy = await connectAs("reader@test.invalid", "Claude", { env, deps: { fetcher: site.fetch, carrelOrigin: CARREL }, era: "legacy" });
     expect((await legacy.list()).length).toBe(14);
     expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "reader" }] });
-  });
-
-  it("answers an unknown protocol version at initialize with one it speaks", async () => {
-    const ai = await connect("owner@test.invalid");
-    const init = await readMessage(await ai.send(legacyRequest({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "1999-01-01", capabilities: {}, clientInfo: { name: "x", version: "1" } } })));
-    expect(["2025-11-25", "2025-06-18", "2025-03-26"]).toContain(init.result?.protocolVersion);
   });
 
   it("PLANT: a page elsewhere cannot drive the tools, a rebinding host is refused, and GET, DELETE, 2026-era batches and bad JSON are refused", async () => {

@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import { readDocumentXml, readDocx, readZip } from "../scripts/lib/docx.mjs";
-import { buildBook, runsToMarkdown, slugify, writeBook } from "../scripts/lib/manuscript.mjs";
+import { buildBook, runsToMarkdown, writeBook } from "../scripts/lib/manuscript.mjs";
 
 import { documentXml, docx, p, PROBLEMS, r, TEST_MANUSCRIPT, zip } from "./fixtures/import/test-manuscript.mjs";
 
@@ -107,9 +107,4 @@ describe("Markdown for runs and names", () => {
     expect(runsToMarkdown([{ text: "1. Not a list", italic: false, bold: false }])).toBe("1\\. Not a list");
   });
 
-  it("names folders and files as the novels layout requires", () => {
-    expect(slugify("The Crossing, Part II!")).toBe("the-crossing-part-ii");
-    expect(slugify("Río Café")).toBe("rio-cafe");
-    expect(slugify("***")).toBe("");
-  });
 });

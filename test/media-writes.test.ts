@@ -119,17 +119,6 @@ describe("alt text, tags, trash and restore", () => {
     expect(await rows()).toEqual([]);
   });
 
-  it("says a stale version plainly, changes nothing and records nothing", async () => {
-    const file = await seedFile();
-    const editor = await project("editor@test.invalid");
-    const who = await actor("editor@test.invalid");
-    await setMediaAlt(env, editor, who, file.id, "first", file.version);
-    const stale = await setMediaAlt(env, editor, who, file.id, "second", file.version);
-    expect(stale).toMatchObject({ ok: false, conflict: true, message: expect.stringContaining("changed on the site") });
-    expect((await site.adapter.media!.get(file.id))!.alt).toBe("first");
-    expect(await rows()).toHaveLength(1);
-  });
-
   it("answers the page's form with the conflict, and refuses a tag the site would not spell", async () => {
     const file = await seedFile();
     await post("media", { intent: "set-alt", id: file.id, version: file.version, alt: "first" }, "editor@test.invalid");

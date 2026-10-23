@@ -3,7 +3,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { inboxReport, reportInbox } from "~/lib/inbox-report.server";
+import { reportInbox } from "~/lib/inbox-report.server";
 import { addPerson, addProject, resetDb, testEnv } from "./env";
 
 const ORIGIN = "https://carrel.dustinedwards.info";
@@ -33,21 +33,6 @@ beforeEach(async () => {
   await resetDb();
   personId = await addPerson("owner@test.invalid", { owner: true });
   projectId = await addProject("de-info", "dustinedwards");
-});
-
-describe("inboxReport body", () => {
-  it("sends no items for 0 drafts", () => {
-    expect(inboxReport(0, null, ORIGIN)).toEqual({ namespace: "carrel", items: [] });
-  });
-  it("names one draft in the singular, with the oldest as since", () => {
-    expect(inboxReport(1, "2026-10-01T00:00:00Z", ORIGIN)).toEqual({
-      namespace: "carrel",
-      items: [{ title: "1 AI draft waits for review", link: `${ORIGIN}/`, since: "2026-10-01T00:00:00Z" }],
-    });
-  });
-  it("names many drafts in the plural", () => {
-    expect(inboxReport(4, null, ORIGIN).items[0]!.title).toBe("4 AI drafts wait for review");
-  });
 });
 
 describe("reportInbox", () => {

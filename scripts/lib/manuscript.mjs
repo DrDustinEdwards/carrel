@@ -22,7 +22,7 @@ const SCENE_HEADER = ["---", "pov:", "date:", "location:", "characters: []", "go
 const SCENE_BREAK = /^(?:(?:[*#~•·]\s*){1,5}|(?:-\s*){3,}|(?:_\s*){3,})$/u;
 
 /** @param {string} title */
-export function slugify(title) {
+function slugify(title) {
   return title
     .toLowerCase()
     .normalize("NFKD")

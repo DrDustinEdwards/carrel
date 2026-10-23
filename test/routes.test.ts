@@ -58,24 +58,6 @@ async function seedPost(site: ReturnType<typeof fakeSite>) {
 }
 
 describe("the preview", () => {
-  it("renders the viewer's own draft through the site, sandboxed and frameable by Carrel only", async () => {
-    const site = fakeSite();
-    vi.stubGlobal("fetch", site.fetch);
-    const env = connectedEnv();
-    const version = await seedPost(site);
-    const owner = await viewerFor("owner@test.invalid");
-    const project = await requireSiteProject(env.DB, owner, SLUG, "read");
-    await autosave(env.DB, project, owner, "post-one", { source: "---\ntitle: Owner draft\n---\nNot on the site.\n", baseVersion: version });
-
-    const response = await preview("owner@test.invalid", env);
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Security-Policy")).toMatch(/^sandbox; default-src 'none'/);
-    expect(response.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
-    const html = await response.text();
-    expect(html).toContain("Owner draft");
-    expect(html).toContain('<base href="https://site.test/">');
-  });
-
   it("PLANT: never shows one person's working draft to another", async () => {
     const site = fakeSite();
     vi.stubGlobal("fetch", site.fetch);

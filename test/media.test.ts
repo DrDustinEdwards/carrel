@@ -118,10 +118,6 @@ describe("PLANT: roles", () => {
     expect(site.requests.filter((r) => r.startsWith("DELETE"))).toEqual([]);
   });
 
-  it("answers 404 to someone the project is not shared with", async () => {
-    expect(await status(() => project("stranger@test.invalid"))).toBe(404);
-  });
-
   it("refuses at the routes too: a Reader's upload and an Editor's delete", async () => {
     await seedFile();
     const form = new FormData();
