@@ -15,8 +15,7 @@ import { Row, RowList } from "capsomer/react/row-list";
 import { Select } from "capsomer/react/select";
 import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
-
-import { PageHead } from "~/components/page-head";
+import { PageHead } from "capsomer/react/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { visibleProjects } from "~/lib/people.server";

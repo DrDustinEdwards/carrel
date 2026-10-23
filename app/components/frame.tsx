@@ -40,7 +40,7 @@ const initialsOf = (name: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join("") || "?";
 
-function RouterLink({ href, children, ...rest }: LinkProps) {
+export function RouterLink({ href, children, ...rest }: LinkProps) {
   return (
     <Link to={href} {...rest}>
       {children}

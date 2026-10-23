@@ -6,8 +6,9 @@ import { Form, redirect, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 
 import { autosave, readDoc } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -50,6 +51,7 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
   return (
     <div className="app-page" data-narrow>
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: loaderData.project.name, href: `/p/${loaderData.project.slug}` }, { label: "New post" }]}
         title="New post"
         lead="A new post starts as a draft in Carrel, under the address you give it."

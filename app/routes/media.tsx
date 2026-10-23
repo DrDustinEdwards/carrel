@@ -24,8 +24,8 @@ import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Status } from "capsomer/react/status";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
 import { ProjectTabs } from "~/components/project-tabs";
 import { MediaDetailPanel } from "~/components/media/detail-panel";
 import { size } from "~/components/media/format";

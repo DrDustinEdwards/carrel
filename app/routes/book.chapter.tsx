@@ -9,8 +9,9 @@ import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Status } from "capsomer/react/status";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 
 import { indexedFile, listFiles, listFindings, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -73,6 +74,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
   return (
     <div className="app-page">
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: project.name, href: base }, { label: chapter.title }]}
         title={chapter.title}
         lead={`${scenes.length} scene${scenes.length === 1 ? "" : "s"}, ${scenes.reduce((n, s) => n + s.words, 0).toLocaleString()} words.`}

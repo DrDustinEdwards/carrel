@@ -12,8 +12,9 @@ import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 import { Status } from "capsomer/react/status";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 import { StatusLabelPill } from "~/components/writing/status-label";
 
 import { listFiles, requireBookProject } from "~/lib/books.server";
@@ -132,6 +133,7 @@ export default function Outliner({ loaderData, actionData }: Route.ComponentProp
   return (
     <div className="app-page">
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: project.name, href: base }, { label: "Outliner" }]}
         title="Outliner"
         lead="Every scene in reading order, with the header keys you plan by. Change a scene's status, summary or target in its header."

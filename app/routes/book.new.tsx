@@ -5,8 +5,9 @@ import { Form, redirect, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 
 import { createBook } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -35,7 +36,7 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
   const busy = useNavigation().state !== "idle";
   return (
     <div className="app-page" data-narrow>
-      <PageHead crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]} title="New book" lead="A book is a folder in the writing repository. Nothing is written to Git until its first file is saved." />
+      <PageHead renderLink={RouterLink} crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]} title="New book" lead="A book is a folder in the writing repository. Nothing is written to Git until its first file is saved." />
       <Panel title="The book">
         <Form method="post" className="app-form">
           <Field label="Name" required>

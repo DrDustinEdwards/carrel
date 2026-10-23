@@ -10,9 +10,10 @@ import { ConfirmDialog } from "capsomer/react/confirm-dialog";
 import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Time } from "capsomer/react/time";
+import { PageHead } from "capsomer/react/page-head";
 
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
-import { PageHead } from "~/components/page-head";
+import { RouterLink } from "~/components/frame";
 
 import { readAiDraft } from "~/lib/ai.server";
 import { autosave } from "~/lib/content.server";
@@ -64,6 +65,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
   return (
     <div className="app-page">
       <PageHead
+        renderLink={RouterLink}
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: itemId, href: editor }, { label: "AI draft" }]}
         title={`AI draft from ${draft.client}`}
         lead={

@@ -13,8 +13,8 @@ import { Row, RowList } from "capsomer/react/row-list";
 import { Select } from "capsomer/react/select";
 import { StatTile, StatTiles } from "capsomer/react/stat-tile";
 import { Status } from "capsomer/react/status";
+import { PageHead } from "capsomer/react/page-head";
 
-import { PageHead } from "~/components/page-head";
 import { ProgressPanel } from "~/components/writing/progress-panel";
 import { StatusLabelPill } from "~/components/writing/status-label";
 
