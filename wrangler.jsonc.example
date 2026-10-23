@@ -5,7 +5,8 @@
  * The real file is gitignored because it carries the D1 database id. Secrets are set with
  * `wrangler secret put`, never here: ACCESS_AUD (the AUD tag of the Worker's Access application),
  * ACCESS_SAAS_CLIENT_ID and ACCESS_SAAS_CLIENT_SECRET (the AI door's Access for SaaS login), and one
- * key per site, SITE_DUSTINEDWARDS_KEY and SITE_GERMOMICS_KEY (absent until the site is connected).
+ * key per site, SITE_DUSTINEDWARDS_KEY, SITE_GERMOMICS_KEY, SITE_FOXHOUND_KEY and SITE_FOXING_KEY (absent
+ * until the site is connected).
  *
  * NEVER PUBLIC, BY DEPLOY ORDER. Cloudflare Access is turned on at the Worker level
  * (Workers & Pages > carrel > Access, "All traffic"), which covers every URL that reaches this
@@ -116,9 +117,15 @@
 		// The Search Console property for dustinedwards.info, if it is not the domain property.
 		"SEARCH_CONSOLE_PROPERTY_DUSTINEDWARDS": "sc-domain:dustinedwards.info",
 		"SEARCH_CONSOLE_PROPERTY_GERMOMICS": "sc-domain:germomics.com",
+		"SEARCH_CONSOLE_PROPERTY_FOXHOUND": "sc-domain:foxhoundapp.com",
+		"SEARCH_CONSOLE_PROPERTY_FOXING": "sc-domain:foxing.app",
 		// The site Carrel reaches through site-api. Its key is the secret SITE_DUSTINEDWARDS_KEY.
 		"SITE_DUSTINEDWARDS_ORIGIN": "https://dustinedwards.info",
 		// germomics, served by its own Worker at this domain. Its key is the secret SITE_GERMOMICS_KEY.
-		"SITE_GERMOMICS_ORIGIN": "https://germomics.com"
+		"SITE_GERMOMICS_ORIGIN": "https://germomics.com",
+		// Foxhound's blog, served by its own Worker at this domain. Its key is the secret SITE_FOXHOUND_KEY.
+		"SITE_FOXHOUND_ORIGIN": "https://foxhoundapp.com",
+		// Foxing's Journal, served by its own Worker at this domain. Its key is the secret SITE_FOXING_KEY.
+		"SITE_FOXING_ORIGIN": "https://foxing.app"
 	}
 }

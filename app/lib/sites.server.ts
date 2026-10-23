@@ -5,7 +5,7 @@ import { createSiteClient, type SiteClient } from "@dustinedwards/site-api/clien
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
-export type SiteId = "dustinedwards" | "germomics";
+export type SiteId = "dustinedwards" | "germomics" | "foxhound" | "foxing";
 
 type SiteEntry = {
   name: string;
@@ -45,6 +45,30 @@ const SITES: Record<SiteId, SiteEntry> = {
     // the site's own HTML. The id is the slug, and an item the site has not seen is created a draft.
     newSource: () => ["---", 'title: ""', 'excerpt: ""', "tags: []", "---", ""].join("\n"),
     searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_GERMOMICS?: string }).SEARCH_CONSOLE_PROPERTY_GERMOMICS?.trim() || "sc-domain:germomics.com",
+  },
+  foxhound: {
+    name: "Foxhound",
+    origin: (env) => env.SITE_FOXHOUND_ORIGIN,
+    key: (env) => env.SITE_FOXHOUND_KEY,
+    keyName: "SITE_FOXHOUND_KEY",
+    keepPublic: [],
+    // The shape of foxhound's app/lib/carrel/source.ts: one JSON value per front matter line, then the
+    // post's Markdown body. The slug is the address given here; the site refuses a later change to it.
+    newSource: (slug) =>
+      ["---", 'title: ""', `slug: ${JSON.stringify(slug)}`, 'excerpt: ""', 'author: "Foxhound"', "tags: []", "featured: false", "---", ""].join("\n"),
+    searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_FOXHOUND?: string }).SEARCH_CONSOLE_PROPERTY_FOXHOUND?.trim() || "sc-domain:foxhoundapp.com",
+  },
+  foxing: {
+    name: "Foxing",
+    origin: (env) => env.SITE_FOXING_ORIGIN,
+    key: (env) => env.SITE_FOXING_KEY,
+    keyName: "SITE_FOXING_KEY",
+    keepPublic: [],
+    // The shape of foxing's apps/web/app/lib/carrel/journal-source.ts for a Journal post: every field
+    // as JSON, a blank line, then the Markdown body. The id is the slug; a new post is created a draft.
+    newSource: () =>
+      ["---", 'title: ""', "excerpt: null", "cover_image_url: null", "cover_image_alt: null", "tags: []", "featured: false", "---", "", ""].join("\n"),
+    searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_FOXING?: string }).SEARCH_CONSOLE_PROPERTY_FOXING?.trim() || "sc-domain:foxing.app",
   },
 };
 

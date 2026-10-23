@@ -27,7 +27,7 @@ beforeEach(async () => {
 
 describe("germomics", () => {
   it("is listed, with the origin var and key the deploy sets", () => {
-    expect(SITE_IDS).toEqual(["dustinedwards", "germomics"]);
+    expect(SITE_IDS).toEqual(["dustinedwards", "germomics", "foxhound", "foxing"]);
     expect(siteEntry("germomics")).toMatchObject({ name: "Germomics", keyName: "SITE_GERMOMICS_KEY", keepPublic: [] });
     expect(siteEntry("germomics").origin({ ...testEnv, SITE_GERMOMICS_ORIGIN: "https://germomics.com" })).toBe("https://germomics.com");
   });
