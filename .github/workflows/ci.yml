@@ -80,7 +80,7 @@ jobs:
       - run: npm run check:bloat
 
   # THE DEPLOY, VERIFIED LIVE AND ROLLED BACK ON A REFUSAL: devkit's shared workflow (worker-deploy.yml),
-  # pinned to the full sha of its v0.8.0 tag. Its `deploy` job runs Carrel's own guard first,
+  # pinned to the full sha of its v0.9.0 tag. Its `deploy` job runs Carrel's own guard first,
   # `scripts/deploy.mjs --prepare` (render the config, check the ids against the account, build, apply
   # the D1 migrations, confirm none is pending; any failure stops the run before the deploy), then
   # deploys the build with DEPLOY_SHA set to this commit. Its `live gate` job polls the AI door's /health,
@@ -92,7 +92,7 @@ jobs:
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@d92c2d87a1d14fa059cd256fa6b011fde8666f96 # v0.8.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@6f4c67e69cc34285f2bdc63a1883912dc7f0c06e # v0.9.0
     with:
       worker-name: carrel
       health-url: https://carrel-mcp.dustinedwards.info/health
