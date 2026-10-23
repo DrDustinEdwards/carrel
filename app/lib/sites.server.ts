@@ -12,8 +12,11 @@ type SiteEntry = {
   origin: (env: Env) => string | undefined;
   key: (env: Env) => string | undefined;
   keyName: string;
-  /** The source a new item starts from, in the site's own frontmatter. The site validates it on save. */
-  newSource: (slug: string, today: string) => string;
+  /**
+   * The source a new item starts from, in the site's own frontmatter. The site validates it on save.
+   * Absent for a site with a fixed set of items, which refuses a new id: Carrel then offers no New post.
+   */
+  newSource?: (slug: string, today: string) => string;
   /**
    * Items other code on the site depends on staying public. dustinedwards.info's terms are the license
    * named by the Dataset JSON-LD and the Link header on every download, so Carrel never takes them down.
@@ -76,8 +79,6 @@ const SITES: Record<SiteId, SiteEntry> = {
     key: (env) => env.SITE_TXASM_KEY,
     keyName: "SITE_TXASM_KEY",
     keepPublic: ["home", "award-nominations"],
-    // The shape of txasm's two site pages: front matter, then the Markdown body. The site refuses new ids.
-    newSource: () => ["---", 'title: ""', 'description: ""', "---", "", ""].join("\n"),
     searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_TXASM?.trim() || "sc-domain:txasm.org",
   },
   julieedwards: {
@@ -86,8 +87,6 @@ const SITES: Record<SiteId, SiteEntry> = {
     key: (env) => env.SITE_JULIEEDWARDS_KEY,
     keyName: "SITE_JULIEEDWARDS_KEY",
     keepPublic: ["profile", "priorities", "about", "experience", "contact", "site"],
-    // The shape of julieedwards.info's sections: a heading in front matter, then the section's copy.
-    newSource: () => ["---", 'heading: ""', "---", ""].join("\n"),
     searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_JULIEEDWARDS?.trim() || "sc-domain:julieedwards.info",
   },
 };
