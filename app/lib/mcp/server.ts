@@ -8,10 +8,10 @@
 // every tool calls the same functions the buttons do, and those functions refuse. check:mcp-roles
 // fails the build if role logic appears in this folder.
 
-import { fromJsonSchema, McpServer, type JsonSchemaType } from "@modelcontextprotocol/server";
+import { routeMcpEra } from "@dustinedwards/site-runtime/mcp-server";
+import { fromJsonSchema, isLegacyRequest, McpServer, type JsonSchemaType } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 
-import { createLegacyEraHandler, isLegacyRequest } from "./legacy-era";
 import { callTool, type McpSession, TOOLS, type ToolDeps } from "./tools";
 
 /** The AI door's one path, on its own hostname (door.ts). */
@@ -62,17 +62,18 @@ export async function handleMcp(
   const host = new URL(request.url).hostname;
   const options = { route: MCP_ROUTE, allowedHostnames: [host], allowedOriginHostnames: [host], corsOptions: false as const };
 
-  // --- the one legacy call site, deletable with legacy-era.ts ---------------
-  // The predicate reads the body, so it gets a clone: the handler needs the body too. (The cast only
-  // drops the Workers-specific `cf` typing the SDK's signature does not know.)
-  if (await isLegacyRequest(request.clone() as Request<unknown>)) {
-    return createLegacyEraHandler(factory, options)(request, env, ctx);
-  }
-  // -------------------------------------------------------------------------
-
-  // Everything the predicate calls false goes here, including malformed envelopes: the library's
-  // documentation says the modern path owns those error answers.
-  return createMcpHandler(factory, { ...options, legacy: "reject" })(request, env, ctx);
+  // The one legacy call site. Prior-era clients (Claude Code and claude.ai open with `initialize`, as
+  // last measured in dustinedwards-info's probe) go to the stateless shim, everything else, malformed
+  // envelopes included, to the modern-only handler. REMOVAL CONDITION: drop isLegacyRequest here when
+  // that probe (`mcp/scripts/probe-report.mjs`) shows them opening with `server/discover`; the
+  // condition and the shim are site-runtime's routeMcpEra. (The cast only drops the Workers-specific
+  // `cf` typing the SDK's signature does not know.)
+  return routeMcpEra(request, env, ctx, {
+    factory,
+    options,
+    createMcpHandler,
+    isLegacyRequest: (r: Request) => isLegacyRequest(r as Request<unknown>),
+  });
 }
 
 /**

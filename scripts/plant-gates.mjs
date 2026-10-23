@@ -89,8 +89,8 @@ const PLANTS = [
   {
     gate: "conformance",
     file: "app/lib/mcp/server.ts",
-    find: "return createLegacyEraHandler(factory, options)(request, env, ctx);",
-    replace: 'return createMcpHandler(factory, { ...options, legacy: "reject" })(request, env, ctx);',
+    find: "    isLegacyRequest: (r: Request) => isLegacyRequest(r as Request<unknown>),\n",
+    replace: "",
     label: "the legacy shim routed to the modern-only handler",
   },
   { gate: "conformance", file: "app/lib/mcp/registration.ts", find: "if (typeof uri !== \"string\" || !allowed.has(uri))", replace: "if (typeof uri !== \"string\")", label: "the door registers a callback off the allowlist" },
