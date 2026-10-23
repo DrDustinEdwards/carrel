@@ -34,7 +34,7 @@ Then devkit's workflow runs `wrangler deploy --name carrel --var DEPLOY_SHA:<com
 
 Exit 1 is a refusal, and the step "Roll back the deploy this run shipped" puts the previous version back. Exit 3 is "could not run" and rolls nothing back. A rollback swaps code and bindings only: it is refused when D1 or KV resources changed between the versions, and it never undoes a migration. Data recovery is D1 Time Travel, by hand.
 
-`scripts/check-deploy.mjs` and `scripts/check-verify-live.mjs` (run by `npm test`) drive both scripts against stubs and pin each refusal and the order. `test/deploy-workflow.test.ts` pins the call: the devkit sha, the Worker, the health URL, the verify command and the guard.
+`scripts/check-deploy.mjs` and `scripts/check-verify-live.mjs` (run by `npm test`) drive both scripts against stubs and pin each refusal and the order.
 
 Secrets set with `wrangler secret put` live in the Worker and survive deploys.
 
