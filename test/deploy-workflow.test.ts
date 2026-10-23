@@ -10,8 +10,8 @@ import pkg from "../package.json?raw";
 import verify from "../scripts/verify-live.mjs?raw";
 
 // The devkit tag ci.yml pins. A move to a newer tag changes both.
-const DEVKIT_SHA = "27e0a1ca0747b5839bf7e0433c307ae671de8501";
-const DEVKIT_TAG = "v0.7.0";
+const DEVKIT_SHA = "d92c2d87a1d14fa059cd256fa6b011fde8666f96";
+const DEVKIT_TAG = "v0.8.0";
 
 // A Windows checkout with core.autocrlf has CRLF in the working tree; the anchors below are LF.
 const ci = ciText.replace(/\r\n/g, "\n");
