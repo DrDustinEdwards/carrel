@@ -2,12 +2,10 @@
 // the project's Posts, opens in the editor and previews as the AI draft; an indexed post carries a
 // count of AI drafts waiting. All of it private to the person the drafts belong to.
 
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { saveAiDraft } from "~/lib/ai.server";
 import { autosave } from "~/lib/content.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { refreshIndex } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { titleOf } from "~/lib/waiting.server";
@@ -16,7 +14,7 @@ import { loader as previewLoader } from "~/routes/preview";
 import { loader as projectLoader } from "~/routes/project";
 
 import { addPerson, addProject, resetDb, share } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, routeContext } from "./site";
 
 const SLUG = "de-info";
 let site: ReturnType<typeof fakeSite>;
@@ -34,13 +32,7 @@ beforeEach(async () => {
   env = connectedEnv();
 });
 
-async function context(email: string) {
-  const c = new RouterContextProvider();
-  c.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  c.set(viewerContext, await viewerFor(email));
-  c.set(nonceContext, "n");
-  return c;
-}
+const context = (email: string) => routeContext(env, email);
 
 async function aiDraft(email: string, item: string, source: string) {
   const viewer = await viewerFor(email);

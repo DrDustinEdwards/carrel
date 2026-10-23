@@ -24,7 +24,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { addBook, addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { BASELINE, PLANT } from "./fixtures/voice";
 import { fakeNovels } from "./novels";
-import { viewerFor } from "./site";
+import { viewerFor, refusal } from "./site";
 
 const SLUG = "test-book";
 
@@ -47,16 +47,6 @@ function seedRepo(extra: Record<string, string> = {}) {
     "shared/checks/ai-habits.md": "---\nwords: [suddenly]\n---\n",
     ...extra,
   });
-}
-
-async function refusal(promise: Promise<unknown>): Promise<number> {
-  try {
-    await promise;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown.status;
-    throw thrown;
-  }
-  throw new Error("expected a refusal, and the call succeeded");
 }
 
 beforeEach(async () => {

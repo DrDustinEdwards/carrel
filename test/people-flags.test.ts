@@ -1,10 +1,8 @@
 // The people page, the project flags list and media in the authorship record.
 // Each refusal the job names is planted, and each checks that nothing changed.
 
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { deleteMedia, uploadMedia } from "~/lib/media.server";
 import { addPerson as adminAddPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
 import { findViewer } from "~/lib/people.server";
@@ -13,7 +11,7 @@ import { action as peopleAction, loader as peopleLoader } from "~/routes/people"
 import { action as flagsAction, loader as flagsLoader } from "~/routes/project.flags";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, routeContext, refusal } from "./site";
 
 const SLUG = "de-info";
 let projectId: number;
@@ -31,23 +29,9 @@ beforeEach(async () => {
   await share(projectId, reviewer, "reader");
 });
 
-async function contextFor(email: string, env: Env = testEnv) {
-  const context = new RouterContextProvider();
-  context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "n");
-  return context;
-}
+const contextFor = (email: string, env: Env = testEnv) => routeContext(env, email);
 
-async function status(run: () => Promise<unknown>): Promise<number> {
-  try {
-    await run();
-    return 200;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown.status;
-    throw thrown;
-  }
-}
+const status = (run: () => Promise<unknown>) => refusal(run());
 
 /** Every people and membership row, to prove a refusal changed nothing. */
 async function snapshot() {

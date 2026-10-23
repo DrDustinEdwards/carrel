@@ -5,17 +5,15 @@
 // uses is refused alone, with the post named), and a site that offers none of the writes.
 
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { bulkMedia, emptyMediaTrash, listMedia, mediaMeta, parseMediaTags, restoreMedia, setMediaAlt, setMediaTags, trashMedia } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as bulkRoute } from "~/routes/media.bulk";
 import { action as mediaAction, loader as mediaLoader } from "~/routes/media";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, routeContext, refusal } from "./site";
 
 const SLUG = "de-info";
 const PNG = Uint8Array.from(
@@ -45,22 +43,8 @@ async function project(email: string) {
 async function actor(email: string) {
   return { viewer: await viewerFor(email) };
 }
-async function status(run: () => Promise<unknown>): Promise<number> {
-  try {
-    await run();
-    return 200;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown.status;
-    throw thrown;
-  }
-}
-async function contextFor(email: string) {
-  const context = new RouterContextProvider();
-  context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "n");
-  return context;
-}
+const status = (run: () => Promise<unknown>) => refusal(run());
+const contextFor = (email: string) => routeContext(env, email);
 async function seedFile(name = "river.png") {
   const item = await site.adapter.media!.upload({ bytes: PNG, contentType: "image/png", filename: name, alt: "", changeId: `seed-${name}` });
   return { ...item, version: (await site.adapter.media!.get(item.id))!.version! };

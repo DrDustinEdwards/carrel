@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { runChecks } from "~/lib/health.server";
 import { figureMarkup } from "~/lib/site-markdown";
-import { siteClient, siteEntry, siteOrigins } from "~/lib/sites.server";
+import { siteClient, siteOrigins } from "~/lib/sites.server";
 import { addPerson, resetDb, testEnv } from "./env";
 import { fakeSite, SITE_KEY, SITE_ORIGIN } from "./site";
 

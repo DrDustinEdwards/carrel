@@ -2,16 +2,14 @@
 // person's working copy in Carrel and nothing to the site, the AI draft's rendered view is private
 // to its owner, and the save line says a draft on the site is not live.
 
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { saveAiDraft } from "~/lib/ai.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { loader as aiPreviewLoader } from "~/routes/ai-draft.preview";
 
 import { addPerson, addProject, resetDb, share } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, routeContext } from "./site";
 
 const SLUG = "de-info";
 const THEIR_SOURCE = "---\ntitle: The AI's take\nunknown_key: kept\n---\nAn alternative opening.\n";
@@ -29,13 +27,7 @@ beforeEach(async () => {
   env = connectedEnv();
 });
 
-async function context(email: string) {
-  const c = new RouterContextProvider();
-  c.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  c.set(viewerContext, await viewerFor(email));
-  c.set(nonceContext, "n");
-  return c;
-}
+const context = (email: string) => routeContext(env, email);
 
 async function aiDraftFor(email: string, item: string) {
   const viewer = await viewerFor(email);

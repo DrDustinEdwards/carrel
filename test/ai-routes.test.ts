@@ -1,19 +1,17 @@
 // The browser's side of AI work: the unpublish page the email links to, the AI draft page, and
 // flags in the editor. Driven through loaders and actions with a real request context.
 
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
 import { readDraft } from "~/lib/content.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as aiDraftAction, loader as aiDraftLoader } from "~/routes/ai-draft";
 import { action as editorAction, loader as editorLoader } from "~/routes/editor";
 import { action as unpublishAction, loader as unpublishLoader } from "~/routes/unpublish";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, routeContext, settle } from "./site";
 
 const SLUG = "de-info";
 let site: ReturnType<typeof fakeSite>;
@@ -31,22 +29,7 @@ beforeEach(async () => {
   env = connectedEnv();
 });
 
-async function context(email: string) {
-  const c = new RouterContextProvider();
-  c.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  c.set(viewerContext, await viewerFor(email));
-  c.set(nonceContext, "n");
-  return c;
-}
-
-async function settle<T>(p: Promise<T>): Promise<T | Response> {
-  try {
-    return await p;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown;
-    throw thrown;
-  }
-}
+const context = (email: string) => routeContext(env, email);
 
 async function published() {
   const saved = await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Post one\n---\nWords.\n", expectedVersion: null, changeId: "s" });

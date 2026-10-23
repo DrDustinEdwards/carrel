@@ -8,19 +8,9 @@ import { autosave, readDraft, writeToSite } from "~/lib/content.server";
 import { requireSiteProject } from "~/lib/projects.server";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, refusal } from "./site";
 
 const SLUG = "de-info";
-
-async function refusal(promise: Promise<unknown>): Promise<number> {
-  try {
-    await promise;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown.status;
-    throw thrown;
-  }
-  throw new Error("expected a refusal, and the call succeeded");
-}
 
 let projectId: number;
 

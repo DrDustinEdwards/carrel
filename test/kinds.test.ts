@@ -3,10 +3,8 @@
 // and a data kind the site will not write stays out of the lists and, if reached, shows the site's
 // own refusal. Carrel has no per-kind code; the kinds and paths come from the site.
 
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { refreshIndex } from "~/lib/index.server";
 import { action as editorAction, loader as editorLoader } from "~/routes/editor";
 import { loader as historyLoader } from "~/routes/history";
@@ -14,7 +12,7 @@ import { loader as previewLoader } from "~/routes/preview";
 import { loader as projectLoader } from "~/routes/project";
 
 import { addPerson, addProject, resetDb } from "./env";
-import { connectedEnv, fakeSite, kindedAdapter, viewerFor } from "./site";
+import { connectedEnv, fakeSite, kindedAdapter, routeContext } from "./site";
 
 const SLUG = "de-info";
 const OWNER = "owner@test.invalid";
@@ -26,13 +24,7 @@ beforeEach(async () => {
   projectId = await addProject(SLUG, "dustinedwards");
 });
 
-async function contextFor(env: Env) {
-  const context = new RouterContextProvider();
-  context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  context.set(viewerContext, await viewerFor(OWNER));
-  context.set(nonceContext, "test-nonce");
-  return context;
-}
+const contextFor = (env: Env) => routeContext(env, OWNER);
 
 async function settled<T>(run: () => Promise<T>): Promise<T | Response> {
   try {

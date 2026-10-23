@@ -3,13 +3,11 @@
 // versions (saved in Carrel, moved, or committed elsewhere) back through its moves, and any two, or
 // Dustin's text and an AI draft, compare.
 
-import { RouterContextProvider } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { reorderBook } from "~/lib/binder.server";
 import { refreshBook, requireBookProject, saveBookFile } from "~/lib/books.server";
 import { autosave } from "~/lib/content.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { describe as describeFile, isBookPath } from "~/lib/novels/layout";
 import { clearTokenCache, GitConflict } from "~/lib/novels/repo.server";
 import { binderTree, canMoveTo, currentOrder, firstSentence, orderFromTree, parseOrder, planRenames, siteBinderTree, withChapterOrder } from "~/lib/writing/binder";
@@ -19,7 +17,7 @@ import { loader as historyLoader } from "~/routes/book.history";
 
 import { addBook, addPerson, resetDb, share, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
-import { viewerFor } from "./site";
+import { viewerFor, routeContext, settle } from "./site";
 
 const SLUG = "test-book";
 const A1 = "chapters/01-arrival/01-the-gate.md";
@@ -198,22 +196,7 @@ async function refresh() {
   await refreshBook(testEnv.DB, gh.repo, project);
 }
 
-async function contextFor(email: string) {
-  const context = new RouterContextProvider();
-  context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
-  context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "test-nonce");
-  return context;
-}
-
-async function settle<T>(p: Promise<T>): Promise<T | Response> {
-  try {
-    return await p;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown;
-    throw thrown;
-  }
-}
+const contextFor = (email: string) => routeContext(env, email);
 
 function body(fields: Record<string, string | string[]>) {
   const form = new FormData();

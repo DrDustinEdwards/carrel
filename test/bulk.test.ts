@@ -15,7 +15,7 @@ import { action as bulkAction } from "~/routes/project.bulk";
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, refusal } from "./site";
 
 const SLUG = "de-info";
 let projectId: number;
@@ -61,16 +61,6 @@ async function seed(id: string, source: string, live = false) {
 const sourceOf = (id: string) => site.adapter.store.get(id)?.doc.source;
 const rows = async () => (await testEnv.DB.prepare("SELECT action, item_id AS itemId, version_before AS vb, version_after AS va, person_id AS who FROM changes ORDER BY created_at, rowid").all<{ action: string; itemId: string; vb: string | null; va: string | null; who: number }>()).results;
 const writes = () => site.requests.filter((r) => !r.startsWith("GET"));
-
-async function refusal(promise: Promise<unknown>): Promise<number> {
-  try {
-    await promise;
-  } catch (thrown) {
-    if (thrown instanceof Response) return thrown.status;
-    throw thrown;
-  }
-  throw new Error("expected a refusal, and the call succeeded");
-}
 
 describe("bulk delete is the Owner's alone", () => {
   it("refuses an Editor and a Reader before the site is asked anything, and changes nothing", async () => {

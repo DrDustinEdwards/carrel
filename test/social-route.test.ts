@@ -1,14 +1,12 @@
 // The social page through its loader and action: the Owner's alone, and an account added there
 // starts off, in approval mode.
 
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { action as socialAction, loader as socialLoader } from "~/routes/social";
 
 import { addPerson, addProject, resetDb, testEnv } from "./env";
-import { viewerFor } from "./site";
+import { routeContext } from "./site";
 
 beforeEach(async () => {
   await resetDb();
@@ -17,13 +15,7 @@ beforeEach(async () => {
   await addProject("germomics", "dustinedwards");
 });
 
-async function context(email: string) {
-  const c = new RouterContextProvider();
-  c.set(cloudflareContext, { env: testEnv, ctx: {} as ExecutionContext });
-  c.set(viewerContext, await viewerFor(email));
-  c.set(nonceContext, "n");
-  return c;
-}
+const context = (email: string) => routeContext(testEnv, email);
 
 describe("the social page", () => {
   it("PLANT: is 404 to anyone but the Owner", async () => {

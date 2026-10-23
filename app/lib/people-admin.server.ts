@@ -69,13 +69,17 @@ export async function addPerson(db: D1Database, viewer: Viewer, input: { email: 
   requireOwner(viewer);
   const email = input.email.trim().toLowerCase();
   if (!EMAIL.test(email) || email.length > 254) throw new PeopleRefusal("That is not an email address.");
-  const name = input.name.trim().slice(0, 200);
+  return insertPerson(db, { email, name: input.name.trim().slice(0, 200), isReviewer: input.reviewer });
+}
+
+/** Inserts a person who is never an Owner and has no role yet, refusing an email Carrel already has. */
+async function insertPerson(db: D1Database, values: { email: string; name: string; isReviewer: boolean }): Promise<PersonRow> {
   const d = drizzle(db);
-  const existing = await d.select({ id: people.id }).from(people).where(eq(people.email, email)).get();
-  if (existing) throw new PeopleRefusal(`${email} is already in Carrel.`);
+  const existing = await d.select({ id: people.id }).from(people).where(eq(people.email, values.email)).get();
+  if (existing) throw new PeopleRefusal(`${values.email} is already in Carrel.`);
   const [row] = await d
     .insert(people)
-    .values({ email, name, isOwner: false, isReviewer: input.reviewer })
+    .values({ ...values, isOwner: false })
     .returning({ id: people.id, email: people.email, name: people.name, isOwner: people.isOwner, isReviewer: people.isReviewer, disabledAt: people.disabledAt });
   return { ...row!, roles: [] };
 }
@@ -89,15 +93,7 @@ export async function addAgent(db: D1Database, viewer: Viewer, input: { name: st
   requireOwner(viewer);
   const name = input.name.trim().toLowerCase();
   if (!isAgentName(name)) throw new PeopleRefusal("An agent's name is letters, digits, hyphens and underscores, up to 32, such as grok.");
-  const email = agentEmail(name);
-  const d = drizzle(db);
-  const existing = await d.select({ id: people.id }).from(people).where(eq(people.email, email)).get();
-  if (existing) throw new PeopleRefusal(`${email} is already in Carrel.`);
-  const [row] = await d
-    .insert(people)
-    .values({ email, name: input.label?.trim().slice(0, 200) || name, isOwner: false, isReviewer: false })
-    .returning({ id: people.id, email: people.email, name: people.name, isOwner: people.isOwner, isReviewer: people.isReviewer, disabledAt: people.disabledAt });
-  return { ...row!, roles: [] };
+  return insertPerson(db, { email: agentEmail(name), name: input.label?.trim().slice(0, 200) || name, isReviewer: false });
 }
 
 async function target(db: D1Database, personId: number) {
