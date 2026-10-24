@@ -22,6 +22,8 @@ const CALLS: Record<string, Record<string, unknown>> = {
   carrel_search_items: { project: SITE },
   carrel_read_item: { project: SITE, item: "post-one" },
   carrel_save_draft: { project: SITE, item: "post-one", source: "---\ntitle: Post one\n---\nNot yours.\n" },
+  carrel_voice_brief: { project: SITE },
+  carrel_check_post_text: { project: SITE, source: "# x" },
   carrel_preview_item: { project: SITE, item: "post-one", source: "# x" },
   carrel_get_checks: { project: SITE, item: "post-one" },
   carrel_add_finding: { project: SITE, item: "post-one", message: "m" },

@@ -2,6 +2,7 @@
 // Drive folder and a social queue, all made through the app's own functions against the test fakes.
 // Test-only; nothing here is deployed and nothing reaches the network.
 
+import { nearestPassages, profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
 import { createBook, refreshBook, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
@@ -232,6 +233,25 @@ async function build(base: Env): Promise<World> {
   ]) {
     site.adapter.receiveMention({ authorUrl: null, ...m });
   }
+  // The Voice page: a pack measured from passages in one plain register (the voice fixtures stand in for
+  // the published posts), a guide, and two words cut from AI drafts of three posts each.
+  const profile = profileOf(BASELINE);
+  await db
+    .prepare("INSERT INTO voice_packs (project_id, guide, phrases, allow, profile, excerpts, posts, built_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(
+      sitePr.id,
+      "Written for other lab people and curious readers. First person, plain, short paragraphs. Open on the thing that happened, not on why it matters.",
+      JSON.stringify(["game-changer", "in conclusion"]),
+      JSON.stringify(["journey"]),
+      JSON.stringify(profile),
+      JSON.stringify(profile ? nearestPassages(profile, BASELINE, 3) : []),
+      BASELINE.length,
+      "2026-10-24T09:00:00Z",
+    )
+    .run();
+  for (const [phrase, items] of [["seamless", ["a", "b", "c", "d"]], ["robust pipeline", ["a", "b", "c"]]] as const) {
+    await db.prepare("INSERT INTO voice_cuts (project_id, phrase, items, last_cut_at) VALUES (?, ?, ?, '2026-10-23T12:00:00Z')").bind(sitePr.id, phrase, JSON.stringify(items)).run();
+  }
   // Legal pages: two shared sections, and a privacy page that carries one with the Draft banner on. The
   // terms page is left out, so the Legal tab shows both a page that is set up and one that is not.
   for (const [key, title, body] of [
@@ -274,7 +294,7 @@ async function build(base: Env): Promise<World> {
   await addFinding(db, sitePr, claude, "counting-what-the-build-skips", { message: "The second paragraph claims the build skips nothing, which the first paragraph contradicts", excerpt: "A build that skips silently is a build you cannot reason about." });
   await addFinding(db, sitePr, claude, "counting-what-the-build-skips", { message: "No source for the skipped-count figure", excerpt: null });
   await addFinding(db, sitePr, { viewer: owner, client: "Grok Build" }, "foxhound-waits", { message: "Three in a row is not defined before it is used", excerpt: "Three failed checks in a row is a pattern" });
-  await saveAiDraft(env, sitePr, claude, "counting-what-the-build-skips", { source: post("Counting what the build skips", "counting-what-the-build-skips", "", "2026-10-01", ["build"], "An alternative opening, written beside yours.\n\nThe build logs every skip with a reason, and the count is the first line of the summary."), note: "A tighter opening, for you to take or leave." }, site.fetch);
+  await saveAiDraft(env, sitePr, claude, "counting-what-the-build-skips", { source: post("Counting what the build skips", "counting-what-the-build-skips", "", "2026-10-01", ["build"], "An alternative opening, written beside yours \u2014 a seamless way in.\n\nThe build logs every skip with a reason, and the count is the first line of the summary."), note: "A tighter opening, for you to take or leave." }, site.fetch);
   void rosaV;
 
   // One draft with a history, a working copy that has moved on from the site, and an AI draft beside it:

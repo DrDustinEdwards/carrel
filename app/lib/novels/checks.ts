@@ -13,7 +13,7 @@ import {
   type RuleEntry,
   type SceneHeader,
 } from "./layout";
-import { describeFeature, distanceFrom, VOICE_THRESHOLD, type Profile } from "./voice";
+import { checkProse, describeFeature, distanceFrom, VOICE_THRESHOLD, type Profile } from "@dustinedwards/site-runtime/prose";
 
 type CheckName = "header" | "continuity" | "timeline" | "world-rules" | "ai-habits" | "voice";
 
@@ -29,7 +29,12 @@ export type Bible = { characters: CharacterEntry[]; places: PlaceEntry[]; rules:
 
 export type SceneRow = { path: string; header: SceneHeader };
 
-export type AiHabits = { words: string[]; conditions: boolean };
+/**
+ * What the AI-habits check reads from shared/checks/ai-habits.md: Dustin's own words on top of the shared
+ * check's lists, the words he allows back, whether the constructions are matched, and dashes ("allow" once
+ * his passages in shared/voice/ use them, unless the file says otherwise).
+ */
+export type AiHabits = { words: string[]; allow: string[]; conditions: boolean; dashes: "flag" | "allow" | null };
 
 export type BookContext = {
   bible: Bible;
@@ -40,9 +45,9 @@ export type BookContext = {
 };
 
 /**
- * The AI-tells list first kept in capsid/conventions.md (Writing style, 2026-09-25), as the seed. Dustin adds
- * words or allows one back in shared/checks/ai-habits.md. In fiction several of these are ordinary
- * words, which is why a hit is a flag for him to weigh, not a rule.
+ * The AI-tells list first kept in capsid/conventions.md (Writing style, 2026-09-25), on top of the shared
+ * check's own lists (site-runtime ./prose). Dustin adds words or allows one back in shared/checks/ai-habits.md.
+ * In fiction several of these are ordinary words, which is why a hit is a flag for him to weigh, not a rule.
  */
 export const SEED_WORDS = [
   "delve", "tapestry", "spans", "landscape", "realm", "navigate", "testament to", "boasts", "stands as",
@@ -50,13 +55,23 @@ export const SEED_WORDS = [
   "importantly", "furthermore",
 ];
 
-/** shared/checks/ai-habits.md: `words:` adds to the seed, `allow:` removes, `conditions: false` turns the patterns off. */
+/**
+ * shared/checks/ai-habits.md: `words:` adds to the seed, `allow:` takes a word back out of every list,
+ * `conditions: false` turns the constructions off, `dashes: flag` or `dashes: allow` overrides what the
+ * passages decide.
+ */
 export function readHabits(source: string | null): AiHabits {
-  if (source === null) return { words: SEED_WORDS, conditions: true };
+  if (source === null) return { words: SEED_WORDS, allow: [], conditions: true, dashes: null };
   const { data } = parseFile(source);
-  const allow = new Set(list(data, "allow").map((w) => w.toLowerCase()));
-  const words = [...SEED_WORDS, ...list(data, "words")].map((w) => w.toLowerCase()).filter((w) => !allow.has(w));
-  return { words: [...new Set(words)], conditions: data.conditions !== false };
+  const allow = list(data, "allow").map((w) => w.toLowerCase());
+  const words = [...SEED_WORDS, ...list(data, "words")].map((w) => w.toLowerCase()).filter((w) => !allow.includes(w));
+  const dashes = data.dashes === "flag" || data.dashes === "allow" ? data.dashes : null;
+  return { words: [...new Set(words)], allow, conditions: data.conditions !== false, dashes };
+}
+
+/** Dashes are flagged unless the author's own passages use them (one in 1,000 words or more), or the habits file says. */
+export function dashesFor(habits: Pick<AiHabits, "dashes">, voice: Profile | null): "flag" | "allow" {
+  return habits.dashes ?? ((voice?.mean.dashes ?? 0) >= 1 ? "allow" : "flag");
 }
 
 // ---------- helpers
@@ -99,10 +114,6 @@ function matchesIn(body: string, bodyLine: number, re: RegExp): { line: number; 
     for (const m of line.matchAll(re)) out.push({ line: bodyLine + i, text: m[0] });
   });
   return out;
-}
-
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // ---------- the checks
@@ -243,49 +254,16 @@ export function checkRuleFile(path: string, source: string, rule: RuleEntry): Fi
   return out;
 }
 
-// The conditions behind the AI habits. A word list alone teaches renaming (the site's ruling 117),
-// so the constructions are matched too.
-export const NOT_JUST = [
-  // "It's not just a house, it's a promise." / "This isn't only about money; it's about pride."
-  /(?:\bnot|n['\u2019]t)\s+(?:just|only|merely|simply)\s+[^.!?;:,]{1,60}[,;:]\s*(?:it|this|that|he|she|they|we|you)(?:['\u2019](?:s|re)|\s+(?:is|was|are|were))\b/iu,
-  // "It wasn't about money. It was about pride." / "It's not a house, it's a promise."
-  /\b(?:it|this|that)(?:['\u2019]s\s+not|\s+is\s+not|\s+was\s+not|\s+isn['\u2019]t|\s+wasn['\u2019]t)\s+[^.!?;:]{1,50}[.,;:]\s*(?:it|this|that)(?:['\u2019]s|\s+(?:is|was))\b/iu,
-];
+/** The shared check's word lists, as against its constructions; `conditions: false` keeps only these. */
+const WORD_CHECKS = /^(?:phrase|tier\d)$/;
 
-/** A sentence that closes its paragraph on a three-item list of one- or two-word items. */
-const CLOSING_TRIAD = /(?:^|[.!?]\s+)([^.!?]*?\b([\p{L}'\u2019]+(?:\s[\p{L}'\u2019]+)?),\s+([\p{L}'\u2019]+(?:\s[\p{L}'\u2019]+)?),?\s+(?:and|or)\s+([\p{L}'\u2019]+(?:\s[\p{L}'\u2019]+)?)[.!])\s*$/u;
-
-export function checkAiHabits(path: string, source: string, habits: AiHabits): Finding[] {
+// A word list alone teaches renaming (the site's ruling 117), so the shared check matches the
+// constructions too: "not X, it's Y", a paragraph closing on three, dashes, rhythm.
+export function checkAiHabits(path: string, source: string, habits: AiHabits, voice: Profile | null = null): Finding[] {
   const { body, bodyLine } = parseFile(source);
-  const out: Finding[] = [];
-  for (const word of habits.words) {
-    const re = new RegExp(`(?<![\\p{L}'\u2019])${escapeRegExp(word).replace(/'/g, "['\u2019]")}(?![\\p{L}])`, "giu");
-    for (const m of matchesIn(body, bodyLine, re)) {
-      out.push({ path, check: "ai-habits", message: `"${word}" is on the AI-habits list.`, line: m.line, excerpt: m.text });
-    }
-  }
-  if (!habits.conditions) return out;
-
-  // One flag per line for the construction, however many of the patterns see it.
-  body.split("\n").forEach((line, i) => {
-    const m = NOT_JUST.map((re) => re.exec(line)).find(Boolean);
-    if (m) out.push({ path, check: "ai-habits", message: `The "not X, it's Y" construction.`, line: bodyLine + i, excerpt: m[0] });
-  });
-
-  const lines = body.split("\n");
-  let start = 0;
-  // Paragraphs, with the line each one ends on.
-  for (let i = 0; i <= lines.length; i++) {
-    if (i === lines.length || lines[i]!.trim() === "") {
-      const paragraph = lines.slice(start, i).join(" ").trim();
-      const m = CLOSING_TRIAD.exec(paragraph);
-      if (m && !paragraph.startsWith("#")) {
-        out.push({ path, check: "ai-habits", message: "The paragraph closes on a rule-of-three list.", line: bodyLine + Math.max(start, i - 1), excerpt: m[1]!.trim() });
-      }
-      start = i + 1;
-    }
-  }
-  return out;
+  return checkProse(body, { context: "personal", phrases: habits.words, allow: habits.allow, dashes: dashesFor(habits, voice), firstLine: bodyLine })
+    .filter((issue) => habits.conditions || WORD_CHECKS.test(issue.check))
+    .map((issue) => ({ path, check: "ai-habits", message: issue.message, line: issue.line, excerpt: issue.excerpt }));
 }
 
 export function checkVoice(path: string, source: string, profile: Profile | null): Finding[] {
@@ -317,7 +295,7 @@ export function checkFile(path: string, source: string, context: BookContext): F
     ...checkContinuity(path, source, meta.header, context.bible),
     ...checkTimeline(path, source, meta.header, context.scenes),
     ...checkWorldRules(path, source, context.bible.rules),
-    ...checkAiHabits(path, source, context.habits),
+    ...checkAiHabits(path, source, context.habits, context.voice),
     ...checkVoice(path, source, context.voice),
   ];
 }

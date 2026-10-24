@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql to 0013_book_moves.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0018_voice.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -368,3 +368,29 @@ export const bookMoves = sqliteTable("book_moves", {
   personId: integer("person_id").notNull().references(() => people.id),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
+
+// The voice pack and the cuts learned from the author's edits (0018_voice.sql, voice.server.ts).
+export const voicePacks = sqliteTable("voice_packs", {
+  projectId: integer("project_id").primaryKey().references(() => projects.id, { onDelete: "cascade" }),
+  guide: text("guide").notNull().default(""),
+  phrases: text("phrases").notNull().default("[]"),
+  allow: text("allow").notNull().default("[]"),
+  profile: text("profile"),
+  excerpts: text("excerpts").notNull().default("[]"),
+  posts: integer("posts").notNull().default(0),
+  builtAt: text("built_at"),
+  updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+export const voiceCuts = sqliteTable(
+  "voice_cuts",
+  {
+    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    phrase: text("phrase").notNull(),
+    items: text("items").notNull().default("[]"),
+    kept: integer("kept").notNull().default(0),
+    setAside: integer("set_aside", { mode: "boolean" }).notNull().default(false),
+    lastCutAt: text("last_cut_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.phrase] })],
+);

@@ -14,7 +14,7 @@ import { checkFile, fingerprints, readHabits, type BookContext, type Finding } f
 import { parseFile } from "~/lib/novels/frontmatter";
 import { describe, isBookFolder, isBookPath, kindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
 import { GitConflict, novelsConnection, novelsRepo, type NovelsRepo } from "~/lib/novels/repo.server";
-import { profileOf } from "~/lib/novels/voice";
+import { profileOf } from "@dustinedwards/site-runtime/prose";
 import { takeUntyped } from "~/lib/writing.server";
 
 export type BookProject = { id: number; slug: string; name: string; book: string; role: Role };

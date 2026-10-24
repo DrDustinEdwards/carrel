@@ -158,7 +158,8 @@ Every tool is named `carrel_<action>_<resource>` and carries all four annotation
 | Tool | Who | What |
 |---|---|---|
 | `carrel_list_projects`, `carrel_search_items`, `carrel_read_item`, `carrel_preview_item`, `carrel_get_checks` | anyone with a role | read through the same functions as the pages |
-| `carrel_save_draft` | Editor, Owner | a new AI draft beside the person's own; never over it, never to the site |
+| `carrel_voice_brief`, `carrel_check_post_text` | anyone with a role | what to read before drafting (the writing rules, the Owner's guide and word lists, what the published posts measure, and excerpts nearest the author's style), and the writing checks run on text without saving |
+| `carrel_save_draft` | Editor, Owner | a new AI draft beside the person's own; never over it, never to the site. The answer carries the writing checks on what was saved |
 | `carrel_add_finding` | anyone with a role, reviewers above all | a flag on a post, credited to the client |
 | `carrel_publish_item` | the Owner's own sessions | the post as saved on the site at `expected_version`; refused while any flag is open; recorded as "published by <client> on Dustin's instruction"; emails Dustin an unpublish link |
 | `carrel_list_book_files`, `carrel_read_book_file`, `carrel_check_book_text` | anyone with a role on the book | the book's files, a file with its version and flags, and the checks run on text without saving |
@@ -167,6 +168,14 @@ Every tool is named `carrel_<action>_<resource>` and carries all four annotation
 | `carrel_draft_social_post` | the Owner's own sessions | a post for the social queue, by event id or by account, project and item |
 
 A **named agent** is a person row `agent:<name>` that a key resolves to; it is neither Owner nor reviewer, and its role on each project is set in People like anyone's. A **reviewer** is a person row with `is_reviewer = 1` (another company's agent), signed in through the same door with its own email: it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor, and the project's Posts list shows a post that exists only as a draft (yours or an AI's, `test/waiting.test.ts`) and marks a post with AI drafts waiting; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
+
+## Voice
+
+Drafts an AI session writes should read like the author, not like a model (`app/lib/voice.server.ts`, the project's Voice tab). The checks are site-runtime's `./prose`, the same ones the books and the social lint run, and Foxhound's emails: the avoid-ai-writing engine's stock phrasing plus "not X, it's Y", closing lists of three, dashes, flat rhythm and the author's own list. Nothing here measures or aims to pass an AI detector.
+
+- **The pack:** built from the newest 40 published posts: a measured profile (sentence length, contractions, punctuation, function words) and the six excerpts nearest it, since real examples copy a voice better than a description does. The guide and the two word lists (to flag, to allow) are the Owner's. Dashes are flagged unless the posts themselves use them.
+- **Before and after drafting:** a session reads `carrel_voice_brief`, writes from the excerpts, runs `carrel_check_post_text`, and `carrel_save_draft` answers with the checks on what it saved. The AI draft page shows them above the draft, with how far it reads from the published posts. They flag; the author edits.
+- **Learning from edits:** when the author publishes a post an AI session drafted, the words and two-word phrases the latest AI draft used and the post does not are counted (`voice_cuts`). One cut from three posts and kept in none is offered on the Voice tab, to add to the list or set aside.
 
 ## Media
 

@@ -22,6 +22,7 @@ import { readDoc, readDraft } from "~/lib/content.server";
 import { searchItemsPage } from "~/lib/index.server";
 import { isBookPath } from "~/lib/novels/layout";
 import { visibleProjects } from "~/lib/people.server";
+import { briefOf, buildVoicePack, checkAgainstPack, readVoicePack } from "~/lib/voice.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import type { Action } from "~/lib/roles";
 import { siteClient, SiteNotConnected } from "~/lib/sites.server";
@@ -187,7 +188,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_save_draft",
     title: "Save an AI draft",
-    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. ${RULE} Save a draft only when he asked for one.`,
+    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief and write from its excerpts; before saving, run carrel_check_post_text and revise what it flags. The answer carries the same checks on what was saved. ${RULE} Save a draft only when he asked for one.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -203,8 +204,42 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
-      const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source: str(args, "source", { max: MAX.source }), note: str(args, "note", { optional: true, max: MAX.note }) }, ctx.deps.fetcher);
-      return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts." };
+      const source = str(args, "source", { max: MAX.source });
+      const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source, note: str(args, "note", { optional: true, max: MAX.note }) }, ctx.deps.fetcher);
+      const checks = checkAgainstPack(await readVoicePack(ctx.env.DB, p), source);
+      return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts.", checks };
+    },
+  },
+  {
+    name: "carrel_voice_brief",
+    title: "Read the voice brief",
+    description: `What to read before drafting a post for this project, so the draft reads like Dustin and not like a model: the writing rules, Dustin's own guide and word lists, what his published posts measure (sentence length, contractions, punctuation), and excerpts of his posts nearest his usual style. Write from the excerpts. Built from the site's published posts the first time it is asked for. ${RULE}`,
+    inputSchema: { type: "object", properties: { project: PROJECT }, required: ["project"], additionalProperties: false },
+    // Reads the site's published posts the first time; it stores what it measured, which changes nothing anyone wrote.
+    annotations: READ,
+    outside: true,
+    run: async (args, ctx) => {
+      const p = await project(ctx, args, "read");
+      const pack = await readVoicePack(ctx.env.DB, p);
+      return briefOf(pack.builtAt ? pack : await buildVoicePack(ctx.env, p, ctx.deps.fetcher));
+    },
+  },
+  {
+    name: "carrel_check_post_text",
+    title: "Check a post's text",
+    description: `Runs the writing checks on the given post text without saving anything: stock AI words and phrases, "not X, it's Y", closing lists of three, dashes, flat rhythm, Dustin's own word list, and how far it reads from his published posts. Revise what it flags before saving a draft. The checks flag; Dustin decides. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: { project: PROJECT, source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." } },
+      required: ["project", "source"],
+      additionalProperties: false,
+    },
+    // Checks the text given, and saves or records nothing.
+    annotations: READ,
+    outside: false,
+    run: async (args, ctx) => {
+      const p = await project(ctx, args, "read");
+      return checkAgainstPack(await readVoicePack(ctx.env.DB, p), str(args, "source", { max: MAX.source }));
     },
   },
   {

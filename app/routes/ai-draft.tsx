@@ -7,8 +7,11 @@ import { Form, Link, redirect, useNavigation } from "react-router";
 import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
+import { Row, RowList } from "capsomer/react/row-list";
 import { Segmented } from "capsomer/react/segmented";
+import { Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
@@ -20,6 +23,7 @@ import { autosave } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
+import { checkAgainstPack, readVoicePack } from "~/lib/voice.server";
 
 import type { Route } from "./+types/ai-draft";
 
@@ -43,6 +47,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     itemId: params.item,
     draft: { id: draft.id, client: draft.client, note: draft.note, createdAt: draft.createdAt, source: draft.source, baseVersion: draft.baseVersion },
     canEdit: can(project.role, "edit"),
+    // The writing checks against this project's voice pack, run on every view: the pack may have changed since it was saved.
+    checks: checkAgainstPack(await readVoicePack(env.DB, project), draft.source),
   };
 }
 
@@ -56,7 +62,7 @@ export async function action({ params, context }: Route.ActionArgs) {
 }
 
 export default function AiDraft({ loaderData }: Route.ComponentProps) {
-  const { project, itemId, draft, canEdit } = loaderData;
+  const { project, itemId, draft, canEdit, checks } = loaderData;
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const busy = useNavigation().state !== "idle";
   const [asking, setAsking] = useState<HTMLElement | null>(null);
@@ -105,6 +111,28 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
         and save to the site as usual.
       </Banner>
       <FrontmatterFields source={draft.source} readOnly />
+      <Panel title="Writing checks" count={checks.issues.length} src="Against the project's Voice page" flush>
+        {checks.issues.length === 0 && !checks.voice ? (
+          <Empty kind="all-clear" flush title="Nothing flagged">
+            No stock AI phrasing found. Read it anyway: the checks catch habits, not whether it says something.
+          </Empty>
+        ) : (
+          <RowList label="Writing checks on this draft">
+            {checks.voice ? (
+              <Row
+                status={checks.voice.unlike ? <Status tone="warn">Unlike your posts</Status> : <Status tone="ok">Like your posts</Status>}
+                title={`Distance ${checks.voice.distance.toFixed(2)} from your published posts, flagged from ${checks.voice.threshold}`}
+                detail={`${checks.voice.furthest.join("; ")}.`}
+                href={`/p/${project.slug}/voice`}
+                renderLink={RouterLink}
+              />
+            ) : null}
+            {checks.issues.map((issue, i) => (
+              <Row key={i} title={issue.message} detail={issue.excerpt && !issue.message.includes(`"${issue.excerpt}"`) ? <q>{issue.excerpt}</q> : undefined} meta={issue.line ? `Line ${issue.line}` : undefined} />
+            ))}
+          </RowList>
+        )}
+      </Panel>
       <Panel
         title="The draft"
         src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}

@@ -2,10 +2,12 @@
 // it can go: it fits the platform, it is not a reply in disguise, it is not empty. A post with any
 // finding is held for Dustin; the lint flags and he decides.
 //
-// The word list is stage 4's (SEED_WORDS, the AI-tells list first kept in capsid/conventions.md): one list for
-// books and posts, and one copy of the "not just X, it's Y" patterns (NOT_JUST).
+// The habits are the shared check's (site-runtime ./prose) with stage 4's words on top (SEED_WORDS, the
+// AI-tells list first kept in capsid/conventions.md): one check for books, posts and drafts.
 
-import { NOT_JUST, SEED_WORDS } from "~/lib/novels/checks";
+import { checkProse } from "@dustinedwards/site-runtime/prose";
+
+import { SEED_WORDS } from "~/lib/novels/checks";
 
 import { graphemes, type Platform } from "./platforms.server";
 
@@ -25,11 +27,7 @@ export function lintPost(text: string, platform: Platform): string[] {
   if (n > LIMIT[platform]) out.push(`${n} characters, over ${platform === "x" ? "X" : "Bluesky"}'s ${LIMIT[platform]}.`);
   // A post that opens on a handle is threaded as a reply by readers, and replies are never Carrel's.
   if (/^[.\s]*@\w/.test(t)) out.push("It opens with an @handle, which reads as a reply.");
-  for (const word of SEED_WORDS) {
-    const re = new RegExp(`(?<![\\p{L}'\u2019])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/'/g, "['\u2019]")}(?![\\p{L}])`, "iu");
-    if (re.test(t)) out.push(`"${word}" is on the AI-habits list.`);
-  }
-  if (NOT_JUST.some((re) => re.test(t))) out.push(`The "not X, it's Y" construction.`);
+  for (const issue of checkProse(t, { phrases: SEED_WORDS })) out.push(issue.message);
   if (/!\s*$/.test(t) && /!.*!/.test(t)) out.push("More than one exclamation mark.");
   return out;
 }
