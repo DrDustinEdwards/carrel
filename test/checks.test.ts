@@ -183,7 +183,7 @@ describe("PLANT: voice", () => {
     const found = checkVoice(path, scene(FULL, PLANT), profile);
     expect(found).toHaveLength(1);
     expect(found[0]!.check).toBe("voice");
-    expect(found[0]!.message).toMatch(/^Reads unlike your passages in shared\/voice\/ \(distance \d\.\d\d, flagged from 1\.1\): sentences average/);
+    expect(found[0]!.message).toMatch(/^Reads unlike your passages in shared\/voice\/ \(distance \d\.\d\d, flagged from \d\.\d\d\): sentences average/);
   });
 
   it("CLEAN TWIN: more of Dustin's register, not in the passages, is not flagged", () => {

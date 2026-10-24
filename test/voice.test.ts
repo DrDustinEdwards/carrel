@@ -53,9 +53,14 @@ describe("the brief and the checks", () => {
     expect(BASELINE.some((b) => b.includes(brief.excerpts[0]!.slice(0, 80)))).toBe(true);
     expect(brief.notice).toMatch(/data to read/);
 
-    const saved = (await ai.call("carrel_save_draft", { project: SLUG, item: "post-new", source: `---\ntitle: New\n---\nLet us delve into it.\n\n${PLANT}\n` }))
-      .structuredContent as { checks: { issues: { excerpt: string | null; line: number | null }[]; voice: { unlike: boolean } } };
+    expect(brief.rules).toMatch(/Never copy their facts/);
+
+    // A sentence lifted from an excerpt is flagged: the excerpts lend the voice, not an old post's facts.
+    const lifted = brief.excerpts[0]!.split(/(?<=\.)\s+/).find((s) => s.split(" ").length >= 10)!;
+    const saved = (await ai.call("carrel_save_draft", { project: SLUG, item: "post-new", source: `---\ntitle: New\n---\nLet us delve into it.\n\n${PLANT}\n\n${lifted}\n` }))
+      .structuredContent as { checks: { issues: { check: string; excerpt: string | null; line: number | null }[]; voice: { unlike: boolean } } };
     expect(saved.checks.issues).toContainEqual(expect.objectContaining({ excerpt: "delve", line: 4 }));
+    expect(saved.checks.issues.filter((i) => i.check === "copied")).toHaveLength(1);
     expect(saved.checks.voice.unlike).toBe(true);
   });
 });

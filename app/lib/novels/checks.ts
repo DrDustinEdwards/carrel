@@ -13,7 +13,7 @@ import {
   type RuleEntry,
   type SceneHeader,
 } from "./layout";
-import { checkProse, describeFeature, distanceFrom, VOICE_THRESHOLD, type Profile } from "@dustinedwards/site-runtime/prose";
+import { checkProse, describeFeature, distanceFrom, thresholdFor, type Profile } from "@dustinedwards/site-runtime/prose";
 
 type CheckName = "header" | "continuity" | "timeline" | "world-rules" | "ai-habits" | "voice";
 
@@ -269,12 +269,14 @@ export function checkAiHabits(path: string, source: string, habits: AiHabits, vo
 export function checkVoice(path: string, source: string, profile: Profile | null): Finding[] {
   if (!profile) return [];
   const reading = distanceFrom(profile, parseFile(source).body);
-  if (!reading || reading.distance < VOICE_THRESHOLD) return [];
+  // The author's own range, never under the fixed floor: a writer whose passages vary is not flagged for it.
+  const threshold = thresholdFor(profile);
+  if (!reading || reading.distance < threshold) return [];
   return [
     {
       path,
       check: "voice",
-      message: `Reads unlike your passages in shared/voice/ (distance ${reading.distance.toFixed(2)}, flagged from ${VOICE_THRESHOLD}): ${reading.furthest
+      message: `Reads unlike your passages in shared/voice/ (distance ${reading.distance.toFixed(2)}, flagged from ${threshold.toFixed(2)}): ${reading.furthest
         .map(describeFeature)
         .join("; ")}.`,
       line: null,
