@@ -17,13 +17,13 @@
 import { SiteApiError } from "@dustinedwards/site-api/client";
 
 import { addFinding, aiDraftSocialPost, AiRefusal, aiPublish, itemFindings, listAiDrafts, saveAiDraft, type AiSession } from "~/lib/ai.server";
-import { checkDraft, indexedFile, listFiles, listFindings, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
+import { bookVoice, checkDraft, indexedFile, listFiles, listFindings, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { searchItemsPage } from "~/lib/index.server";
 import { isBookPath } from "~/lib/novels/layout";
 import { visibleProjects } from "~/lib/people.server";
-import { briefOf, buildVoicePack, checkAgainstPack, readVoicePack } from "~/lib/voice.server";
-import { requireSiteProject } from "~/lib/projects.server";
+import { briefOf, buildVoicePack, checkAgainstPack, readVoicePack, type VoicePack } from "~/lib/voice.server";
+import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
 import type { Action } from "~/lib/roles";
 import { siteClient, SiteNotConnected } from "~/lib/sites.server";
 
@@ -111,6 +111,12 @@ async function project(ctx: ToolContext, args: Record<string, unknown>, action: 
   return requireSiteProject(ctx.env.DB, ctx.session.viewer, str(args, "project"), action);
 }
 
+/** The project's voice pack, built from its published posts the first time a session asks. */
+async function packFor(ctx: ToolContext, p: SiteProject): Promise<VoicePack> {
+  const pack = await readVoicePack(ctx.env.DB, p);
+  return pack.builtAt ? pack : buildVoicePack(ctx.env, p, ctx.deps.fetcher);
+}
+
 async function book(ctx: ToolContext, args: Record<string, unknown>, action: Action) {
   return requireBookProject(ctx.env.DB, ctx.session.viewer, str(args, "project"), action);
 }
@@ -188,7 +194,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_save_draft",
     title: "Save an AI draft",
-    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief and write from its excerpts; before saving, run carrel_check_post_text and revise what it flags. The answer carries the same checks on what was saved. ${RULE} Save a draft only when he asked for one.`,
+    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. The answer carries the same scan on what was saved. ${RULE} Save a draft only when he asked for one.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -206,28 +212,27 @@ export const TOOLS: Tool[] = [
       const p = await project(ctx, args, "read");
       const source = str(args, "source", { max: MAX.source });
       const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source, note: str(args, "note", { optional: true, max: MAX.note }) }, ctx.deps.fetcher);
-      const checks = checkAgainstPack(await readVoicePack(ctx.env.DB, p), source);
+      const checks = checkAgainstPack(await packFor(ctx, p), source);
       return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts.", checks };
     },
   },
   {
     name: "carrel_voice_brief",
     title: "Read the voice brief",
-    description: `What to read before drafting a post for this project, so the draft reads like Dustin and not like a model: the writing rules, Dustin's own guide and word lists, what his published posts measure (sentence length, contractions, punctuation), and excerpts of his posts nearest his usual style. Write from the excerpts. Built from the site's published posts the first time it is asked for. ${RULE}`,
+    description: `What to read before drafting a post for this project, so the draft reads like Dustin and not like a model: a few writing rules, Dustin's own guide, and excerpts of his published posts, among them one of his long sentences and one of his short ones. Read the guide and the excerpts and write from them. After drafting, run carrel_check_post_text and fix only the spans it names. Built from the site's published posts the first time it is asked for. ${RULE}`,
     inputSchema: { type: "object", properties: { project: PROJECT }, required: ["project"], additionalProperties: false },
     // Reads the site's published posts the first time; it stores what it measured, which changes nothing anyone wrote.
     annotations: READ,
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
-      const pack = await readVoicePack(ctx.env.DB, p);
-      return briefOf(pack.builtAt ? pack : await buildVoicePack(ctx.env, p, ctx.deps.fetcher));
+      return briefOf(await packFor(ctx, p));
     },
   },
   {
     name: "carrel_check_post_text",
     title: "Check a post's text",
-    description: `Runs the writing checks on the given post text without saving anything: stock AI words and phrases, "not X, it's Y", closing lists of three, dashes, flat rhythm, Dustin's own word list, and how far it reads from his published posts. Revise what it flags before saving a draft. The checks flag; Dustin decides. ${RULE}`,
+    description: `Scans the given post text against Dustin's own excerpts, without saving anything: a sentence well past his long ones, a run of sentences all the same length, a model's filler, a model's word his posts never use, a joiner dash, and a run copied from an excerpt. Each finding names its line and words, and the instruction says how to fix them: edit only those spans in place and leave every other sentence as it is. The scan flags; Dustin decides. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: { project: PROJECT, source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." } },
@@ -239,7 +244,7 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
-      return checkAgainstPack(await readVoicePack(ctx.env.DB, p), str(args, "source", { max: MAX.source }));
+      return checkAgainstPack(await packFor(ctx, p), str(args, "source", { max: MAX.source }));
     },
   },
   {
@@ -359,7 +364,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_read_book_file",
     title: "Read a book file",
-    description: `A scene, bible entry or outline file as the index last had it from Git, with its version, its flags and the AI drafts saved beside it. ${RULE}`,
+    description: `A scene, bible entry or outline file as the index last had it from Git, with its version, its flags, the AI drafts saved beside it, and excerpts of Dustin's own writing (his shared/voice/ passages and this book's finished scenes, among them a long sentence of his and a short one). Before drafting a scene, read the excerpts and write from them; then run carrel_check_book_text and fix only the spans its voice findings name. ${RULE}`,
     inputSchema: { type: "object", properties: { project: BOOK, path: BOOK_PATH }, required: ["project", "path"], additionalProperties: false },
     annotations: READ,
     outside: true,
@@ -372,13 +377,13 @@ export const TOOLS: Tool[] = [
         listAiDrafts(ctx.env.DB, b, ctx.session.viewer, path),
       ]);
       if (!file) throw new AiRefusal(`There is no ${path} in this book's index. List the files with carrel_list_book_files, or ask Dustin to refresh the book from Git.`);
-      return { path, source: file.source, version: file.sha, flags, aiDrafts };
+      return { path, source: file.source, version: file.sha, flags, aiDrafts, voice: await bookVoice(ctx.env.DB, b, path) };
     },
   },
   {
     name: "carrel_check_book_text",
     title: "Run the checks on text",
-    description: `Runs the checks on save (header, continuity, timeline, world rules, AI habits, voice) on the given text for a book file, without saving or recording anything. The checks flag; Dustin decides. ${RULE}`,
+    description: `Runs the checks on save (header, continuity, timeline, world rules, and the voice scan against Dustin's own excerpts) on the given text for a book file, without saving or recording anything. The checks flag; Dustin decides. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: { project: BOOK, path: BOOK_PATH, source: { type: "string", description: "The whole file, header included." } },

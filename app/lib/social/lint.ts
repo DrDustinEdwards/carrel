@@ -1,13 +1,11 @@
-// The AI-habits lint on every post (design section 5, "Social"), and the checks a post needs before
-// it can go: it fits the platform, it is not a reply in disguise, it is not empty. A post with any
-// finding is held for Dustin; the lint flags and he decides.
+// The lint on every post (design section 5, "Social"), and the checks a post needs before it can go:
+// it fits the platform, it is not a reply in disguise, it is not empty. A post with any finding is held
+// for Dustin; the lint flags and he decides.
 //
-// The habits are the shared check's (site-runtime ./prose) with stage 4's words on top (SEED_WORDS, the
-// AI-tells list first kept in capsid/conventions.md): one check for books, posts and drafts.
+// The writing is scanned as blog drafts and book scenes are (site-runtime slopScan), against the excerpts
+// of the project's own posts: no global word list, so a word Dustin uses is never flagged.
 
-import { checkProse } from "@dustinedwards/site-runtime/prose";
-
-import { SEED_WORDS } from "~/lib/novels/checks";
+import { slopScan } from "@dustinedwards/site-runtime/prose";
 
 import { graphemes, type Platform } from "./platforms.server";
 
@@ -19,7 +17,8 @@ function length(text: string, platform: Platform): number {
 
 const LIMIT: Record<Platform, number> = { bluesky: 300, x: 280 };
 
-export function lintPost(text: string, platform: Platform): string[] {
+/** `excerpts` are the project's voice pack excerpts; with none, only the scan's own-voice-free kinds can fire. */
+export function lintPost(text: string, platform: Platform, excerpts: string[]): string[] {
   const out: string[] = [];
   const t = text.trim();
   if (!t) return ["The post is empty."];
@@ -27,7 +26,7 @@ export function lintPost(text: string, platform: Platform): string[] {
   if (n > LIMIT[platform]) out.push(`${n} characters, over ${platform === "x" ? "X" : "Bluesky"}'s ${LIMIT[platform]}.`);
   // A post that opens on a handle is threaded as a reply by readers, and replies are never Carrel's.
   if (/^[.\s]*@\w/.test(t)) out.push("It opens with an @handle, which reads as a reply.");
-  for (const issue of checkProse(t, { phrases: SEED_WORDS })) out.push(issue.message);
+  for (const f of slopScan(t, excerpts).findings) out.push(`"${f.excerpt}": ${f.say}`);
   if (/!\s*$/.test(t) && /!.*!/.test(t)) out.push("More than one exclamation mark.");
   return out;
 }

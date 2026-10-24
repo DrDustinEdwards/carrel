@@ -17,6 +17,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { socialAccounts, socialEvents, socialPosts, socialRoutineRuns } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
+import { packExcerpts } from "~/lib/voice.server";
 
 import { lintPost } from "./lint";
 import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
@@ -172,8 +173,14 @@ export type TickResult = { linted: number; routineFired: number; templated: numb
 type Account = typeof socialAccounts.$inferSelect;
 
 /** Lints a drafted post and routes it by the account's switch. */
+/** The voice excerpts of the project a post announces, for its lint. */
+async function excerptsFor(db: D1Database, eventId: number): Promise<string[]> {
+  const event = await drizzle(db).select({ projectId: socialEvents.projectId }).from(socialEvents).where(eq(socialEvents.id, eventId)).get();
+  return event ? packExcerpts(db, event.projectId) : [];
+}
+
 async function route(db: D1Database, post: typeof socialPosts.$inferSelect, account: Account) {
-  const findings = lintPost(post.text, account.platform);
+  const findings = lintPost(post.text, account.platform, await excerptsFor(db, post.eventId));
   const status = findings.length ? "held" : account.mode === "auto" ? "queued" : "awaiting";
   await drizzle(db).update(socialPosts).set({ status, lint: JSON.stringify(findings) }).where(eq(socialPosts.id, post.id));
   await drizzle(db).update(socialEvents).set({ state: "covered" }).where(and(eq(socialEvents.id, post.eventId), inArray(socialEvents.state, ["waiting", "routine"])));
@@ -361,7 +368,7 @@ export async function decidePost(
       return { ok: true as const };
     case "edit": {
       if (!open) return { ok: false as const, error: "Only a held or awaiting post can be edited." };
-      const findings = lintPost(decision.text, account.platform);
+      const findings = lintPost(decision.text, account.platform, await excerptsFor(db, post.eventId));
       await d.update(socialPosts).set({ text: decision.text.trim(), lint: JSON.stringify(findings), status: findings.length ? "held" : "awaiting" }).where(eq(socialPosts.id, id));
       return { ok: true as const, findings };
     }

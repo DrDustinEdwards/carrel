@@ -168,7 +168,7 @@ describe("the primary path: a draft stored ahead", () => {
     await processSocial(env, { fetcher: world.fetch, now: NOW });
     const [held] = await posts();
     expect(held).toMatchObject({ status: "held" });
-    expect(JSON.parse(held!.lint)).toEqual(['"delve" is on the list of stock phrases.', '"tapestry" is on the list of stock phrases.']);
+    expect(JSON.parse(held!.lint).map((l: string) => l.split(":")[0])).toEqual(['"delve into"', '"tapestry"']);
     expect(world.sent).toEqual([]);
 
     const o = await owner();
@@ -337,12 +337,15 @@ describe("switches and caps", () => {
 });
 
 describe("the lint", () => {
-  it("flags length by each platform's count, a reply in disguise, and the construction", () => {
-    expect(lintPost("x".repeat(281), "x")).toEqual(["281 characters, over X's 280."]);
-    expect(lintPost(`${"x".repeat(250)} https://example.com/${"a".repeat(80)}`, "x")).toEqual([]); // A link counts as 23.
-    expect(lintPost("@someone great point", "bluesky")).toEqual(["It opens with an @handle, which reads as a reply."]);
-    expect(lintPost("It's not just a podcast, it's a movement.", "bluesky")).toEqual([`The "not X, it's Y" construction.`]);
-    expect(lintPost("New episode on the river's stromatolites.", "bluesky")).toEqual([]);
+  it("flags length by each platform's count, a reply in disguise, and what the scan names", () => {
+    expect(lintPost("x".repeat(281), "x", [])).toEqual(["281 characters, over X's 280."]);
+    expect(lintPost(`${"x".repeat(250)} https://example.com/${"a".repeat(80)}`, "x", [])).toEqual([]); // A link counts as 23.
+    expect(lintPost("@someone great point", "bluesky", [])).toEqual(["It opens with an @handle, which reads as a reply."]);
+    expect(lintPost("It's not just a podcast, it's a movement.", "bluesky", [])).toEqual([`"not just a podcast, it's": Say what it is. "Not X, it's Y" sets up a claim nobody made.`]);
+    expect(lintPost("New episode on the river's stromatolites.", "bluesky", [])).toEqual([]);
+    // A word the site's own posts use is not flagged.
+    expect(lintPost("A seamless new episode.", "bluesky", [])).toHaveLength(1);
+    expect(lintPost("A seamless new episode.", "bluesky", ["The edit was seamless, and nobody noticed the cut."])).toEqual([]);
   });
 });
 

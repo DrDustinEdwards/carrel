@@ -10,11 +10,11 @@ import { aiDrafts, authorship, bookFiles, drafts, findings, novelsShared, people
 import { AiRefusal, type AiSession } from "~/lib/ai.server";
 import { requireAction, type Viewer } from "~/lib/people.server";
 import { can, type Action, type Role } from "~/lib/roles";
-import { checkFile, fingerprints, readHabits, type BookContext, type Finding } from "~/lib/novels/checks";
+import { checkFile, fingerprints, type BookContext, type Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
 import { describe, isBookFolder, isBookPath, kindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
 import { GitConflict, novelsConnection, novelsRepo, type NovelsRepo } from "~/lib/novels/repo.server";
-import { profileOf } from "@dustinedwards/site-runtime/prose";
+import { voiceExcerpts } from "@dustinedwards/site-runtime/prose";
 import { takeUntyped } from "~/lib/writing.server";
 
 export type BookProject = { id: number; slug: string; name: string; book: string; role: Role };
@@ -111,27 +111,54 @@ async function indexFile(db: D1Database, projectId: number, path: string, file: 
     .onConflictDoUpdate({ target: [bookFiles.projectId, bookFiles.path], set: values });
 }
 
+/** A scene status that says the author has finished it, so it may serve as an example of their voice. */
+const FINISHED = /^(?:done|final|finished|complete)/i;
+/** Finished scenes taken as examples: four, so that three are left when the scene checked is one of them. */
+const EXAMPLE_SCENES = 4;
+
 /** The context every check reads, from D1 alone, so a save costs no extra Git calls. */
 async function bookContext(db: D1Database, projectId: number): Promise<BookContext> {
   const d = drizzle(db);
   const rows = await d
-    .select({ path: bookFiles.path, meta: bookFiles.meta })
+    .select({ path: bookFiles.path, meta: bookFiles.meta, source: bookFiles.source })
     .from(bookFiles)
     .where(and(eq(bookFiles.projectId, projectId), inArray(bookFiles.kind, ["scene", "character", "place", "rule"])))
     .all();
-  const context: BookContext = { bible: { characters: [], places: [], rules: [] }, scenes: [], habits: readHabits(null), voice: null };
+  const context: BookContext = { bible: { characters: [], places: [], rules: [] }, scenes: [], examples: [] };
+  const sources = new Map<string, string>();
   for (const row of rows) {
     const meta = parseMeta(row.meta);
-    if (meta.kind === "scene") context.scenes.push({ path: row.path, header: meta.header });
-    else if (meta.kind === "character") context.bible.characters.push(meta.entry);
+    if (meta.kind === "scene") {
+      context.scenes.push({ path: row.path, header: meta.header });
+      sources.set(row.path, row.source);
+    } else if (meta.kind === "character") context.bible.characters.push(meta.entry);
     else if (meta.kind === "place") context.bible.places.push(meta.entry);
     else if (meta.kind === "rule") context.bible.rules.push(meta.entry);
   }
   const shared = await d.select({ path: novelsShared.path, source: novelsShared.source }).from(novelsShared).all();
-  const habits = shared.find((s) => s.path === "shared/checks/ai-habits.md");
-  context.habits = readHabits(habits?.source ?? null);
-  context.voice = profileOf(shared.filter((s) => s.path.startsWith("shared/voice/") && !s.path.endsWith("README.md")).map((s) => parseFile(s.source).body));
+  const passages = shared
+    .filter((s) => s.path.startsWith("shared/voice/") && !s.path.endsWith("README.md"))
+    .map((s) => ({ path: s.path, text: parseFile(s.source).body }));
+  const finished = readingOrder(context.scenes)
+    .filter((s) => FINISHED.test(s.header.status.trim()))
+    .slice(0, EXAMPLE_SCENES)
+    .map((s) => ({ path: s.path, text: parseFile(sources.get(s.path) ?? "").body }));
+  context.examples = [...passages, ...finished].filter((e) => e.text.trim());
   return context;
+}
+
+/**
+ * What a session drafting a scene reads first: excerpts of the author's own writing (the shared/voice/
+ * passages and the book's finished scenes, not the scene asked about), among them one of their long
+ * sentences and one of their short ones. No word lists and no measured averages.
+ */
+export async function bookVoice(db: D1Database, project: BookProject, path: string) {
+  requireCan(project, "read");
+  const { examples } = await bookContext(db, project.id);
+  return {
+    excerpts: voiceExcerpts(examples.filter((e) => e.path !== path).map((e) => e.text), 6),
+    rule: "Write from these excerpts; never copy their sentences. After drafting, run carrel_check_book_text and fix only the spans its voice findings name.",
+  };
 }
 
 // ---------- findings
@@ -257,9 +284,9 @@ export async function refreshBook(db: D1Database, repo: NovelsRepo, project: Boo
     await d.delete(findings).where(and(eq(findings.projectId, project.id), inArray(findings.path, removed)));
   }
 
-  // shared/voice/ and shared/checks/ai-habits.md, which every book's checks read.
+  // shared/voice/, which every book's voice check reads.
   const sharedWanted = sharedTree
-    .filter((f) => f.path.endsWith(".md") && (f.path.startsWith("voice/") || f.path === "checks/ai-habits.md"))
+    .filter((f) => f.path.endsWith(".md") && f.path.startsWith("voice/"))
     .map((f) => ({ path: `shared/${f.path}`, sha: f.sha }));
   const sharedKnown = new Map((await d.select({ path: novelsShared.path, sha: novelsShared.sha }).from(novelsShared).all()).map((r) => [r.path, r.sha]));
   let sharedRead = 0;
