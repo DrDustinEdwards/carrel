@@ -25,7 +25,7 @@ import {
 import { addPerson, addProject, resetDb, testEnv } from "./env";
 import { connectedEnv, fakeSite, viewerFor } from "./site";
 
-const ROUTINE_URL = "https://api.anthropic.com/v1/claude_code/routines/trig_01TEST/fire";
+const ROUTINE_URL = "https://api.anthropic.com/v1/claude_code/routines/trig_01TestRoutine/fire";
 
 type Sent = { url: string; body: Record<string, unknown>; auth: string | null };
 
@@ -228,7 +228,7 @@ describe("the routine, and the template only after it fails", () => {
     const world = fakeWorld(401);
     const tick = await processSocial(env, { fetcher: world.fetch, now: later(BATCH_DELAY_MS) });
     expect(tick.templated).toBe(1);
-    expect(tick.errors.join()).toContain("the routine refused the run (401 authentication_error: no)");
+    expect(tick.errors.join()).toContain("the routine refused the run (401 authentication_error)");
   });
 
   it("PLANT: the hourly limit is not a failure: the item waits, and the next tick tries again", async () => {
