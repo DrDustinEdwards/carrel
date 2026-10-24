@@ -70,7 +70,7 @@ describe("the protocol", () => {
     );
     expect(init.result).toMatchObject({ protocolVersion: LEGACY, serverInfo: { name: "carrel" }, capabilities: { tools: {} } });
     const legacy = await connectAs("reader@test.invalid", "Claude", { env, deps: { fetcher: site.fetch, carrelOrigin: CARREL }, era: "legacy" });
-    expect((await legacy.list()).length).toBe(14);
+    expect((await legacy.list()).length).toBe(16);
     expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "reader" }] });
   });
 

@@ -10,6 +10,7 @@ export default [
     route("p/:project/e/:item", "routes/editor.tsx"),
     route("p/:project/media", "routes/media.tsx"),
     route("p/:project/flags", "routes/project.flags.tsx"),
+    route("p/:project/voice", "routes/project.voice.tsx"),
     route("p/:project/legal", "routes/legal.tsx"),
     route("p/:project/mentions", "routes/mentions.tsx"),
     route("people", "routes/people.tsx"),

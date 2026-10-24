@@ -168,7 +168,7 @@ describe("the primary path: a draft stored ahead", () => {
     await processSocial(env, { fetcher: world.fetch, now: NOW });
     const [held] = await posts();
     expect(held).toMatchObject({ status: "held" });
-    expect(JSON.parse(held!.lint)).toEqual(['"delve" is on the AI-habits list.', '"tapestry" is on the AI-habits list.']);
+    expect(JSON.parse(held!.lint)).toEqual(['"delve" is on the list of stock phrases.', '"tapestry" is on the list of stock phrases.']);
     expect(world.sent).toEqual([]);
 
     const o = await owner();

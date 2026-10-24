@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   checkAiHabits,
+  dashesFor,
   checkContinuity,
   checkFile,
   checkRuleFile,
@@ -18,7 +19,7 @@ import {
 } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
 import { readMeta, type SceneHeader } from "~/lib/novels/layout";
-import { profileOf } from "~/lib/novels/voice";
+import { profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { BASELINE, PLANT, TWIN } from "./fixtures/voice";
 
@@ -141,43 +142,37 @@ describe("PLANT: world rules", () => {
   });
 });
 
+// The habits themselves are site-runtime ./prose's, tested there. These hold the wiring: Dustin's list,
+// his allow list, conditions: false, dashes decided by his passages, and the file's own line numbers.
 describe("PLANT: AI habits", () => {
   const path = "chapters/01-arrival/01-the-gate.md";
   const habits = readHabits(null);
   const run = (body: string) => checkAiHabits(path, scene(FULL, body), habits);
 
-  it("flags the \"it's not just X, it's Y\" construction, in both its forms", () => {
-    expect(run("It's not just a house, it's a promise.\n")).toMatchObject([{ message: `The "not X, it's Y" construction.` }]);
-    expect(run("This wasn't about money. It was about pride.\n")).toMatchObject([{ message: `The "not X, it's Y" construction.` }]);
-    expect(run("It isn't only about the land; it's about the name.\n")).toHaveLength(1);
-  });
-
-  it("flags a banned word, as a whole word and in any case", () => {
-    const found = run("The Tapestry of the hills.\n");
-    expect(found).toMatchObject([{ message: '"tapestry" is on the AI-habits list.', excerpt: "Tapestry" }]);
-    expect(run("Tapestries hung in the hall.\n")).toEqual([]);
-  });
-
-  it("flags a paragraph that closes on a rule-of-three list", () => {
-    const found = run("She stood on the porch a long time.\nIt was bold, brave, and beautiful.\n");
-    expect(found).toMatchObject([{ message: "The paragraph closes on a rule-of-three list.", line: 12, excerpt: "It was bold, brave, and beautiful." }]);
+  it("flags a seed word and a construction on the file's own line", () => {
+    expect(run("She stood a while.\nIt's not just a house, it's a promise.\n")).toMatchObject([{ check: "ai-habits", line: 12 }]);
+    expect(run("The journey north took a day.\n")).toMatchObject([{ check: "ai-habits", excerpt: "journey", line: 11 }]);
   });
 
   it("CLEAN TWIN: the same ideas without the habits are not flagged", () => {
     expect(run("It's not raining, so we walked.\n\nIt was a house. He meant it as a promise.\n")).toEqual([]);
-    expect(run("She bought eggs, flour, and a sack of rice for the week.\n\nThey talked about it, and then they went to bed.\n")).toEqual([]);
-    // A triad inside a paragraph, not closing it, is ordinary prose.
-    expect(run("He packed shirts, socks, and boots. Then he drove north.\n")).toEqual([]);
   });
 
-  it("takes words from shared/checks/ai-habits.md and lets Dustin allow one back", () => {
+  it("takes words from shared/checks/ai-habits.md, lets Dustin allow one back, and turns the constructions off", () => {
     const custom = readHabits("---\nwords: [suddenly]\nallow: [journey, discover]\n---\n");
-    expect(custom.words).toContain("suddenly");
-    expect(custom.words).not.toContain("journey");
     expect(checkAiHabits(path, scene(FULL, "Suddenly the journey was over.\n"), custom).map((f) => f.excerpt)).toEqual(["Suddenly"]);
-    expect(readHabits("---\nconditions: false\n---\n").conditions).toBe(false);
+    const words = readHabits("---\nconditions: false\n---\n");
+    expect(checkAiHabits(path, scene(FULL, "It's not just a house, it's a promise.\n"), words)).toEqual([]);
   });
 
+  it("flags dashes unless Dustin's passages use them, or the file says", () => {
+    const body = "We left early \u2014 the road was out.\n";
+    expect(run(body).map((f) => f.message)).toEqual(["A dash where a comma, a full stop or brackets would do."]);
+    const dashed = profileOf(BASELINE.map((p) => p.replace(/\. /g, " \u2014 ")));
+    expect(dashesFor(habits, dashed)).toBe("allow");
+    expect(checkAiHabits(path, scene(FULL, body), habits, dashed)).toEqual([]);
+    expect(dashesFor(readHabits("---\ndashes: flag\n---\n"), dashed)).toBe("flag");
+  });
 });
 
 describe("PLANT: voice", () => {

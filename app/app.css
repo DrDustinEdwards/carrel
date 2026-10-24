@@ -604,6 +604,17 @@ html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-
   line-height: 1.7;
 }
 
+/* An excerpt of the author's own posts on the Voice page: prose, in the reading face, marked as a quotation. */
+.app-voice-excerpt {
+  margin: var(--space-3) 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 3px solid var(--line-strong);
+  max-width: var(--measure);
+  white-space: pre-wrap;
+  font-family: var(--prose);
+  line-height: 1.7;
+}
+
 /* A row's checkbox sits above the row's stretched link, as Capsomer already lifts links and buttons
    there; without this the link takes the click and a post cannot be selected. Capsomer job: lift
    `.cap-check` in table.css, then delete this rule. */

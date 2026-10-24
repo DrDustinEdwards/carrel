@@ -15,6 +15,7 @@ import type { SiteProject } from "~/lib/projects.server";
 import { can, type Action, type Role } from "~/lib/roles";
 import { siteClient, siteConnection } from "~/lib/sites.server";
 import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
+import { recordCuts } from "~/lib/voice.server";
 
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
 
@@ -185,6 +186,8 @@ export async function writeToSite(
       const connection = siteConnection(env, project.site);
       const url = connection.state === "connected" && doc.path ? new URL(doc.path, connection.origin).href : "";
       await recordPublication(env.DB, project.id, { id: itemId, title: doc.title, url, summary: summaryFrom(doc.source) });
+      // The author's own publish of a post an AI session drafted teaches the Voice page what they cut.
+      if (!opts.client) await recordCuts(env.DB, project.id, viewer.id, itemId, doc.source);
     }
   } catch (error) {
     console.error(JSON.stringify({ index: "after-write-failed", itemId, error: String(error) }));
