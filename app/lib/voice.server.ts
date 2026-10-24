@@ -1,59 +1,45 @@
 // The voice pack of a site project: what an AI session reads before it drafts a post, and what its draft
-// is checked against. Real examples copy a voice better than a description of it (Wang et al., Findings
-// of EMNLP 2025), so the pack is built from the author's own published posts: a measured profile and the
-// excerpts nearest it. The guide and the word lists are the Owner's, on the project's Voice page. The
-// checks are site-runtime's ./prose, the one check Carrel's books and Foxhound's emails also run.
+// is scanned against. Real examples copy a voice better than a description of it (Wang et al., Findings
+// of EMNLP 2025), so the pack is the Owner's guide and excerpts of the author's own published posts,
+// chosen to hold one of their long sentences and one of their short ones. No measured averages go to a
+// session (an average sentence length is a length a model then writes every time) and no word lists.
 //
-// Learning from edits: when the author publishes a post an AI session drafted, the words the latest AI
-// draft used and the published post does not are counted. One cut in three posts, and never kept in one,
-// is offered on the Voice page for the phrase list. The author decides; nothing is added on its own.
+// After a draft, site-runtime's slopScan names the spans that read unlike the excerpts: sentence length
+// against the author's own spread, a model's filler, a model's words the excerpts never use, joiner
+// dashes. It flags, with one instruction to edit those spans in place; it never rewrites, and it never
+// holds a save or a publish. The author decides.
 //
 // Nothing here scores a draft against an AI detector. The aim is a post that reads like its author.
 
-import {
-  checkProse,
-  copiedRuns,
-  describeFeature,
-  distanceFrom,
-  nearestPassages,
-  profileOf,
-  thresholdFor,
-  WRITING_RULES,
-  type Profile,
-  type ProseIssue,
-} from "@dustinedwards/site-runtime/prose";
+import { copiedRuns, instructionFor, slopScan, voiceExcerpts, WRITING_RULES, type SlopFinding } from "@dustinedwards/site-runtime/prose";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiDrafts, siteItems, voiceCuts, voicePacks } from "~/db/schema";
+import { siteItems, voicePacks } from "~/db/schema";
 import type { ProjectRole } from "~/lib/content.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteClient } from "~/lib/sites.server";
 
-/** The newest published posts a pack is built from: enough for a profile, few enough for one request's subrequests. */
+/** The newest published posts a pack is built from: enough to show a range, few enough for one request's subrequests. */
 export const PACK_POSTS = 40;
 /** Excerpts handed to a session: the research's few-shot range, and short enough to read in full. */
 const PACK_EXCERPTS = 6;
-/** A cut offered for the list once it has been cut from this many posts and kept in none. */
-export const CUT_SUGGEST_AT = 3;
-/** The most new cut candidates one publish records, so one heavy rewrite cannot flood the table. */
-const CUTS_PER_PUBLISH = 150;
 
 export type VoicePack = {
   guide: string;
-  phrases: string[];
-  allow: string[];
-  profile: Profile | null;
   excerpts: string[];
   posts: number;
   builtAt: string | null;
 };
 
+/** A finding on a draft: the scan's four kinds, and a run copied from an excerpt (which carries an old post's facts). */
+export type DraftFinding = Omit<SlopFinding, "kind" | "line"> & { kind: SlopFinding["kind"] | "copied"; line: number | null };
+
 export type DraftCheck = {
-  issues: ProseIssue[];
-  /** How far the draft reads from the published posts, and the three measures furthest off; null without a profile or under 250 words. */
-  voice: { distance: number; threshold: number; unlike: boolean; furthest: string[] } | null;
+  findings: DraftFinding[];
+  /** What to hand the session that wrote the draft: edit these spans in place. Null when there is nothing to fix. */
+  instruction: string | null;
 };
 
 function forbid(): never {
@@ -70,8 +56,8 @@ function strings(json: string): string[] {
 }
 
 /**
- * A post's prose for measuring: the frontmatter, code, HTML, images and Markdown marks taken out, link
- * text kept. Measured on the raw source, every post would read as heavy on colons and brackets.
+ * A post's prose: the frontmatter, code, HTML, images and Markdown marks taken out, link text kept. An
+ * excerpt of the raw source would show a model brackets and markup as the author's style.
  */
 export function proseOf(source: string): string {
   return source
@@ -92,20 +78,18 @@ export function proseOf(source: string): string {
 export async function readVoicePack(db: D1Database, project: ProjectRole): Promise<VoicePack> {
   if (!can(project.role, "read")) forbid();
   const row = await drizzle(db).select().from(voicePacks).where(eq(voicePacks.projectId, project.id)).get();
-  if (!row) return { guide: "", phrases: [], allow: [], profile: null, excerpts: [], posts: 0, builtAt: null };
-  return {
-    guide: row.guide,
-    phrases: strings(row.phrases),
-    allow: strings(row.allow),
-    profile: row.profile ? (JSON.parse(row.profile) as Profile) : null,
-    excerpts: strings(row.excerpts),
-    posts: row.posts,
-    builtAt: row.builtAt,
-  };
+  if (!row) return { guide: "", excerpts: [], posts: 0, builtAt: null };
+  return { guide: row.guide, excerpts: strings(row.excerpts), posts: row.posts, builtAt: row.builtAt };
+}
+
+/** A project's excerpts with no role check, for Carrel's own lint of a social post; none when the pack is not built. */
+export async function packExcerpts(db: D1Database, projectId: number): Promise<string[]> {
+  const row = await drizzle(db).select({ excerpts: voicePacks.excerpts }).from(voicePacks).where(eq(voicePacks.projectId, projectId)).get();
+  return row ? strings(row.excerpts) : [];
 }
 
 /**
- * Rebuilds the profile and excerpts from the newest published posts the index knows, read from the site.
+ * Rebuilds the excerpts from the newest published posts the index knows, read from the site.
  * Anyone who may read the project may rebuild: it reads only what is published.
  */
 export async function buildVoicePack(env: Env, project: SiteProject, fetcher?: typeof fetch, now = new Date()): Promise<VoicePack> {
@@ -129,9 +113,8 @@ export async function buildVoicePack(env: Env, project: SiteProject, fetcher?: t
       console.error(JSON.stringify({ voice: "post-unreadable", itemId, error: String(error) }));
     }
   }
-  const profile = profileOf(texts);
-  const excerpts = profile ? nearestPassages(profile, texts, PACK_EXCERPTS) : [];
-  const values = { profile: profile ? JSON.stringify(profile) : null, excerpts: JSON.stringify(excerpts), posts: texts.length, builtAt: now.toISOString(), updatedAt: now.toISOString() };
+  const excerpts = voiceExcerpts(texts, PACK_EXCERPTS);
+  const values = { excerpts: JSON.stringify(excerpts), posts: texts.length, builtAt: now.toISOString(), updatedAt: now.toISOString() };
   await drizzle(env.DB)
     .insert(voicePacks)
     .values({ projectId: project.id, ...values })
@@ -139,74 +122,56 @@ export async function buildVoicePack(env: Env, project: SiteProject, fetcher?: t
   return readVoicePack(env.DB, project);
 }
 
-/** One entry per line, trimmed, blank lines and repeats dropped. */
-export function listFrom(text: string): string[] {
-  return [...new Set(text.split("\n").map((l) => l.trim()).filter(Boolean))];
-}
-
-/** The Owner's part of the pack: the guide and the two word lists. */
-export async function saveVoiceGuide(db: D1Database, project: ProjectRole, input: { guide: string; phrases: string[]; allow: string[] }, now = new Date()) {
+/** The Owner's part of the pack: the guide. */
+export async function saveVoiceGuide(db: D1Database, project: ProjectRole, input: { guide: string }, now = new Date()) {
   if (!can(project.role, "manage")) forbid();
-  const values = { guide: input.guide.trim(), phrases: JSON.stringify(input.phrases), allow: JSON.stringify(input.allow), updatedAt: now.toISOString() };
+  const values = { guide: input.guide.trim(), updatedAt: now.toISOString() };
   await drizzle(db)
     .insert(voicePacks)
     .values({ projectId: project.id, ...values })
     .onConflictDoUpdate({ target: voicePacks.projectId, set: values });
 }
 
-/** Dashes are flagged unless the author's own posts use them, one in 1,000 words or more. */
-function dashes(pack: VoicePack): "flag" | "allow" {
-  return (pack.profile?.mean.dashes ?? 0) >= 1 ? "allow" : "flag";
-}
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
+const WORD = /[\p{L}]+(?:['’][\p{L}]+)*/gu;
 
 /** The line a copied run (lower-case words, as copiedRuns gives it) starts on, or null when its opening words break across lines. */
 function lineOf(body: string, run: string, firstLine: number): number | null {
   const opening = run.split(" ").slice(0, 3).join(" ");
-  const at = body.split("\n").findIndex((l) => ` ${(l.toLowerCase().match(/[\p{L}]+(?:['’][\p{L}]+)*/gu) ?? []).join(" ")} `.includes(` ${opening} `));
+  const at = body.split("\n").findIndex((l) => ` ${(l.toLowerCase().match(WORD) ?? []).join(" ")} `.includes(` ${opening} `));
   return at < 0 ? null : firstLine + at;
 }
 
-/** The checks on a post's text against this project's pack. Flags only; the author decides. */
-export function checkAgainstPack(pack: VoicePack, source: string): DraftCheck {
-  const front = /^---\n[\s\S]*?\n---\n?/.exec(source.replace(/\r\n/g, "\n"));
-  const firstLine = front ? front[0].split("\n").length - (front[0].endsWith("\n") ? 1 : 0) + 1 : 1;
-  const body = front ? source.replace(/\r\n/g, "\n").slice(front[0].length) : source;
-  const issues = checkProse(body, { phrases: pack.phrases, allow: pack.allow, dashes: dashes(pack), firstLine });
-  // The excerpts are there for how the author writes; a run lifted from one carries an old post's facts.
-  for (const run of copiedRuns(body, pack.excerpts)) {
-    issues.push({ check: "copied", message: "Copied word for word from one of the excerpts: write it fresh.", excerpt: run, line: lineOf(body, run, firstLine), severity: "high" });
-  }
-  const reading = pack.profile ? distanceFrom(pack.profile, proseOf(source)) : null;
-  const threshold = pack.profile ? thresholdFor(pack.profile) : 0;
-  return {
-    issues,
-    voice: reading
-      ? { distance: round2(reading.distance), threshold: round2(threshold), unlike: reading.distance >= threshold, furthest: reading.furthest.map(describeFeature) }
-      : null,
-  };
+/**
+ * The scan of a text against the author's excerpts: slopScan's findings, then any run of eight words or more
+ * copied from an excerpt, and one instruction covering both. `firstLine` is the file line the text starts on.
+ * Flags only; the author decides.
+ */
+export function scanAgainst(excerpts: string[], body: string, firstLine = 1): DraftCheck {
+  const scan = slopScan(body, excerpts, { firstLine });
+  const copied: DraftFinding[] = copiedRuns(body, excerpts).map((run) => {
+    const ws = run.split(" ");
+    return {
+      kind: "copied",
+      excerpt: ws.length > 12 ? `${ws.slice(0, 10).join(" ")} …` : run,
+      line: lineOf(body, run, firstLine),
+      say: "Copied word for word from an excerpt. Write it in this piece's own words, with this piece's facts.",
+    };
+  });
+  const findings: DraftFinding[] = [...scan.findings, ...copied];
+  return { findings, instruction: instructionFor(findings, scan.spread) };
 }
 
-/** What the published posts measure, in words a session can write to. */
-function measures(profile: Profile | null): string[] {
-  if (!profile) return [];
-  const m = profile.mean;
-  const round = (n: number) => Math.round(n * 10) / 10;
-  return [
-    `Sentences average ${round(m["sentence length"] ?? 0)} words.`,
-    `${round(m.contractions ?? 0)} contractions per 1,000 words.`,
-    `${round(m.dashes ?? 0)} dashes, ${round(m.semicolons ?? 0)} semicolons, ${round(m.questions ?? 0)} questions and ${round(m.exclamations ?? 0)} exclamation marks per 1,000 words.`,
-    `"I" ${round(m['"i"'] ?? 0)} and "you" ${round(m['"you"'] ?? 0)} times per 1,000 words.`,
-  ];
+/** The scan on a post's text, frontmatter and all, against this project's pack. */
+export function checkAgainstPack(pack: VoicePack, source: string): DraftCheck {
+  const text = source.replace(/\r\n/g, "\n");
+  const front = /^---\n[\s\S]*?\n---\n?/.exec(text);
+  const firstLine = front ? front[0].split("\n").length - (front[0].endsWith("\n") ? 1 : 0) + 1 : 1;
+  return scanAgainst(pack.excerpts, front ? text.slice(front[0].length) : text, firstLine);
 }
 
 export type VoiceBrief = {
   rules: string;
   guide: string;
-  phrases: string[];
-  allow: string[];
-  measures: string[];
   excerpts: string[];
   posts: number;
   builtAt: string | null;
@@ -215,113 +180,7 @@ export type VoiceBrief = {
 /** What the excerpts are for, said where a session reads them. */
 const EXCERPTS_RULE = "- The excerpts show how the author writes. Never copy their facts, names, claims or sentences.";
 
-/**
- * Everything a session reads before it drafts: the rules, the author's guide and lists, the measures and
- * the excerpts. An author whose posts use dashes does not get the rule against them.
- */
-export function briefOf(pack: VoicePack): VoiceBrief {
-  const rules = WRITING_RULES.split("\n")
-    .filter((line) => dashes(pack) === "flag" || !/\bdashes\b/i.test(line))
-    .concat(EXCERPTS_RULE)
-    .join("\n");
-  return {
-    rules,
-    guide: pack.guide,
-    phrases: pack.phrases,
-    allow: pack.allow,
-    measures: measures(pack.profile),
-    excerpts: pack.excerpts,
-    posts: pack.posts,
-    builtAt: pack.builtAt,
-  };
-}
-
-// ---------- learning from edits
-
-/** Words too common to say anything about a voice. */
-const COMMON = new Set(
-  (
-    "the a an and or but if then than so of to in on at by for with from as into onto over under about after before " +
-    "is are was were be been being am do does did done have has had having will would can could should may might must " +
-    "it its it's this that these those there here what which who whom whose when where why how not no yes all any some " +
-    "each every more most less many much few very just also only even still too own same other such both either neither " +
-    "i me my we us our you your he him his she her they them their one two first new out up down off again once"
-  ).split(" "),
-);
-
-/** The words and two-word phrases of a text worth counting: lower case, no common-word-only phrases. */
-export function phrasesOf(text: string): Set<string> {
-  const words = proseOf(text).toLowerCase().match(/[\p{L}]+(?:['’][\p{L}]+)*/gu) ?? [];
-  const out = new Set<string>();
-  words.forEach((w, i) => {
-    if (w.length >= 4 && !COMMON.has(w)) out.add(w);
-    const next = words[i + 1];
-    if (next && (!COMMON.has(w) || !COMMON.has(next)) && w.length + next.length >= 7) out.add(`${w} ${next}`);
-  });
-  return out;
-}
-
-/**
- * After the author publishes `itemId`: counts what the latest AI draft of it had and the published text
- * does not, and marks every listed cut the published text kept. A post counts once per phrase however
- * often it is republished. Never throws: learning is not worth a failed publish.
- */
-export async function recordCuts(db: D1Database, projectId: number, personId: number, itemId: string, published: string, now = new Date()): Promise<number> {
-  try {
-    const draft = await drizzle(db)
-      .select({ source: aiDrafts.source })
-      .from(aiDrafts)
-      .where(and(eq(aiDrafts.projectId, projectId), eq(aiDrafts.itemId, itemId), eq(aiDrafts.personId, personId)))
-      .orderBy(desc(aiDrafts.createdAt), desc(aiDrafts.id))
-      .get();
-    if (!draft) return 0;
-    const kept = phrasesOf(published);
-    const cut = [...phrasesOf(draft.source)].filter((p) => !kept.has(p)).slice(0, CUTS_PER_PUBLISH);
-    const known = await drizzle(db).select().from(voiceCuts).where(eq(voiceCuts.projectId, projectId)).all();
-    const byPhrase = new Map(known.map((row) => [row.phrase, row]));
-    const writes = [];
-    for (const row of known) {
-      if (kept.has(row.phrase)) writes.push(drizzle(db).update(voiceCuts).set({ kept: row.kept + 1 }).where(and(eq(voiceCuts.projectId, projectId), eq(voiceCuts.phrase, row.phrase))));
-    }
-    for (const phrase of cut) {
-      const row = byPhrase.get(phrase);
-      const items = row ? strings(row.items) : [];
-      if (items.includes(itemId)) continue;
-      const set = { items: JSON.stringify([...items, itemId]), lastCutAt: now.toISOString() };
-      writes.push(drizzle(db).insert(voiceCuts).values({ projectId, phrase, ...set }).onConflictDoUpdate({ target: [voiceCuts.projectId, voiceCuts.phrase], set }));
-    }
-    for (const w of writes) await w;
-    return cut.length;
-  } catch (error) {
-    console.error(JSON.stringify({ voice: "cuts-failed", itemId, error: String(error) }));
-    return 0;
-  }
-}
-
-export type CutSuggestion = { phrase: string; posts: number; lastCutAt: string };
-
-/** Cuts seen in CUT_SUGGEST_AT posts or more, kept in none, not set aside and not already listed: most posts first. */
-export async function cutSuggestions(db: D1Database, project: ProjectRole, pack: VoicePack): Promise<CutSuggestion[]> {
-  if (!can(project.role, "read")) forbid();
-  const listed = new Set([...pack.phrases, ...pack.allow].map((p) => p.toLowerCase()));
-  const rows = await drizzle(db)
-    .select()
-    .from(voiceCuts)
-    .where(and(eq(voiceCuts.projectId, project.id), eq(voiceCuts.kept, 0), eq(voiceCuts.setAside, false)))
-    .all();
-  return rows
-    .map((r) => ({ phrase: r.phrase, posts: strings(r.items).length, lastCutAt: r.lastCutAt }))
-    .filter((r) => r.posts >= CUT_SUGGEST_AT && !listed.has(r.phrase))
-    .sort((a, b) => b.posts - a.posts || a.phrase.localeCompare(b.phrase))
-    .slice(0, 50);
-}
-
-/** The Owner's answer to a suggestion: add it to the phrase list, or set it aside for good. */
-export async function decideCut(db: D1Database, project: ProjectRole, phrase: string, decision: "add" | "set-aside") {
-  if (!can(project.role, "manage")) forbid();
-  if (decision === "add") {
-    const pack = await readVoicePack(db, project);
-    await saveVoiceGuide(db, project, { guide: pack.guide, phrases: [...new Set([...pack.phrases, phrase])], allow: pack.allow });
-  }
-  await drizzle(db).update(voiceCuts).set({ setAside: true }).where(and(eq(voiceCuts.projectId, project.id), eq(voiceCuts.phrase, phrase)));
+/** Everything a session reads before it drafts: the rules, the author's guide and the excerpts. */
+export function briefOf(pack: { guide: string; excerpts: string[]; posts: number; builtAt: string | null }): VoiceBrief {
+  return { rules: `${WRITING_RULES}\n${EXCERPTS_RULE}`, guide: pack.guide, excerpts: pack.excerpts, posts: pack.posts, builtAt: pack.builtAt };
 }

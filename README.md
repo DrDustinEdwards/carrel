@@ -93,8 +93,7 @@ The key goes in as GitHub downloads it (PKCS#1, "BEGIN RSA PRIVATE KEY"); Carrel
 ### The layout Carrel reads
 
 ```text
-shared/voice/*.md              Dustin's own passages, which the voice check compares with
-shared/checks/ai-habits.md     words: [...] added to the AI-habits list, allow: [...] removed, conditions: false
+shared/voice/*.md              Dustin's own passages, which the voice scan reads a scene against
 <book>/book.md                 title, author, language for export
 <book>/bible/characters/*.md   name, aliases, born, died
 <book>/bible/places/*.md       name, aliases
@@ -116,10 +115,9 @@ They run on every save, on the saved text, and after a refresh that finds change
 | continuity | someone present who is not in the bible, dead at the scene's date or not yet born; a location not in the bible |
 | timeline | a scene dated before the scene it follows, unless it is marked flashback (a flashback does not move the clock) |
 | world-rules | a match for any rule's forbidden patterns; on the rule itself, a pattern that cannot compile |
-| ai-habits | a word from the AI-tells list (plus the book's additions); the "not X, it's Y" construction; a paragraph closing on a rule-of-three list |
-| voice | a scene of 250 words or more that reads unlike `shared/voice/`: sentence length, function words and punctuation, a Burrows' Delta-style distance |
+| voice | site-runtime's `slopScan` against Dustin's own writing (`shared/voice/` and up to four of the book's scenes whose status starts done, final, finished or complete, never the scene itself): a sentence well past his long ones, a run all the same length, a model's filler, a model's word his writing never uses, a joiner dash or "not X, it's Y" where his writing has none, a closing list of padding |
 
-The voice threshold (`VOICE_THRESHOLD` in `app/lib/novels/voice.ts`) was set on test fixtures that stand in for Dustin's passages; it needs setting again once `shared/voice/` holds his own text. Every check has a planted problem that must be flagged and a clean twin that must not (`test/checks.test.ts`).
+There is no global word list: a word Dustin uses is never flagged. A session drafting a scene gets excerpts of the same writing with `carrel_read_book_file`, among them a long sentence of his and a short one. Every check has a planted problem that must be flagged and a clean twin that must not (`test/checks.test.ts`).
 
 ## Importing a manuscript from Word
 
@@ -158,7 +156,7 @@ Every tool is named `carrel_<action>_<resource>` and carries all four annotation
 | Tool | Who | What |
 |---|---|---|
 | `carrel_list_projects`, `carrel_search_items`, `carrel_read_item`, `carrel_preview_item`, `carrel_get_checks` | anyone with a role | read through the same functions as the pages |
-| `carrel_voice_brief`, `carrel_check_post_text` | anyone with a role | what to read before drafting (the writing rules, the Owner's guide and word lists, what the published posts measure, and excerpts nearest the author's style), and the writing checks run on text without saving |
+| `carrel_voice_brief`, `carrel_check_post_text` | anyone with a role | what to read before drafting (a few writing rules, the Owner's guide, and excerpts of the published posts holding a long and a short sentence of the author's), and the scan run on text without saving |
 | `carrel_save_draft` | Editor, Owner | a new AI draft beside the person's own; never over it, never to the site. The answer carries the writing checks on what was saved |
 | `carrel_add_finding` | anyone with a role, reviewers above all | a flag on a post, credited to the client |
 | `carrel_publish_item` | the Owner's own sessions | the post as saved on the site at `expected_version`; refused while any flag is open; recorded as "published by <client> on Dustin's instruction"; emails Dustin an unpublish link |
@@ -171,11 +169,12 @@ A **named agent** is a person row `agent:<name>` that a key resolves to; it is n
 
 ## Voice
 
-Drafts an AI session writes should read like the author, not like a model (`app/lib/voice.server.ts`, the project's Voice tab). The checks are site-runtime's `./prose`, the same ones the books and the social lint run, and Foxhound's emails: the avoid-ai-writing engine's stock phrasing plus "not X, it's Y", closing lists of three, dashes, flat rhythm and the author's own list. Nothing here measures or aims to pass an AI detector.
+Drafts an AI session writes should read like the author, not like a model (`app/lib/voice.server.ts`, the project's Voice tab). Nothing here measures or aims to pass an AI detector.
 
-- **The pack:** built from the newest 40 published posts: a measured profile (sentence length, contractions, punctuation, function words) and the six excerpts nearest it, since real examples copy a voice better than a description does. The guide and the two word lists (to flag, to allow) are the Owner's. Dashes are flagged unless the posts themselves use them.
-- **Before and after drafting:** a session reads `carrel_voice_brief`, writes from the excerpts, runs `carrel_check_post_text`, and `carrel_save_draft` answers with the checks on what it saved. The AI draft page shows them above the draft, with how far it reads from the published posts. They flag; the author edits.
-- **Learning from edits:** when the author publishes a post an AI session drafted, the words and two-word phrases the latest AI draft used and the post does not are counted (`voice_cuts`). One cut from three posts and kept in none is offered on the Voice tab, to add to the list or set aside.
+- **The brief:** the Owner's guide and six excerpts from the newest 40 published posts, one per post, among them one holding a long sentence of the author's and one a short one. Real examples copy a voice better than a description does. No word lists and no measured averages: an average sentence length is a length a model then writes every time.
+- **The scan:** site-runtime's `slopScan`, the same one the book checks and the social lint run, against those excerpts: a sentence well past the author's long ones, a run of sentences all the same length, a model's filler, a model's word the excerpts never use, a joiner dash or "not X, it's Y" where the excerpts have none, a closing list of padding, and a run copied from an excerpt. At most twelve findings, each with its line and words, and one instruction: edit only those spans in place and leave every other sentence as it is.
+- **Before and after drafting:** a session reads `carrel_voice_brief`, writes from the guide and excerpts, runs `carrel_check_post_text` and fixes only what it names; `carrel_save_draft` answers with the scan on what it saved, and the AI draft page shows it above the draft. It flags; the author edits, and publishing still waits for the Owner.
+- **Kept, unused:** `voice_packs.phrases`, `allow`, `profile` and the `voice_cuts` table from the earlier word lists, so the lists the Owner typed are not lost.
 
 ## Media
 

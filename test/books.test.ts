@@ -3,10 +3,12 @@
 // that run on save and never stop it; and export held while a flag is open.
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { sentenceSpread } from "@dustinedwards/site-runtime/prose";
 
 import {
   assembleBook,
   authorshipRecord,
+  bookVoice,
   authorshipReport,
   createBook,
   dismissFinding,
@@ -44,7 +46,7 @@ function seedRepo(extra: Record<string, string> = {}) {
     [`${SLUG}/outline/plan.md`]: "# Plan\n",
     [`${SLUG}/build/book.epub`]: "ignored",
     [`${SLUG}/notes.txt`]: "ignored",
-    "shared/checks/ai-habits.md": "---\nwords: [suddenly]\n---\n",
+    "shared/voice/dustin.md": "Wade shut the gate behind him.\n",
     ...extra,
   });
 }
@@ -118,14 +120,14 @@ describe("refresh from Git", () => {
     const { project } = await as("reader@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, project);
     gh.files.delete(`${SLUG}/outline/plan.md`);
-    await gh.commitElsewhere(`${SLUG}/chapters/01-arrival/02-supper.md`, `${HEADER}Suddenly they ate.\n`);
+    await gh.commitElsewhere(`${SLUG}/chapters/01-arrival/02-supper.md`, `${HEADER}In order to eat, they sat.\n`);
     const before = gh.requests.length;
     expect(await refreshBook(testEnv.DB, gh.repo, project)).toMatchObject({ read: 1, removed: 1, shared: 0 });
     expect(gh.requests.slice(before).filter((r) => r.includes("/contents/"))).toEqual([
       `GET /repos/DrDustinEdwards/writing/contents/${SLUG}/chapters/01-arrival/02-supper.md`,
     ]);
-    // The checks ran on what changed outside Carrel, with the book's own habits list.
-    expect((await listFindings(testEnv.DB, project)).map((f) => f.excerpt)).toEqual(["Suddenly"]);
+    // The checks ran on what changed outside Carrel.
+    expect((await listFindings(testEnv.DB, project)).map((f) => f.excerpt)).toEqual(["In order to"]);
   });
 });
 
@@ -204,8 +206,8 @@ describe("checks on save", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(gh.files.get(`${SLUG}/${path}`)!.source).toBe(source);
-    expect(result.findings.map((f) => f.check).sort()).toEqual(["ai-habits", "continuity", "timeline", "world-rules"]);
-    expect((await listFindings(testEnv.DB, project, { path })).map((f) => f.check).sort()).toEqual(["ai-habits", "continuity", "timeline", "world-rules"]);
+    expect(result.findings.map((f) => f.check).sort()).toEqual(["continuity", "timeline", "voice", "world-rules"]);
+    expect((await listFindings(testEnv.DB, project, { path })).map((f) => f.check).sort()).toEqual(["continuity", "timeline", "voice", "world-rules"]);
   });
 
   it("PLANT: the voice check flags another author's passage once shared/voice/ holds Dustin's", async () => {
@@ -217,7 +219,14 @@ describe("checks on save", () => {
       source: HEADER.replace("2024-04-12", "2024-04-13") + PLANT,
       expectedVersion: null,
     });
-    expect(result.ok && result.findings.map((f) => f.check)).toEqual(["voice"]);
+    expect(result.ok && result.findings.length > 0 && result.findings.every((f) => f.check === "voice")).toBe(true);
+
+    // A session drafting a scene reads excerpts holding a long sentence of Dustin's and a short one, and no word list.
+    const spread = sentenceSpread(BASELINE)!;
+    const brief = await bookVoice(testEnv.DB, project, "chapters/01-arrival/03-tea.md");
+    const lengths = brief.excerpts.flatMap((e) => e.split(/(?<=[.!?]["”]?)\s+/).map((t) => t.split(/\s+/).filter(Boolean).length));
+    expect(lengths.some((n) => n >= spread.long) && lengths.some((n) => n >= 2 && n <= spread.short)).toBe(true);
+    expect(Object.keys(brief).sort()).toEqual(["excerpts", "rule"]);
   });
 
   it("fixing the text clears the flag; saving a bible entry rechecks every scene", async () => {

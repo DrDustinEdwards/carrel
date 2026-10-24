@@ -4,22 +4,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  checkAiHabits,
-  dashesFor,
   checkContinuity,
   checkFile,
   checkRuleFile,
   checkTimeline,
   checkVoice,
   checkWorldRules,
-  readHabits,
   storyDate,
   type Bible,
   type BookContext,
 } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
 import { readMeta, type SceneHeader } from "~/lib/novels/layout";
-import { profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { BASELINE, PLANT, TWIN } from "./fixtures/voice";
 
@@ -142,63 +138,37 @@ describe("PLANT: world rules", () => {
   });
 });
 
-// The habits themselves are site-runtime ./prose's, tested there. These hold the wiring: Dustin's list,
-// his allow list, conditions: false, dashes decided by his passages, and the file's own line numbers.
-describe("PLANT: AI habits", () => {
+// The scan itself is site-runtime ./prose's slopScan, tested there. These hold the wiring: the author's
+// passages as the examples, the file's own line numbers, and a scene never judged against itself.
+describe("PLANT: the voice scan", () => {
   const path = "chapters/01-arrival/01-the-gate.md";
-  const habits = readHabits(null);
-  const run = (body: string) => checkAiHabits(path, scene(FULL, body), habits);
+  const examples = BASELINE.map((text, i) => ({ path: `shared/voice/passage-${i + 1}.md`, text }));
+  const run = (body: string, own = examples) => checkVoice(path, scene(FULL, body), own);
 
-  it("flags a seed word and a construction on the file's own line", () => {
-    expect(run("She stood a while.\nIt's not just a house, it's a promise.\n")).toMatchObject([{ check: "ai-habits", line: 12 }]);
-    expect(run("The journey north took a day.\n")).toMatchObject([{ check: "ai-habits", excerpt: "journey", line: 11 }]);
+  it("flags a model's filler and a model's word Dustin's passages never use, on the file's own line", () => {
+    expect(run("She stood a while.\nIt is important to note that the gate was shut.\n")).toMatchObject([{ check: "voice", line: 12, excerpt: "It is important to note that" }]);
+    expect(run("The tapestry of the hills.\n")).toMatchObject([{ check: "voice", line: 11, excerpt: "tapestry" }]);
   });
 
-  it("CLEAN TWIN: the same ideas without the habits are not flagged", () => {
-    expect(run("It's not raining, so we walked.\n\nIt was a house. He meant it as a promise.\n")).toEqual([]);
-  });
-
-  it("takes words from shared/checks/ai-habits.md, lets Dustin allow one back, and turns the constructions off", () => {
-    const custom = readHabits("---\nwords: [suddenly]\nallow: [journey, discover]\n---\n");
-    expect(checkAiHabits(path, scene(FULL, "Suddenly the journey was over.\n"), custom).map((f) => f.excerpt)).toEqual(["Suddenly"]);
-    const words = readHabits("---\nconditions: false\n---\n");
-    expect(checkAiHabits(path, scene(FULL, "It's not just a house, it's a promise.\n"), words)).toEqual([]);
-  });
-
-  it("flags dashes unless Dustin's passages use them, or the file says", () => {
-    const body = "We left early \u2014 the road was out.\n";
-    expect(run(body).map((f) => f.message)).toEqual(["A dash where a comma, a full stop or brackets would do."]);
-    const dashed = profileOf(BASELINE.map((p) => p.replace(/\. /g, " \u2014 ")));
-    expect(dashesFor(habits, dashed)).toBe("allow");
-    expect(checkAiHabits(path, scene(FULL, body), habits, dashed)).toEqual([]);
-    expect(dashesFor(readHabits("---\ndashes: flag\n---\n"), dashed)).toBe("flag");
-  });
-});
-
-describe("PLANT: voice", () => {
-  const profile = profileOf(BASELINE);
-  const path = "chapters/01-arrival/01-the-gate.md";
-
-  it("flags a public-domain passage by another author among Dustin's", () => {
-    const found = checkVoice(path, scene(FULL, PLANT), profile);
-    expect(found).toHaveLength(1);
-    expect(found[0]!.check).toBe("voice");
-    expect(found[0]!.message).toMatch(/^Reads unlike your passages in shared\/voice\/ \(distance \d\.\d\d, flagged from \d\.\d\d\): sentences average/);
+  it("flags another author's long sentences among Dustin's", () => {
+    const found = run(PLANT);
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.every((f) => f.check === "voice" && /The long sentences in the excerpts are about 18/.test(f.message))).toBe(true);
   });
 
   it("CLEAN TWIN: more of Dustin's register, not in the passages, is not flagged", () => {
-    expect(checkVoice(path, scene(FULL, TWIN), profile)).toEqual([]);
+    expect(run(TWIN)).toEqual([]);
   });
 
-  it("stays silent without passages to compare with, or on a short scene", () => {
-    expect(checkVoice(path, scene(FULL, PLANT), null)).toEqual([]);
-    expect(profileOf([BASELINE[0]!.slice(0, 400)])).toBeNull();
-    expect(checkVoice(path, scene(FULL, PLANT.slice(0, 600)), profile)).toEqual([]);
+  it("a word Dustin uses is his; a scene is never its own example", () => {
+    const tapestry = { path: "chapters/01-arrival/02-supper.md", text: "Mother's tapestry hung in the hall." };
+    expect(run("The tapestry of the hills.\n", [...examples, tapestry])).toEqual([]);
+    expect(run("The tapestry of the hills.\n", [...examples, { ...tapestry, path }])).toHaveLength(1);
   });
 });
 
 describe("the header and checkFile", () => {
-  const context: BookContext = { bible: BIBLE, scenes: [], habits: readHabits(null), voice: null };
+  const context: BookContext = { bible: BIBLE, scenes: [], examples: [] };
 
   it("PLANT: a scene with no header is flagged, and so is a missing field", () => {
     expect(checkFile("chapters/01-a/01-b.md", "Just prose.\n", context).map((f) => f.check)).toContain("header");

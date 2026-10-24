@@ -69,7 +69,7 @@ describe("books through MCP", () => {
   it("runs the checks on text without saving or recording anything", async () => {
     const call = await connect("reader@test.invalid");
     const result = await call("carrel_check_book_text", { project: SLUG, path: SCENE, source: `${HEADER}A tapestry.\n` });
-    expect(result.structuredContent).toMatchObject({ findings: [{ check: "ai-habits", excerpt: "tapestry" }] });
+    expect(result.structuredContent).toMatchObject({ findings: [{ check: "voice", excerpt: "tapestry" }] });
     const owner = await viewerFor("owner@test.invalid");
     expect(await listFindings(testEnv.DB, await requireBookProject(testEnv.DB, owner, SLUG, "read"))).toEqual([]);
   });

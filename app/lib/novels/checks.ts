@@ -2,7 +2,7 @@
 // early, never for deciding. Each takes a file and the book's context and returns findings; none
 // refuses anything. A finding names the file's own line, so the editor can point at it.
 
-import { list, parseFile } from "./frontmatter";
+import { parseFile } from "./frontmatter";
 import {
   kindOf,
   readMeta,
@@ -13,9 +13,9 @@ import {
   type RuleEntry,
   type SceneHeader,
 } from "./layout";
-import { checkProse, describeFeature, distanceFrom, thresholdFor, type Profile } from "@dustinedwards/site-runtime/prose";
+import { slopScan } from "@dustinedwards/site-runtime/prose";
 
-type CheckName = "header" | "continuity" | "timeline" | "world-rules" | "ai-habits" | "voice";
+type CheckName = "header" | "continuity" | "timeline" | "world-rules" | "voice";
 
 export type Finding = {
   path: string;
@@ -29,50 +29,16 @@ export type Bible = { characters: CharacterEntry[]; places: PlaceEntry[]; rules:
 
 export type SceneRow = { path: string; header: SceneHeader };
 
-/**
- * What the AI-habits check reads from shared/checks/ai-habits.md: Dustin's own words on top of the shared
- * check's lists, the words he allows back, whether the constructions are matched, and dashes ("allow" once
- * his passages in shared/voice/ use them, unless the file says otherwise).
- */
-export type AiHabits = { words: string[]; allow: string[]; conditions: boolean; dashes: "flag" | "allow" | null };
-
 export type BookContext = {
   bible: Bible;
   /** Every scene's header, as the index holds it. The file being checked replaces its own row. */
   scenes: SceneRow[];
-  habits: AiHabits;
-  voice: Profile | null;
+  /**
+   * The author's own writing the voice scan reads a scene against: the passages in shared/voice/ and a few
+   * of this book's finished scenes. A scene is never its own example.
+   */
+  examples: { path: string; text: string }[];
 };
-
-/**
- * The AI-tells list first kept in capsid/conventions.md (Writing style, 2026-09-25), on top of the shared
- * check's own lists (site-runtime ./prose). Dustin adds words or allows one back in shared/checks/ai-habits.md.
- * In fiction several of these are ordinary words, which is why a hit is a flag for him to weigh, not a rule.
- */
-export const SEED_WORDS = [
-  "delve", "tapestry", "spans", "landscape", "realm", "navigate", "testament to", "boasts", "stands as",
-  "compelling", "must-read", "journey", "explore", "dive into", "discover", "it's worth noting",
-  "importantly", "furthermore",
-];
-
-/**
- * shared/checks/ai-habits.md: `words:` adds to the seed, `allow:` takes a word back out of every list,
- * `conditions: false` turns the constructions off, `dashes: flag` or `dashes: allow` overrides what the
- * passages decide.
- */
-export function readHabits(source: string | null): AiHabits {
-  if (source === null) return { words: SEED_WORDS, allow: [], conditions: true, dashes: null };
-  const { data } = parseFile(source);
-  const allow = list(data, "allow").map((w) => w.toLowerCase());
-  const words = [...SEED_WORDS, ...list(data, "words")].map((w) => w.toLowerCase()).filter((w) => !allow.includes(w));
-  const dashes = data.dashes === "flag" || data.dashes === "allow" ? data.dashes : null;
-  return { words: [...new Set(words)], allow, conditions: data.conditions !== false, dashes };
-}
-
-/** Dashes are flagged unless the author's own passages use them (one in 1,000 words or more), or the habits file says. */
-export function dashesFor(habits: Pick<AiHabits, "dashes">, voice: Profile | null): "flag" | "allow" {
-  return habits.dashes ?? ((voice?.mean.dashes ?? 0) >= 1 ? "allow" : "flag");
-}
 
 // ---------- helpers
 
@@ -254,35 +220,15 @@ export function checkRuleFile(path: string, source: string, rule: RuleEntry): Fi
   return out;
 }
 
-/** The shared check's word lists, as against its constructions; `conditions: false` keeps only these. */
-const WORD_CHECKS = /^(?:phrase|tier\d)$/;
-
-// A word list alone teaches renaming (the site's ruling 117), so the shared check matches the
-// constructions too: "not X, it's Y", a paragraph closing on three, dashes, rhythm.
-export function checkAiHabits(path: string, source: string, habits: AiHabits, voice: Profile | null = null): Finding[] {
+/**
+ * The voice scan (site-runtime slopScan): the spans of a scene that read unlike the author's own examples,
+ * sentence length against their spread, a model's filler, a model's word they never use, a joiner dash.
+ * No global word list: a word the author uses is never flagged. It flags; it never refuses a save.
+ */
+export function checkVoice(path: string, source: string, examples: BookContext["examples"]): Finding[] {
   const { body, bodyLine } = parseFile(source);
-  return checkProse(body, { context: "personal", phrases: habits.words, allow: habits.allow, dashes: dashesFor(habits, voice), firstLine: bodyLine })
-    .filter((issue) => habits.conditions || WORD_CHECKS.test(issue.check))
-    .map((issue) => ({ path, check: "ai-habits", message: issue.message, line: issue.line, excerpt: issue.excerpt }));
-}
-
-export function checkVoice(path: string, source: string, profile: Profile | null): Finding[] {
-  if (!profile) return [];
-  const reading = distanceFrom(profile, parseFile(source).body);
-  // The author's own range, never under the fixed floor: a writer whose passages vary is not flagged for it.
-  const threshold = thresholdFor(profile);
-  if (!reading || reading.distance < threshold) return [];
-  return [
-    {
-      path,
-      check: "voice",
-      message: `Reads unlike your passages in shared/voice/ (distance ${reading.distance.toFixed(2)}, flagged from ${threshold.toFixed(2)}): ${reading.furthest
-        .map(describeFeature)
-        .join("; ")}.`,
-      line: null,
-      excerpt: null,
-    },
-  ];
+  const own = examples.filter((e) => e.path !== path).map((e) => e.text);
+  return slopScan(body, own, { firstLine: bodyLine }).findings.map((f) => ({ path, check: "voice", message: f.say, line: f.line, excerpt: f.excerpt }));
 }
 
 /** Every check that applies to a file of this kind. */
@@ -297,8 +243,7 @@ export function checkFile(path: string, source: string, context: BookContext): F
     ...checkContinuity(path, source, meta.header, context.bible),
     ...checkTimeline(path, source, meta.header, context.scenes),
     ...checkWorldRules(path, source, context.bible.rules),
-    ...checkAiHabits(path, source, context.habits, context.voice),
-    ...checkVoice(path, source, context.voice),
+    ...checkVoice(path, source, context.examples),
   ];
 }
 

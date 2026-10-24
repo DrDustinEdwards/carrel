@@ -345,7 +345,6 @@ async function build(base: Env): Promise<World> {
   await put(`${BOOK}/chapters/01-arrival/02-supper.md`, planned(SCENE_TWO, "First draft", "Supper, and what Wade will not say", 1500));
   await put(`${BOOK}/chapters/02-the-crossing/01-the-chain.md`, SCENE_THREE);
   await put(`${BOOK}/outline/plan.md`, "# Plan\n\nThree acts. The river is the clock.\n");
-  await put("shared/checks/ai-habits.md", "---\nwords: [suddenly]\n---\n");
   await put("shared/voice/dustin.md", BASELINE.join("\n\n"));
   await createBook(db, owner, { name: "The Paluxy Portal", folder: BOOK });
   await createBook(db, owner, { name: "Salt Roads", folder: "salt-roads" });
