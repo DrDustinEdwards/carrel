@@ -12,6 +12,7 @@
 // The write and the site's cache purge are one unit on the site's side; Carrel reports its answer.
 
 import { MentionId, Version, type MentionList, type MentionStatus } from "@dustinedwards/site-api";
+import { MENTION_FILTERS, type MentionFilter } from "@dustinedwards/site-api/admin";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -24,9 +25,7 @@ import { siteClient, SiteNotConnected } from "~/lib/sites.server";
 export const MAX_MENTION_BATCH = 100;
 const MENTIONS_PER_PAGE = 50;
 
-/** The views of the queue, pending first because it is the one that wants an action. */
-const MENTION_FILTERS = ["pending", "failed", "approved", "rejected", "unverified", "all"] as const;
-export type MentionFilter = (typeof MENTION_FILTERS)[number];
+export type { MentionFilter };
 
 export function isMentionFilter(value: string | null | undefined): value is MentionFilter {
   return (MENTION_FILTERS as readonly string[]).includes(value ?? "");

@@ -88,18 +88,8 @@ export function cleanMediaTag(raw: string): string | null {
   return tag.length > 0 && tag.length <= 32 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(tag) ? tag : null;
 }
 
-/** A typed list of tags (commas between them) as a file's whole tag set: unique, at most 12, or the reason it cannot be. */
-export function parseMediaTags(raw: string): { ok: true; tags: string[] } | { ok: false; message: string } {
-  const tags: string[] = [];
-  for (const part of raw.split(/[,\n]+/)) {
-    if (part.trim() === "") continue;
-    const tag = cleanMediaTag(part);
-    if (tag === null) return { ok: false, message: `"${part.trim()}" cannot be a tag. A tag is lower case words and numbers joined by hyphens, up to 32 characters.` };
-    if (!tags.includes(tag)) tags.push(tag);
-  }
-  if (tags.length > 12) return { ok: false, message: "A file carries at most 12 tags." };
-  return { ok: true, tags };
-}
+/** A typed list of tags as a file's whole tag set: the content kit's, so Carrel and a site's own admin read tags alike. */
+export { parseMediaTags } from "@dustinedwards/site-api/admin";
 
 export async function listMedia(
   env: Env,
