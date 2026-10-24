@@ -2,6 +2,8 @@
 // step, like publish, and held while any flag is open. Git is read first where it can be, so the
 // export is what Git holds, and the checks have seen it.
 
+import { buildPolicy } from "@dustinedwards/site-runtime/csp";
+
 import { assembleBook, bookRepo, exportGate, refreshBook, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { buildDocx, buildEpub, printHtml, slugFor } from "~/lib/novels/export";
@@ -56,7 +58,13 @@ export async function loader({ params, context }: Route.LoaderArgs) {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "no-store",
           // Its own policy: the page is the book and one inline style, and nothing runs.
-          "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+          "Content-Security-Policy": buildPolicy([
+            "default-src 'none'",
+            "style-src 'unsafe-inline'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            "frame-ancestors 'none'",
+          ]),
         },
       });
   }

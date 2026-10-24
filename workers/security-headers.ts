@@ -5,7 +5,7 @@
 // gate's refusals included. Nothing else in the repo sets a security header, except a route that
 // chooses its own policy on purpose (the preview, the print export), which is kept.
 
-import { buildContentSecurityPolicy, buildPolicy, generateNonce } from "@dustinedwards/site-runtime/csp";
+import { buildContentSecurityPolicy, buildPolicy, generateNonce, reportingEndpoints } from "@dustinedwards/site-runtime/csp";
 import { applyHeaderSet, buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
 
 /** Where browsers send violation reports: a path on the AI door, the one Carrel host outside Access. */
@@ -100,8 +100,7 @@ function apply(response: Response, set: Readonly<Record<string, string>>, policy
   applyHeaderSet(out.headers, set);
   if (framedByCarrel) out.headers.set("X-Frame-Options", "SAMEORIGIN");
   if (!ownPolicy) out.headers.set("Content-Security-Policy", policy);
-  // Absolute: Reporting-Endpoints ignores a relative endpoint.
-  out.headers.set("Reporting-Endpoints", `${CSP_REPORT_GROUP}="${reportOrigin}${CSP_REPORT_PATH}"`);
+  if (reportOrigin) out.headers.set("Reporting-Endpoints", reportingEndpoints(CSP_REPORT_GROUP, new URL(CSP_REPORT_PATH, reportOrigin)));
   return out;
 }
 
