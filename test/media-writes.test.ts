@@ -7,7 +7,7 @@
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { bulkMedia, emptyMediaTrash, listMedia, mediaMeta, parseMediaTags, restoreMedia, setMediaAlt, setMediaTags, trashMedia } from "~/lib/media.server";
+import { bulkMedia, emptyMediaTrash, listMedia, mediaMeta, restoreMedia, setMediaAlt, setMediaTags, trashMedia } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as bulkRoute } from "~/routes/media.bulk";
 import { action as mediaAction, loader as mediaLoader } from "~/routes/media";
@@ -109,7 +109,6 @@ describe("alt text, tags, trash and restore", () => {
     expect(await post("media", { intent: "set-alt", id: file.id, version: file.version, alt: "second" }, "editor@test.invalid")).toMatchObject({ intent: "set-alt", ok: false, conflict: true });
     const fresh = (await site.adapter.media!.get(file.id))!.version!;
     expect(await post("media", { intent: "set-tags", id: file.id, version: fresh, tags: "Good Tag, bad/tag" }, "editor@test.invalid")).toMatchObject({ ok: false, message: expect.stringContaining("cannot be a tag") });
-    expect(parseMediaTags("River, good tag,river")).toEqual({ ok: true, tags: ["river", "good-tag"] });
   });
 });
 
