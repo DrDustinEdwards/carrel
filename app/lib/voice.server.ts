@@ -12,11 +12,12 @@
 
 import {
   checkProse,
+  copiedRuns,
   describeFeature,
   distanceFrom,
   nearestPassages,
   profileOf,
-  VOICE_THRESHOLD,
+  thresholdFor,
   WRITING_RULES,
   type Profile,
   type ProseIssue,
@@ -158,17 +159,31 @@ function dashes(pack: VoicePack): "flag" | "allow" {
   return (pack.profile?.mean.dashes ?? 0) >= 1 ? "allow" : "flag";
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** The line a copied run (lower-case words, as copiedRuns gives it) starts on, or null when its opening words break across lines. */
+function lineOf(body: string, run: string, firstLine: number): number | null {
+  const opening = run.split(" ").slice(0, 3).join(" ");
+  const at = body.split("\n").findIndex((l) => ` ${(l.toLowerCase().match(/[\p{L}]+(?:['’][\p{L}]+)*/gu) ?? []).join(" ")} `.includes(` ${opening} `));
+  return at < 0 ? null : firstLine + at;
+}
+
 /** The checks on a post's text against this project's pack. Flags only; the author decides. */
 export function checkAgainstPack(pack: VoicePack, source: string): DraftCheck {
   const front = /^---\n[\s\S]*?\n---\n?/.exec(source.replace(/\r\n/g, "\n"));
   const firstLine = front ? front[0].split("\n").length - (front[0].endsWith("\n") ? 1 : 0) + 1 : 1;
   const body = front ? source.replace(/\r\n/g, "\n").slice(front[0].length) : source;
   const issues = checkProse(body, { phrases: pack.phrases, allow: pack.allow, dashes: dashes(pack), firstLine });
+  // The excerpts are there for how the author writes; a run lifted from one carries an old post's facts.
+  for (const run of copiedRuns(body, pack.excerpts)) {
+    issues.push({ check: "copied", message: "Copied word for word from one of the excerpts: write it fresh.", excerpt: run, line: lineOf(body, run, firstLine), severity: "high" });
+  }
   const reading = pack.profile ? distanceFrom(pack.profile, proseOf(source)) : null;
+  const threshold = pack.profile ? thresholdFor(pack.profile) : 0;
   return {
     issues,
     voice: reading
-      ? { distance: Math.round(reading.distance * 100) / 100, threshold: VOICE_THRESHOLD, unlike: reading.distance >= VOICE_THRESHOLD, furthest: reading.furthest.map(describeFeature) }
+      ? { distance: round2(reading.distance), threshold: round2(threshold), unlike: reading.distance >= threshold, furthest: reading.furthest.map(describeFeature) }
       : null,
   };
 }
@@ -197,10 +212,20 @@ export type VoiceBrief = {
   builtAt: string | null;
 };
 
-/** Everything a session reads before it drafts: the rules, the author's guide and lists, the measures and the excerpts. */
+/** What the excerpts are for, said where a session reads them. */
+const EXCERPTS_RULE = "- The excerpts show how the author writes. Never copy their facts, names, claims or sentences.";
+
+/**
+ * Everything a session reads before it drafts: the rules, the author's guide and lists, the measures and
+ * the excerpts. An author whose posts use dashes does not get the rule against them.
+ */
 export function briefOf(pack: VoicePack): VoiceBrief {
+  const rules = WRITING_RULES.split("\n")
+    .filter((line) => dashes(pack) === "flag" || !/\bdashes\b/i.test(line))
+    .concat(EXCERPTS_RULE)
+    .join("\n");
   return {
-    rules: WRITING_RULES,
+    rules,
     guide: pack.guide,
     phrases: pack.phrases,
     allow: pack.allow,
