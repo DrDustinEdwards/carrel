@@ -2,9 +2,11 @@
 // sandboxed iframe. The page is the site's markup, so it runs with no script, no forms, no network
 // but the site's own styles and images, and an opaque origin that cannot reach Carrel.
 
+import { buildPolicy } from "@dustinedwards/site-runtime/csp";
+
 /** The policy for a preview document. `sandbox` in the header holds even if the iframe attribute is lost. */
 export function previewPolicy(siteOrigin: string): string {
-  return [
+  return buildPolicy([
     "sandbox",
     "default-src 'none'",
     `style-src ${siteOrigin} 'unsafe-inline'`,
@@ -15,7 +17,7 @@ export function previewPolicy(siteOrigin: string): string {
     "form-action 'none'",
     `base-uri ${siteOrigin}`,
     "frame-ancestors 'self'",
-  ].join("; ");
+  ]);
 }
 
 /**
@@ -54,7 +56,7 @@ export function previewFailure(message: string): Response {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Content-Security-Policy": "sandbox; default-src 'none'; frame-ancestors 'self'",
+        "Content-Security-Policy": buildPolicy(["sandbox", "default-src 'none'", "frame-ancestors 'self'"]),
         "X-Frame-Options": "SAMEORIGIN",
       },
     },
