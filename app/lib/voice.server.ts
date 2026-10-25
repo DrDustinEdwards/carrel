@@ -194,12 +194,17 @@ export function scanAgainst(excerpts: string[], body: string, firstLine = 1): Dr
   return { findings, instruction: instructionFor(findings, scan.spread) };
 }
 
-/** The scan on a post's text, frontmatter and all, against this project's pack. */
+/**
+ * The scan on a post's text, frontmatter and all, against this project's pack: against every piece of the author's own
+ * writing when there is any (the measures are steadier on all of it than on the six excerpts a session reads), else
+ * against the excerpts.
+ */
 export function checkAgainstPack(pack: VoicePack, source: string): DraftCheck {
   const text = source.replace(/\r\n/g, "\n");
   const front = /^---\n[\s\S]*?\n---\n?/.exec(text);
   const firstLine = front ? front[0].split("\n").length - (front[0].endsWith("\n") ? 1 : 0) + 1 : 1;
-  return scanAgainst(pack.excerpts, front ? text.slice(front[0].length) : text, firstLine);
+  const reference = pack.from === "own" ? piecesOf(pack.own) : pack.excerpts;
+  return scanAgainst(reference, front ? text.slice(front[0].length) : text, firstLine);
 }
 
 export type VoiceBrief = {
