@@ -232,7 +232,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_check_post_text",
     title: "Check a post's text",
-    description: `Scans the given post text against Dustin's own excerpts, without saving anything: a sentence well past his long ones, a run of sentences all the same length, a model's filler, a model's word his posts never use, a joiner dash, and a run copied from an excerpt. Each finding names its line and words, and the instruction says how to fix them: edit only those spans in place and leave every other sentence as it is. The scan flags; Dustin decides. ${RULE}`,
+    description: `Scans the given post text against Dustin's own excerpts, without saving anything: a sentence well past his long ones, a run of sentences all the same length, a model's filler, a model's word his writing never uses, a joiner dash, a paragraph with nothing specific in it, a definition as the opening, a wrap-up as the ending, a stinger or a "So"/"And"/"But" opener he doesn't write, the passive voice, and a run copied from his writing. Each finding names its line and words, and the instruction says how to fix them: edit only those spans in place and leave every other sentence as it is. The scan flags; Dustin decides. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: { project: PROJECT, source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." } },
