@@ -120,14 +120,14 @@ describe("refresh from Git", () => {
     const { project } = await as("reader@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, project);
     gh.files.delete(`${SLUG}/outline/plan.md`);
-    await gh.commitElsewhere(`${SLUG}/chapters/01-arrival/02-supper.md`, `${HEADER}In order to eat, they sat.\n`);
+    await gh.commitElsewhere(`${SLUG}/chapters/01-arrival/02-supper.md`, `${HEADER}Great question, they sat.\n`);
     const before = gh.requests.length;
     expect(await refreshBook(testEnv.DB, gh.repo, project)).toMatchObject({ read: 1, removed: 1, shared: 0 });
     expect(gh.requests.slice(before).filter((r) => r.includes("/contents/"))).toEqual([
       `GET /repos/DrDustinEdwards/writing/contents/${SLUG}/chapters/01-arrival/02-supper.md`,
     ]);
     // The checks ran on what changed outside Carrel.
-    expect((await listFindings(testEnv.DB, project)).map((f) => f.excerpt)).toEqual(["In order to"]);
+    expect((await listFindings(testEnv.DB, project)).map((f) => f.excerpt)).toEqual(["Great question"]);
   });
 });
 
@@ -252,7 +252,7 @@ describe("dismissing flags and exporting", () => {
     const owner = await as("owner@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, owner.project);
     await saveBookFile(testEnv.DB, gh.repo, owner.project, owner.viewer, "chapters/01-arrival/03-late.md", {
-      source: HEADER.replace("2024-04-12", "2024-04-13") + "A tapestry. Another tapestry.\n",
+      source: HEADER.replace("2024-04-12", "2024-04-13") + "A masterpiece. Another masterpiece.\n",
       expectedVersion: null,
     });
     return { gh, owner };
@@ -276,10 +276,10 @@ describe("dismissing flags and exporting", () => {
     await dismissFinding(testEnv.DB, owner.project, owner.viewer, second!.id);
     expect(await exportGate(testEnv.DB, owner.project)).toEqual({ ok: true });
 
-    // Saving again with the same words keeps both dismissed; a new tapestry is a new flag.
+    // Saving again with the same words keeps both dismissed; a new masterpiece is a new flag.
     const path = "chapters/01-arrival/03-late.md";
     const current = gh.files.get(`${SLUG}/${path}`)!;
-    await saveBookFile(testEnv.DB, gh.repo, owner.project, owner.viewer, path, { source: `${current.source}A third tapestry.\n`, expectedVersion: current.sha });
+    await saveBookFile(testEnv.DB, gh.repo, owner.project, owner.viewer, path, { source: `${current.source}A third masterpiece.\n`, expectedVersion: current.sha });
     const all = await listFindings(testEnv.DB, owner.project);
     expect(all.map((f) => f.status).sort()).toEqual(["dismissed", "dismissed", "open"]);
   });
