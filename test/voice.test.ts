@@ -72,8 +72,8 @@ describe("the brief and the scan", () => {
     expect(saved.checks.instruction).toContain('- Line 4, "Great question": Answer the question. Cut the compliment.');
 
     // A plain page in the author's register, its names and numbers in its source, comes back clean.
-    const clean = (await ai.call("carrel_check_post_text", { project: SLUG, sources: [TWIN], source: `---\ntitle: Twin\n---\n${TWIN}\n` })).structuredContent as DraftCheck;
-    expect(clean).toEqual({ findings: [], instruction: null });
+    const { findings, instruction } = (await ai.call("carrel_check_post_text", { project: SLUG, sources: [TWIN], source: `---\ntitle: Twin\n---\n${TWIN}\n` })).structuredContent as DraftCheck;
+    expect({ findings, instruction }).toEqual({ findings: [], instruction: null });
   });
 
   it("takes the excerpts from the author's own writing once there is any, and not from the published posts", async () => {

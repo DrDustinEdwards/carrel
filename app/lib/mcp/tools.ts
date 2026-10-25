@@ -24,6 +24,7 @@ import { isBookPath } from "~/lib/novels/layout";
 import { visibleProjects } from "~/lib/people.server";
 import { briefOf, buildVoicePack, checkAgainstPack, readVoicePack, type VoicePack } from "~/lib/voice.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
+import { seoOf } from "~/lib/seo.server";
 import type { Action } from "~/lib/roles";
 import { siteClient, SiteNotConnected } from "~/lib/sites.server";
 
@@ -211,7 +212,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_save_draft",
     title: "Save an AI draft",
-    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. Pass the same sources here: they are saved with the draft for Dustin to check, and the answer carries the same scan on what was saved. ${RULE} Save a draft only when he asked for one.`,
+    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. Pass the same sources here: they are saved with the draft for Dustin to check, and the answer carries the same scan on what was saved, with the search and sharing checks. ${RULE} Save a draft only when he asked for one.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -232,7 +233,8 @@ export const TOOLS: Tool[] = [
       const sources = sourcesOf(args);
       const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source, note: str(args, "note", { optional: true, max: MAX.note }), sources }, ctx.deps.fetcher);
       const checks = checkAgainstPack(await packFor(ctx, p), source, sources);
-      return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts.", checks };
+      const seo = await seoOf(ctx.env, p, source, { id: str(args, "item") });
+      return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts.", checks, seo };
     },
   },
   {
@@ -251,10 +253,15 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_check_post_text",
     title: "Check a post's text",
-    description: `Scans the given post text against Dustin's own excerpts, without saving anything: a sentence well past his long ones, a run of sentences all the same length, a model's filler, a model's word his writing never uses, a joiner dash, a paragraph with nothing specific in it, a definition as the opening, a wrap-up as the ending, a stinger, a "So"/"And"/"But" opener, a bold lead-in, "X, not Y" or a question to the reader he doesn't write, a question to the reader at the end, the passive voice, a run copied from his writing, and any name or number found in neither the sources nor his writing. Each finding names its line and words, and the instruction says how to fix them: edit only those spans in place and leave every other sentence as it is. The scan flags; Dustin decides. ${RULE}`,
+    description: `Scans the given post text against Dustin's own excerpts, without saving anything: a sentence well past his long ones, a run of sentences all the same length, a model's filler, a model's word his writing never uses, a joiner dash, a paragraph with nothing specific in it, a definition as the opening, a wrap-up as the ending, a stinger, a "So"/"And"/"But" opener, a bold lead-in, "X, not Y" or a question to the reader he doesn't write, a question to the reader at the end, the passive voice, a run copied from his writing, and any name or number found in neither the sources nor his writing. Each finding names its line and words, and the instruction says how to fix them: edit only those spans in place and leave every other sentence as it is. Beside the scan, seo holds the search and sharing checks (a search title over about 60 characters or empty, a description missing, over about 155 or under 50, an image with no alt text, no card image) and preview, how the post will show as a search result and a link card (title, description, image URL, canonical URL). The scan flags; Dustin decides. ${RULE}`,
     inputSchema: {
       type: "object",
-      properties: { project: PROJECT, source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." }, sources: SOURCES },
+      properties: {
+        project: PROJECT,
+        source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." },
+        sources: SOURCES,
+        item: { type: "string", description: "The post's id, when it has one, so the preview carries its address on the site." },
+      },
       required: ["project", "source", "sources"],
       additionalProperties: false,
     },
@@ -263,7 +270,9 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
-      return checkAgainstPack(await packFor(ctx, p), str(args, "source", { max: MAX.source }), sourcesOf(args));
+      const source = str(args, "source", { max: MAX.source });
+      const scan = checkAgainstPack(await packFor(ctx, p), source, sourcesOf(args));
+      return { ...scan, seo: await seoOf(ctx.env, p, source, { id: str(args, "item", { optional: true, max: MAX.path }) || null }) };
     },
   },
   {
@@ -294,14 +303,22 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_get_checks",
     title: "Get a post's flags",
-    description: `The flags on a post from checks and reviewers, open and dismissed. An open flag holds publish until Dustin fixes the text or dismisses it. ${RULE}`,
+    description: `The flags on a post from checks and reviewers, open and dismissed, and seo: the search and sharing checks on Dustin's working draft (or the site's text) with a preview of the post as a search result and a link card. An open flag holds publish until Dustin fixes the text or dismisses it; the search and sharing checks only flag. ${RULE}`,
     inputSchema: { type: "object", properties: { project: PROJECT, item: ITEM }, required: ["project", "item"], additionalProperties: false },
     annotations: READ,
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
-      const flags = await itemFindings(ctx.env.DB, p, str(args, "item"));
-      return { open: flags.filter((f) => f.status === "open").length, flags };
+      const item = str(args, "item");
+      const [flags, draft] = await Promise.all([itemFindings(ctx.env.DB, p, item), readDraft(ctx.env.DB, p, ctx.session.viewer, item)]);
+      // A site that does not answer leaves the flags to answer with, checked against the draft alone.
+      const doc = await readDoc(ctx.env, p, item, ctx.deps.fetcher).catch((error: unknown) => {
+        if (error instanceof SiteNotConnected || error instanceof SiteApiError) return null;
+        throw error;
+      });
+      const source = draft?.source ?? doc?.source;
+      const seo = source ? await seoOf(ctx.env, p, source, { id: item, ...(doc ? { kind: doc.kind, path: doc.path } : {}) }) : null;
+      return { open: flags.filter((f) => f.status === "open").length, flags, seo };
     },
   },
   {

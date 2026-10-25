@@ -143,6 +143,11 @@ describe("reading, drafting, flagging", () => {
     expect((await reviewer.call("carrel_add_finding", args)).structuredContent).toMatchObject({ alreadyFlagged: true });
     const checks = await (await connect("owner@test.invalid")).call("carrel_get_checks", { project: SLUG, item: "post-one" });
     expect(checks.structuredContent).toMatchObject({ open: 1, flags: [{ check: "review", message: "This number has no source. (from Grok Build)" }] });
+    // The search and sharing checks ride along on the post's text, with its link card.
+    expect(checks.structuredContent?.seo).toMatchObject({
+      findings: [{ check: "description" }, { check: "card-image" }],
+      preview: { card: { title: "Post one", image: null }, host: "site.test" },
+    });
   });
 
   it("previews through the site's own renderer", async () => {

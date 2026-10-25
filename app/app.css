@@ -37,6 +37,7 @@
 @import "capsomer/confirm-dialog.css";
 @import "capsomer/markdown-editor.css";
 @import "capsomer/publish-gate.css";
+@import "capsomer/share-preview.css";
 @import "capsomer/stat-tile.css";
 @import "capsomer/drop-zone.css";
 @import "capsomer/media.css";
@@ -510,6 +511,20 @@
     align-items: baseline;
     gap: var(--space-2) var(--space-3);
   }
+}
+
+/* Search and sharing: the search result, the link card and its addresses, one under another. */
+.app-share-previews {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 36rem;
+}
+
+.app-share-noimage {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
 }
 
 /* "Insert from library": the picked image beside its alt text. */
