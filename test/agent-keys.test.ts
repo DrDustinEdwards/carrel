@@ -68,7 +68,7 @@ describe("what a named agent key does", () => {
     expect(listed.result!.structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "editor" }] });
     expect(((listed.result!.structuredContent as { projects: unknown[] }).projects).length).toBe(1);
 
-    const saved = await call("carrel_save_draft", { project: SLUG, item: "post-one", source: "---\ntitle: Post one\n---\nGrok's try.\n", note: "A try." });
+    const saved = await call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "---\ntitle: Post one\n---\nGrok's try.\n", note: "A try." });
     expect(saved.result!.isError).toBeUndefined();
     expect(await rows("SELECT client, source FROM ai_drafts")).toEqual([{ client: "agent:grok", source: "---\ntitle: Post one\n---\nGrok's try.\n" }]);
     const owner = await viewerFor("owner@test.invalid");
@@ -99,7 +99,7 @@ describe("what a named agent key does", () => {
   it("PLANT: the role is the person's role in People, never the key's: a Reader agent cannot save a draft", async () => {
     await seedPost();
     await testEnv.DB.prepare("UPDATE project_members SET role = 'reader' WHERE person_id = ?").bind(agentId).run();
-    const { result } = await call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x" });
+    const { result } = await call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "x" });
     expect(result).toMatchObject({ isError: true, content: [{ text: "You may not write drafts on this project." }] });
     expect(await rows("SELECT id FROM ai_drafts")).toEqual([]);
   });
@@ -110,7 +110,7 @@ describe("what a named agent key does", () => {
     for (const [name, args] of [
       ["carrel_search_items", {}],
       ["carrel_read_item", { item: "post-one" }],
-      ["carrel_save_draft", { item: "post-one", source: "x" }],
+      ["carrel_save_draft", { item: "post-one", source: "x", sources: [] }],
       ["carrel_add_finding", { item: "post-one", message: "m" }],
       ["carrel_publish_item", { item: "post-one", expected_version: "v" }],
     ] as const) {
@@ -174,7 +174,7 @@ describe("what a named agent key refuses", () => {
       "Cf-Access-Jwt-Assertion": "x.y.z",
       "Mcp-Client": "agent:other",
     };
-    const saved = await call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x" }, { headers: claims });
+    const saved = await call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "x" }, { headers: claims });
     expect(saved.result!.isError).toBeUndefined();
     // A body that claims an identity is refused by the tool's own schema; nothing is written.
     for (const claim of [{ agent: "other" }, { client: "agent:other" }, { person: "owner@test.invalid" }]) {
@@ -183,7 +183,7 @@ describe("what a named agent key refuses", () => {
     }
     expect(await rows("SELECT client FROM ai_drafts")).toEqual([{ client: "agent:grok" }]);
     // Two agents with two keys: each key is its own name, whichever the request claims to be.
-    const second = await call("carrel_save_draft", { project: SLUG, item: "post-one", source: "z" }, { env: env({ AGENT_KEY_OTHER: OTHER_KEY }), key: OTHER_KEY, headers: { "X-Agent-Name": "grok" } });
+    const second = await call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "z" }, { env: env({ AGENT_KEY_OTHER: OTHER_KEY }), key: OTHER_KEY, headers: { "X-Agent-Name": "grok" } });
     expect(second.result!.isError).toBeUndefined();
     expect((await rows("SELECT client FROM ai_drafts ORDER BY id")).map((r) => r.client)).toEqual(["agent:grok", "agent:other"]);
   });

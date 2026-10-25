@@ -44,10 +44,10 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   return {
     project: { slug: project.slug, name: project.name },
     itemId: params.item,
-    draft: { id: draft.id, client: draft.client, note: draft.note, createdAt: draft.createdAt, source: draft.source, baseVersion: draft.baseVersion },
+    draft: { id: draft.id, client: draft.client, note: draft.note, createdAt: draft.createdAt, source: draft.source, baseVersion: draft.baseVersion, sources: draft.sources },
     canEdit: can(project.role, "edit"),
     // The writing checks against this project's voice pack, run on every view: the pack may have changed since it was saved.
-    checks: checkAgainstPack(await readVoicePack(env.DB, project), draft.source),
+    checks: checkAgainstPack(await readVoicePack(env.DB, project), draft.source, draft.sources ?? undefined),
   };
 }
 
@@ -123,6 +123,21 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
           </RowList>
         )}
       </Panel>
+      {draft.sources ? (
+        <Panel title="Sources" count={draft.sources.length} src="What the session says the draft drew on" flush>
+          {draft.sources.length === 0 ? (
+            <Empty kind="nothing-yet" flush title="No sources given">
+              The session listed none, so nothing in the draft can be checked against one.
+            </Empty>
+          ) : (
+            <RowList label="Sources of this draft">
+              {draft.sources.map((s, i) => (
+                <Row key={i} title={s.split("\n")[0]!.slice(0, 160)} detail={<pre className="app-ai-draft">{s}</pre>} />
+              ))}
+            </RowList>
+          )}
+        </Panel>
+      ) : null}
       <Panel
         title="The draft"
         src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}

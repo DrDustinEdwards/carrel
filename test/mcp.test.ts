@@ -114,7 +114,7 @@ describe("reading, drafting, flagging", () => {
     await autosave(testEnv.DB, project, owner, "post-one", { source: "Dustin's working draft.", baseVersion: version });
 
     const ai = await connect("owner@test.invalid");
-    const saved = await ai.call("carrel_save_draft", { project: SLUG, item: "post-one", source: "An AI rewrite.", note: "Tightened the opening." });
+    const saved = await ai.call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "An AI rewrite.", note: "Tightened the opening." });
     expect(saved.structuredContent).toMatchObject({ saved: true, basedOnVersion: version });
     expect((await readDraft(testEnv.DB, project, owner, "post-one"))?.source).toBe("Dustin's working draft.");
     expect((await site.adapter.content.get("post-one"))?.source).toBe("---\ntitle: Post one\n---\nDustin's words.\n");
@@ -125,11 +125,11 @@ describe("reading, drafting, flagging", () => {
 
   it("PLANT: a Reader's session and a reviewer's cannot save a draft", async () => {
     await seedPost();
-    expect(await (await connect("reader@test.invalid")).call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x" })).toMatchObject({
+    expect(await (await connect("reader@test.invalid")).call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "x" })).toMatchObject({
       isError: true,
       content: [{ text: "You may not write drafts on this project." }],
     });
-    expect(await (await connect("reviewer@test.invalid")).call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x" })).toMatchObject({
+    expect(await (await connect("reviewer@test.invalid")).call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "x" })).toMatchObject({
       isError: true,
       content: [{ text: "A reviewer flags; it does not write text. Use carrel_add_finding." }],
     });
@@ -203,7 +203,7 @@ describe("publish by instruction (decision 2)", () => {
   it("PLANT: publish sends no text, so an AI draft can never be what goes live", async () => {
     const version = await seedPost();
     const ai = await connect("owner@test.invalid");
-    await ai.call("carrel_save_draft", { project: SLUG, item: "post-one", source: "---\ntitle: Post one\n---\nAI words.\n" });
+    await ai.call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "---\ntitle: Post one\n---\nAI words.\n" });
     await ai.call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
     expect((await site.adapter.content.get("post-one"))?.source).toBe("---\ntitle: Post one\n---\nDustin's words.\n");
   });

@@ -127,6 +127,8 @@ export const aiDrafts = sqliteTable("ai_drafts", {
   source: text("source").notNull(),
   baseVersion: text("base_version"),
   note: text("note").notNull().default(""),
+  // A JSON array of the text of each source the draft drew on; null on drafts saved before sources were asked for.
+  sources: text("sources"),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 

@@ -63,7 +63,7 @@ describe("the brief and the scan", () => {
 
     // A filler phrase, another author's long sentences, and a sentence lifted from an excerpt are each named.
     const lifted = brief.excerpts[0]!.split(/(?<=\.)\s+/).find((s) => s.split(" ").length >= 10)!;
-    const saved = (await ai.call("carrel_save_draft", { project: SLUG, item: "post-new", source: `---\ntitle: New\n---\nGreat question, so we walked.\n\n${PLANT}\n\n${lifted}\n` }))
+    const saved = (await ai.call("carrel_save_draft", { project: SLUG, sources: [], item: "post-new", source: `---\ntitle: New\n---\nGreat question, so we walked.\n\n${PLANT}\n\n${lifted}\n` }))
       .structuredContent as { checks: DraftCheck };
     expect(saved.checks.findings).toContainEqual(expect.objectContaining({ kind: "filler", excerpt: "Great question", line: 4 }));
     expect(saved.checks.findings.some((f) => f.kind === "length")).toBe(true);
@@ -71,8 +71,8 @@ describe("the brief and the scan", () => {
     expect(saved.checks.instruction).toMatch(/^Edit the draft in place\. Change only the spans listed\./);
     expect(saved.checks.instruction).toContain('- Line 4, "Great question": Answer the question. Cut the compliment.');
 
-    // A plain page in the author's register comes back clean.
-    const clean = (await ai.call("carrel_check_post_text", { project: SLUG, source: `---\ntitle: Twin\n---\n${TWIN}\n` })).structuredContent as DraftCheck;
+    // A plain page in the author's register, its names and numbers in its source, comes back clean.
+    const clean = (await ai.call("carrel_check_post_text", { project: SLUG, sources: [TWIN], source: `---\ntitle: Twin\n---\n${TWIN}\n` })).structuredContent as DraftCheck;
     expect(clean).toEqual({ findings: [], instruction: null });
   });
 

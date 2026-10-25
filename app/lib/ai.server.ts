@@ -145,7 +145,7 @@ export async function saveAiDraft(
   project: SiteProject,
   session: AiSession,
   itemId: string,
-  input: { source: string; note?: string },
+  input: { source: string; note?: string; sources?: string[] },
   fetcher?: typeof fetch,
 ): Promise<{ id: number; baseVersion: string | null }> {
   if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");
@@ -167,6 +167,7 @@ export async function saveAiDraft(
       source: input.source.replace(/\r\n/g, "\n"),
       baseVersion,
       note: (input.note ?? "").trim().slice(0, 500),
+      sources: JSON.stringify(input.sources ?? []),
     })
     .returning({ id: aiDrafts.id });
   return { id: row!.id, baseVersion };
@@ -194,7 +195,7 @@ export async function readAiDraft(db: D1Database, project: ProjectRole, viewer: 
     .where(and(eq(aiDrafts.id, id), eq(aiDrafts.projectId, project.id), eq(aiDrafts.itemId, itemId), eq(aiDrafts.personId, viewer.id)))
     .get();
   if (!row) throw new Response("Not found", { status: 404 });
-  return row;
+  return { ...row, sources: row.sources === null ? null : (JSON.parse(row.sources) as string[]) };
 }
 
 // ---------- publish by instruction
