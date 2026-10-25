@@ -15,6 +15,7 @@ import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { SearchSharingPanel } from "~/components/editor/search-sharing";
 import { RouterLink } from "~/components/frame";
 
 import { readAiDraft } from "~/lib/ai.server";
@@ -22,6 +23,7 @@ import { autosave } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
+import { seoOf } from "~/lib/seo.server";
 import { checkAgainstPack, readVoicePack } from "~/lib/voice.server";
 
 import type { Route } from "./+types/ai-draft";
@@ -48,6 +50,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     canEdit: can(project.role, "edit"),
     // The writing checks against this project's voice pack, run on every view: the pack may have changed since it was saved.
     checks: checkAgainstPack(await readVoicePack(env.DB, project), draft.source, draft.sources ?? undefined),
+    seo: await seoOf(env, project, draft.source, { id: params.item }),
   };
 }
 
@@ -61,7 +64,7 @@ export async function action({ params, context }: Route.ActionArgs) {
 }
 
 export default function AiDraft({ loaderData }: Route.ComponentProps) {
-  const { project, itemId, draft, canEdit, checks } = loaderData;
+  const { project, itemId, draft, canEdit, checks, seo } = loaderData;
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const busy = useNavigation().state !== "idle";
   const [asking, setAsking] = useState<HTMLElement | null>(null);
@@ -123,6 +126,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
           </RowList>
         )}
       </Panel>
+      {seo ? <SearchSharingPanel check={seo} /> : null}
       {draft.sources ? (
         <Panel title="Sources" count={draft.sources.length} src="What the session says the draft drew on" flush>
           {draft.sources.length === 0 ? (

@@ -1,7 +1,7 @@
 // The editor for one site item: the copied CodeMirror editor in a prose layout, autosave to D1 as
 // you type, the site's own render in a sandboxed preview, and the writes the viewer's role allows.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -17,6 +17,7 @@ import { FlagsPanel } from "~/components/editor/flags-panel";
 import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { SearchSharingPanel } from "~/components/editor/search-sharing";
 import { AUTOSAVE_DELAY_MS, useSaveShortcut } from "~/components/editor/save-keys";
 import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
@@ -41,6 +42,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { transitionsFor } from "capsomer/publish-transition";
 import { PageHead } from "capsomer/react/page-head";
 import { can } from "~/lib/roles";
+import { seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
@@ -104,6 +106,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     }
   }
   const paths = sitePaths(targets);
+  const connection = siteConnection(env, project.site);
   const linkTargets: { href: string; title: string; state: "published" | "scheduled" | "draft" }[] = targets
     .filter((t) => t.itemId !== itemId && paths.has(t.itemId))
     .map((t) => ({ href: paths.get(t.itemId)!, title: t.title || t.itemId, state: t.status }));
@@ -122,7 +125,10 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     everPublished: Boolean(doc?.publishedAt),
     publishedAt: doc?.publishedAt ?? null,
     // Where the post lives, for the publish controls' View link: the site's origin and the post's path.
-    liveUrl: doc?.path && siteConnection(env, project.site).state === "connected" ? new URL(doc.path, (siteConnection(env, project.site) as { origin: string }).origin).href : null,
+    liveUrl: doc?.path && connection.state === "connected" ? new URL(doc.path, connection.origin).href : null,
+    // For the search and sharing preview: the site's origin, and the post's address, or the one its published siblings show.
+    origin: connection.state === "connected" ? connection.origin : null,
+    address: doc?.path ?? paths.get(itemId) ?? null,
     publishAt: doc?.publishAt ?? null,
     version: doc?.version ?? null,
     source: draft?.source ?? doc?.source ?? "",
@@ -370,6 +376,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     published: data.status === "published" && data.liveUrl ? { at: data.publishedAt ?? "", url: data.liveUrl } : null,
     hold: data.status === "scheduled" && data.publishAt ? { reason: "scheduled", untilLabel: utc(data.publishAt), text: `Scheduled for ${utc(data.publishAt)}` } : null,
   };
+  // The search and sharing checks, on the text as it is typed (none for a legal page or another kind).
+  const seo = useMemo(() => seoCheck(data.project.siteId, source, { kind: data.kind, origin: data.origin, path: data.address }), [source, data.kind, data.project.siteId, data.origin, data.address]);
   // Open flags never stop a publish here (checks and reviewers flag, they do not decide), so each is advisory.
   const gateChecks: GateCheck[] = data.flags.map((f) => ({
     id: `flag-${f.id}`,
@@ -381,6 +389,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     href: "#flags",
     fix: "Change the text, or dismiss the flag.",
   }));
+  // The search and sharing checks are advisory too: the gate names each and points to the panel.
+  for (const [i, f] of (seo?.findings ?? []).entries()) {
+    gateChecks.push({ id: `seo-${i}`, name: "Search and sharing", required: false, ok: false, cause: f.message, pass: "Fits", href: "#seo", fix: "Change the post's details or the image." });
+  }
 
   const historyPath = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/history`;
   const ask = (kind: "discard" | "import" | "schedule" | "dismiss", opener: HTMLElement | null, flag?: number) => setAsking({ kind, opener, flag });
@@ -441,6 +453,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
             <FlagsPanel flags={data.flags} aiDrafts={data.aiDrafts} canPublish={data.canPublish} onDismiss={(button, flag) => ask("dismiss", button, flag)} />
           ) : null}
+          {seo ? <SearchSharingPanel check={seo} /> : null}
           {data.revisions || data.historyError ? (
             <HistoryPanel
               revisions={data.revisions}
