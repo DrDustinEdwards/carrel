@@ -1,4 +1,4 @@
-// The voice pack, as a session meets it: a brief built from the published posts, and the scan an AI
+// The voice pack, as a session meets it: a brief built from the published posts or the author's own writing, and the scan an AI
 // draft comes back with. The scan itself is site-runtime ./prose's, tested there; these hold Carrel's part.
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { writeToSite } from "~/lib/content.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { sentenceSpread } from "@dustinedwards/site-runtime/prose";
-import { type DraftCheck, type VoiceBrief } from "~/lib/voice.server";
+import { type DraftCheck, saveVoiceGuide, type VoiceBrief } from "~/lib/voice.server";
 
 import { BASELINE, PLANT, TWIN } from "./fixtures/voice";
 import { addPerson, addProject, resetDb, testEnv } from "./env";
@@ -47,7 +47,7 @@ describe("the brief and the scan", () => {
     const ai = await connectAs("owner@test.invalid", "Claude", { env, deps: { fetcher: site.fetch } });
 
     const brief = (await ai.call("carrel_voice_brief", { project: SLUG })).structuredContent as VoiceBrief & { notice: string };
-    expect(brief.posts).toBe(BASELINE.length);
+    expect(brief).toMatchObject({ from: "posts", pieces: BASELINE.length });
     expect(BASELINE.some((b) => b.includes(brief.excerpts[0]!.slice(0, 80)))).toBe(true);
     expect(brief.notice).toMatch(/data to read/);
     expect(brief.rules).toMatch(/Never copy their facts/);
@@ -58,7 +58,7 @@ describe("the brief and the scan", () => {
     const lengths = brief.excerpts.flatMap((e) => e.split(/(?<=[.!?]["”]?)\s+/).map((t) => t.split(/\s+/).filter(Boolean).length));
     expect(lengths.some((n) => n >= spread.long)).toBe(true);
     expect(lengths.some((n) => n >= 2 && n <= spread.short)).toBe(true);
-    expect(Object.keys(brief).sort()).toEqual(["builtAt", "excerpts", "guide", "notice", "posts", "rules"]);
+    expect(Object.keys(brief).sort()).toEqual(["builtAt", "excerpts", "from", "guide", "notice", "pieces", "rules"]);
     expect(brief.rules).not.toMatch(/average/i);
 
     // A filler phrase, another author's long sentences, and a sentence lifted from an excerpt are each named.
@@ -74,5 +74,18 @@ describe("the brief and the scan", () => {
     // A plain page in the author's register comes back clean.
     const clean = (await ai.call("carrel_check_post_text", { project: SLUG, source: `---\ntitle: Twin\n---\n${TWIN}\n` })).structuredContent as DraftCheck;
     expect(clean).toEqual({ findings: [], instruction: null });
+  });
+
+  it("takes the excerpts from the author's own writing once there is any, and not from the published posts", async () => {
+    // A published post may have been drafted by a model; what the Owner pastes as their own writing is the voice.
+    for (const [i, body] of BASELINE.entries()) await publish(`post-${i}`, body);
+    const { project } = await owner();
+    await saveVoiceGuide(testEnv.DB, project, { guide: "", own: `${TWIN}\n\n---\n\n${PLANT}` });
+    const ai = await connectAs("owner@test.invalid", "Claude", { env, deps: { fetcher: site.fetch } });
+
+    const brief = (await ai.call("carrel_voice_brief", { project: SLUG })).structuredContent as VoiceBrief;
+    expect(brief).toMatchObject({ from: "own", pieces: 2 });
+    expect(brief.excerpts.length).toBeGreaterThan(0);
+    expect(brief.excerpts.every((e) => TWIN.includes(e.slice(0, 60)) || PLANT.includes(e.slice(0, 60)))).toBe(true);
   });
 });

@@ -111,7 +111,7 @@ async function project(ctx: ToolContext, args: Record<string, unknown>, action: 
   return requireSiteProject(ctx.env.DB, ctx.session.viewer, str(args, "project"), action);
 }
 
-/** The project's voice pack, built from its published posts the first time a session asks. */
+/** The project's voice pack, built the first time a session asks. */
 async function packFor(ctx: ToolContext, p: SiteProject): Promise<VoicePack> {
   const pack = await readVoicePack(ctx.env.DB, p);
   return pack.builtAt ? pack : buildVoicePack(ctx.env, p, ctx.deps.fetcher);
@@ -219,7 +219,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_voice_brief",
     title: "Read the voice brief",
-    description: `What to read before drafting a post for this project, so the draft reads like Dustin and not like a model: a few writing rules, Dustin's own guide, and excerpts of his published posts, among them one of his long sentences and one of his short ones. Read the guide and the excerpts and write from them. After drafting, run carrel_check_post_text and fix only the spans it names. Built from the site's published posts the first time it is asked for. ${RULE}`,
+    description: `What to read before drafting a post for this project, so the draft reads like Dustin and not like a model: a few writing rules, Dustin's own guide, and excerpts of his own writing (what he pasted in Carrel, or his published posts while there is none; from says which), among them one of his long sentences and one of his short ones. Read the guide and the excerpts and write from them. After drafting, run carrel_check_post_text and fix only the spans it names. Built the first time it is asked for. ${RULE}`,
     inputSchema: { type: "object", properties: { project: PROJECT }, required: ["project"], additionalProperties: false },
     // Reads the site's published posts the first time; it stores what it measured, which changes nothing anyone wrote.
     annotations: READ,

@@ -1,7 +1,9 @@
 // The voice pack of a site project: what an AI session reads before it drafts a post, and what its draft
 // is scanned against. Real examples copy a voice better than a description of it (Wang et al., Findings
-// of EMNLP 2025), so the pack is the Owner's guide and excerpts of the author's own published posts,
-// chosen to hold one of their long sentences and one of their short ones. No measured averages go to a
+// of EMNLP 2025), so the pack is the Owner's guide and excerpts of the author's own writing, chosen to
+// hold one of their long sentences and one of their short ones. The writing is what the Owner pastes on
+// the Voice page when there is any, and the published posts only when there is none: a published post
+// may have been drafted by a model, and excerpts of it would teach a session a model's voice. No measured averages go to a
 // session (an average sentence length is a length a model then writes every time) and no word lists.
 //
 // After a draft, site-runtime's slopScan names the spans that read unlike the excerpts: sentence length
@@ -26,10 +28,16 @@ export const PACK_POSTS = 40;
 /** Excerpts handed to a session: the research's few-shot range, and short enough to read in full. */
 const PACK_EXCERPTS = 6;
 
+/** Where the excerpts came from: the author's own writing pasted on the Voice page, or the published posts. */
+export type VoiceSource = "own" | "posts";
+
 export type VoicePack = {
   guide: string;
+  own: string;
   excerpts: string[];
-  posts: number;
+  from: VoiceSource;
+  /** The pieces of own writing, or the posts, the excerpts were chosen from. */
+  pieces: number;
   builtAt: string | null;
 };
 
@@ -78,8 +86,26 @@ export function proseOf(source: string): string {
 export async function readVoicePack(db: D1Database, project: ProjectRole): Promise<VoicePack> {
   if (!can(project.role, "read")) forbid();
   const row = await drizzle(db).select().from(voicePacks).where(eq(voicePacks.projectId, project.id)).get();
-  if (!row) return { guide: "", excerpts: [], posts: 0, builtAt: null };
-  return { guide: row.guide, excerpts: strings(row.excerpts), posts: row.posts, builtAt: row.builtAt };
+  if (!row) return { guide: "", own: "", excerpts: [], from: "posts", pieces: 0, builtAt: null };
+  const from: VoiceSource = piecesOf(row.own).length ? "own" : "posts";
+  return { guide: row.guide, own: row.own, excerpts: strings(row.excerpts), from, pieces: row.posts, builtAt: row.builtAt };
+}
+
+/** The pieces of the author's own writing: the pasted text split at each line holding only ---. */
+function piecesOf(own: string): string[] {
+  return own
+    .replace(/\r\n/g, "\n")
+    .split(/^\s*---\s*$/m)
+    .map(proseOf)
+    .filter(Boolean);
+}
+
+async function storeExcerpts(db: D1Database, projectId: number, texts: string[], now: Date) {
+  const values = { excerpts: JSON.stringify(voiceExcerpts(texts, PACK_EXCERPTS)), posts: texts.length, builtAt: now.toISOString(), updatedAt: now.toISOString() };
+  await drizzle(db)
+    .insert(voicePacks)
+    .values({ projectId, ...values })
+    .onConflictDoUpdate({ target: voicePacks.projectId, set: values });
 }
 
 /** A project's excerpts with no role check, for Carrel's own lint of a social post; none when the pack is not built. */
@@ -89,11 +115,17 @@ export async function packExcerpts(db: D1Database, projectId: number): Promise<s
 }
 
 /**
- * Rebuilds the excerpts from the newest published posts the index knows, read from the site.
- * Anyone who may read the project may rebuild: it reads only what is published.
+ * Rebuilds the excerpts: from the author's own writing when there is any, else from the newest published
+ * posts the index knows, read from the site. Anyone who may read the project may rebuild: it reads only
+ * what the Owner pasted or what is published.
  */
 export async function buildVoicePack(env: Env, project: SiteProject, fetcher?: typeof fetch, now = new Date()): Promise<VoicePack> {
   if (!can(project.role, "read")) forbid();
+  const own = piecesOf((await readVoicePack(env.DB, project)).own);
+  if (own.length) {
+    await storeExcerpts(env.DB, project.id, own, now);
+    return readVoicePack(env.DB, project);
+  }
   const rows = await drizzle(env.DB)
     .select({ itemId: siteItems.itemId })
     .from(siteItems)
@@ -113,23 +145,24 @@ export async function buildVoicePack(env: Env, project: SiteProject, fetcher?: t
       console.error(JSON.stringify({ voice: "post-unreadable", itemId, error: String(error) }));
     }
   }
-  const excerpts = voiceExcerpts(texts, PACK_EXCERPTS);
-  const values = { excerpts: JSON.stringify(excerpts), posts: texts.length, builtAt: now.toISOString(), updatedAt: now.toISOString() };
-  await drizzle(env.DB)
-    .insert(voicePacks)
-    .values({ projectId: project.id, ...values })
-    .onConflictDoUpdate({ target: voicePacks.projectId, set: values });
+  await storeExcerpts(env.DB, project.id, texts, now);
   return readVoicePack(env.DB, project);
 }
 
-/** The Owner's part of the pack: the guide. */
-export async function saveVoiceGuide(db: D1Database, project: ProjectRole, input: { guide: string }, now = new Date()) {
+/**
+ * The Owner's part of the pack: the guide and the author's own writing. New own writing becomes the
+ * excerpts at once; with none left, the pack is marked unbuilt, so the next brief reads the published posts.
+ */
+export async function saveVoiceGuide(db: D1Database, project: ProjectRole, input: { guide: string; own: string }, now = new Date()) {
   if (!can(project.role, "manage")) forbid();
-  const values = { guide: input.guide.trim(), updatedAt: now.toISOString() };
+  const own = input.own.replace(/\r\n/g, "\n").trim();
+  const values = { guide: input.guide.trim(), own, updatedAt: now.toISOString(), ...(own ? {} : { builtAt: null }) };
   await drizzle(db)
     .insert(voicePacks)
     .values({ projectId: project.id, ...values })
     .onConflictDoUpdate({ target: voicePacks.projectId, set: values });
+  const pieces = piecesOf(own);
+  if (pieces.length) await storeExcerpts(db, project.id, pieces, now);
 }
 
 const WORD = /[\p{L}]+(?:['’][\p{L}]+)*/gu;
@@ -173,7 +206,8 @@ export type VoiceBrief = {
   rules: string;
   guide: string;
   excerpts: string[];
-  posts: number;
+  from: VoiceSource;
+  pieces: number;
   builtAt: string | null;
 };
 
@@ -181,6 +215,6 @@ export type VoiceBrief = {
 const EXCERPTS_RULE = "- The excerpts show how the author writes. Never copy their facts, names, claims or sentences.";
 
 /** Everything a session reads before it drafts: the rules, the author's guide and the excerpts. */
-export function briefOf(pack: { guide: string; excerpts: string[]; posts: number; builtAt: string | null }): VoiceBrief {
-  return { rules: `${WRITING_RULES}\n${EXCERPTS_RULE}`, guide: pack.guide, excerpts: pack.excerpts, posts: pack.posts, builtAt: pack.builtAt };
+export function briefOf(pack: VoicePack): VoiceBrief {
+  return { rules: `${WRITING_RULES}\n${EXCERPTS_RULE}`, guide: pack.guide, excerpts: pack.excerpts, from: pack.from, pieces: pack.pieces, builtAt: pack.builtAt };
 }
