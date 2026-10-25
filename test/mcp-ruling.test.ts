@@ -122,7 +122,7 @@ describe("the call log", () => {
     const before = (await rows()).length;
     const ai = await connect("reader@test.invalid", "Claude Code");
     await ai.call("carrel_read_item", { project: SLUG, item: "post-one" });
-    await ai.call("carrel_save_draft", { project: SLUG, item: "post-one", source: "x".repeat(5_000) });
+    await ai.call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "x".repeat(5_000) });
     const logged = (await rows()).slice(before);
     expect(logged).toHaveLength(2);
     expect(logged[0]).toMatchObject({ caller: "reader@test.invalid", client: "Claude Code", tool: "carrel_read_item", outcome: "ok", arguments_truncated: 0 });

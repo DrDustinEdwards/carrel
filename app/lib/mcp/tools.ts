@@ -69,7 +69,7 @@ const PAGE_DEFAULT = 50;
 const PAGE_MAX = 100;
 
 /** Longest accepted inputs, in characters: a whole file or post, a finding's message and excerpt, a draft's note, a path or id. */
-const MAX = { source: 500_000, message: 2000, excerpt: 1000, note: 500, path: 200 } as const;
+const MAX = { source: 500_000, message: 2000, excerpt: 1000, note: 500, path: 200, sources: 20 } as const;
 
 /** Read-only, and nothing outside Carrel changes. */
 const READ = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
@@ -106,6 +106,23 @@ function str(args: Record<string, unknown>, key: string, opts: { optional?: bool
   if (opts.max && value.length > opts.max) throw new AiRefusal(`${key} is longer than ${opts.max} characters.`);
   return value;
 }
+
+/** The sources a draft drew on: up to twenty texts, together no longer than a post may be. */
+function sourcesOf(args: Record<string, unknown>): string[] {
+  const value = args.sources;
+  if (value === undefined || value === null) throw new AiRefusal("sources is required: the text of each paper or page the draft drew on, or [] when it drew on none.");
+  if (!Array.isArray(value) || value.some((s) => typeof s !== "string")) throw new AiRefusal("sources must be a list of strings.");
+  if (value.length > MAX.sources) throw new AiRefusal(`sources holds more than ${MAX.sources} texts.`);
+  if (value.reduce((n: number, s: string) => n + s.length, 0) > MAX.source) throw new AiRefusal(`sources is longer than ${MAX.source} characters in all.`);
+  return value.map((s: string) => s.trim()).filter(Boolean);
+}
+
+const SOURCES = {
+  type: "array",
+  items: { type: "string" },
+  description:
+    "The text of each paper or page the draft drew on, one per entry, with its DOI or address in it: an abstract, the passage used, or the whole page. Every name and number in the draft must be in one of them or in Dustin's own writing; the scan flags any that is not. [] when the draft drew on nothing, and the scan then asks for them.",
+};
 
 async function project(ctx: ToolContext, args: Record<string, unknown>, action: Action) {
   return requireSiteProject(ctx.env.DB, ctx.session.viewer, str(args, "project"), action);
@@ -194,7 +211,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_save_draft",
     title: "Save an AI draft",
-    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. The answer carries the same scan on what was saved. ${RULE} Save a draft only when he asked for one.`,
+    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. Pass the same sources here: they are saved with the draft for Dustin to check, and the answer carries the same scan on what was saved. ${RULE} Save a draft only when he asked for one.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -202,8 +219,9 @@ export const TOOLS: Tool[] = [
         item: ITEM,
         source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." },
         note: { type: "string", description: "One line for Dustin on what this draft changes and why." },
+        sources: SOURCES,
       },
-      required: ["project", "item", "source"],
+      required: ["project", "item", "source", "sources"],
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
@@ -211,8 +229,9 @@ export const TOOLS: Tool[] = [
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
       const source = str(args, "source", { max: MAX.source });
-      const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source, note: str(args, "note", { optional: true, max: MAX.note }) }, ctx.deps.fetcher);
-      const checks = checkAgainstPack(await packFor(ctx, p), source);
+      const sources = sourcesOf(args);
+      const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source, note: str(args, "note", { optional: true, max: MAX.note }), sources }, ctx.deps.fetcher);
+      const checks = checkAgainstPack(await packFor(ctx, p), source, sources);
       return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts.", checks };
     },
   },
@@ -232,11 +251,11 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_check_post_text",
     title: "Check a post's text",
-    description: `Scans the given post text against Dustin's own excerpts, without saving anything: a sentence well past his long ones, a run of sentences all the same length, a model's filler, a model's word his writing never uses, a joiner dash, a paragraph with nothing specific in it, a definition as the opening, a wrap-up as the ending, a stinger or a "So"/"And"/"But" opener he doesn't write, the passive voice, and a run copied from his writing. Each finding names its line and words, and the instruction says how to fix them: edit only those spans in place and leave every other sentence as it is. The scan flags; Dustin decides. ${RULE}`,
+    description: `Scans the given post text against Dustin's own excerpts, without saving anything: a sentence well past his long ones, a run of sentences all the same length, a model's filler, a model's word his writing never uses, a joiner dash, a paragraph with nothing specific in it, a definition as the opening, a wrap-up as the ending, a stinger, a "So"/"And"/"But" opener, a bold lead-in, "X, not Y" or a question to the reader he doesn't write, a question to the reader at the end, the passive voice, a run copied from his writing, and any name or number found in neither the sources nor his writing. Each finding names its line and words, and the instruction says how to fix them: edit only those spans in place and leave every other sentence as it is. The scan flags; Dustin decides. ${RULE}`,
     inputSchema: {
       type: "object",
-      properties: { project: PROJECT, source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." } },
-      required: ["project", "source"],
+      properties: { project: PROJECT, source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." }, sources: SOURCES },
+      required: ["project", "source", "sources"],
       additionalProperties: false,
     },
     // Checks the text given, and saves or records nothing.
@@ -244,7 +263,7 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
-      return checkAgainstPack(await packFor(ctx, p), str(args, "source", { max: MAX.source }));
+      return checkAgainstPack(await packFor(ctx, p), str(args, "source", { max: MAX.source }), sourcesOf(args));
     },
   },
   {

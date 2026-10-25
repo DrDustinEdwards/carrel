@@ -179,8 +179,8 @@ function lineOf(body: string, run: string, firstLine: number): number | null {
  * copied from an excerpt, and one instruction covering both. `firstLine` is the file line the text starts on.
  * Flags only; the author decides.
  */
-export function scanAgainst(excerpts: string[], body: string, firstLine = 1): DraftCheck {
-  const scan = slopScan(body, excerpts, { firstLine });
+export function scanAgainst(excerpts: string[], body: string, firstLine = 1, sources?: string[]): DraftCheck {
+  const scan = slopScan(body, excerpts, { firstLine, sources });
   const copied: DraftFinding[] = copiedRuns(body, excerpts).map((run) => {
     const ws = run.split(" ");
     return {
@@ -197,14 +197,14 @@ export function scanAgainst(excerpts: string[], body: string, firstLine = 1): Dr
 /**
  * The scan on a post's text, frontmatter and all, against this project's pack: against every piece of the author's own
  * writing when there is any (the measures are steadier on all of it than on the six excerpts a session reads), else
- * against the excerpts.
+ * against the excerpts. `sources`, the text of what the draft drew on, turns on the check of its names and numbers.
  */
-export function checkAgainstPack(pack: VoicePack, source: string): DraftCheck {
+export function checkAgainstPack(pack: VoicePack, source: string, sources?: string[]): DraftCheck {
   const text = source.replace(/\r\n/g, "\n");
   const front = /^---\n[\s\S]*?\n---\n?/.exec(text);
   const firstLine = front ? front[0].split("\n").length - (front[0].endsWith("\n") ? 1 : 0) + 1 : 1;
   const reference = pack.from === "own" ? piecesOf(pack.own) : pack.excerpts;
-  return scanAgainst(reference, front ? text.slice(front[0].length) : text, firstLine);
+  return scanAgainst(reference, front ? text.slice(front[0].length) : text, firstLine, sources);
 }
 
 export type VoiceBrief = {
