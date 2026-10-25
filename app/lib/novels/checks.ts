@@ -44,7 +44,7 @@ export type BookContext = {
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?$/;
 
-/** A story date, normalised so two compare as strings; null when it is not one. */
+/** A story date, normalized so two compare as strings; null when it is not one. */
 export function storyDate(value: string): string | null {
   const m = DATE.exec(value.trim());
   if (!m) return null;

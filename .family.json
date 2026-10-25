@@ -13,5 +13,11 @@
     "micromark-extension-frontmatter": "the editor's Markdown round trip, as above",
     "micromark-extension-gfm": "the editor's Markdown round trip, as above",
     "micromark-extension-math": "the editor's Markdown round trip, as above"
+  },
+  "spelling": {
+    "skip": [
+      "docs/research/kill-matrix.json",
+      "test/fixtures/voice.ts"
+    ]
   }
 }

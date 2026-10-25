@@ -10,7 +10,7 @@ tilde fence
     indented code
     block
 
-| Left | Centre | Right |
+| Left | Center | Right |
 | :--- | :----: | ----: |
 | a    |   b    |     c |
 | `x`  | **y**  | [z](/z) |

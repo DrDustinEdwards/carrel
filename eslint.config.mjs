@@ -1,6 +1,6 @@
 // One rule, from Cloudflare's Workers best practices ("Promise handling"): a promise is awaited,
 // returned, caught, passed to ctx.waitUntil(), or marked with `void`. A floating one fails silently.
-// This is not a style linter; add a rule only when it guards behaviour.
+// This is not a style linter; add a rule only when it guards behavior.
 //
 // Needs the generated types, so run it after `npm run typecheck` (which runs wrangler types and
 // react-router typegen).

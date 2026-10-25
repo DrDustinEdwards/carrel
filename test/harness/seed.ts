@@ -28,7 +28,7 @@ export const HARNESS_READER = "sam@harness.invalid";
 const SITE_SLUG = "dustinedwards-info";
 const BOOK = "paluxy-portal";
 
-// Colours for the picture files the fake site serves; the harness script answers these requests.
+// Colors for the picture files the fake site serves; the harness script answers these requests.
 const PNG = Uint8Array.from(
   atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="),
   (c) => c.charCodeAt(0),

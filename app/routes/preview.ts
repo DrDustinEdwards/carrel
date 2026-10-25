@@ -25,7 +25,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     let source = draft?.source ?? (await readDoc(env, project, itemId))?.source;
     let label: string | null = null;
     if (source === undefined) {
-      // Nothing of the person's own and nothing on the site: show the newest AI draft, labelled as theirs to take or leave.
+      // Nothing of the person's own and nothing on the site: show the newest AI draft, labeled as theirs to take or leave.
       const [latest] = await listAiDrafts(env.DB, project, viewer, itemId);
       if (!latest) return previewFailure("There is nothing to preview yet.");
       source = (await readAiDraft(env.DB, project, viewer, itemId, latest.id)).source;

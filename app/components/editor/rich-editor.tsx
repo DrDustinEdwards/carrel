@@ -6,14 +6,14 @@
 // reading time, read-only, and Tab leaving the text. Markdown the editor does not format (front
 // matter, code, tables, directives, math) sits in source blocks, edited as Markdown in place.
 //
-// The server renders a labelled textarea holding the Markdown, so the page reads the same before the
+// The server renders a labeled textarea holding the Markdown, so the page reads the same before the
 // script runs; the editor replaces it once it loads.
 
 import { Editor, type JSONContent } from "@tiptap/core";
 import { Placeholder } from "@tiptap/extensions";
 import { useEffect, useRef, useState } from "react";
-import { countWords, filterLinkTargets, looksLikeUrl, minutesForWords, type LinkTarget, type Scaffold } from "capsomer/behaviour/markdown-editor";
-import { place } from "capsomer/behaviour/popover";
+import { countWords, filterLinkTargets, looksLikeUrl, minutesForWords, type LinkTarget, type Scaffold } from "capsomer/behavior/markdown-editor";
+import { place } from "capsomer/behavior/popover";
 
 import { fingerprints, fromDoc, pastedBlocks, toDoc, type Dialect, type JsonNode } from "~/lib/editor/markdown.mjs";
 import { baseExtensions } from "~/lib/editor/schema.mjs";

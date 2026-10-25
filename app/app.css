@@ -791,7 +791,7 @@ html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-
 
 /* The formatted editor (job_1ba8094853f5): the same prose layout as the Markdown editor, set as the
    page will read it. Source blocks hold Markdown the editor does not format, in the mono face on the
-   sunken surface, each labelled with what it is. */
+   sunken surface, each labeled with what it is. */
 .app-rich-host {
   display: block;
 }
@@ -919,7 +919,7 @@ html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-
 }
 
 /* Tiptap's own base rules (@tiptap/core 3.31.4), here rather than injected as a style element, which
-   Carrel's CSP refuses. The gap cursor takes the text colour so it shows in both themes. */
+   Carrel's CSP refuses. The gap cursor takes the text color so it shows in both themes. */
 .ProseMirror {
   position: relative;
   word-wrap: break-word;

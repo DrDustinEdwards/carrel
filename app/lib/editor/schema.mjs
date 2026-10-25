@@ -77,7 +77,7 @@ export function baseExtensions() {
   ];
 }
 
-/** The schema alone, for checking and normalising JSON without an editor. */
+/** The schema alone, for checking and normalizing JSON without an editor. */
 export function editorSchema() {
   return getSchema(baseExtensions());
 }

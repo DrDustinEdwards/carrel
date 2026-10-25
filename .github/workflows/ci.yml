@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 
-# A push to main is never cancelled by the next one: cancelling a deploy halfway could leave the
+# A push to main is never canceled by the next one: canceling a deploy halfway could leave the
 # database migrated and the Worker not. Every other ref still cancels its older run.
 concurrency:
   group: ci-${{ github.ref }}
