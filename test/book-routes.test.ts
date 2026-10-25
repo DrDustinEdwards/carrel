@@ -141,11 +141,11 @@ describe("the file editor", () => {
     await filePost("editor@test.invalid", SCENE, { intent: "autosave", source: "draft", expectedVersion: opened.version! });
     const result = (await filePost("editor@test.invalid", SCENE, {
       intent: "save",
-      source: `${HEADER}Wade opened the gate. It was a tapestry.\n`,
+      source: `${HEADER}Wade opened the gate. It was a masterpiece.\n`,
       expectedVersion: opened.version!,
     })) as { intent: "save"; outcome: { ok: boolean; findings: { excerpt: string }[] } };
     expect(result.outcome.ok).toBe(true);
-    expect(result.outcome.findings.map((f) => f.excerpt)).toEqual(["tapestry"]);
+    expect(result.outcome.findings.map((f) => f.excerpt)).toEqual(["masterpiece"]);
     expect(gh.commits).toHaveLength(1);
     const reopened = (await openFile("editor@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
     expect(reopened.draftAt).toBeNull();
@@ -167,7 +167,7 @@ describe("the file editor", () => {
   it("PLANT: an Editor cannot dismiss a flag through the route", async () => {
     await bookPost("owner@test.invalid", { intent: "refresh" });
     const opened = (await openFile("owner@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
-    await filePost("owner@test.invalid", SCENE, { intent: "save", source: `${HEADER}A tapestry.\n`, expectedVersion: opened.version! });
+    await filePost("owner@test.invalid", SCENE, { intent: "save", source: `${HEADER}A masterpiece.\n`, expectedVersion: opened.version! });
     const flag = ((await openFile("owner@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>).findings[0]!;
     expect(((await filePost("editor@test.invalid", SCENE, { intent: "dismiss", finding: String(flag.id) })) as Response).status).toBe(403);
     expect(await filePost("owner@test.invalid", SCENE, { intent: "dismiss", finding: String(flag.id) })).toEqual({ intent: "dismiss", dismissed: flag.id });
@@ -188,7 +188,7 @@ describe("the chapter view", () => {
 describe("export and the authorship record", () => {
   it("PLANT: export is 403 to an Editor, and 409 to the Owner while a flag is open", async () => {
     expect((await exportAs("editor@test.invalid", "epub")).status).toBe(403);
-    gh.files.set(`${SLUG}/${SCENE}`, { source: `${HEADER}A tapestry.\n`, sha: "0".repeat(40) });
+    gh.files.set(`${SLUG}/${SCENE}`, { source: `${HEADER}A masterpiece.\n`, sha: "0".repeat(40) });
     const held = await exportAs("owner@test.invalid", "epub");
     expect(held.status).toBe(409);
     expect(await held.text()).toMatch(/^1 flag is open\. Fix the text or dismiss each flag before exporting\./);

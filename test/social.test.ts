@@ -163,12 +163,12 @@ describe("the primary path: a draft stored ahead", () => {
   it("PLANT: a post failing the lint is held, and goes only once edited and approved", async () => {
     const id = await account("germomics-bluesky");
     const world = fakeWorld();
-    await draftSocialPost(testEnv.DB, { accountKey: "germomics-bluesky", projectId, itemId: "post-one", text: "Let's delve into the tapestry of the Paluxy.", createdBy: "Claude" });
+    await draftSocialPost(testEnv.DB, { accountKey: "germomics-bluesky", projectId, itemId: "post-one", text: "Great question: the Paluxy is a masterpiece.", createdBy: "Claude" });
     await recordPublication(testEnv.DB, projectId, PIECE, NOW);
     await processSocial(env, { fetcher: world.fetch, now: NOW });
     const [held] = await posts();
     expect(held).toMatchObject({ status: "held" });
-    expect(JSON.parse(held!.lint).map((l: string) => l.split(":")[0])).toEqual(['"delve into"', '"tapestry"']);
+    expect(JSON.parse(held!.lint).map((l: string) => l.split(":")[0])).toEqual(['"Great question"', '"masterpiece"']);
     expect(world.sent).toEqual([]);
 
     const o = await owner();
@@ -344,8 +344,8 @@ describe("the lint", () => {
     expect(lintPost("It's not just a podcast, it's a movement.", "bluesky", [])).toEqual([`"not just a podcast, it's": Say what it is. "Not X, it's Y" sets up a claim nobody made.`]);
     expect(lintPost("New episode on the river's stromatolites.", "bluesky", [])).toEqual([]);
     // A word the site's own posts use is not flagged.
-    expect(lintPost("A seamless new episode.", "bluesky", [])).toHaveLength(1);
-    expect(lintPost("A seamless new episode.", "bluesky", ["The edit was seamless, and nobody noticed the cut."])).toEqual([]);
+    expect(lintPost("A masterpiece of an episode.", "bluesky", [])).toHaveLength(1);
+    expect(lintPost("A masterpiece of an episode.", "bluesky", ["The edit was a small masterpiece, and nobody noticed the cut."])).toEqual([]);
   });
 });
 

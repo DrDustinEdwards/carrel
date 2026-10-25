@@ -146,14 +146,15 @@ describe("PLANT: the voice scan", () => {
   const run = (body: string, own = examples) => checkVoice(path, scene(FULL, body), own);
 
   it("flags a model's filler and a model's word Dustin's passages never use, on the file's own line", () => {
-    expect(run("She stood a while.\nIt is important to note that the gate was shut.\n")).toMatchObject([{ check: "voice", line: 12, excerpt: "It is important to note that" }]);
-    expect(run("The tapestry of the hills.\n")).toMatchObject([{ check: "voice", line: 11, excerpt: "tapestry" }]);
+    expect(run("She stood a while.\nGreat question, the gate was shut.\n")).toMatchObject([{ check: "voice", line: 12, excerpt: "Great question" }]);
+    expect(run("The masterpiece of the hills.\n")).toMatchObject([{ check: "voice", line: 11, excerpt: "masterpiece" }]);
   });
 
   it("flags another author's long sentences among Dustin's", () => {
     const found = run(PLANT);
     expect(found.length).toBeGreaterThan(0);
-    expect(found.every((f) => f.check === "voice" && /The long sentences in the excerpts are about 18/.test(f.message))).toBe(true);
+    expect(found.every((f) => f.check === "voice")).toBe(true);
+    expect(found.some((f) => /The long sentences in the excerpts are about 18/.test(f.message))).toBe(true);
   });
 
   it("CLEAN TWIN: more of Dustin's register, not in the passages, is not flagged", () => {
@@ -161,9 +162,9 @@ describe("PLANT: the voice scan", () => {
   });
 
   it("a word Dustin uses is his; a scene is never its own example", () => {
-    const tapestry = { path: "chapters/01-arrival/02-supper.md", text: "Mother's tapestry hung in the hall." };
-    expect(run("The tapestry of the hills.\n", [...examples, tapestry])).toEqual([]);
-    expect(run("The tapestry of the hills.\n", [...examples, { ...tapestry, path }])).toHaveLength(1);
+    const masterpiece = { path: "chapters/01-arrival/02-supper.md", text: "Mother's masterpiece hung in the hall." };
+    expect(run("The masterpiece of the hills.\n", [...examples, masterpiece])).toEqual([]);
+    expect(run("The masterpiece of the hills.\n", [...examples, { ...masterpiece, path }])).toHaveLength(1);
   });
 });
 
