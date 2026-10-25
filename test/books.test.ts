@@ -279,7 +279,7 @@ describe("dismissing flags and exporting", () => {
     // Saving again with the same words keeps both dismissed; a new masterpiece is a new flag.
     const path = "chapters/01-arrival/03-late.md";
     const current = gh.files.get(`${SLUG}/${path}`)!;
-    await saveBookFile(testEnv.DB, gh.repo, owner.project, owner.viewer, path, { source: `${current.source}A third masterpiece.\n`, expectedVersion: current.sha });
+    await saveBookFile(testEnv.DB, gh.repo, owner.project, owner.viewer, path, { source: `${current.source}A third masterpiece sat on the page that morning.\n`, expectedVersion: current.sha });
     const all = await listFindings(testEnv.DB, owner.project);
     expect(all.map((f) => f.status).sort()).toEqual(["dismissed", "dismissed", "open"]);
   });

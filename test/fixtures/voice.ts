@@ -78,7 +78,7 @@ I sat down across from him. The table had initials carved into the corner, and I
 I looked at the envelope for a long time. My name was written in pencil on the back, in handwriting I knew but could not place. Outside, the tractor was still running where he had left it, a low steady sound, like the river.`,
 ];
 
-export const TWIN = `By afternoon the water had dropped a foot. You could see the mud line on the fence posts where it had been. I walked down to the crossing to look at my truck. Somebody had stuck a note under the wiper blade. It said the county would tow it if it was still there on Friday, and it was signed by a deputy whose name I didn't recognize.
+export const TWIN = `By afternoon the water had dropped a foot. You could see the mud line on the fence posts where it had been. I walked down to the crossing to look at my truck. Somebody had stuck a note under the wiper blade. It said the county would tow it if it was still there on Friday, and a deputy whose name I didn't recognize had signed it.
 
 I put the note in my pocket and sat on the tailgate. The sun was warm on my back. A heron stood in the shallows on the far side, very still, and then it wasn't there anymore. I didn't see it go.
 
@@ -86,7 +86,7 @@ I had the letter in my other pocket. I had not read it. Wade had not pushed me, 
 
 The handwriting was Mrs. Harlan's. I knew that now. It had come to me in the shower, of all places, the way her capital R looped back on itself. She used to write out recipe cards in that hand and tape them inside the cabinet doors.
 
-I took the letter out and held it. The envelope was soft from being handled. I turned it over. My name, in pencil. Under it, very small, a date. The summer I was nine. The summer my mother left and I stayed out here for eight weeks, and nobody told me why.
+I took the letter out and held it. The envelope had gone soft from all the handling. I turned it over. My name, in pencil. Under it, very small, a date. The summer I was nine. The summer my mother left and I stayed out here for eight weeks, and nobody told me why.
 
 A truck came down the road from the other side and stopped at the edge of the water. The driver leaned out his window and looked at the crossing. Then he backed up and turned around. I watched him go. I put the letter back in my pocket, and I walked up the hill to the house.`;
 
