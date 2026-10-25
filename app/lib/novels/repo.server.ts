@@ -4,6 +4,7 @@
 // that renames several files is one commit made through Git's data API (commitMany), and a file's
 // history is the commits that touched its path.
 
+import { fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
 import { SignJWT } from "jose";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
@@ -74,19 +75,6 @@ export function novelsConnection(env: Env): NovelsConnection {
 
 // ---------- GitHub App authentication
 
-function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
-  const binary = atob(b64.replace(/\s+/g, ""));
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(binary);
-}
-
 function derLength(n: number): number[] {
   if (n < 0x80) return [n];
   const bytes: number[] = [];
@@ -106,7 +94,7 @@ function der(tag: number, content: Uint8Array | number[]): number[] {
  */
 export function pkcs8FromPem(pem: string): Uint8Array<ArrayBuffer> {
   const body = pem.replace(/-----(BEGIN|END) [A-Z ]+-----/g, "");
-  const bytes = base64ToBytes(body);
+  const bytes = fromBase64(body);
   if (!/BEGIN RSA PRIVATE KEY/.test(pem)) return bytes;
   const version = der(0x02, [0x00]);
   // SEQUENCE { OID 1.2.840.113549.1.1.1, NULL }
@@ -163,12 +151,8 @@ function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
-function utf8ToBase64(text: string): string {
-  return bytesToBase64(new TextEncoder().encode(text));
-}
-
 function base64ToUtf8(b64: string): string {
-  return new TextDecoder().decode(base64ToBytes(b64));
+  return new TextDecoder().decode(fromBase64(b64));
 }
 
 export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedFetch): NovelsRepo {
@@ -205,7 +189,7 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedF
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: input.message,
-          content: utf8ToBase64(input.source),
+          content: toBase64(input.source),
           branch: NOVELS_BRANCH,
           author: input.author,
           ...(input.expectedSha ? { sha: input.expectedSha } : {}),

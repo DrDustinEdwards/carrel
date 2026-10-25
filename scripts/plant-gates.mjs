@@ -52,7 +52,7 @@ const PLANTS = [
     replace: "",
     label: "a reviewer may write a draft",
   },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "  if (!viewer) {\n    // Access let them in", replace: "  if (viewer === undefined) {\n    // Access let them in", label: "an unknown person gets a grant" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "return viewer ? { personId: viewer.id } : null;", replace: "return { personId: viewer?.id ?? 0 };", label: "an unknown person gets a grant" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (!viewer || viewer.id !== props?.personId) {", replace: "if (!viewer) {", label: "the per-request person check trusts a stale grant" },
   // Named agent keys: the key names an agent and grants nothing.
   { gate: "tests", file: "app/lib/agent-keys.server.ts", find: 'if (typeof native === "function") return native.call(crypto.subtle, a, b);', replace: 'if (typeof native === "function") return true;', label: "any presented key matches a configured agent key" },
@@ -69,7 +69,7 @@ const PLANTS = [
   { gate: "tests", file: "app/lib/ai.server.ts", find: "if (session.viewer.isReviewer || !session.viewer.isOwner) throw new AiRefusal(\"Social posts", replace: "if (session.viewer.isReviewer) throw new AiRefusal(\"Social posts", label: "a social event reachable by any session" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (auth?.audience !== `${mcpOrigin(env)}${MCP_ROUTE}`) {", replace: "if (auth === null) {", label: "a token for another audience let through" },
   { gate: "tests", file: "app/lib/mcp/tools.ts", find: "if (!tool.annotations.readOnlyHint && !ctx.session.scopes.includes(SCOPE_WRITE)) {", replace: "if (false) {", label: "a read-only grant may write" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: '{ readOnly: decision === "read-only" }', replace: "{}", label: "the consent page's reading-only choice ignored" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),", replace: "wantsWrite: () => true,", label: "a client asking only to read is offered writing" },
   { gate: "tests", file: "app/lib/mcp/scopes.ts", find: "  if (!asked.has(SCOPE_READ)) return [SCOPE_READ, SCOPE_WRITE];\n", replace: "", label: "a client naming no scope gets reading only" },
   { gate: "tests", file: "app/lib/mcp/scopes.ts", find: "    if (scope === LEGACY_SCOPE) {", replace: "    if (false) {", label: "a grant from before the ruling (scope carrel) loses writing" },
   { gate: "tests", file: "app/lib/mcp/tools.ts", find: "  await logCall(ctx.env.DB, ctx.session,", replace: "  void (ctx.env.DB, ctx.session,", label: "a tool call left out of the call log" },
@@ -83,7 +83,7 @@ const PLANTS = [
   { gate: "tests", file: "app/lib/mcp/tools.ts", find: "const body = tool.outside ? { notice: OUTSIDE_NOTICE, ...value } : value;", replace: "const body = value;", label: "outside text returned without the data notice" },
   { gate: "tests", file: "app/lib/mcp/tools.ts", find: "annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },", replace: "annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },", label: "publish no longer marked destructive" },
   { gate: "tests", file: "app/lib/index.server.ts", find: "hasMore: rows.length > page.limit", replace: "hasMore: false", label: "search pages never say there is more" },
-  { gate: "tests", file: "app/lib/mcp/registration.ts", find: "if (typeof uri !== \"string\" || !allowed.has(uri))", replace: "if (typeof uri !== \"string\")", label: "registration takes any callback" },
+  { gate: "tests", file: "app/lib/mcp/door.ts", find: "const why = registrationRefusal(allowed, clientMetadata);", replace: "const why = null;", label: "registration takes any callback" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "    if (limited) return limited;\n", replace: "", label: "registration not rate limited" },
   { gate: "roles", file: "app/lib/mcp/tools.ts", find: "    run: async (args, ctx) => {\n      // Refused on the role", replace: "    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal(\"planted\");\n      // Refused on the role", label: "an Owner check in a tool" },
   {
@@ -93,7 +93,7 @@ const PLANTS = [
     replace: "",
     label: "the legacy shim routed to the modern-only handler",
   },
-  { gate: "conformance", file: "app/lib/mcp/registration.ts", find: "if (typeof uri !== \"string\" || !allowed.has(uri))", replace: "if (typeof uri !== \"string\")", label: "the door registers a callback off the allowlist" },
+  { gate: "conformance", file: "app/lib/mcp/door.ts", find: "const why = registrationRefusal(allowed, clientMetadata);", replace: "const why = null;", label: "the door registers a callback off the allowlist" },
 ];
 
 /**

@@ -87,20 +87,11 @@ describe("GET /health", () => {
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env: testEnv, ctx: { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext });
     const response = await healthLoader({ context, request: new Request("https://carrel.test/health"), params: {} } as never);
-    return { status: response.status, ...((await response.json()) as { backup: Record<string, unknown> }) };
+    return { status: response.status, ...((await response.json()) as { db: string; backup: { last_ok: string | null } }) };
   }
 
-  it("reports only last_ok and age_hours", async () => {
-    await runBackup(testEnv);
-    const { backup } = await body();
-    expect((await body()).status).toBe(200);
-    expect(Object.keys(backup).sort()).toEqual(["age_hours", "last_ok"]);
-    expect(backup.last_ok).toEqual(expect.any(String));
-  });
-
-  it("reports nulls when there is no complete dump", async () => {
-    const { status, backup } = await body();
-    expect(status).toBe(503);
-    expect(backup).toEqual({ last_ok: null, age_hours: null });
+  // healthResponse itself is tested in site-runtime; this checks Carrel wires D1 and the dump into it.
+  it("says D1 is up and reports the dump", async () => {
+    expect(await body()).toMatchObject({ status: 200, db: "up", backup: { last_ok: null } });
   });
 });

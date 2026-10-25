@@ -3,6 +3,8 @@
 // header for Dustin to fill, italics as *...* and bold as **...**. Anything that did not convert
 // cleanly is marked where it happened with an HTML comment and listed in the report, never guessed.
 
+import { slugify } from "@drdustinedwards/site-helpers/slug";
+
 import { headingOf } from "./docx.mjs";
 
 /**
@@ -20,18 +22,6 @@ const SCENE_HEADER = ["---", "pov:", "date:", "location:", "characters: []", "go
 
 /** A paragraph that is only a scene-break mark: "* * *", "***", "#", "~", a bullet, or a rule. */
 const SCENE_BREAK = /^(?:(?:[*#~•·]\s*){1,5}|(?:-\s*){3,}|(?:_\s*){3,})$/u;
-
-/** @param {string} title */
-function slugify(title) {
-  return title
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 50)
-    .replace(/-+$/g, "");
-}
 
 /** @param {number} n */
 function number(n) {
@@ -176,7 +166,7 @@ export function buildBook(sources) {
 function sceneName(scene) {
   const first = scene.blocks.find((b) => b.kind === "text");
   const words = first && first.kind === "text" ? first.markdown.replace(/[\\*_#]/g, "").split(/\s+/).slice(0, 5).join(" ") : "";
-  return slugify(words) || "scene";
+  return slugify(words, { max: 50 }) || "scene";
 }
 
 /**
@@ -215,7 +205,7 @@ export function writeBook(book, opts) {
   };
 
   book.chapters.forEach((chapter, ci) => {
-    const folder = `chapters/${number(ci + 1)}-${slugify(chapter.title) || "chapter"}`;
+    const folder = `chapters/${number(ci + 1)}-${slugify(chapter.title, { max: 50 }) || "chapter"}`;
     chapter.scenes.forEach((scene, si) => {
       render(`${folder}/${number(si + 1)}-${sceneName(scene)}.md`, SCENE_HEADER, scene.blocks, chapter.source);
     });

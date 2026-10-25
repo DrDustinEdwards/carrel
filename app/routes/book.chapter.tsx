@@ -17,7 +17,8 @@ import { indexedFile, listFiles, listFindings, requireBookProject } from "~/lib/
 import { getEnv, getViewer } from "~/lib/context";
 import { blocksToHtml, parseProse } from "~/lib/novels/export";
 import { parseFile } from "~/lib/novels/frontmatter";
-import { chapterOf, nextNumbered, readingOrder, slugify, titleFromSegment } from "~/lib/novels/layout";
+import { slugify } from "@drdustinedwards/site-helpers/slug";
+import { chapterOf, nextNumbered, readingOrder, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 
 import type { Route } from "./+types/book.chapter";
@@ -59,7 +60,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "edit");
-  const slug = slugify(String((await request.formData()).get("name") ?? ""));
+  const slug = slugify(String((await request.formData()).get("name") ?? ""), { max: 60 });
   if (!slug) return { error: "Give the scene a name with at least one letter or digit." };
   const scenes = (await listFiles(env.DB, project))
     .filter((f) => chapterOf(f.path) === params.chapter)

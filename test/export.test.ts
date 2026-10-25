@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { Assembled } from "~/lib/books.server";
 import { buildDocx, buildEpub, parseInline, parseProse, printHtml } from "~/lib/novels/export";
 import { list, parseFile, text } from "~/lib/novels/frontmatter";
-import { isBookPath, nextNumbered, slugify, titleFromSegment } from "~/lib/novels/layout";
+import { isBookPath, nextNumbered, titleFromSegment } from "~/lib/novels/layout";
 
 const BOOK: Assembled = {
   title: "The Test Book & Co.",
@@ -50,8 +50,6 @@ describe("the layout", () => {
 
   it("names and numbers chapters and scenes", () => {
     expect(titleFromSegment("03-the-long-road")).toBe("The long road");
-    expect(slugify("The Crossing, Part II!")).toBe("the-crossing-part-ii");
-    expect(slugify("Río Café")).toBe("rio-cafe");
     expect(nextNumbered(["01-a", "02-b", "09-c"], "d")).toBe("10-d");
     expect(nextNumbered([], "first")).toBe("01-first");
   });

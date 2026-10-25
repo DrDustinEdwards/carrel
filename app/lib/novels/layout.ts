@@ -48,17 +48,6 @@ export function titleFromSegment(segment: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-export function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60)
-    .replace(/-+$/g, "");
-}
-
 /** The next NN- prefix after the ones present, two digits until a hundred. */
 export function nextNumbered(existing: string[], name: string): string {
   const numbers = existing.map((s) => Number(NUMBERED.exec(s)?.[1] ?? 0));

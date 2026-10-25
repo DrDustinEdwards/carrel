@@ -1,0 +1,17 @@
+{
+  "apps": {
+    ".": "private"
+  },
+  "libraries": {
+    "jose": "signs JWTs (RS256): the GitHub App's for the novels repository and the Google service account's; site-runtime's ./access only verifies Access tokens",
+    "mdast-util-directive": "the editor's Markdown round trip (app/lib/editor/markdown.mjs) parses and writes source back; Prelum renders to HTML and never writes Markdown",
+    "mdast-util-from-markdown": "the editor's Markdown round trip, as above",
+    "mdast-util-frontmatter": "the editor's Markdown round trip, as above",
+    "mdast-util-gfm": "the editor's Markdown round trip, as above",
+    "mdast-util-math": "the editor's Markdown round trip, as above",
+    "micromark-extension-directive": "the editor's Markdown round trip, as above",
+    "micromark-extension-frontmatter": "the editor's Markdown round trip, as above",
+    "micromark-extension-gfm": "the editor's Markdown round trip, as above",
+    "micromark-extension-math": "the editor's Markdown round trip, as above"
+  }
+}
