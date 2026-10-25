@@ -369,13 +369,14 @@ export const bookMoves = sqliteTable("book_moves", {
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// The voice pack (0018_voice.sql, voice.server.ts): the Owner's guide and the excerpts. phrases, allow,
-// profile and voice_cuts are no longer read or written (the scan replaced word lists and averages). They
-// stay so the lists the Owner typed are not lost: a migration dropping them runs before the deploy, and a
+// The voice pack (0018_voice.sql, 0019_voice_own.sql, voice.server.ts): the Owner's guide, the author's own
+// writing and the excerpts. phrases, allow, profile and voice_cuts are no longer read or written (the scan
+// replaced word lists and averages). They stay so the lists the Owner typed are not lost: a migration dropping them runs before the deploy, and a
 // rollback of the code would not bring them back.
 export const voicePacks = sqliteTable("voice_packs", {
   projectId: integer("project_id").primaryKey().references(() => projects.id, { onDelete: "cascade" }),
   guide: text("guide").notNull().default(""),
+  own: text("own").notNull().default(""),
   phrases: text("phrases").notNull().default("[]"),
   allow: text("allow").notNull().default("[]"),
   profile: text("profile"),
