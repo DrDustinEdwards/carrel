@@ -31,7 +31,7 @@
     "harness": "vite build --config vite.harness.config.ts && vite preview --config vite.harness.config.ts --port 5199 --host 127.0.0.1"
   },
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "1.1.0",
+    "@cloudflare/workers-oauth-provider": "1.2.4",
     "@codemirror/commands": "6.10.4",
     "@codemirror/lang-markdown": "6.5.1",
     "@codemirror/language": "6.12.4",
