@@ -40,7 +40,7 @@
     "@drdustinedwards/site-helpers": "github:DrDustinEdwards/prelum#v0.11.0",
     "@dustinedwards/d1-dump": "github:DrDustinEdwards/d1-dump#v0.6.0",
     "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.9.0",
-    "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#b06410fa855db5fdf6560612440d097b22913702",
+    "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#5a3b96e0b5c6414b1382b638bc239c5b17afeff8",
     "@fontsource-variable/source-serif-4": "5.3.0",
     "@fontsource/martian-mono": "5.3.0",
     "@fontsource/schibsted-grotesk": "5.3.0",
