@@ -1,4 +1,4 @@
-// A post's frontmatter as labelled fields: editable in the editor, read-only on the AI draft page.
+// A post's frontmatter as labeled fields: editable in the editor, read-only on the AI draft page.
 // The editor keeps the one source string; these fields read from it and write back through
 // setField, so a key they do not show is never touched (app/lib/frontmatter.ts).
 

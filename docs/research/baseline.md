@@ -67,7 +67,7 @@ are counted as zero-kill.
 
 Protected means the test file or name matches the keep rules in `docs/research/mutation/report.mjs`:
 auth, access, session, OAuth, token, key, secret, signing, CSP, gate, plant, publish, role, owner, door,
-permission, origin, redirect, sanitise and escape, XSS, injection, traversal, and refusals (401, 403,
+permission, origin, redirect, sanitize and escape, XSS, injection, traversal, and refusals (401, 403,
 forbidden). The match is a name heuristic that errs toward keeping. These are never removal candidates.
 Carrel's plants are a script (`scripts/plant-gates.mjs`), not unit tests, so the plants gate itself is
 untouched and out of this matrix.

@@ -4,9 +4,10 @@
 // because an MCP client must reach the OAuth endpoints before anyone has signed in. So nothing here
 // trusts Access's own header. Instead this door is an OAuth 2.1 authorization server of its own
 // (@cloudflare/workers-oauth-provider): CIMD for Claude, Claude Code and ChatGPT, a tightened
-// registration for Grok and Gemini (registration.ts), and the person signs in upstream through
-// Cloudflare Access for SaaS (site-runtime's access-login). The verified email must belong to an
-// active person in Carrel, checked when the grant is made and again on every request.
+// registration for Grok and Gemini, and the person signs in upstream through Cloudflare Access for
+// SaaS. The consent page, the sign-in and the registration check are site-runtime's mcp-login, the
+// same code every family MCP server runs. The verified email must belong to an active person in
+// Carrel, checked when the grant is made and again on every request.
 //
 // Every request through this door is an AI session, told apart by the hostname it arrived on, never
 // by email. The pages are never served here, and this door is never served on the browser's host.
@@ -15,25 +16,24 @@
 //   /mcp                          a named agent key (agent-keys.server.ts) goes straight to agentHandler;
 //                                 anything else: the provider checks the bearer token, then apiHandler
 //                                 finds the person and hands the request to server.ts
-//   /authorize  /callback         the consent page and the Access sign-in, below
+//   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
 //   /health                       liveness, and the deployed commit for the deploy's live gate
 //   anything else                 404
 
-import OAuthProvider, { AuthorizationError, CimdFetchError, type AuthRequest, type ClientInfo, type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
 
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
 import { deployedSha } from "~/lib/deployed";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 
-import { accessSaas, authorizationUrl, finishSignIn, newSignIn } from "@dustinedwards/site-runtime/access-login";
-import { allowedRedirects, checkRegistration, REGISTER_PATH, registrationLimited } from "./registration";
-import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
+import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
 import { carrelOrigin, handleMcp, MCP_ROUTE } from "./server";
 
 /** What a grant stores, encrypted, and hands to every request made with its tokens. */
-type DoorProps = { personId: number; email: string; client: string; clientId: string };
+type DoorProps = { personId: number; email: string; scopes: string[]; client: string; clientId: string };
 
 type DoorEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
@@ -58,28 +58,8 @@ const PRIVATE_HEADERS: Record<string, string> = {
   "X-Robots-Tag": "noindex, nofollow",
 };
 
-function text(body: string, status: number, headers?: Headers): Response {
-  const out = new Headers(headers);
-  out.set("Content-Type", "text/plain; charset=utf-8");
-  for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.set(name, value);
-  return new Response(body, { status, headers: out });
-}
-
-function redirect(location: string, headers?: Headers): Response {
-  const out = new Headers(headers);
-  out.set("Location", location);
-  out.set("Cache-Control", "no-store");
-  return new Response(null, { status: 302, headers: out });
-}
-
-/** The OAuth error answer to the client, once its redirect URI is known good. */
-function redirectError(request: AuthRequest, description: string, headers?: Headers): Response {
-  const url = new URL(request.redirectUri);
-  url.searchParams.set("error", "access_denied");
-  url.searchParams.set("error_description", description);
-  url.searchParams.set("state", request.state);
-  if (request.issuer) url.searchParams.set("iss", request.issuer);
-  return redirect(url.href, headers);
+function text(body: string, status: number): Response {
+  return new Response(body, { status, headers: { "Content-Type": "text/plain; charset=utf-8", ...PRIVATE_HEADERS } });
 }
 
 /**
@@ -93,157 +73,37 @@ function liveness(env: Env): Response {
   return new Response(JSON.stringify({ ok: true, sha: deployedSha(env) }), { status: 200, headers: out });
 }
 
-const escape = (value: string) => value.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
-/** The name a client is credited by: its CIMD client_name, or else the host that publishes it. */
-function clientLabel(client: ClientInfo | null, clientId: string): string {
-  const name = client?.clientName?.trim();
-  if (name) return name.slice(0, 100);
-  try {
-    return new URL(clientId).hostname;
-  } catch {
-    return "an unnamed AI client";
-  }
-}
+/**
+ * Grok and Gemini still register (as of 2026-10-09; ruling capsid/rulings/mcp-2026-10-10.md, rule 13).
+ * A registration names only callbacks listed exactly: the ones every user shares (DCR_CALLBACKS) and
+ * any exact https callback in DCR_REDIRECT_URIS (a per-connector id), read loosely because an older
+ * wrangler.jsonc has no such var. Registration grants nothing: the consent page, Access and the
+ * person check still decide. REMOVAL CONDITION: drop it when Grok and Gemini sign in by CIMD, and at
+ * the latest when the MCP specification removes registration (after summer 2027).
+ */
+const REGISTER_PATH = "/register";
+const registrationAllowlist = (env: Env) => [...DCR_CALLBACKS, (env as { DCR_REDIRECT_URIS?: string }).DCR_REDIRECT_URIS ?? ""].join(",");
 
 /**
- * The consent page, shown for every authorization of every client: nothing remembers an approval.
- * Consent has to be an act, so it is a real form. Everything from the client is escaped: a CIMD
- * document's name is chosen by whoever serves it, and a registered client's by whoever registered it.
+ * Everything on this host the provider does not own: /health, the consent page (shown for every
+ * authorization of every client, nothing remembers an approval) and the Access /callback.
  */
-function consentPage(client: ClientInfo | null, request: AuthRequest, handle: string): string {
-  const name = escape(clientLabel(client, request.clientId));
-  const redirectHost = new URL(request.redirectUri).hostname;
-  const local = /^(localhost|127(\.\d{1,3}){3}|\[::1\])$/.test(redirectHost);
-  const publisher = request.clientId.startsWith("https://")
-    ? `Published by <strong>${escape(new URL(request.clientId).hostname)}</strong>.`
-    : "This app registered itself with Carrel, so its name is its own claim, not checked.";
-  const writes = grantScopes(request.scope).includes(SCOPE_WRITE);
-  const asks = writes
-    ? "It asks to read, save AI drafts beside yours, and flag problems. You can allow reading only."
-    : "It asks to read only. It will not be able to save drafts or flag problems.";
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow">
-<title>Allow ${name} to use Carrel?</title>
-<style>
-  :root { color-scheme: light dark; }
-  body { font: 17px/1.6 Georgia, "Iowan Old Style", serif; max-width: 34rem; margin: 4rem auto; padding: 0 1.25rem; }
-  h1 { font-size: 1.4rem; line-height: 1.3; }
-  .fine { font-size: .9rem; opacity: .8; }
-  button { font: inherit; padding: .55rem 1.1rem; border-radius: .35rem; cursor: pointer; margin-right: .5rem; }
-</style>
-</head><body>
-<h1>Allow ${name} to use Carrel as you?</h1>
-<p>${publisher} Its access will be sent to <strong>${escape(redirectHost)}</strong>.</p>
-${local ? "<p><strong>This sends access to an app on your computer.</strong> Continue only if you just started signing in from it.</p>" : ""}
-<p>${asks} Either way it can do only what your role in Carrel allows. Publishing is for Dustin's own sessions only, and never while a flag is open.</p>
-<p class="fine">Next you sign in with Cloudflare Access. Only people Carrel already knows are let in.</p>
-<form method="post">
-  <input type="hidden" name="handle" value="${escape(handle)}">
-  <button name="decision" value="approve">Continue to sign in</button>
-  ${writes ? '<button name="decision" value="read-only">Allow reading only</button>' : ""}
-  <button name="decision" value="deny">Deny</button>
-</form>
-</body></html>`;
-}
-
-async function authorizeGet(request: Request, env: DoorEnv): Promise<Response> {
-  if (!accessSaas(env)) return text("Carrel's AI door is not configured: ACCESS_SAAS_CLIENT_ID or ACCESS_SAAS_CLIENT_SECRET is unset. Not configured means not open.", 503);
-  const oauth = env.OAUTH_PROVIDER;
-  const authRequest = await oauth.parseAuthRequest(request);
-  const client = await oauth.lookupClient(authRequest.clientId);
-  if (!client) return text("Unknown OAuth client.", 400);
-  const consent = await oauth.beginConsent(authRequest);
-  consent.headers.set("Content-Type", "text/html; charset=utf-8");
-  // no-transform keeps Cloudflare from injecting its Web Analytics beacon into this page.
-  consent.headers.set("Cache-Control", "no-store, no-transform");
-  return new Response(consentPage(client, authRequest, consent.handle), { headers: consent.headers });
-}
-
-async function authorizePost(request: Request, env: DoorEnv): Promise<Response> {
-  const saas = accessSaas(env);
-  if (!saas) return text("Carrel's AI door is not configured. Not configured means not open.", 503);
-  const oauth = env.OAUTH_PROVIDER;
-  const form = await request.formData();
-  const handle = String(form.get("handle") ?? "");
-  const decision = form.get("decision");
-  if (decision !== "approve" && decision !== "read-only") {
-    const denied = await oauth.denyConsent(request, handle);
-    return new Response(null, { status: 302, headers: denied.headers });
-  }
-  const consented = await oauth.approveConsent(request, handle);
-  // Least scope: read, and write only when the client asked for it and the person did not narrow
-  // the grant to reading. The callback grants exactly this.
-  const approved = { ...consented, request: { ...consented.request, scope: grantScopes(consented.request.scope, { readOnly: decision === "read-only" }) } };
-  // Only now, after consent, does the sign-in start. The verifier and nonce stay server-side.
-  const signIn = newSignIn();
-  const { state, headers } = await oauth.beginUpstream(approved.request, { data: signIn, headers: approved.headers });
-  return redirect(await authorizationUrl(saas, { redirectUri: `${mcpOrigin(env)}/callback`, state, ...signIn }), headers);
-}
-
-async function callback(request: Request, env: DoorEnv): Promise<Response> {
-  const saas = accessSaas(env);
-  if (!saas) return text("Carrel's AI door is not configured. Not configured means not open.", 503);
-  const oauth = env.OAUTH_PROVIDER;
-  const { request: original, data, headers } = await oauth.finishUpstream<{ verifier: string; nonce: string }>(request);
-  const params = new URL(request.url).searchParams;
-  const code = params.get("code");
-  if (params.get("error") || !code) return redirectError(original, "Sign-in with Cloudflare Access did not complete.", headers);
-
-  const signedIn = await finishSignIn(saas, { code, redirectUri: `${mcpOrigin(env)}/callback`, verifier: data.verifier, nonce: data.nonce });
-  if (!signedIn.ok) {
-    console.warn(JSON.stringify({ door: "sign-in-refused", reason: signedIn.reason }));
-    return redirectError(original, "Carrel could not verify the sign-in.", headers);
-  }
-  const viewer = await findViewer(env.DB, signedIn.email);
-  if (!viewer) {
-    // Access let them in, but Carrel does not know them: no row, no access (design section 3).
-    console.warn(JSON.stringify({ door: "refused", reason: "unknown-person" }));
-    return redirectError(original, "This person is not in Carrel.", headers);
-  }
-
-  const client = clientLabel(await oauth.lookupClient(original.clientId).catch(() => null), original.clientId);
-  const props: DoorProps = { personId: viewer.id, email: viewer.email, client, clientId: original.clientId };
-  const { redirectTo } = await oauth.completeAuthorization({
-    request: original,
-    userId: String(viewer.id),
-    metadata: { client },
-    scope: original.scope,
-    props,
-  });
-  headers.set("Location", redirectTo);
-  headers.set("Cache-Control", "no-store");
-  return new Response(null, { status: 302, headers });
-}
-
-/** Everything on this host the provider does not own. */
-const loginHandler = {
-  async fetch(request: Request, env: DoorEnv): Promise<Response> {
-    const { pathname } = new URL(request.url);
-    try {
-      if (pathname === "/health") return liveness(env);
-      if (pathname === "/authorize" && request.method === "GET") return await authorizeGet(request, env);
-      if (pathname === "/authorize" && request.method === "POST") return await authorizePost(request, env);
-      if (pathname === "/callback" && request.method === "GET") return await callback(request, env);
-      return text("Not found.", 404);
-    } catch (error) {
-      // Per the provider's consent-page guide: redirect only to a validated client, render the rest.
-      if (error instanceof AuthorizationError && error.redirectUri) {
-        const url = new URL(error.redirectUri);
-        url.searchParams.set("error", error.code);
-        url.searchParams.set("error_description", error.description);
-        if (error.state) url.searchParams.set("state", error.state);
-        if (error.issuer) url.searchParams.set("iss", error.issuer);
-        return redirect(url.href);
-      }
-      if (error instanceof AuthorizationError) return text(`${error.description} Start the sign-in again from your MCP client.`, 400);
-      if (error instanceof CimdFetchError) return text("This app could not be verified: its client metadata document could not be fetched.", 400);
-      throw error;
-    }
+const login = loginHandler<DoorEnv>({
+  name: "Carrel",
+  scopes: { read: SCOPE_READ, write: SCOPE_WRITE },
+  about:
+    "<p>It can read as you. With changes allowed it can also save AI drafts beside yours and flag problems. Either way it can do only what your role in Carrel allows. Publishing is for Dustin's own sessions only, and never while a flag is open.</p>",
+  admits: { consent: "Only people Carrel already knows are let in.", refusal: "This person is not in Carrel." },
+  // Access let them in, but Carrel must know them too: no row, no access (design section 3). The
+  // person's id travels with the grant and is checked again on every request.
+  admit: async (env, { email }) => {
+    const viewer = await findViewer(env.DB, email);
+    return viewer ? { personId: viewer.id } : null;
   },
-};
+  // A client that names no Carrel scope, or the legacy one, is offered writing too (scopes.ts).
+  wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),
+  health: liveness,
+});
 
 /**
  * The authenticated MCP surface. The provider has checked the token by the time this runs. The
@@ -301,14 +161,14 @@ const providers = new Map<string, OAuthProvider<Env>>();
  */
 function providerFor(env: Env): OAuthProvider<Env> {
   const origin = mcpOrigin(env);
-  const allowed = allowedRedirects(env);
-  const key = `${origin} ${[...allowed].join(" ")}`;
+  const allowed = registrationAllowlist(env);
+  const key = `${origin} ${allowed}`;
   let provider = providers.get(key);
   if (!provider) {
     provider = new OAuthProvider<Env>({
       apiRoute: MCP_ROUTE,
       apiHandler,
-      defaultHandler: loginHandler as unknown as ExportedHandler<Env>,
+      defaultHandler: login as unknown as ExportedHandler<Env>,
       authorizeEndpoint: "/authorize",
       tokenEndpoint: "/token",
       scopesSupported: SCOPES_SUPPORTED,
@@ -322,10 +182,13 @@ function providerFor(env: Env): OAuthProvider<Env> {
       // never register (measured in dustinedwards-mcp, 2026-07-30). Needs global_fetch_strictly_public
       // in wrangler.jsonc.
       clientIdMetadataDocumentEnabled: true,
-      // Tightened registration beside it, for Grok and Gemini (rule 13, registration.ts): exact
-      // callbacks only, a code and refresh grant only, rate limited in aiDoor before it gets here.
+      // Tightened registration beside it, for Grok and Gemini (rule 13): exact callbacks only, rate
+      // limited in aiDoor before it gets here. The provider itself refuses any grant but code and refresh.
       clientRegistrationEndpoint: REGISTER_PATH,
-      clientRegistrationCallback: ({ clientMetadata }) => checkRegistration(allowed, clientMetadata),
+      clientRegistrationCallback: ({ clientMetadata }) => {
+        const why = registrationRefusal(allowed, clientMetadata);
+        return why ? { code: "invalid_redirect_uri", description: why } : undefined;
+      },
     });
     providers.set(key, provider);
   }
@@ -341,7 +204,7 @@ export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext):
     if (agent) return agentHandler(request, env, ctx, agent);
   }
   if (pathname === REGISTER_PATH && request.method === "POST") {
-    const limited = await registrationLimited(request, env);
+    const limited = await registrationLimited(request, env.OAUTH_KV);
     if (limited) return limited;
   }
   return providerFor(env).fetch(request, env, ctx);

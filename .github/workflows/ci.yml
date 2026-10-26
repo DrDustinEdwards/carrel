@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 
-# A push to main is never cancelled by the next one: cancelling a deploy halfway could leave the
+# A push to main is never canceled by the next one: canceling a deploy halfway could leave the
 # database migrated and the Worker not. Every other ref still cancels its older run.
 concurrency:
   group: ci-${{ github.ref }}
@@ -91,7 +91,7 @@ jobs:
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@9458af9d1521d77ed5bca0f7454c07eea3869221 # v0.11.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@be78f8296e6c4dfc5cbf0aa17223f15ce4ff4ec8 # v0.13.1
     with:
       worker-name: carrel
       health-url: https://carrel-mcp.dustinedwards.info/health

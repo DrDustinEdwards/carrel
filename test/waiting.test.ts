@@ -95,7 +95,7 @@ describe("the project's Posts list", () => {
 });
 
 describe("the preview of an AI-draft-only post", () => {
-  it("renders the AI draft through the site, labelled as an AI draft", async () => {
+  it("renders the AI draft through the site, labeled as an AI draft", async () => {
     await aiDraft("owner@test.invalid", "a-desk-apart", NEW_POST);
     const request = new Request(`https://carrel.test/p/${SLUG}/e/a-desk-apart/preview`);
     const response = (await previewLoader({ request, params: { project: SLUG, item: "a-desk-apart" }, context: await context("owner@test.invalid") } as never)) as Response;

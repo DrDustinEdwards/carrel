@@ -11,7 +11,6 @@ import { stubAccess } from "@dustinedwards/devkit/access";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
-import { ALL_PER_DAY, PER_ADDRESS_PER_HOUR } from "~/lib/mcp/registration";
 
 import { gate } from "../workers/gate";
 import { addPerson, addProject, localKeys, resetDb, share, testEnv } from "./env";
@@ -191,15 +190,18 @@ async function signIn(
   expect(page.headers.get("cache-control")).toBe("no-store, no-transform");
   remember(jar, page);
   const html = await page.text();
-  expect(html).toContain("Allow Claude Code to use Carrel as you?");
+  expect(html).toContain("Allow Claude Code to use Carrel?");
   expect(html).toContain("client.test");
   const handle = /name="handle" value="([^"]+)"/.exec(html)![1]!;
+  // As a browser would send it: the write box as the page set it, unticked for "read-only".
+  const form = new URLSearchParams({ handle, decision: opts.decision === "deny" ? "deny" : "approve" });
+  if (opts.decision !== "read-only" && /name="allow_write" value="1" checked/.test(html)) form.set("allow_write", "1");
 
   const approve = await door(
     new Request(`${DOOR}/authorize`, {
       method: "POST",
       headers: { Cookie: cookieHeader(jar), "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ handle, decision: opts.decision ?? "approve" }),
+      body: form,
     }),
   );
   expect(approve.status).toBe(302);
@@ -449,12 +451,12 @@ describe("tightened registration", () => {
 
   it("PLANT: registration is rate limited per address, and in all per day", async () => {
     const from = "192.0.2.50";
-    for (let i = 0; i < PER_ADDRESS_PER_HOUR; i += 1) expect((await register({ redirect_uris: [GROK_CALLBACK] }, from)).status).toBe(201);
+    for (let i = 0; i < 5; i += 1) expect((await register({ redirect_uris: [GROK_CALLBACK] }, from)).status).toBe(201);
     const limited = await register({ redirect_uris: [GROK_CALLBACK] }, from);
     expect(limited.status).toBe(429);
     expect(limited.headers.get("Retry-After")).toBe("3600");
     // Refused attempts count too: an allowlist miss is not a free probe.
-    await testEnv.OAUTH_KV.put(dayKey(), String(ALL_PER_DAY));
+    await testEnv.OAUTH_KV.put(dayKey(), "30");
     expect((await register({ redirect_uris: [GROK_CALLBACK] })).status).toBe(429);
   });
 
@@ -475,9 +477,9 @@ describe("tightened registration", () => {
       const page = await door(new Request(authorize));
       expect(page.status).toBe(200);
       const html = await page.text();
-      expect(html).toContain("Allow Grok to use Carrel as you?");
-      expect(html).toContain("registered itself with Carrel");
-      expect(html).toContain('value="read-only"');
+      expect(html).toContain("Allow Grok to use Carrel?");
+      expect(html).toContain("registered itself, so its name is its own claim");
+      expect(html).toContain('name="allow_write" value="1" checked');
     }
   });
 });

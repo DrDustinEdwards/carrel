@@ -1,4 +1,4 @@
-// The editor and AI draft screens' behaviour behind the UX pass: "Use as my draft" writes the
+// The editor and AI draft screens' behavior behind the UX pass: "Use as my draft" writes the
 // person's working copy in Carrel and nothing to the site, the AI draft's rendered view is private
 // to its owner, and the save line says a draft on the site is not live.
 

@@ -20,7 +20,8 @@ import { StatusLabelPill } from "~/components/writing/status-label";
 
 import { bookRepo, draftPaths, exportGate, listFiles, listFindings, refreshBook, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { chapterOf, nextNumbered, readingOrder, slugify, titleFromSegment } from "~/lib/novels/layout";
+import { slugify } from "@drdustinedwards/site-helpers/slug";
+import { chapterOf, nextNumbered, readingOrder, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 import { reorderBook } from "~/lib/binder.server";
 import { parseOrder } from "~/lib/writing/binder";
@@ -144,13 +145,13 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   // Starting a file only opens the editor on it; nothing reaches Git until the first Save.
   if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
   const name = String(form.get("name") ?? "").trim();
-  const slug = slugify(name);
+  const slug = slugify(name, { max: 60 });
   if (!slug) return { refreshed: null, error: "Give it a name with at least one letter or digit." };
   const files = await listFiles(env.DB, project);
 
   if (intent === "new-chapter") {
     const chapters = [...new Set(files.map((f) => chapterOf(f.path)).filter((c): c is string => c !== null))];
-    return redirect(`/b/${project.slug}/f/chapters/${nextNumbered(chapters, slug)}/01-${slugify(String(form.get("scene") ?? "")) || "opening"}.md`);
+    return redirect(`/b/${project.slug}/f/chapters/${nextNumbered(chapters, slug)}/01-${slugify(String(form.get("scene") ?? ""), { max: 60 }) || "opening"}.md`);
   }
   if (intent === "new-bible") {
     const kind = String(form.get("kind") ?? "") as keyof typeof BIBLE_FOLDERS;

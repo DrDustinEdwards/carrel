@@ -37,7 +37,7 @@ function markdownUnder(dir) {
 
 const schema = editorSchema();
 /** The document as the editor holds it: through the schema, so its defaults are filled in. */
-const normalise = (/** @type {any} */ doc) => schema.nodeFromJSON(doc).toJSON();
+const normalize = (/** @type {any} */ doc) => schema.nodeFromJSON(doc).toJSON();
 
 /** @param {string} a @param {string} b */
 function firstDifference(a, b) {
@@ -70,7 +70,7 @@ for (const file of files) {
     problems.push(`${name}: did not parse (${error instanceof Error ? error.message : error})`);
     continue;
   }
-  const doc = normalise(loaded.doc);
+  const doc = normalize(loaded.doc);
   const prints = fingerprints(doc);
   const saved = fromDoc(doc, loaded.tail, prints, dialect);
   if (saved !== source) {
@@ -96,15 +96,15 @@ for (const file of files) {
     };
     if (!addWord(edited.content[at])) return;
     edits++;
-    const out = fromDoc(normalise(edited), loaded.tail, prints, dialect);
+    const out = fromDoc(normalize(edited), loaded.tail, prints, dialect);
     const md = block.attrs.md;
-    const written = writeChecked(normalise(edited).content[at], dialect);
+    const written = writeChecked(normalize(edited).content[at], dialect);
     // The file with only that block's bytes replaced: anything else differing is a stray change.
     const start = doc.content.slice(0, at).reduce((/** @type {number} */ n, /** @type {any} */ b) => n + b.attrs.md.before.length + b.attrs.md.source.length, 0) + md.before.length;
     const expected = source.slice(0, start) + written + source.slice(start + md.source.length);
     if (out !== expected) problems.push(`${name}: an edit to block ${at + 1} changed other bytes, ${firstDifference(expected, out)}`);
     const back = toDoc(written, dialect).doc.content ?? [];
-    if (back.length !== 1 || !sameBlock(normalise(edited).content[at], /** @type {any} */ (back[0]))) loose.push(`${name}: block ${at + 1}, once edited, reads back differently: ${JSON.stringify(written.slice(0, 160))}`);
+    if (back.length !== 1 || !sameBlock(normalize(edited).content[at], /** @type {any} */ (back[0]))) loose.push(`${name}: block ${at + 1}, once edited, reads back differently: ${JSON.stringify(written.slice(0, 160))}`);
   });
 }
 

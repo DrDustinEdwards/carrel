@@ -1,9 +1,9 @@
 // The formatted editor's views of Markdown it does not format (rich-editor.tsx): a source block edited
-// as Markdown in a labelled textarea, and inline source shown as written.
+// as Markdown in a labeled textarea, and inline source shown as written.
 
 import { SourceBlock, SourceInline } from "~/lib/editor/schema.mjs";
 
-/** A source block in the formatted view: its kind, then its Markdown in a labelled textarea. */
+/** A source block in the formatted view: its kind, then its Markdown in a labeled textarea. */
 export function sourceBlockView(readOnly: () => boolean) {
   return SourceBlock.extend({
     addNodeView() {

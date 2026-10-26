@@ -439,11 +439,11 @@ export async function launch() {
   }
 }
 
-const COLOURS = ["#8c5fd2", "#2f7d6d", "#c0803b", "#4a78b5", "#b8566f", "#6b7f3a"];
+const COLORS = ["#8c5fd2", "#2f7d6d", "#c0803b", "#4a78b5", "#b8566f", "#6b7f3a"];
 /** @param {string} url */
 const picture = (url) => {
   const n = [...url].reduce((a, c) => a + c.charCodeAt(0), 0);
-  const c = COLOURS[n % COLOURS.length];
+  const c = COLORS[n % COLORS.length];
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><rect width="320" height="320" fill="${c}" opacity="0.28"/><circle cx="${90 + (n % 120)}" cy="140" r="56" fill="${c}" opacity="0.8"/><rect x="40" y="220" width="240" height="14" rx="7" fill="${c}" opacity="0.6"/></svg>`;
 };
 
