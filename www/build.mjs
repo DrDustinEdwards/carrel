@@ -10,6 +10,7 @@ import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { headHtml, headTags } from "@drdustinedwards/site-helpers/head";
 import { robotsDocument } from "@drdustinedwards/site-helpers/robots";
 import { sitemapDocument } from "@drdustinedwards/site-helpers/sitemap";
 import { securityTxt } from "@dustinedwards/site-runtime/security-txt";
@@ -203,19 +204,16 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 <footer class="site-foot">${familyFooterHtml({ site: "carrel", center })}</footer>`;
 };
 
+/** The share card: the top of the page at 1200 by 630. */
+const CARD = { url: "/og-card.png", width: 1200, height: 630, alt: "Carrel: one desk for everything you write" };
+
 /** @param {{ title: string, description: string, body: string, index?: boolean }} p */
 const documentHtml = ({ title, description, body, index = true }) => `<!doctype html>
 <html lang="en" data-family="${FAMILY}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(title)}</title>
-<meta name="description" content="${esc(description)}">
-${index ? `<link rel="canonical" href="${ORIGIN}/">` : '<meta name="robots" content="noindex">'}
-<meta property="og:title" content="${esc(title)}">
-<meta property="og:description" content="${esc(description)}">
-<meta property="og:url" content="${ORIGIN}/">
-<meta property="og:site_name" content="Carrel">
+${headHtml(headTags({ origin: ORIGIN, path: "/", title, description, image: CARD, siteName: "Carrel", locale: "en_US", noindex: !index }))}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/site.css">
 </head>
