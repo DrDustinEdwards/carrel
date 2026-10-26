@@ -205,11 +205,31 @@ describe("publish by instruction (decision 2)", () => {
     expect(box.sent[0]!.text).toContain(`Unpublish it: ${CARREL}/p/${SLUG}/e/post-one/unpublish`);
   });
 
-  it("PLANT: publish sends no text, so an AI draft can never be what goes live", async () => {
+  it("publishes the session's own AI draft, keeps Dustin's draft, and refuses a draft from an older version", async () => {
     const version = await seedPost();
-    const ai = await connect("owner@test.invalid");
-    await ai.call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "---\ntitle: Post one\n---\nAI words.\n" });
-    await ai.call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
+    const owner = await viewerFor("owner@test.invalid");
+    const project = await requireSiteProject(testEnv.DB, owner, SLUG, "read");
+    await autosave(testEnv.DB, project, owner, "post-one", { source: "Dustin unsaved.", baseVersion: version });
+    const ai = await connect("owner@test.invalid", "Claude");
+    const saved = await ai.call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "---\ntitle: Post one\n---\nAI words.\n" });
+    const aiDraftId = saved.structuredContent?.aiDraftId;
+    const result = await ai.call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version, ai_draft_id: aiDraftId });
+    expect(result.structuredContent).toMatchObject({ published: true });
+    const live = await site.adapter.content.get("post-one");
+    expect(live).toMatchObject({ status: "published", source: "---\ntitle: Post one\n---\nAI words.\n" });
+    expect((await readDraft(testEnv.DB, project, owner, "post-one"))?.source).toBe("Dustin unsaved.");
+    expect(box.sent[0]!.text).toContain(`Earlier versions, to restore one: ${CARREL}/p/${SLUG}/e/post-one/history`);
+
+    // A draft written from an older version is refused, so a newer edit is never overwritten unseen.
+    const stale = await ai.call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: live!.version, ai_draft_id: aiDraftId });
+    expect(stale.isError).toBe(true);
+  });
+
+  it("PLANT: an AI draft from another person's session cannot be published", async () => {
+    const version = await seedPost();
+    const saved = await (await connect("editor@test.invalid")).call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "---\ntitle: Post one\n---\nTheir words.\n" });
+    const result = await (await connect("owner@test.invalid")).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version, ai_draft_id: saved.structuredContent?.aiDraftId });
+    expect(result.isError).toBe(true);
     expect((await site.adapter.content.get("post-one"))?.source).toBe("---\ntitle: Post one\n---\nDustin's words.\n");
   });
 

@@ -1,6 +1,6 @@
 // The history screens, driven through the route's loader with a real request context: a Reader may
-// read all of it, nothing in it writes (to the site or to Carrel), and each comparison names the
-// right two texts, older first.
+// read all of it, looking writes nothing (to the site or to Carrel), and each comparison names the
+// right two texts, older first. Restore, the one write, puts an earlier revision back.
 
 import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,7 +11,7 @@ import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import { orderPair } from "~/lib/history.server";
 import { hasChanges, unifiedPatch } from "~/lib/patch";
 import { requireSiteProject } from "~/lib/projects.server";
-import { loader as historyLoader } from "~/routes/history";
+import { action as historyAction, loader as historyLoader } from "~/routes/history";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { connectedEnv, fakeSite, viewerFor, refusal } from "./site";
@@ -57,6 +57,14 @@ async function load(email: string, search = "") {
   return historyLoader({ request, params: { project: SLUG, item: "post-one" }, context } as never);
 }
 
+async function restore(email: string, version: string) {
+  const context = new RouterContextProvider();
+  context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
+  context.set(viewerContext, await viewerFor(email));
+  const request = new Request(`https://carrel.test/p/${SLUG}/e/post-one/history`, { method: "POST", body: new URLSearchParams({ version }) });
+  return historyAction({ request, params: { project: SLUG, item: "post-one" }, context } as never);
+}
+
 const changeRows = async () => (await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM changes").first<{ n: number }>())!.n;
 
 describe("reading history", () => {
@@ -84,6 +92,14 @@ describe("reading history", () => {
   it("is answered 404 to someone with no role on the project, before the site is asked", async () => {
     expect(await refusal(load("stranger@test.invalid"))).toBe(404);
     expect(site.requests).toEqual([]);
+  });
+});
+
+describe("restoring a revision", () => {
+  it("puts an earlier revision's text back on the site for the Owner, and refuses a Reader", async () => {
+    await expect(restore("reader@test.invalid", versions[0]!)).rejects.toMatchObject({ status: 403 });
+    expect(await restore("owner@test.invalid", versions[0]!)).toMatchObject({ ok: true });
+    expect((await site.adapter.content.get("post-one"))?.source).toBe(V1);
   });
 });
 
