@@ -1,11 +1,14 @@
 // One item's history: its revisions from the site, newest first, each opening its source; the
 // changes between any two; and the person's own working draft set against the site's text or an AI
-// draft. Everything here is read-only and works for a Reader. Revision diffs are the site's own
+// draft. Looking works for a Reader; the one write is Restore, which puts an earlier revision's text
+// back on the site (published again if the post is live) for anyone who may make that write, so any
+// change, an AI publish among them, can be undone from here. Revision diffs are the site's own
 // unified patches; the two comparisons that have both sides in Carrel build the patch here.
 // "By word" sets the same two texts against each other sentence by sentence.
 
-import { Link, useLocation, useNavigate, useNavigation } from "react-router";
+import { Form, Link, useLocation, useNavigate, useNavigation } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
 import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
@@ -18,12 +21,13 @@ import { DraftLinks } from "~/components/history/draft-links";
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
-import { readDoc, readDraft } from "~/lib/content.server";
+import { readDoc, readDraft, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions, orderPair, readRevision, revisionPatch } from "~/lib/history.server";
 import { kindNoun } from "~/lib/kind-words";
 import { unifiedPatch } from "~/lib/patch";
 import { requireSiteProject } from "~/lib/projects.server";
+import { can } from "~/lib/roles";
 import { SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/history";
@@ -150,7 +154,36 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     siteError,
     againstSite: Boolean(draft && doc),
     aiDrafts: aiDrafts.map((d) => ({ id: d.id, client: d.client, createdAt: d.createdAt })),
+    canRestore: Boolean(doc && can(project.role, restoreNeeds(doc.status))),
   };
+}
+
+/** A live post's earlier text goes back live; a draft's goes back as the site's draft. */
+const restoreNeeds = (status: string) => (status === "draft" ? "edit" : "publish");
+
+export async function action({ params, request, context }: Route.ActionArgs) {
+  const env = getEnv(context);
+  const viewer = getViewer(context);
+  const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
+  const form = await request.formData();
+  const version = String(form.get("version") ?? "");
+  const doc = await readDoc(env, project, params.item);
+  if (!doc || !version) throw new Response("Not found", { status: 404 });
+  if (!can(project.role, restoreNeeds(doc.status))) throw new Response("Forbidden", { status: 403 });
+  const source = await readRevision(env, project, params.item, version);
+  if (source === null) return { ok: false as const, message: "The site could not open that revision's source." };
+  const outcome = await writeToSite(
+    env,
+    project,
+    viewer,
+    params.item,
+    doc.status === "draft" ? { action: "save", source, expectedVersion: doc.version } : { action: "publish", source, expectedVersion: doc.version },
+    undefined,
+    { keepDraft: true },
+  );
+  return outcome.ok
+    ? { ok: true as const, message: doc.status === "draft" ? "Restored as the site's draft." : "Restored and published." }
+    : { ok: false as const, message: outcome.message };
 }
 
 /** Both texts are in Carrel: the patch is built here, and the same two texts feed the word view. */
@@ -160,8 +193,8 @@ function sides(heading: string, lead: string, itemId: string, before: Side, afte
   return { kind: "compare", heading, lead, patch, before: null, after: null };
 }
 
-export default function History({ loaderData }: Route.ComponentProps) {
-  const { project, itemId, title, noun, by, view, picked, revisions, siteError, aiDrafts, againstSite } = loaderData;
+export default function History({ loaderData, actionData }: Route.ComponentProps) {
+  const { project, itemId, title, noun, by, view, picked, revisions, siteError, aiDrafts, againstSite, canRestore } = loaderData;
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const historyPath = `${editor}/history`;
   const navigate = useNavigate();
@@ -192,6 +225,7 @@ export default function History({ loaderData }: Route.ComponentProps) {
       {siteError ? <Banner tone="warn">{siteError}</Banner> : null}
 
       {view.kind === "problem" ? <Alert tone="warn">{view.message}</Alert> : null}
+      {actionData ? actionData.ok ? <Banner tone="ok">{actionData.message}</Banner> : <Alert tone="crit">{actionData.message}</Alert> : null}
 
       {view.kind === "source" ? (
         <Panel
@@ -213,6 +247,12 @@ export default function History({ loaderData }: Route.ComponentProps) {
                 <Link className="cap-btn" to={`${historyPath}?v=${encodeURIComponent(view.version)}&v=${encodeURIComponent(view.newest)}`}>
                   Compare with the current version
                 </Link>
+              ) : null}
+              {!view.current && canRestore ? (
+                <Form method="post">
+                  <input type="hidden" name="version" value={view.version} />
+                  <Button type="submit">Restore this version</Button>
+                </Form>
               ) : null}
             </>
           }

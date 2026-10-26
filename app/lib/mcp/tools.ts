@@ -212,7 +212,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_save_draft",
     title: "Save an AI draft",
-    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text, and it is never published; Dustin reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. Pass the same sources here: they are saved with the draft for Dustin to check, and the answer carries the same scan on what was saved, with the search and sharing checks. ${RULE} Save a draft only when he asked for one.`,
+    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text by being saved. It goes live only through carrel_publish_item with its ai_draft_id, when Dustin asked for the change to be live; otherwise he reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. Pass the same sources here: they are saved with the draft for Dustin to check, and the answer carries the same scan on what was saved, with the search and sharing checks. ${RULE} Save a draft only when he asked for one.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -351,10 +351,15 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_publish_item",
     title: "Publish a post (Owner only)",
-    description: `Publishes a post as it stands on the site at expected_version, on Dustin's explicit instruction in this conversation and only then. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. No text travels with it: it publishes what Dustin saved, never your draft. Carrel records "published by <this client> on Dustin's instruction" and emails him a link to unpublish. ${RULE}`,
+    description: `Publishes a post on Dustin's instruction in this conversation: asking for a change on the live site is that instruction. Without ai_draft_id it publishes the post as it stands on the site at expected_version. With ai_draft_id it publishes that AI draft's text, which must be one your own sessions saved with carrel_save_draft from expected_version; Dustin's own working draft in Carrel is left as it is. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. The site keeps every earlier version. Carrel records "published by <this client> on Dustin's instruction" and emails him links to unpublish and to restore an earlier version. ${RULE}`,
     inputSchema: {
       type: "object",
-      properties: { project: PROJECT, item: ITEM, expected_version: { type: "string", description: "The site's version of the post, from carrel_read_item, so an older version is never published by mistake." } },
+      properties: {
+        project: PROJECT,
+        item: ITEM,
+        expected_version: { type: "string", description: "The site's version of the post, from carrel_read_item, so an older version is never published by mistake." },
+        ai_draft_id: { type: "integer", description: "The aiDraftId carrel_save_draft returned, to publish that draft's text. Leave out to publish the site's text as it stands." },
+      },
       required: ["project", "item", "expected_version"],
       additionalProperties: false,
     },
@@ -365,9 +370,12 @@ export const TOOLS: Tool[] = [
     run: async (args, ctx) => {
       // Refused on the role before anything else is read, as the button is.
       const p = await project(ctx, args, "read");
+      const draftId = args.ai_draft_id;
+      if (draftId !== undefined && (typeof draftId !== "number" || !Number.isInteger(draftId) || draftId <= 0)) throw new AiRefusal("ai_draft_id is the number carrel_save_draft returned.");
       const result = await aiPublish(ctx.env, p, ctx.session, str(args, "item"), str(args, "expected_version", { max: MAX.path }), {
         fetcher: ctx.deps.fetcher,
         carrelOrigin: ctx.deps.carrelOrigin,
+        aiDraftId: draftId,
       });
       if (!result.ok) throw new AiRefusal(result.message);
       return { published: true, version: result.version, changeId: result.changeId, dustinEmailed: result.emailed };

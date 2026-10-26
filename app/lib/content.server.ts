@@ -105,8 +105,11 @@ export async function writeToSite(
     | { action: "schedule"; expectedVersion: string; publishAt: string; source?: string }
     | { action: "unpublish"; expectedVersion: string },
   fetcher?: typeof fetch,
-  /** The AI client, when the write came through the AI door; the authorship record credits it. */
-  opts: { client?: string } = {},
+  /**
+   * The AI client, when the write came through the AI door; the authorship record credits it. keepDraft
+   * leaves the person's working draft in place, for a write whose text was not theirs.
+   */
+  opts: { client?: string; keepDraft?: boolean } = {},
 ): Promise<WriteOutcome> {
   // Checked twice: before any request, from the role alone, and again against the item's live state.
   requireCan(project, request.action === "save" ? "edit" : "publish");
@@ -170,7 +173,7 @@ export async function writeToSite(
   });
 
   // The draft is done once its text reached the site; an unpublish sends no text, so it stays.
-  if ("source" in request && request.source !== undefined) {
+  if ("source" in request && request.source !== undefined && !opts.keepDraft) {
     await drizzle(env.DB)
       .delete(drafts)
       .where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, itemId), eq(drafts.personId, viewer.id)));

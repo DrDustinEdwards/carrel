@@ -6,7 +6,9 @@
 // - a reviewer (another company's agent) reads and flags, and never writes text or publishes;
 // - an AI draft is saved beside the person's own draft, never over it or to the site;
 // - publish is the Owner's own sessions only, refused while any flag on the item is open, recorded
-//   as "published by <client> on Dustin's instruction", and emailed to Dustin with an unpublish link.
+//   as "published by <client> on Dustin's instruction", and emailed to Dustin with links to undo it.
+//   It publishes the site's text as it stands or, on Dustin's instruction, the session's own AI draft;
+//   the site keeps every earlier version, so the history page can restore the one before.
 
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -208,8 +210,10 @@ export function publishedByLine(client: string): string {
 }
 
 /**
- * Publishes the item as it stands on the site at `expectedVersion`: no text travels with it, so an
- * AI can only publish what a person saved. Every refusal comes before the site is asked anything.
+ * Publishes the item at `expectedVersion`: as it stands on the site, or with the text of one of this
+ * person's own AI drafts when `aiDraftId` names one. A draft must have been written from that same
+ * version, so a newer edit on the site is never overwritten unseen. Every refusal comes before the
+ * site is asked anything.
  */
 export async function aiPublish(
   env: Env,
@@ -217,7 +221,7 @@ export async function aiPublish(
   session: AiSession,
   itemId: string,
   expectedVersion: string,
-  opts: { fetcher?: typeof fetch; carrelOrigin: string },
+  opts: { fetcher?: typeof fetch; carrelOrigin: string; aiDraftId?: number },
 ): Promise<AiPublishResult> {
   if (session.viewer.isReviewer) throw new AiRefusal("A reviewer never publishes.");
   // Owner only, whatever a shared person's role: decision 2a gives publish to Dustin's sessions alone.
@@ -230,9 +234,22 @@ export async function aiPublish(
         .join(" | ")} Dustin fixes the text or dismisses each flag in Carrel first.`,
     );
   }
+  let source: string | undefined;
+  if (opts.aiDraftId !== undefined) {
+    const draft = await readAiDraft(env.DB, project, session.viewer, itemId, opts.aiDraftId).catch(() => null);
+    if (!draft) throw new AiRefusal(`There is no AI draft ${opts.aiDraftId} of ${itemId} from your sessions.`);
+    if (draft.baseVersion !== expectedVersion) {
+      throw new AiRefusal(
+        `AI draft ${opts.aiDraftId} was written from version ${draft.baseVersion ?? "(none)"}, not ${expectedVersion}. Read the post again and save a new draft from the current version.`,
+      );
+    }
+    source = draft.source;
+  }
 
-  const outcome: WriteOutcome = await writeToSite(env, project, session.viewer, itemId, { action: "publish", expectedVersion }, opts.fetcher, {
+  // Dustin's own working draft stays: an AI publish never takes his unsaved text away.
+  const outcome: WriteOutcome = await writeToSite(env, project, session.viewer, itemId, { action: "publish", expectedVersion, source }, opts.fetcher, {
     client: session.client,
+    keepDraft: true,
   });
   if (!outcome.ok) return { ok: false, message: outcome.message };
 
@@ -251,7 +268,7 @@ export async function aiPublish(
   try {
     const doc = await readDoc(env, project, itemId, opts.fetcher).catch(() => null);
     const title = doc?.title || itemId;
-    const unpublish = `${opts.carrelOrigin}/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(itemId)}/unpublish`;
+    const base = `${opts.carrelOrigin}/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(itemId)}`;
     await env.EMAIL.send({
       from: env.ALERT_FROM,
       to: env.ALERT_EMAIL,
@@ -261,8 +278,10 @@ export async function aiPublish(
         "",
         `${title} on ${siteEntry(project.site).name}${doc?.path ? `: ${doc.path}` : ""}`,
         `Version ${outcome.version}, change ${outcome.changeId}.`,
+        ...(source !== undefined ? [`It published the AI draft ${opts.aiDraftId}, replacing version ${expectedVersion}.`] : []),
         "",
-        `Unpublish it: ${unpublish}`,
+        `Unpublish it: ${base}/unpublish`,
+        `Earlier versions, to restore one: ${base}/history`,
         "",
       ].join("\n"),
     });

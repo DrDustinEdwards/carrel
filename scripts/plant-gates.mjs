@@ -45,6 +45,7 @@ const PLANTS = [
     label: "publish no longer Owner-only",
   },
   { gate: "tests", file: "app/lib/ai.server.ts", find: "  if (open.length > 0) {", replace: "  if (false) {", label: "publish no longer refused while a flag is open" },
+  { gate: "tests", file: "app/lib/ai.server.ts", find: "    if (draft.baseVersion !== expectedVersion) {", replace: "    if (false) {", label: "an AI draft from an older version may be published over newer text" },
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
