@@ -25,6 +25,8 @@
     "import:docx": "node scripts/import-docx.mjs",
     "deploy": "npm run build && wrangler deploy",
     "deploy:ci": "node scripts/deploy.mjs",
+    "www": "node www/build.mjs",
+    "deploy:www": "npm run www && wrangler deploy -c www/wrangler.jsonc",
     "postinstall": "devkit-bootstrap -- --strict-vars=false",
     "lint:promises": "eslint app workers test",
     "check:a11y": "node scripts/check-a11y.mjs",

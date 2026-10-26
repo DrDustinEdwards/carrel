@@ -55,7 +55,7 @@ The tests never reach the network. Site tests run Carrel's code against site-api
 1. `npx wrangler d1 create carrel`, put the id in `wrangler.jsonc`, `npm run db:migrate:remote`, `npm run seed:owner -- <email> "<name>" --remote`.
 2. `npm run deploy` with no route: `workers_dev` and `preview_urls` are false, so nothing reaches the Worker yet.
 3. Turn on Access for the Worker (Workers & Pages, carrel, Access, All traffic) and `Get-Clipboard | npx wrangler secret put ACCESS_AUD`.
-4. Uncomment `routes` in `wrangler.jsonc` and deploy again to add `carrel.dustinedwards.info`.
+4. Uncomment `routes` in `wrangler.jsonc` and deploy again to add `desk.dustinedwards.info`.
 5. From then on a merge to main deploys itself, migrations first: see `docs/auto-deploy.md`.
 
 ## Connecting a site

@@ -10,6 +10,7 @@
 # Build output and generated files.
 node_modules/
 build/
+www/dist/
 .react-router/
 .wrangler/
 worker-configuration.d.ts

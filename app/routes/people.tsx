@@ -137,7 +137,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
             </p>
             <ol>
               <li>
-                <strong>Carrel's pages</strong> (carrel.dustinedwards.info). In Workers &amp; Pages &gt; carrel &gt; Access, the policy today allows only{" "}
+                <strong>Desk</strong> (desk.dustinedwards.info). In Workers &amp; Pages &gt; carrel &gt; Access, the policy today allows only{" "}
                 <em>Cloudflare account</em> members, and that tab offers only <em>Cloudflare account</em> and <em>Email domain</em>. For one person who is not an account
                 member, add an Include rule with the <em>Emails</em> selector and their address: in Zero Trust &gt; Access controls &gt; Policies (a reusable policy added to
                 the Worker's application), or on the Worker's application itself in Zero Trust &gt; Access controls &gt; Applications.

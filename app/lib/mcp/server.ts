@@ -83,5 +83,5 @@ export async function handleMcp(
  */
 export function carrelOrigin(env: Env): string {
   const configured = (env as { CARREL_ORIGIN?: string }).CARREL_ORIGIN?.trim();
-  return (configured || "https://carrel.dustinedwards.info").replace(/\/+$/, "");
+  return (configured || "https://desk.dustinedwards.info").replace(/\/+$/, "");
 }

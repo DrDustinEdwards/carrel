@@ -40,7 +40,7 @@
 	// the carrel-mcp hostname's Bypass application exists.
 	// "routes": [
 	// 	{
-	// 		"pattern": "carrel.dustinedwards.info",
+	// 		"pattern": "desk.dustinedwards.info",
 	// 		"custom_domain": true
 	// 	},
 	// 	{
@@ -105,7 +105,7 @@
 		// Capsid, where the cron reports the AI drafts waiting for review (POST /ops/inbox/report).
 		"CAPSID_ORIGIN": "https://mcp.dustinedwards.info",
 		// Where Carrel's pages live, for links in email.
-		"CARREL_ORIGIN": "https://carrel.dustinedwards.info",
+		"CARREL_ORIGIN": "https://desk.dustinedwards.info",
 		// The AI door: OAuth and /mcp, and nothing else. Its hostname alone marks a request as AI.
 		"CARREL_MCP_ORIGIN": "https://carrel-mcp.dustinedwards.info",
 		// Callbacks a self-registering AI client (Grok, Gemini) may name beyond the fixed ones in
