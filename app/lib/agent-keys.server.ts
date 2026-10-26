@@ -9,6 +9,8 @@
 // person row "agent:<name>" in Carrel's People table (people.server.ts, findAgentViewer), never
 // from the key, and the functions every tool calls refuse what the role does not allow.
 
+import { safeEqual } from "@dustinedwards/site-runtime/compare";
+
 /** The prefix that makes a Worker secret an agent key. */
 const AGENT_KEY_PREFIX = "AGENT_KEY_";
 
@@ -27,24 +29,6 @@ export function agentEmail(name: string): string {
 /** What the audit trail credits an agent's writes to: the same text as its person row's email. */
 export function agentClient(name: string): string {
   return agentEmail(name);
-}
-
-async function sha256(value: string): Promise<Uint8Array<ArrayBuffer>> {
-  return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
-}
-
-/**
- * Constant-time equality over fixed-size SHA-256 digests, so the time taken says nothing about the
- * key's length or how much of it was right. crypto.subtle.timingSafeEqual where the runtime has it
- * (Workers does), else a byte loop over the two 32-byte digests.
- */
-export async function keysMatch(presented: string, expected: string): Promise<boolean> {
-  const [a, b] = await Promise.all([sha256(presented), sha256(expected)]);
-  const native = (crypto.subtle as { timingSafeEqual?: (x: BufferSource, y: BufferSource) => boolean }).timingSafeEqual;
-  if (typeof native === "function") return native.call(crypto.subtle, a, b);
-  let diff = 0;
-  for (let i = 0; i < a.length; i += 1) diff |= a[i]! ^ b[i]!;
-  return diff === 0;
 }
 
 /**
@@ -68,7 +52,7 @@ export async function agentPrincipal(env: object, authorization: string | null):
     if (!secret.startsWith(AGENT_KEY_PREFIX)) continue;
     const name = secret.slice(AGENT_KEY_PREFIX.length).toLowerCase();
     if (!isAgentName(name) || typeof value !== "string" || !value.trim()) continue;
-    if (await keysMatch(presented, value.trim())) found = name;
+    if (await safeEqual(presented, value.trim())) found = name;
   }
   return found;
 }

@@ -8,7 +8,7 @@
 import { createExecutionContext } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { agentPrincipal, keysMatch } from "~/lib/agent-keys.server";
+import { agentPrincipal } from "~/lib/agent-keys.server";
 import { addAgent, listPeople, PeopleRefusal, setProjectRole } from "~/lib/people-admin.server";
 import { findAgentViewer } from "~/lib/people.server";
 import { aiDoor } from "~/lib/mcp/door";
@@ -228,14 +228,6 @@ describe("how the key is read", () => {
     expect(await agentPrincipal(e, `Bearer ${KEY}`)).toBe("grok");
     expect(await agentPrincipal(e, "Bearer nope")).toBeNull();
     expect(await agentPrincipal(e, null)).toBeNull();
-  });
-
-  it("compares digests: equal keys match, and any difference in content or length does not", async () => {
-    expect(await keysMatch(KEY, KEY)).toBe(true);
-    expect(await keysMatch(KEY, `${KEY}x`)).toBe(false);
-    expect(await keysMatch(KEY, KEY.slice(1))).toBe(false);
-    expect(await keysMatch(KEY, OTHER_KEY)).toBe(false);
-    expect(await keysMatch("", KEY)).toBe(false);
   });
 });
 
