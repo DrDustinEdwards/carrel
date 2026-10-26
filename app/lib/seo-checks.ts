@@ -142,15 +142,15 @@ export function seoCheck(site: string, source: string, page: { kind: string | nu
   const findings: SeoFinding[] = [];
 
   const title = first(front, fields.title);
-  const searchTitle = title ? `${title}${fields.titleSuffix ?? ""}` : "";
+  const fullTitle = title ? `${title}${fields.titleSuffix ?? ""}` : "";
   if (!title) {
     findings.push({ check: "title", message: "No title: a search result has nothing to show for this post.", excerpt: null, line: null });
-  } else if (searchTitle.length > SERP_TITLE_LIMIT) {
+  } else if (fullTitle.length > SERP_TITLE_LIMIT) {
     const added = fields.titleSuffix ? ` with the site's "${fields.titleSuffix.trim()}"` : "";
     findings.push({
       check: "title",
-      message: `The search title is ${plural(searchTitle.length)}${added}; results clip at about ${SERP_TITLE_LIMIT}.`,
-      excerpt: searchTitle,
+      message: `The search title is ${plural(fullTitle.length)}${added}; results clip at about ${SERP_TITLE_LIMIT}.`,
+      excerpt: fullTitle,
       line: null,
     });
   }
@@ -177,7 +177,7 @@ export function seoCheck(site: string, source: string, page: { kind: string | nu
   return {
     findings,
     preview: {
-      search: { title: truncateForSerp(searchTitle, SERP_TITLE_LIMIT), description: truncateForSerp(description, SERP_DESCRIPTION_LIMIT) },
+      search: { title: truncateForSerp(fullTitle, SERP_TITLE_LIMIT), description: truncateForSerp(description, SERP_DESCRIPTION_LIMIT) },
       card: {
         title: first(front, fields.cardTitle ?? fields.title),
         description: first(front, fields.cardDescription ?? fields.description),
