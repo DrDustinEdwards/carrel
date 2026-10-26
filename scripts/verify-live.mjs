@@ -17,7 +17,7 @@
 // runs this against local stubs.
 
 const MCP = (process.env.CARREL_MCP_ORIGIN || "https://carrel-mcp.dustinedwards.info").replace(/\/+$/, "");
-const BROWSER = (process.env.CARREL_ORIGIN || "https://carrel.dustinedwards.info").replace(/\/+$/, "");
+const BROWSER = (process.env.CARREL_ORIGIN || "https://desk.dustinedwards.info").replace(/\/+$/, "");
 const EXPECT_SHA = (process.env.EXPECT_SHA ?? "").trim().toLowerCase();
 const TRIES = 3;
 // The pause between tries. scripts/check-verify-live.mjs sets it to 0.

@@ -1,0 +1,22 @@
+{
+  // Carrel's public site at https://carrel.dustinedwards.info: an assets Worker serving www/dist, which `npm run www` builds.
+  // It holds no ids or secrets, so it is committed (the app's own config is not). No account id here: wrangler takes it from
+  // the login or from CLOUDFLARE_ACCOUNT_ID. Deploy with `npm run deploy:www`, and only after the app has moved to
+  // desk.dustinedwards.info (docs/public-site.md): the custom domain below is the app's until then.
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "carrel-www",
+  "compatibility_date": "2026-10-02",
+  "main": "./worker.mjs",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "carrel.dustinedwards.info", "custom_domain": true }],
+  // At most 60 violation reports a minute from one address reach the log; the rest still get 204.
+  "ratelimits": [{ "name": "CSP_REPORT_RATE_LIMIT", "namespace_id": "7702", "simple": { "limit": 60, "period": 60 } }],
+  "observability": { "logs": { "enabled": true, "invocation_logs": false } },
+  "workers_dev": false,
+  "preview_urls": false
+}

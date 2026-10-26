@@ -1,0 +1,285 @@
+// Builds Carrel's public site at https://carrel.dustinedwards.info into www/dist (or the directory named): one page
+// saying what Carrel is, in the NASA manual theme the family's public sites share (Capsomer's manual.css) in Carrel's
+// olive, and the family footer. Static files only, and no script on any page. The writing app itself is Desk, at
+// https://desk.dustinedwards.info, behind Cloudflare Access; nothing here reaches it.
+//
+//   node www/build.mjs [outDir]
+
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { headHtml, headTags } from "@drdustinedwards/site-helpers/head";
+import { robotsDocument } from "@drdustinedwards/site-helpers/robots";
+import { sitemapDocument } from "@drdustinedwards/site-helpers/sitemap";
+import { securityTxt } from "@dustinedwards/site-runtime/security-txt";
+import { familyFooterHtml } from "capsomer/behavior/family-footer";
+import { patchSvg } from "capsomer/behavior/manual";
+
+import { SITE_HEADERS } from "./headers.mjs";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+
+export const ORIGIN = "https://carrel.dustinedwards.info";
+const DESK = "https://desk.dustinedwards.info";
+const REPO = "https://github.com/DrDustinEdwards/carrel";
+const FAMILY = "olive";
+
+/** When security.txt lapses (RFC 9116 asks for under a year); renew it before then. */
+const SECURITY_TXT_EXPIRES = "2027-10-26T00:00:00Z";
+
+/** @param {string} s */
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
+
+/**
+ * Capsomer's stylesheets import their parts; the site serves one file, so each import is read in place, wrapped in its
+ * layer when it names one.
+ *
+ * @param {string} file
+ * @returns {string}
+ */
+function inlineCss(file) {
+  return readFileSync(file, "utf8").replace(/@import\s+"([^"]+)"(?:\s+layer\(([\w.-]+)\))?\s*;/g, (_, path, layer) => {
+    const inner = inlineCss(join(dirname(file), path));
+    return layer ? `@layer ${layer} {\n${inner}\n}` : inner;
+  });
+}
+
+/** The faces Capsomer's tokens name, latin only: the site is in English. */
+const FONTS = [
+  { family: "Schibsted Grotesk", file: "@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-400-normal.woff2", weight: "400" },
+  { family: "Schibsted Grotesk", file: "@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-600-normal.woff2", weight: "600" },
+  { family: "Martian Mono", file: "@fontsource/martian-mono/files/martian-mono-latin-400-normal.woff2", weight: "400" },
+  { family: "Source Serif 4", file: "@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2", weight: "200 900" },
+];
+
+/** @param {string} outDir */
+function writeStyles(outDir) {
+  mkdirSync(join(outDir, "fonts"), { recursive: true });
+  const faces = FONTS.map((font) => {
+    const name = font.file.split("/").pop() ?? "";
+    copyFileSync(require.resolve(font.file), join(outDir, "fonts", name));
+    return `@font-face {\n  font-family: "${font.family}";\n  font-style: normal;\n  font-weight: ${font.weight};\n  font-display: swap;\n  src: url("fonts/${name}") format("woff2");\n}`;
+  });
+  const capsomer = dirname(dirname(require.resolve("capsomer/tokens.css")));
+  const css = [
+    "/* Built by www/build.mjs: Capsomer's fonts, tokens, base, Carrel's family, the manual theme and the family footer, then www/site.css. */",
+    ...faces,
+    inlineCss(join(capsomer, "css", "tokens.css")),
+    inlineCss(join(capsomer, "css", "base.css")),
+    `@layer cap.tokens {\n${inlineCss(join(capsomer, "tokens", `family-${FAMILY}.css`))}\n}`,
+    inlineCss(join(capsomer, "components", "manual", "manual.css")),
+    inlineCss(join(capsomer, "components", "family-footer", "family-footer.css")),
+    readFileSync(join(HERE, "site.css"), "utf8"),
+  ].join("\n\n");
+  writeFileSync(join(outDir, "site.css"), css);
+}
+
+/** The sites Carrel publishes to on Dustin's Desk (app/lib/sites.server.ts). */
+const SITES = ["dustinedwards.info", "Germomics", "Foxhound", "Foxing", "Texas Branch ASM", "julieedwards.info"];
+/** The tools Carrel's MCP server gives an AI client (app/lib/mcp/tools.ts). */
+const TOOL_COUNT = 16;
+
+/** @param {{ name: string, href: string, kind: string, note: string }} item */
+const checklistItem = ({ name, href, kind, note }) =>
+  `<li class="cap-checklist-item"><div class="cap-checklist-line"><a href="${href}">${esc(name)}</a><span class="cap-checklist-dots" aria-hidden="true"></span><span class="cap-checklist-kind">${esc(kind)}</span></div><p class="cap-checklist-note">${esc(note)}</p></li>`;
+
+const FEATURES = [
+  { name: "Every post on every site", href: "#path", kind: "Sites", note: "Each site's posts in one list, with search and filters. Write in a prose editor that saves as you type, and preview in the site's own design." },
+  { name: "Books in Git", href: "#books", kind: "Books", note: "Chapters, scenes, outlines and the story bible in a private Git repository. Export to ePub and Word, or print to PDF." },
+  { name: "Checks that flag", href: "#checks", kind: "Checks", note: "Search and sharing checks on every post; continuity, timeline and voice checks on every scene. They flag. You decide." },
+  { name: "AI drafts beside yours", href: "#ai", kind: "AI", note: `${TOOL_COUNT} tools for Claude and other MCP clients: read, search, preview, draft and flag. An AI draft never replaces your text.` },
+  { name: "Who wrote what", href: "#ai", kind: "Record", note: "Every change is recorded as yours or an AI's, and a book's record exports as a report." },
+  { name: "Manuscripts in Google Drive", href: "#books", kind: "Drive", note: "An index and search of your manuscripts, read-only, with Send to Docs and Import." },
+];
+
+/** A post's way from draft to live, as the Apollo flight plan's time line. */
+const PATH = [
+  ["Draft", "You write in the editor. Every keystroke is saved to the database, and saving never publishes."],
+  ["Check", "The search title, description, image alt text and share card are checked as you type."],
+  ["Preview", "The site renders the post itself, in a sandbox, so you see what readers will see."],
+  ["Publish", "Only the Owner publishes. Editors write and save; Readers read and comment."],
+  ["Announce", "Once a post is live, a queued note can go out to your social accounts."],
+];
+
+const page = () => {
+  const patch = patchSvg({ id: "carrel", name: "Carrel", foot: "Writing desk", count: SITES.length, unit: "sites" });
+  const center = `<div class="cap-family-footer-center">
+<div><p class="cap-family-footer-center-name">Carrel</p><p class="cap-family-footer-about">An open-source writing app for posts across several websites and for books. You run it on Cloudflare; this page is its public front.</p></div>
+<div class="cap-family-footer-columns">
+<ul class="cap-family-footer-links"><li><a href="#what">What it does</a></li><li><a href="#path">From draft to live</a></li><li><a href="#ai">AI that stays beside you</a></li><li><a href="#run">Run your own</a></li></ul>
+<ul class="cap-family-footer-links"><li><a href="${REPO}">Source, MIT licensed</a></li><li><a href="${REPO}#develop">Install it</a></li></ul>
+</div>
+<p class="cap-family-footer-stamp"><span>Publishing to ${SITES.length} sites</span></p>
+</div>`;
+  return `<main id="main" tabindex="-1">
+<div class="cap-running-head" data-variant="sign"><span class="cap-running-head-name"><span class="cap-running-head-no">1</span>Carrel</span><span class="cap-running-head-folio">Writing</span></div>
+<header class="hero">
+<div class="hero-text">
+<h1>One desk for everything you write.</h1>
+<p class="hero-lead">Carrel is an open-source writing app you run on Cloudflare. Write and publish posts for several websites from one place, keep your books in a Git repository, and work with AI that drafts beside you and never over you.</p>
+<nav class="cap-signs" aria-label="Get started"><a class="cap-sign" data-variant="forward" href="${REPO}">Get the code</a><a class="cap-sign" href="${DESK}" rel="nofollow">Sign in to Desk</a></nav>
+<p class="hero-note">Desk is the signed-in app, where you write. This instance is Dustin Edwards's; to use Carrel, run your own.</p>
+</div>
+<section class="cap-cue hero-card" aria-labelledby="cue-title">
+<p class="cap-cue-strip"><span>Post · Checks</span><span>As you type</span></p>
+<h2 class="cap-cue-title" id="cue-title">How AI changed peer review</h2>
+<ul class="cap-cue-lines">
+<li><span class="cap-cue-name">Search title</span><span class="cap-cue-value">64 of 60 characters</span></li>
+<li><span class="cap-cue-name">Description</span><span class="cap-cue-value">142 of 155</span></li>
+<li><span class="cap-cue-name">Image alt text</span><span class="cap-cue-value">1 image has none</span></li>
+<li><span class="cap-cue-name">Share card</span><span class="cap-cue-value">Set</span></li>
+</ul>
+<p class="hero-card-note">An example post. Two flags, and Publish still works: checks flag, the writer decides.</p>
+</section>
+</header>
+
+<dl class="cap-form-boxes" data-variant="readings">
+<div class="cap-form-boxes-box"><dt>Sites on this Desk</dt><dd>${SITES.length}</dd></div>
+<div class="cap-form-boxes-box"><dt>Roles</dt><dd>3</dd></div>
+<div class="cap-form-boxes-box"><dt>AI tools</dt><dd>${TOOL_COUNT}</dd></div>
+<div class="cap-form-boxes-box"><dt>License</dt><dd>MIT</dd></div>
+</dl>
+
+<section class="cap-part" id="what" aria-labelledby="what-title">
+<h2 class="cap-part-title" id="what-title"><span class="cap-part-no">1.1</span>What it does</h2>
+<p class="cap-part-lead">A carrel is a library study desk. Carrel is one place to write for every site you run and every book you are working on.</p>
+<section class="cap-checklist" aria-label="What Carrel does">
+<p class="cap-checklist-strip" aria-hidden="true"><span>Carrel · Features</span><span>${FEATURES.length} cards</span></p>
+<ol class="cap-checklist-items">
+${FEATURES.map(checklistItem).join("\n")}
+</ol>
+</section>
+</section>
+
+<section class="cap-part" id="path" aria-labelledby="path-title">
+<h2 class="cap-part-title" id="path-title"><span class="cap-part-no">1.2</span>From draft to live</h2>
+<p class="cap-part-lead">Each site keeps its own content and design. Carrel reaches it through one shared API, so a post looks the same in the preview as on the site.</p>
+<ol class="cap-timeline">
+${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</span><div class="cap-timeline-body"><p><b>${esc(mark)}.</b> ${esc(text)}</p></div></li>`).join("\n")}
+</ol>
+</section>
+
+<section class="cap-part" id="checks" aria-labelledby="checks-title">
+<h2 class="cap-part-title" id="checks-title"><span class="cap-part-no">1.3</span>Checks that flag</h2>
+<p class="cap-part-lead">A check points at a problem and leaves the choice to you. Nothing holds a save.</p>
+<dl class="cap-form-boxes">
+<div class="cap-form-boxes-box"><dt>Search title</dt><dd>Empty or over 60 characters</dd></div>
+<div class="cap-form-boxes-box"><dt>Description</dt><dd>Missing, under 50 or over 155 characters</dd></div>
+<div class="cap-form-boxes-box"><dt>Images</dt><dd>No alt text, or no share card</dd></div>
+<div class="cap-form-boxes-box"><dt>Scenes</dt><dd>Continuity, timeline and world rules against the story bible</dd></div>
+<div class="cap-form-boxes-box" data-span="2"><dt>Voice</dt><dd>Habits of AI-written text, measured against your own published writing</dd></div>
+<div class="cap-form-boxes-box" data-span="2"><dt>Sources</dt><dd>Names and numbers with no source behind them</dd></div>
+</dl>
+</section>
+
+<section class="cap-part" id="ai" aria-labelledby="ai-title">
+<h2 class="cap-part-title" id="ai-title"><span class="cap-part-no">1.4</span>AI that stays beside you</h2>
+<p class="cap-part-lead">Connect Claude or any MCP client. It can read, search, preview and draft, under the same roles as a person.</p>
+<div class="rules">
+<p><b>Your prose is yours.</b> An AI never rewrites your text unless you ask. Its draft is saved next to yours, and you choose what to use.</p>
+<p><b>Flags, not verdicts.</b> AI reviewers and checks raise flags. A post with an open flag cannot be published by an AI.</p>
+<p><b>Publishing is yours.</b> An AI publishes only when the Owner tells it to in that session, and every publish is emailed with a link to undo it.</p>
+<p><b>A record of who wrote what.</b> Each change is marked as yours or an AI's, kept with the book.</p>
+</div>
+</section>
+
+<section class="cap-part" id="run" aria-labelledby="run-title">
+<h2 class="cap-part-title" id="run-title"><span class="cap-part-no">1.5</span>Run your own</h2>
+<p class="cap-part-lead">Carrel is one Cloudflare Worker with a D1 database, behind Cloudflare Access. Each site connects through <a href="https://github.com/DrDustinEdwards/site-api">site-api</a>.</p>
+<div class="run">
+<ol class="cap-leader-index">
+<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">1</span><span class="cap-leader-index-name">Create the database and add yourself as Owner</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">D1</span></span></li>
+<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">2</span><span class="cap-leader-index-name">Deploy with no public address</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">Workers</span></span></li>
+<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">3</span><span class="cap-leader-index-name">Turn on Access for the Worker</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">Access</span></span></li>
+<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">4</span><span class="cap-leader-index-name">Add your domain and connect your sites</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">site-api</span></span></li>
+</ol>
+<figure class="patch">${patch}<figcaption>This Desk publishes to ${SITES.length} sites: ${esc(SITES.join(", "))}.</figcaption></figure>
+</div>
+<nav class="cap-signs" aria-label="Install"><a class="cap-sign" rel="next" href="${REPO}#develop">The steps on GitHub</a></nav>
+</section>
+</main>
+<footer class="site-foot">${familyFooterHtml({ site: "carrel", center })}</footer>`;
+};
+
+/** The share card: the top of the page at 1200 by 630. */
+const CARD = { url: "/og-card.png", width: 1200, height: 630, alt: "Carrel: one desk for everything you write" };
+
+/** @param {{ title: string, description: string, body: string, index?: boolean }} p */
+const documentHtml = ({ title, description, body, index = true }) => `<!doctype html>
+<html lang="en" data-family="${FAMILY}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+${headHtml(headTags({ origin: ORIGIN, path: "/", title, description, image: CARD, siteName: "Carrel", locale: "en_US", noindex: !index }))}
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to the page</a>
+<div class="page">
+${body}
+</div>
+</body>
+</html>
+`;
+
+/**
+ * @param {string} outDir
+ * @returns {{ files: string[] }}
+ */
+export function buildSite(outDir) {
+  // Only an earlier build is deleted: a mistyped outDir must not take the working tree with it.
+  if (existsSync(outDir) && readdirSync(outDir).length > 0 && !existsSync(join(outDir, "site.css"))) {
+    throw new Error(`${outDir} is not empty and holds no earlier build; refusing to delete it`);
+  }
+  rmSync(outDir, { recursive: true, force: true });
+  mkdirSync(outDir, { recursive: true });
+  for (const name of readdirSync(join(HERE, "static"))) copyFileSync(join(HERE, "static", name), join(outDir, name));
+  const headersFile = join(outDir, "_headers");
+  writeFileSync(headersFile, readFileSync(headersFile, "utf8").replace("{{SITE_HEADERS}}", Object.entries(SITE_HEADERS).map(([name, value]) => `  ${name}: ${value}`).join("\n")));
+  writeStyles(outDir);
+
+  writeFileSync(
+    join(outDir, "index.html"),
+    documentHtml({
+      title: "Carrel: one desk for everything you write",
+      description: "Carrel is an open-source writing app on Cloudflare: publish posts to several websites from one place, keep books in Git, and work with AI that drafts beside you.",
+      body: page(),
+    }),
+  );
+  writeFileSync(
+    join(outDir, "404.html"),
+    documentHtml({
+      title: "Not found: Carrel",
+      description: "There is no page at this address.",
+      index: false,
+      body: `<main id="main" tabindex="-1">\n<div class="cap-running-head" data-variant="sign"><span class="cap-running-head-name"><span class="cap-running-head-no">1</span>Not found</span><span class="cap-running-head-folio">404</span></div>\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer class="site-foot">${familyFooterHtml({ site: "carrel" })}</footer>`,
+    }),
+  );
+
+  mkdirSync(join(outDir, ".well-known"), { recursive: true });
+  writeFileSync(join(outDir, ".well-known", "security.txt"), securityTxt({ origin: ORIGIN, contact: "security@dustinedwards.info", expires: SECURITY_TXT_EXPIRES }));
+  writeFileSync(join(outDir, "sitemap.xml"), sitemapDocument([{ loc: `${ORIGIN}/` }]));
+  writeFileSync(join(outDir, "robots.txt"), robotsDocument({ origin: ORIGIN }));
+
+  /** @type {string[]} */
+  const files = [];
+  const walk = (/** @type {string} */ dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else files.push(relative(outDir, path));
+    }
+  };
+  walk(outDir);
+  return { files: files.sort() };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const outDir = process.argv[2] ?? join(HERE, "dist");
+  const { files } = buildSite(outDir);
+  console.log(`www: ${files.length} files in ${relative(process.cwd(), outDir) || "."}`);
+}

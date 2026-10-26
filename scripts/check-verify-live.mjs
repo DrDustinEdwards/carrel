@@ -16,7 +16,7 @@ const healthy = () => ({
   metadata: { status: 200, body: "" },
   mcp: { status: 401, body: "" },
   unknown: { status: 404, body: "Not found." },
-  browser: { status: 302, location: "https://dustinedwards.cloudflareaccess.com/cdn-cgi/access/login/carrel.dustinedwards.info" },
+  browser: { status: 302, location: "https://dustinedwards.cloudflareaccess.com/cdn-cgi/access/login/desk.dustinedwards.info" },
 });
 
 /** @type {ReturnType<typeof healthy>} */

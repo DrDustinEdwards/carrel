@@ -1,4 +1,4 @@
-// The two doors (design decision 7, corrected 2026-09-27). The browser door is carrel.dustinedwards.info
+// The two doors (design decision 7, corrected 2026-09-27). The browser door is desk.dustinedwards.info
 // behind Access; the AI door is carrel-mcp.dustinedwards.info, an OAuth authorization server of its
 // own with Cloudflare Access for SaaS as the sign-in. They are told apart by hostname, never by email.
 //

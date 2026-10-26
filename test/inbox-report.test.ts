@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { reportInbox } from "~/lib/inbox-report.server";
 import { addPerson, addProject, resetDb, testEnv } from "./env";
 
-const ORIGIN = "https://carrel.dustinedwards.info";
+const ORIGIN = "https://desk.dustinedwards.info";
 let projectId: number;
 let personId: number;
 

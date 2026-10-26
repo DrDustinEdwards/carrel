@@ -2,6 +2,8 @@
   "$schema": "https://unpkg.com/knip@6.39.0/schema.json",
   "entry": [
     "scripts/*.mjs",
+    "www/build.mjs",
+    "www/worker.mjs",
     "test/**/*.test.ts",
     "test/entry.ts",
     "test/conformance/*entry.ts",
@@ -15,6 +17,7 @@
     "app/**/*.{ts,tsx,mjs}",
     "workers/**/*.ts",
     "scripts/**/*.mjs",
+    "www/*.mjs",
     "test/**/*.ts",
     "*.{ts,mjs}"
   ],
