@@ -64,14 +64,12 @@ jobs:
       # Each gate seen red on a planted violation (several minutes).
       - run: npm run check:plants
 
-  # Warn-only: Knip and jscpd against .no-bloat.json (devkit-no-bloat --warn-only) and the weight per route against
-  # .route-weight.json (devkit-route-weight), posted to the job summary. It exits 0 on a warning and
-  # continue-on-error backs that up; nothing waits on it. It runs beside check and gates, so it adds
-  # no wall-clock time to a pull request.
+  # Knip and jscpd against .no-bloat.json (devkit-no-bloat): a count above its baseline fails. Then the weight per
+  # route against .route-weight.json (devkit-route-weight), which only warns. It runs beside check and gates, so it
+  # adds no wall-clock time to a pull request.
   bloat:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
