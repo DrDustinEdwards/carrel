@@ -1,28 +1,17 @@
-/* The public site's own layout on Capsomer's tokens, in the NASA manual theme (capsomer/manual.css) in olive: a sign for the
-   running head, an example post's checks as an Apollo cue card, the features as a checklist card, a post's path as the
+/* The public site's own layout on Capsomer's tokens, in the NASA manual theme (capsomer/manual.css) in olive: the family letterhead,
+   an example post's checks as an Apollo cue card, the features as a checklist card, a post's path as the
    flight plan's time line, the facts in form boxes, Carrel's patch and the family footer. Unlayered, so it wins where it
    meets Capsomer's layers. */
 
-.skip-link {
-  position: absolute;
-  inset-inline-start: 16px;
-  inset-block-start: -100px;
-  padding: 8px 12px;
-  background: var(--surface);
-  color: var(--accent-text);
-  border: 1px solid var(--line-strong);
-}
-.skip-link:focus {
-  inset-block-start: 8px;
+/* The family letterhead at the top lines up with the page's column. */
+:root {
+  --header-max: calc(1180px - 32px);
 }
 
 .page {
   max-inline-size: 1180px;
   margin-inline: auto;
   padding: 24px 16px 0;
-}
-.page > main > .cap-running-head {
-  margin-block-end: 32px;
 }
 
 .hero {

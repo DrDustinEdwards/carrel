@@ -16,6 +16,7 @@ import { sitemapDocument } from "@drdustinedwards/site-helpers/sitemap";
 import { securityTxt } from "@dustinedwards/site-runtime/security-txt";
 import { familyFooterHtml } from "capsomer/behavior/family-footer";
 import { patchSvg } from "capsomer/behavior/manual";
+import { letterheadHtml } from "capsomer/behavior/site-header";
 
 import { SITE_HEADERS } from "./headers.mjs";
 
@@ -72,6 +73,8 @@ function writeStyles(outDir) {
     `@layer cap.tokens {\n${inlineCss(join(capsomer, "tokens", `family-${FAMILY}.css`))}\n}`,
     inlineCss(join(capsomer, "components", "manual", "manual.css")),
     inlineCss(join(capsomer, "components", "family-footer", "family-footer.css")),
+    // The family letterhead at the top of every page, pinned while it scrolls.
+    inlineCss(join(capsomer, "components", "site-header", "site-header.css")),
     readFileSync(join(HERE, "site.css"), "utf8"),
   ].join("\n\n");
   writeFileSync(join(outDir, "site.css"), css);
@@ -115,7 +118,6 @@ const page = () => {
 <p class="cap-family-footer-stamp"><span>Publishing to ${SITES.length} sites</span></p>
 </div>`;
   return `<main id="main" tabindex="-1">
-<div class="cap-running-head" data-variant="sign"><span class="cap-running-head-name"><span class="cap-running-head-no">1</span>Carrel</span><span class="cap-running-head-folio">Writing</span></div>
 <header class="hero">
 <div class="hero-text">
 <h1>One desk for everything you write.</h1>
@@ -207,6 +209,21 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 /** The share card: the top of the page at 1200 by 630. */
 const CARD = { url: "/og-card.png", width: 1200, height: 630, alt: "Carrel: one desk for everything you write" };
 
+/** The family letterhead (capsomer/site-header); the page has no script, so it follows the system's theme. */
+const HEADER = letterheadHtml({
+  name: "Carrel",
+  mark: '<img src="/favicon.svg" alt="" width="32" height="32">',
+  links: [
+    ["/", "Home"],
+    ["/#what", "What it does"],
+    ["/#path", "Draft to live"],
+    ["/#ai", "AI"],
+    ["/#run", "Run your own"],
+  ],
+  current: "Home",
+  theme: false,
+});
+
 /** @param {{ title: string, description: string, body: string, index?: boolean }} p */
 const documentHtml = ({ title, description, body, index = true }) => `<!doctype html>
 <html lang="en" data-family="${FAMILY}">
@@ -218,7 +235,7 @@ ${headHtml(headTags({ origin: ORIGIN, path: "/", title, description, image: CARD
 <link rel="stylesheet" href="/site.css">
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to the page</a>
+${HEADER}
 <div class="page">
 ${body}
 </div>
@@ -256,7 +273,7 @@ export function buildSite(outDir) {
       title: "Not found: Carrel",
       description: "There is no page at this address.",
       index: false,
-      body: `<main id="main" tabindex="-1">\n<div class="cap-running-head" data-variant="sign"><span class="cap-running-head-name"><span class="cap-running-head-no">1</span>Not found</span><span class="cap-running-head-folio">404</span></div>\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer class="site-foot">${familyFooterHtml({ site: "carrel" })}</footer>`,
+      body: `<main id="main" tabindex="-1">\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer class="site-foot">${familyFooterHtml({ site: "carrel" })}</footer>`,
     }),
   );
 
