@@ -52,7 +52,7 @@ const SOCIAL_FIELDS: Record<string, SocialFields> = {
 
 const DEFAULT_FIELDS: SocialFields = { title: ["title"], description: ["description", "excerpt"], image: null };
 
-export type SeoFinding = {
+type SeoFinding = {
   check: "title" | "description" | "image-alt" | "card-image";
   message: string;
   /** The words concerned, when there are any to quote. */
@@ -62,7 +62,7 @@ export type SeoFinding = {
 };
 
 /** What a shared link and a search result will show, as far as the post's own text decides it. */
-export type SocialPreview = {
+type SocialPreview = {
   /** The search result's title and description, cut where a result clips them. */
   search: { title: string; description: string };
   card: { title: string; description: string; image: string | null };

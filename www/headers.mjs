@@ -6,7 +6,7 @@ import { buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
 export const REPORT_PATH = "/csp-report";
 
 /** Nothing unlisted, no forms, no script (the page has none), and Cloudflare Web Analytics. */
-export const PAGE_CSP = buildContentSecurityPolicy({
+const PAGE_CSP = buildContentSecurityPolicy({
   denyUnlisted: true,
   noForms: true,
   sources: { img: ["data:"], connect: ["https://cloudflareinsights.com"] },
@@ -17,7 +17,7 @@ export const PAGE_CSP = buildContentSecurityPolicy({
   reportTo: "csp-endpoint",
 }).value;
 
-export const REPORTING_ENDPOINTS = reportingEndpoints("csp-endpoint", new URL(REPORT_PATH, "https://carrel.dustinedwards.info"));
+const REPORTING_ENDPOINTS = reportingEndpoints("csp-endpoint", new URL(REPORT_PATH, "https://carrel.dustinedwards.info"));
 
 /** Every security header the site sends: site-runtime's standard set with the page policy and its report endpoint. */
 export const SITE_HEADERS = Object.freeze({

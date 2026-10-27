@@ -29,7 +29,7 @@ export const PACK_POSTS = 40;
 const PACK_EXCERPTS = 6;
 
 /** Where the excerpts came from: the author's own writing pasted on the Voice page, or the published posts. */
-export type VoiceSource = "own" | "posts";
+type VoiceSource = "own" | "posts";
 
 export type VoicePack = {
   guide: string;
@@ -42,7 +42,7 @@ export type VoicePack = {
 };
 
 /** A finding on a draft: the scan's four kinds, and a run copied from an excerpt (which carries an old post's facts). */
-export type DraftFinding = Omit<SlopFinding, "kind" | "line"> & { kind: SlopFinding["kind"] | "copied"; line: number | null };
+type DraftFinding = Omit<SlopFinding, "kind" | "line"> & { kind: SlopFinding["kind"] | "copied"; line: number | null };
 
 export type DraftCheck = {
   findings: DraftFinding[];
@@ -67,7 +67,7 @@ function strings(json: string): string[] {
  * A post's prose: the frontmatter, code, HTML, images and Markdown marks taken out, link text kept. An
  * excerpt of the raw source would show a model brackets and markup as the author's style.
  */
-export function proseOf(source: string): string {
+function proseOf(source: string): string {
   return source
     .replace(/\r\n/g, "\n")
     .replace(/^---\n[\s\S]*?\n---\n?/, "")
@@ -179,7 +179,7 @@ function lineOf(body: string, run: string, firstLine: number): number | null {
  * copied from an excerpt, and one instruction covering both. `firstLine` is the file line the text starts on.
  * Flags only; the author decides.
  */
-export function scanAgainst(excerpts: string[], body: string, firstLine = 1, sources?: string[]): DraftCheck {
+function scanAgainst(excerpts: string[], body: string, firstLine = 1, sources?: string[]): DraftCheck {
   const scan = slopScan(body, excerpts, { firstLine, sources });
   const copied: DraftFinding[] = copiedRuns(body, excerpts).map((run) => {
     const ws = run.split(" ");
