@@ -358,7 +358,8 @@ export const TOOLS: Tool[] = [
         project: PROJECT,
         item: ITEM,
         expected_version: { type: "string", description: "The site's version of the post, from carrel_read_item, so an older version is never published by mistake." },
-        ai_draft_id: { type: "integer", description: "The aiDraftId carrel_save_draft returned, to publish that draft's text. Leave out to publish the site's text as it stands." },
+        // A string of digits: a client holding the tool list from before ai_draft_id existed sends it as text.
+        ai_draft_id: { type: "string", pattern: "^[1-9][0-9]*$", description: "The aiDraftId carrel_save_draft returned, as digits, to publish that draft's text. Leave out to publish the site's text as it stands." },
       },
       required: ["project", "item", "expected_version"],
       additionalProperties: false,
@@ -370,8 +371,9 @@ export const TOOLS: Tool[] = [
     run: async (args, ctx) => {
       // Refused on the role before anything else is read, as the button is.
       const p = await project(ctx, args, "read");
-      const draftId = args.ai_draft_id;
-      if (draftId !== undefined && (typeof draftId !== "number" || !Number.isInteger(draftId) || draftId <= 0)) throw new AiRefusal("ai_draft_id is the number carrel_save_draft returned.");
+      const raw = args.ai_draft_id;
+      const draftId = raw === undefined ? undefined : Number(raw);
+      if (draftId !== undefined && (!/^[1-9][0-9]*$/.test(String(raw)) || !Number.isSafeInteger(draftId))) throw new AiRefusal("ai_draft_id is the number carrel_save_draft returned.");
       const result = await aiPublish(ctx.env, p, ctx.session, str(args, "item"), str(args, "expected_version", { max: MAX.path }), {
         fetcher: ctx.deps.fetcher,
         carrelOrigin: ctx.deps.carrelOrigin,

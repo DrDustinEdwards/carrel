@@ -212,7 +212,7 @@ describe("publish by instruction (decision 2)", () => {
     await autosave(testEnv.DB, project, owner, "post-one", { source: "Dustin unsaved.", baseVersion: version });
     const ai = await connect("owner@test.invalid", "Claude");
     const saved = await ai.call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "---\ntitle: Post one\n---\nAI words.\n" });
-    const aiDraftId = saved.structuredContent?.aiDraftId;
+    const aiDraftId = String(saved.structuredContent?.aiDraftId);
     const result = await ai.call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version, ai_draft_id: aiDraftId });
     expect(result.structuredContent).toMatchObject({ published: true });
     const live = await site.adapter.content.get("post-one");
@@ -228,7 +228,7 @@ describe("publish by instruction (decision 2)", () => {
   it("PLANT: an AI draft from another person's session cannot be published", async () => {
     const version = await seedPost();
     const saved = await (await connect("editor@test.invalid")).call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "---\ntitle: Post one\n---\nTheir words.\n" });
-    const result = await (await connect("owner@test.invalid")).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version, ai_draft_id: saved.structuredContent?.aiDraftId });
+    const result = await (await connect("owner@test.invalid")).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version, ai_draft_id: String(saved.structuredContent?.aiDraftId) });
     expect(result.isError).toBe(true);
     expect((await site.adapter.content.get("post-one"))?.source).toBe("---\ntitle: Post one\n---\nDustin's words.\n");
   });
