@@ -2,50 +2,34 @@
 // and what emptying the trash deleted and kept.
 
 import { Alert } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
 import { Panel } from "capsomer/react/panel";
-import { Status } from "capsomer/react/status";
-import type { Ref } from "react";
+
+import { BulkResult } from "~/components/bulk-result";
 
 import type { MediaUse } from "./format";
 
 export type FileOutcome = { id: string; ok: boolean; message: string; usedBy?: MediaUse[] };
 
-export function BulkResultPanel({ bulkResult, resultRef, onClear }: { bulkResult: { what: string; outcomes: FileOutcome[] }; resultRef: Ref<HTMLElement>; onClear: () => void }) {
+export function BulkResultPanel({ bulkResult, onClear }: { bulkResult: { what: string; outcomes: FileOutcome[] }; onClear: () => void }) {
   return (
-      <Panel
-        title="Result"
-        id="media-result"
-        ref={resultRef}
-        src={`${bulkResult.what}: ${bulkResult.outcomes.filter((o) => o.ok).length} of ${bulkResult.outcomes.length} done`}
-        actions={
-          <Button size="sm" onClick={() => onClear()}>
-            Clear this result
-          </Button>
-        }
-      >
-        <ul className="app-flags" aria-label="Result for each file">
-          {bulkResult.outcomes.map((o) => (
-            <li key={o.id}>
-              {o.ok ? <Status tone="ok">Done</Status> : <Status tone="crit">Left as it was</Status>}
-              <span>
-                <strong className="cap-mono">{o.id}</strong>
-                <br />
-                {o.message}
-                {o.usedBy && o.usedBy.length > 0 ? (
-                  <ul className="app-list">
-                    {o.usedBy.map((use) => (
-                      <li key={`${use.id}:${use.detail}`}>
-                        Used by {use.title || use.id} ({use.detail})
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Panel>
+    <BulkResult
+      result={bulkResult}
+      id="media-result"
+      label="Result for each file"
+      name={(o) => <strong className="cap-mono">{o.id}</strong>}
+      more={(o) =>
+        o.usedBy && o.usedBy.length > 0 ? (
+          <ul className="app-list">
+            {o.usedBy.map((use) => (
+              <li key={`${use.id}:${use.detail}`}>
+                Used by {use.title || use.id} ({use.detail})
+              </li>
+            ))}
+          </ul>
+        ) : null
+      }
+      onClear={onClear}
+    />
   );
 }
 

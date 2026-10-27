@@ -11,7 +11,7 @@ import type { Viewer } from "~/lib/people.server";
 import { createAccount, recordPublication, setSwitches } from "~/lib/social/queue.server";
 import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
 
-import { addBook, addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { addPerson, addProject, share, sharedBook, testEnv } from "./env";
 import { connectAs } from "./mcp-client";
 import { fakeNovels } from "./novels";
 import { viewerFor } from "./site";
@@ -27,15 +27,8 @@ async function readDraftOnly(project: BookProject, viewer: Viewer, path: string)
 }
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
-  const reviewer = await addPerson("reviewer@test.invalid", { reviewer: true });
-  const id = await addBook(SLUG);
-  await share(id, editor, "editor");
-  await share(id, reader, "reader");
-  await share(id, reviewer, "reader");
+  const id = await sharedBook(SLUG);
+  await share(id, await addPerson("reviewer@test.invalid", { reviewer: true }), "reader");
   gh = fakeNovels({
     [`${SLUG}/bible/characters/wade.md`]: "---\nname: Wade\n---\n",
     [`${SLUG}/bible/places/harlan-place.md`]: "---\nname: Harlan place\n---\n",

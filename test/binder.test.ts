@@ -15,7 +15,7 @@ import { action as bookAction } from "~/routes/book";
 import { action as corkAction, loader as corkLoader } from "~/routes/book.corkboard";
 import { loader as historyLoader } from "~/routes/book.history";
 
-import { addBook, addPerson, resetDb, share, testEnv } from "./env";
+import { addPerson, sharedBook, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
 import { viewerFor, routeContext, settle } from "./site";
 
@@ -167,13 +167,7 @@ const scene = (pov: string, text: string) => `---\nstatus: Drafting\npov: ${pov}
 
 beforeEach(async () => {
   clearTokenCache();
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
-  const id = await addBook(SLUG);
-  await share(id, editor, "editor");
-  await share(id, reader, "reader");
+  await sharedBook(SLUG);
   gh = fakeNovels({
     [`${SLUG}/book.md`]: "---\ntitle: T\n---\n",
     [`${SLUG}/${A1}`]: scene("Nell", "Nell came to the gate."),

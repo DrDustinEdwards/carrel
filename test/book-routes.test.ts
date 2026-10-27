@@ -12,7 +12,7 @@ import { action as bookAction, loader as bookLoader } from "~/routes/book";
 import { loader as exportLoader } from "~/routes/book.export";
 import { loader as homeLoader } from "~/routes/home";
 
-import { addBook, addPerson, resetDb, share, testEnv } from "./env";
+import { sharedBook, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
 import { routeContext, settle } from "./site";
 
@@ -30,13 +30,7 @@ let env: Env;
 
 beforeEach(async () => {
   clearTokenCache();
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
-  const id = await addBook(SLUG);
-  await share(id, editor, "editor");
-  await share(id, reader, "reader");
+  await sharedBook(SLUG);
   gh = fakeNovels({
     [`${SLUG}/bible/characters/wade.md`]: "---\nname: Wade\n---\nRanch hand.\n",
     [`${SLUG}/bible/places/harlan-place.md`]: "---\nname: Harlan place\n---\n",

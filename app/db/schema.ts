@@ -388,6 +388,7 @@ export const voicePacks = sqliteTable("voice_packs", {
   updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
+/** @public drizzle-kit reads the export; unexported, it would write a migration dropping the table. */
 export const voiceCuts = sqliteTable(
   "voice_cuts",
   {
