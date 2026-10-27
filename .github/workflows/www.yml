@@ -1,4 +1,4 @@
-# Deploys Carrel's public site (www/, the carrel-www Worker) to https://carrel.dustinedwards.info, on a push to main that
+# Deploys Carrel's public site (www/, the carrel Worker) to https://carrel.dustinedwards.info, on a push to main that
 # touches www/ or the lockfile, and by hand.
 name: Deploy public site
 

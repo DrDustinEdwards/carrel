@@ -4,7 +4,7 @@
   // the login or from CLOUDFLARE_ACCOUNT_ID. Deploy with `npm run deploy:www`, and only after the app has moved to
   // desk.dustinedwards.info (docs/public-site.md): the custom domain below is the app's until then.
   "$schema": "../node_modules/wrangler/config-schema.json",
-  "name": "carrel-www",
+  "name": "carrel",
   "compatibility_date": "2026-10-02",
   "main": "./worker.mjs",
   "assets": {
