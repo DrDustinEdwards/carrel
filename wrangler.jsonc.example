@@ -9,7 +9,7 @@
  * SITE_TXASM_KEY and SITE_JULIEEDWARDS_KEY (absent until the site is connected).
  *
  * NEVER PUBLIC, BY DEPLOY ORDER. Cloudflare Access is turned on at the Worker level
- * (Workers & Pages > carrel > Access, "All traffic"), which covers every URL that reaches this
+ * (Workers & Pages > carrel-desk > Access, "All traffic"), which covers every URL that reaches this
  * Worker. So the first deploy has no route at all, workers_dev and preview_urls are false, Access
  * is turned on, and only then is the custom domain added by uncommenting `routes` below. Setting
  * workers_dev and preview_urls here, not in the dashboard, means a deploy cannot turn them back on.
@@ -25,7 +25,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "carrel",
+	"name": "carrel-desk",
 	// Cloudflare says to set this to today's date. It is the newest date the pinned workerd accepts (a
 	// newer one stops the local runtime and the tests from starting); raise it with wrangler.
 	"compatibility_date": "2026-10-02",

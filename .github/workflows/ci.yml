@@ -95,7 +95,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@19a0131efae68afe76491545928f2f0dd366beca # v0.13.3
     with:
-      worker-name: carrel
+      worker-name: carrel-desk
       health-url: https://carrel-mcp.dustinedwards.info/health
       verify-command: node scripts/verify-live.mjs
       # The version in package.json's engines field.

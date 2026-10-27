@@ -22,7 +22,7 @@ The `deploy` job in `.github/workflows/ci.yml` calls devkit's shared workflow, `
 5. `wrangler d1 migrations apply DB --remote`.
 6. `wrangler d1 migrations list DB --remote` must report `No migrations to apply`.
 
-Then devkit's workflow runs `wrangler deploy --name carrel --var DEPLOY_SHA:<commit>` on the build step 4 left, with its own pinned wrangler.
+Then devkit's workflow runs `wrangler deploy --name carrel-desk --var DEPLOY_SHA:<commit>` on the build step 4 left, with its own pinned wrangler.
 
 `live gate`. It polls `https://carrel-mcp.dustinedwards.info/health`, the AI door's liveness, until its `sha` is the commit just deployed. The browser host's `/health` is behind Access, so CI could never read it. Then it runs `scripts/verify-live.mjs`, which needs no secret and no install:
 
