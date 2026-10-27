@@ -9,7 +9,7 @@
 
 import { routineConfig as checkRoutine, type RoutineConfig } from "@dustinedwards/site-runtime/routine";
 
-export { fireRoutine, type FireResult } from "@dustinedwards/site-runtime/routine";
+export { fireRoutine } from "@dustinedwards/site-runtime/routine";
 
 export function routineConfig(env: Env): RoutineConfig | { missing: string } {
   const url = env.SOCIAL_ROUTINE_URL?.trim() ?? "";
