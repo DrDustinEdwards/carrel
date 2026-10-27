@@ -2,7 +2,7 @@
 // FTS5 over title and body. The list is Carrel's index; Refresh asks the site again.
 
 import { ContentStatus } from "@dustinedwards/site-api";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Form, Link, useNavigation, useRevalidator } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { BulkBar } from "capsomer/react/bulk-bar";
@@ -11,10 +11,11 @@ import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
-import { Pill, Status } from "capsomer/react/status";
+import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { BulkResult } from "~/components/bulk-result";
 import { ProjectTabs } from "~/components/project-tabs";
 
 import { getEnv, getViewer } from "~/lib/context";
@@ -100,18 +101,9 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
   const [selected, setSelected] = useState<string[]>([]);
   const [tag, setTag] = useState("");
   const [result, setResult] = useState<{ what: string; outcomes: BulkOutcome[] } | null>(null);
-  const resultRef = useRef<HTMLElement>(null);
   // Only a post the site holds can be acted on; one that exists only in Carrel (an AI draft for a new post) cannot.
   const selectable = items.filter((i) => !i.isNew);
   const chosen = selectable.filter((i) => selected.includes(i.itemId));
-  useEffect(() => {
-    if (!result) return;
-    const el = resultRef.current;
-    if (el) {
-      el.tabIndex = -1;
-      el.focus();
-    }
-  }, [result]);
 
   const run = (op: BulkOp, what: string) => async (picked: readonly { id: string; label: string }[]) => {
     if ((op === "tag-add" || op === "tag-remove") && tag.trim() === "") throw new Error("Type a tag first.");
@@ -169,36 +161,25 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
       ) : null}
 
       {result ? (
-        <Panel
-          title="Result"
+        <BulkResult
+          result={result}
           id="bulk-result"
-          ref={resultRef}
-          src={`${result.what}: ${result.outcomes.filter((o) => o.ok).length} of ${result.outcomes.length} done`}
-          actions={
-            <Button size="sm" onClick={() => setResult(null)}>
-              Clear this result
-            </Button>
+          label="Result for each post"
+          name={(o) => (
+            <>
+              <strong>{o.title}</strong> <span className="cap-mono cap-muted">{o.id}</span>
+            </>
+          )}
+          more={(o) =>
+            o.copyId ? (
+              <>
+                {" "}
+                <Link to={`e/${encodeURIComponent(o.copyId)}`}>Open the copy</Link>
+              </>
+            ) : null
           }
-        >
-          <ul className="app-flags" aria-label="Result for each post">
-            {result.outcomes.map((o) => (
-              <li key={o.id}>
-                {o.ok ? <Status tone="ok">Done</Status> : <Status tone="crit">Left as it was</Status>}
-                <span>
-                  <strong>{o.title}</strong> <span className="cap-mono cap-muted">{o.id}</span>
-                  <br />
-                  {o.message}
-                  {o.copyId ? (
-                    <>
-                      {" "}
-                      <Link to={`e/${encodeURIComponent(o.copyId)}`}>Open the copy</Link>
-                    </>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Panel>
+          onClear={() => setResult(null)}
+        />
       ) : null}
 
       <Panel title="Posts" count={items.length} src={`Carrel's index of ${project.site}`} flush>

@@ -12,7 +12,7 @@
 // this page keeps server forms so the versioned writes, their refusals and the authorship record are
 // one path. There are no folders: the dustinedwards media schema has none.
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Form, Link, useFetcher, useNavigation, useRevalidator } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { BulkBar } from "capsomer/react/bulk-bar";
@@ -242,14 +242,6 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkTags, setBulkTags] = useState("");
   const [bulkResult, setBulkResult] = useState<{ what: string; outcomes: FileOutcome[] } | null>(null);
-  const resultRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const el = resultRef.current;
-    if (bulkResult && el) {
-      el.tabIndex = -1;
-      el.focus();
-    }
-  }, [bulkResult]);
 
   const trashView = view === "trash";
   const here = (over: Record<string, string>) => {
@@ -334,7 +326,7 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
           ) : null}
           {result?.intent === "delete" && "ok" in result && result.ok ? <Banner tone="ok">Deleted {result.id} from the site.</Banner> : null}
 
-          {bulkResult ? <BulkResultPanel bulkResult={bulkResult} resultRef={resultRef} onClear={() => setBulkResult(null)} /> : null}
+          {bulkResult ? <BulkResultPanel bulkResult={bulkResult} onClear={() => setBulkResult(null)} /> : null}
 
           {emptied && "ok" in emptied && emptied.ok ? <TrashEmptiedPanel emptied={emptied} /> : null}
           {emptied && "ok" in emptied && !emptied.ok ? <Alert tone="crit">{emptied.message}</Alert> : null}

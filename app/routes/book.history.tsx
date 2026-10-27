@@ -4,17 +4,14 @@
 // draft saved beside it. Read-only, and it works for a Reader. The compare components and the patch
 // are the site page's.
 
-import { Link, useLocation, useNavigate, useNavigation } from "react-router";
+import { Link } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
-import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
-import { Segmented } from "capsomer/react/segmented";
-import { Pill } from "capsomer/react/status";
-import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
 import { DraftLinks } from "~/components/history/draft-links";
+import { ComparePanel, type Side, SourcePanel, sides, utc, type View } from "~/components/history/history-view";
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
@@ -24,22 +21,12 @@ import { readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { orderPair } from "~/lib/history.server";
 import { isBookPath, kindOf, titleFromSegment } from "~/lib/novels/layout";
-import { unifiedPatch } from "~/lib/patch";
 
 import type { Route } from "./+types/book.history";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `History of ${data.label} · ${data.project.name} · Carrel` : "Carrel" }];
 }
-
-type Side = { title: string; who?: string; time?: string; text: string };
-type View =
-  | { kind: "none" }
-  | { kind: "problem"; message: string }
-  | { kind: "source"; version: string; message: string; author: string; at: string; source: string; current: boolean; previous: string | null; newest: string | null }
-  | { kind: "compare"; heading: string; lead: string; patch: string | null; before: Side | null; after: Side | null };
-
-const utc = (iso: string) => `${iso.slice(0, 16).replace("T", " ")} UTC`;
 
 function labelFor(path: string): string {
   const file = titleFromSegment(path.split("/").pop()!.replace(/\.md$/, ""));
@@ -48,18 +35,13 @@ function labelFor(path: string): string {
   return file;
 }
 
-/** Both texts are in hand: line by line is a patch built here, word by word the two texts side by side. */
-function sides(heading: string, lead: string, path: string, before: Side, after: Side, by: "line" | "word"): View {
-  if (by === "word") return { kind: "compare", heading, lead, patch: null, before, after };
-  return { kind: "compare", heading, lead, patch: unifiedPatch(path.split("/").pop()!, { text: before.text, label: before.title }, { text: after.text, label: after.title }), before: null, after: null };
-}
-
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireBookProject(env.DB, viewer, params.project, "read");
   const path = params["*"] ?? "";
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
+  const fileName = path.split("/").pop()!;
   const query = new URL(request.url).searchParams;
   // Side by side unless the person asks for the patch.
   const by: "line" | "word" = query.get("by") === "line" ? "line" : "word";
@@ -94,7 +76,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       view = sides(
         "Your working draft against the saved file",
         "Your autosaved copy in Carrel, set against the file as Git holds it now.",
-        path,
+        fileName,
         { title: "Saved in Git", text: current },
         { title: "Your working draft", who: viewer.name, time: draft.updatedAt, text: draft.source },
         by,
@@ -111,7 +93,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       view = sides(
         `Your ${draft ? "draft" : "text"} against the AI draft from ${ai.client}`,
         draft ? "Your autosaved copy in Carrel, set against the AI draft saved beside it." : "You have no working draft, so this is the saved file against the AI draft saved beside it.",
-        path,
+        fileName,
         mine,
         { title: `AI draft from ${ai.client}`, who: ai.client, time: ai.createdAt, text: ai.source },
         by,
@@ -141,7 +123,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
           : sides(
               `${utc(pair.from.at)} to ${utc(pair.to.at)}`,
               `What changed between the version by ${pair.from.author} and the one by ${pair.to.author}.`,
-              path,
+              fileName,
               { title: "Earlier version", who: pair.from.author, time: pair.from.at, text: before },
               { title: "Later version", who: pair.to.author, time: pair.to.at, text: after },
               by,
@@ -168,15 +150,6 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
   const base = `/b/${project.slug}`;
   const editor = `${base}/f/${path}`;
   const historyPath = `${base}/h/${path}`;
-  const navigate = useNavigate();
-  const location = useLocation();
-  const pending = useNavigation().location;
-  const shown = pending ? (new URLSearchParams(pending.search).get("by") === "line" ? "line" : "word") : by;
-  const setBy = (next: "line" | "word") => {
-    const params = new URLSearchParams(location.search);
-    params.set("by", next);
-    void navigate(`${location.pathname}?${params.toString()}`, { preventScrollReset: true });
-  };
   const moved = versions.filter((v) => v.path !== path).length;
 
   return (
@@ -200,45 +173,9 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
       {notice ? <Banner tone="warn">{notice}</Banner> : null}
       {view.kind === "problem" ? <Alert tone="warn">{view.message}</Alert> : null}
 
-      {view.kind === "source" ? (
-        <Panel
-          title={view.message}
-          src={
-            <>
-              by {view.author}, <Time at={view.at} format="exact" />
-            </>
-          }
-          actions={
-            <>
-              {view.current ? <Pill tone="ok">Current</Pill> : null}
-              {view.previous ? (
-                <Link className="cap-btn" to={`${historyPath}?v=${encodeURIComponent(view.previous)}&v=${encodeURIComponent(view.version)}`}>
-                  Changes in this version
-                </Link>
-              ) : null}
-              {view.newest ? (
-                <Link className="cap-btn" to={`${historyPath}?v=${encodeURIComponent(view.version)}&v=${encodeURIComponent(view.newest)}`}>
-                  Compare with the current version
-                </Link>
-              ) : null}
-            </>
-          }
-        >
-          <pre className="app-ai-draft" aria-label="Text of this version">
-            {view.source}
-          </pre>
-        </Panel>
-      ) : null}
+      {view.kind === "source" ? <SourcePanel view={view} historyPath={historyPath} noun="version" /> : null}
 
-      {view.kind === "compare" ? (
-        <Panel
-          title={view.heading}
-          description={view.lead}
-          actions={<Segmented legend="Compare by" hideLegend size="sm" value={shown} onChange={setBy} options={[{ value: "word", label: "Side by side" }, { value: "line", label: "By line" }]} />}
-        >
-          {view.patch !== null ? <DraftPatch patch={view.patch} title={view.heading} id="book-history-patch" /> : view.before && view.after ? <DraftCompare before={view.before} after={view.after} id="book-history-compare" /> : null}
-        </Panel>
-      ) : null}
+      {view.kind === "compare" ? <ComparePanel view={view} by={by} id="book-history" options={[{ value: "word", label: "Side by side" }, { value: "line", label: "By line" }]} /> : null}
 
       {againstGit || aiDrafts.length > 0 ? (
         <Panel title="Your text" src="Your draft, or the saved file when you have none">

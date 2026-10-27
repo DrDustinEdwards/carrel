@@ -23,7 +23,7 @@ import {
 import { autosave, readDraft } from "~/lib/content.server";
 import { requireSiteProject } from "~/lib/projects.server";
 
-import { addBook, addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { addBook, addPerson, addProject, sharedBook, testEnv } from "./env";
 import { BASELINE, PLANT } from "./fixtures/voice";
 import { fakeNovels } from "./novels";
 import { viewerFor, refusal } from "./site";
@@ -52,14 +52,8 @@ function seedRepo(extra: Record<string, string> = {}) {
 }
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
+  await sharedBook(SLUG);
   await addPerson("stranger@test.invalid");
-  const id = await addBook(SLUG);
-  await share(id, editor, "editor");
-  await share(id, reader, "reader");
 });
 
 async function as(email: string, action: "read" | "edit" | "publish" = "read") {

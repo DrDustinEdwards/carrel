@@ -45,3 +45,15 @@ export async function share(projectId: number, personId: number, role: "reader" 
     .bind(projectId, personId, role)
     .run();
 }
+
+/** A fresh database with one book shared the usual way: an owner, an editor and a reader. */
+export async function sharedBook(slug: string): Promise<number> {
+  await resetDb();
+  await addPerson("owner@test.invalid", { owner: true });
+  const editor = await addPerson("editor@test.invalid");
+  const reader = await addPerson("reader@test.invalid");
+  const id = await addBook(slug);
+  await share(id, editor, "editor");
+  await share(id, reader, "reader");
+  return id;
+}

@@ -3,7 +3,7 @@
 // write goes to the site, which saves it and clears the post's cache as one step. Everything a
 // stranger sent is drawn as text: the source address is never a link.
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Form, Link, useRevalidator } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { BulkBar } from "capsomer/react/bulk-bar";
@@ -13,10 +13,11 @@ import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
-import { Pill, Status } from "capsomer/react/status";
+import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { BulkResult } from "~/components/bulk-result";
 import { ProjectTabs } from "~/components/project-tabs";
 
 import { getEnv, getViewer } from "~/lib/context";
@@ -82,15 +83,6 @@ export default function Mentions({ loaderData }: Route.ComponentProps) {
   const [sweepNote, setSweepNote] = useState<{ ok: boolean; message: string } | null>(null);
   const [sweepOpen, setSweepOpen] = useState(false);
   const sweepOpener = useRef<HTMLElement | null>(null);
-  const resultRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (!result) return;
-    const el = resultRef.current;
-    if (el) {
-      el.tabIndex = -1;
-      el.focus();
-    }
-  }, [result]);
 
   if (!loaderData.offered) {
     return (
@@ -163,30 +155,17 @@ export default function Mentions({ loaderData }: Route.ComponentProps) {
       {sweepNote && !sweepNote.ok ? <Alert tone="crit">{sweepNote.message}</Alert> : null}
 
       {result ? (
-        <Panel
-          title="Result"
+        <BulkResult
+          result={result}
           id="mention-result"
-          ref={resultRef}
-          src={`${result.what}: ${result.outcomes.filter((o) => o.ok).length} of ${result.outcomes.length} done`}
-          actions={
-            <Button size="sm" onClick={() => setResult(null)}>
-              Clear this result
-            </Button>
-          }
-        >
-          <ul className="app-flags" aria-label="Result for each mention">
-            {result.outcomes.map((o) => (
-              <li key={o.id}>
-                {o.ok ? <Status tone="ok">Done</Status> : <Status tone="crit">Left as it was</Status>}
-                <span>
-                  <strong>{names.get(o.id) ?? `Mention ${o.id}`}</strong> <span className="cap-mono cap-muted">{o.id}</span>
-                  <br />
-                  {o.message}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Panel>
+          label="Result for each mention"
+          name={(o) => (
+            <>
+              <strong>{names.get(o.id) ?? `Mention ${o.id}`}</strong> <span className="cap-mono cap-muted">{o.id}</span>
+            </>
+          )}
+          onClear={() => setResult(null)}
+        />
       ) : null}
 
       <Panel title="Mentions" count={items.length} src={`${FILTER_LABEL[filter]} on ${project.site}`} flush>

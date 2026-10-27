@@ -6,18 +6,15 @@
 // unified patches; the two comparisons that have both sides in Carrel build the patch here.
 // "By word" sets the same two texts against each other sentence by sentence.
 
-import { Form, Link, useLocation, useNavigate, useNavigation } from "react-router";
+import { Form, Link } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
-import { Segmented } from "capsomer/react/segmented";
-import { Pill } from "capsomer/react/status";
-import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
 import { DraftLinks } from "~/components/history/draft-links";
+import { ComparePanel, type Side, SourcePanel, sides, utc, type View } from "~/components/history/history-view";
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
@@ -25,7 +22,6 @@ import { readDoc, readDraft, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions, orderPair, readRevision, revisionPatch } from "~/lib/history.server";
 import { kindNoun } from "~/lib/kind-words";
-import { unifiedPatch } from "~/lib/patch";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { SiteNotConnected } from "~/lib/sites.server";
@@ -35,15 +31,6 @@ import type { Route } from "./+types/history";
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `History of ${data.title || data.itemId} · Carrel` : "Carrel" }];
 }
-
-type Side = { title: string; who?: string; time?: string; text: string };
-type View =
-  | { kind: "none" }
-  | { kind: "problem"; message: string }
-  | { kind: "source"; version: string; message: string; author: string; at: string; source: string; current: boolean; previous: string | null; newest: string | null }
-  | { kind: "compare"; heading: string; lead: string; patch: string | null; before: Side | null; after: Side | null };
-
-const utc = (iso: string) => `${iso.slice(0, 16).replace("T", " ")} UTC`;
 
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
@@ -77,7 +64,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     else {
       const before: Side = { title: "On the site", who: doc.status === "published" ? "Published" : doc.status === "scheduled" ? "Scheduled" : "Draft", time: doc.updatedAt ?? undefined, text: doc.source };
       const after: Side = { title: "Your working draft", who: viewer.name, time: draft.updatedAt, text: draft.source };
-      view = sides("Your working draft against the site's version", "Your autosaved copy in Carrel, set against what the site holds now.", itemId, before, after, by);
+      view = sides("Your working draft against the site's version", "Your autosaved copy in Carrel, set against what the site holds now.", `${itemId}.md`, before, after, by);
     }
   } else if (query.get("compare") === "ai") {
     const id = Number(query.get("ai"));
@@ -92,7 +79,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       view = sides(
         `Your ${draft ? "draft" : noun} against the AI draft from ${ai.client}`,
         draft ? "Your autosaved copy in Carrel, set against the AI draft saved beside it." : "You have no working draft, so this is the site's text against the AI draft saved beside it.",
-        itemId,
+        `${itemId}.md`,
         mine,
         theirs,
         by,
@@ -186,27 +173,10 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     : { ok: false as const, message: outcome.message };
 }
 
-/** Both texts are in Carrel: the patch is built here, and the same two texts feed the word view. */
-function sides(heading: string, lead: string, itemId: string, before: Side, after: Side, by: "line" | "word"): View {
-  if (by === "word") return { kind: "compare", heading, lead, patch: null, before, after };
-  const patch = unifiedPatch(`${itemId}.md`, { text: before.text, label: before.title }, { text: after.text, label: after.title });
-  return { kind: "compare", heading, lead, patch, before: null, after: null };
-}
-
 export default function History({ loaderData, actionData }: Route.ComponentProps) {
   const { project, itemId, title, noun, by, view, picked, revisions, siteError, aiDrafts, againstSite, canRestore } = loaderData;
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const historyPath = `${editor}/history`;
-  const navigate = useNavigate();
-  const location = useLocation();
-  // The switch moves at once, while the other view loads; the loader's answer confirms it.
-  const pending = useNavigation().location;
-  const shown = pending ? (new URLSearchParams(pending.search).get("by") === "word" ? "word" : "line") : by;
-  const setBy = (next: "line" | "word") => {
-    const params = new URLSearchParams(location.search);
-    params.set("by", next);
-    void navigate(`${location.pathname}?${params.toString()}`, { preventScrollReset: true });
-  };
 
   return (
     <div className="app-page">
@@ -228,50 +198,22 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
       {actionData ? actionData.ok ? <Banner tone="ok">{actionData.message}</Banner> : <Alert tone="crit">{actionData.message}</Alert> : null}
 
       {view.kind === "source" ? (
-        <Panel
-          title={view.message || "Revision"}
-          src={
-            <>
-              by {view.author}, <Time at={view.at} format="exact" />
-            </>
+        <SourcePanel
+          view={view}
+          historyPath={historyPath}
+          noun="revision"
+          restore={
+            !view.current && canRestore ? (
+              <Form method="post">
+                <input type="hidden" name="version" value={view.version} />
+                <Button type="submit">Restore this version</Button>
+              </Form>
+            ) : null
           }
-          actions={
-            <>
-              {view.current ? <Pill tone="ok">Current</Pill> : null}
-              {view.previous ? (
-                <Link className="cap-btn" to={`${historyPath}?v=${encodeURIComponent(view.previous)}&v=${encodeURIComponent(view.version)}`}>
-                  Changes in this revision
-                </Link>
-              ) : null}
-              {view.newest ? (
-                <Link className="cap-btn" to={`${historyPath}?v=${encodeURIComponent(view.version)}&v=${encodeURIComponent(view.newest)}`}>
-                  Compare with the current version
-                </Link>
-              ) : null}
-              {!view.current && canRestore ? (
-                <Form method="post">
-                  <input type="hidden" name="version" value={view.version} />
-                  <Button type="submit">Restore this version</Button>
-                </Form>
-              ) : null}
-            </>
-          }
-        >
-          <pre className="app-ai-draft" aria-label="Source of this revision">
-            {view.source}
-          </pre>
-        </Panel>
+        />
       ) : null}
 
-      {view.kind === "compare" ? (
-        <Panel
-          title={view.heading}
-          description={view.lead}
-          actions={<Segmented legend="Compare by" hideLegend size="sm" value={shown} onChange={setBy} options={[{ value: "line", label: "By line" }, { value: "word", label: "By word" }]} />}
-        >
-          {view.patch !== null ? <DraftPatch patch={view.patch} title={view.heading} id="history-patch" /> : view.before && view.after ? <DraftCompare before={view.before} after={view.after} id="history-compare" /> : null}
-        </Panel>
-      ) : null}
+      {view.kind === "compare" ? <ComparePanel view={view} by={by} id="history" options={[{ value: "line", label: "By line" }, { value: "word", label: "By word" }]} /> : null}
 
       {againstSite || aiDrafts.length > 0 ? (
         <Panel title="Your draft" src="Your autosaved copy in Carrel">

@@ -16,7 +16,7 @@ import { action as bookAction, loader as bookLoader } from "~/routes/book";
 import { action as fileAction } from "~/routes/book.file";
 import { action as outlinerAction, loader as outlinerLoader } from "~/routes/book.outliner";
 
-import { addBook, addPerson, resetDb, share, testEnv } from "./env";
+import { sharedBook, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
 import { viewerFor, routeContext, settle } from "./site";
 
@@ -164,13 +164,7 @@ let env: Env;
 
 beforeEach(async () => {
   clearTokenCache();
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
-  const id = await addBook(SLUG);
-  await share(id, editor, "editor");
-  await share(id, reader, "reader");
+  await sharedBook(SLUG);
   gh = fakeNovels({
     [`${SLUG}/book.md`]: "---\ntitle: T\ntarget: 10000\ndeadline: 2027-01-01\n---\n",
     [`${SLUG}/${ONE}`]: `${HEADER("Drafting")}Wade opened the gate.\n`,
