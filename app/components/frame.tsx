@@ -1,5 +1,5 @@
-// Carrel inside Capsomer's shell: the same site header, app strip, menu, top bar and phone tab bar as
-// Capsomer's own site. Only the contents differ: Carrel's projects and its Owner-only views. The strip,
+// Carrel inside Capsomer's shell: the family letterhead (where you are and View site in its second row), app
+// strip, menu, top bar and phone tab bar, as Capsomer's own site. Only the contents differ: Carrel's projects and its Owner-only views. The strip,
 // the logo and the tab title come from Capsomer's FAMILY_APPS (app="carrel"); the theme is the header's
 // button (Capsomer 0.9.0).
 
@@ -86,6 +86,8 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
   return (
     <AdminShell
       app="carrel"
+      letterhead
+      viewSite="https://carrel.dustinedwards.info"
       nav={nav}
       tabs={tabs}
       renderLink={RouterLink}
