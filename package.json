@@ -17,7 +17,7 @@
     "check:mcp-roles": "node scripts/check-mcp-roles.mjs",
     "check:conformance": "devkit-conformance",
     "check:plants": "node scripts/plant-gates.mjs",
-    "check:bloat": "devkit-no-bloat --warn-only && npm run build && devkit-route-weight",
+    "check:bloat": "devkit-no-bloat && npm run build && devkit-route-weight",
     "check:roundtrip": "node scripts/check-roundtrip.mjs",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",

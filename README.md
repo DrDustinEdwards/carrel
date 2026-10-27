@@ -35,7 +35,7 @@ npm run check:mcp-roles      # no role logic in app/lib/mcp/
 npm run check:conformance    # the official MCP conformance suite, against the baseline in .conformance.json (devkit-conformance)
 npm run check:plants         # each gate above, seen red on a planted violation (several minutes)
 npm run check:a11y           # an axe scan (WCAG 2.2 A and AA) of every screen, both themes, desktop and phone
-npm run check:bloat          # warn-only: dead code (Knip), duplicates (jscpd), JS and CSS weight per route (devkit-route-weight)
+npm run check:bloat          # dead code (Knip) and duplicates (jscpd) fail on growth; JS and CSS weight per route warns
 ```
 
 GitHub Actions runs all of these on every push and pull request (`.github/workflows/ci.yml`); none needs a secret. `npm test` also runs `scripts/check-deploy.mjs`, which proves the deploy script never deploys after a failed migration, build or id check. A push to main then runs the `deploy` job (secrets: see `docs/auto-deploy.md`).
