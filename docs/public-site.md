@@ -8,7 +8,7 @@ Since 2026-10-26 Carrel has two faces, as Capsid has its public site and the Por
   Access as before. The AI door stays at carrel-mcp.dustinedwards.info.
 
 `npm run www` builds the page into `www/dist`; CI builds it on every push. `npm run deploy:www` deploys it, as does the
-"Deploy public site" workflow (by hand, or on a push to main touching `www/` once `CARREL_WWW_LIVE` is `true`).
+"Deploy public site" workflow (on a push to main touching `www/`, or by hand).
 
 ## The cutover, once
 
@@ -24,8 +24,7 @@ The app answered at carrel.dustinedwards.info until now, so the hostnames move i
    live at the new address.
 4. **Free the old name.** In the same Domains & Routes list, remove `carrel.dustinedwards.info` from the carrel Worker.
 5. **The public page.** Run the "Deploy public site" workflow (Actions, Deploy public site, Run workflow). It creates
-   `carrel-www` and attaches carrel.dustinedwards.info. Then set the repository variable `CARREL_WWW_LIVE` to `true`, and
-   remove the old redirect URI from the Google client.
+   `carrel-www` and attaches carrel.dustinedwards.info. Then remove the old redirect URI from the Google client.
 
 If step 5's deploy is refused for permissions (creating a Worker needs the token to be a Workers Admin), run
 `npm run deploy:www` once from a checkout signed in with `npx wrangler login`.
