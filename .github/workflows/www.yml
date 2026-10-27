@@ -1,6 +1,5 @@
-# Deploys Carrel's public site (www/, the carrel-www Worker) to https://carrel.dustinedwards.info. It runs by hand, and on a
-# push to main that touches www/ once the repository variable CARREL_WWW_LIVE is "true", which Dustin sets after the
-# cutover in docs/public-site.md: until then carrel.dustinedwards.info belongs to the app, and this deploy would fail.
+# Deploys Carrel's public site (www/, the carrel-www Worker) to https://carrel.dustinedwards.info, on a push to main that
+# touches www/ or the lockfile, and by hand.
 name: Deploy public site
 
 on:
@@ -18,7 +17,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name == 'workflow_dispatch' || vars.CARREL_WWW_LIVE == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
