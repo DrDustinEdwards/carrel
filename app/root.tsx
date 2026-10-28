@@ -36,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // made-up nonce would satisfy the markup while matching nothing in the header.
   const nonce = useRouteLoaderData<typeof loader>("root")?.nonce;
   return (
-    <html lang="en">
+    <html lang="en" data-family="olive">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
