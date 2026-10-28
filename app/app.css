@@ -3,6 +3,8 @@
    rules the writing screens need. Carrel's own rules are unlayered, so they win over Capsomer's. */
 @import "capsomer/layers.css";
 @import "capsomer/tokens.css";
+/* Desk wears the public page's olive (Dustin: "match the theme of the site"). */
+@import "capsomer/family-olive.css";
 @import "capsomer/base.css";
 @import "capsomer/prose.css";
 
