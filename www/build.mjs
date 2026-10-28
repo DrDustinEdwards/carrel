@@ -5,7 +5,7 @@
 //
 //   node www/build.mjs [outDir]
 
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,26 +48,20 @@ function inlineCss(file) {
   });
 }
 
-/** The faces Capsomer's tokens name, latin only: the site is in English. */
-const FONTS = [
-  { family: "Schibsted Grotesk", file: "@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-400-normal.woff2", weight: "400" },
-  { family: "Schibsted Grotesk", file: "@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-600-normal.woff2", weight: "600" },
-  { family: "Martian Mono", file: "@fontsource/martian-mono/files/martian-mono-latin-400-normal.woff2", weight: "400" },
-  { family: "Source Serif 4", file: "@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2", weight: "200 900" },
-];
+/** Source Serif 4, the one face Capsomer's fonts.css leaves to @fontsource (latin only: the site is in English). */
+const SERIF = "@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2";
 
 /** @param {string} outDir */
 function writeStyles(outDir) {
-  mkdirSync(join(outDir, "fonts"), { recursive: true });
-  const faces = FONTS.map((font) => {
-    const name = font.file.split("/").pop() ?? "";
-    copyFileSync(require.resolve(font.file), join(outDir, "fonts", name));
-    return `@font-face {\n  font-family: "${font.family}";\n  font-style: normal;\n  font-weight: ${font.weight};\n  font-display: swap;\n  src: url("fonts/${name}") format("woff2");\n}`;
-  });
   const capsomer = dirname(dirname(require.resolve("capsomer/tokens.css")));
+  // Capsomer's font files sit beside site.css, so its fonts.css loads them as fonts/.
+  cpSync(join(capsomer, "fonts"), join(outDir, "fonts"), { recursive: true });
+  const serif = SERIF.split("/").pop() ?? "";
+  copyFileSync(require.resolve(SERIF), join(outDir, "fonts", serif));
   const css = [
     "/* Built by www/build.mjs: Capsomer's fonts, tokens, base, Carrel's family, the manual theme and the family footer, then www/site.css. */",
-    ...faces,
+    inlineCss(join(capsomer, "css", "fonts.css")).replaceAll('url("../fonts/', 'url("fonts/'),
+    `@font-face {\n  font-family: "Source Serif 4";\n  font-style: normal;\n  font-weight: 200 900;\n  font-display: swap;\n  src: url("fonts/${serif}") format("woff2");\n}`,
     inlineCss(join(capsomer, "css", "tokens.css")),
     inlineCss(join(capsomer, "css", "base.css")),
     `@layer cap.tokens {\n${inlineCss(join(capsomer, "tokens", `family-${FAMILY}.css`))}\n}`,
@@ -203,7 +197,7 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 <nav class="cap-signs" aria-label="Install"><a class="cap-sign" rel="next" href="${REPO}#develop">The steps on GitHub</a></nav>
 </section>
 </main>
-<footer class="site-foot">${familyFooterHtml({ site: "carrel", center })}</footer>`;
+<footer>${familyFooterHtml({ site: "carrel", center })}</footer>`;
 };
 
 /** The share card: the top of the page at 1200 by 630. */
@@ -236,7 +230,7 @@ ${headHtml(headTags({ origin: ORIGIN, path: "/", title, description, image: CARD
 </head>
 <body>
 ${HEADER}
-<div class="cap-page page">
+<div class="cap-page">
 ${body}
 </div>
 </body>
@@ -273,7 +267,7 @@ export function buildSite(outDir) {
       title: "Not found: Carrel",
       description: "There is no page at this address.",
       index: false,
-      body: `<main id="main" tabindex="-1">\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer class="site-foot">${familyFooterHtml({ site: "carrel" })}</footer>`,
+      body: `<main id="main" tabindex="-1">\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer>${familyFooterHtml({ site: "carrel" })}</footer>`,
     }),
   );
 
