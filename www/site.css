@@ -95,3 +95,9 @@
   text-align: center;
 }
 
+
+/* The family's top space under the letterhead, as on the Enarratio gallery's main column, so the first heading sits at
+   the same place on every site. */
+.cap-page > main {
+  padding-block-start: var(--space-6);
+}

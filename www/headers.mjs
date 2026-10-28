@@ -5,7 +5,7 @@ import { buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
 
 export const REPORT_PATH = "/csp-report";
 
-/** Nothing unlisted, no forms, no script (the page has none), and Cloudflare Web Analytics. */
+/** Nothing unlisted, no forms, scripts from this origin only (the theme switch, /theme.js and /site.js), and Cloudflare Web Analytics. */
 const PAGE_CSP = buildContentSecurityPolicy({
   denyUnlisted: true,
   noForms: true,
