@@ -91,7 +91,7 @@ jobs:
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@df9841214f38936f588e409119a5c3bcae491819 # v0.14.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@520882e59f98ae19dd55bfe45d772ea42819596e # v0.15.0
     with:
       worker-name: carrel-desk
       health-url: https://carrel-mcp.dustinedwards.info/health

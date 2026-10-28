@@ -3,11 +3,6 @@
    flight plan's time line, the facts in form boxes, Carrel's patch and the family footer. Unlayered, so it wins where it
    meets Capsomer's layers. */
 
-/* The page: Capsomer's family column (.cap-page), so the letterhead, content and footer line up. */
-.page {
-  padding-block-start: 24px;
-}
-
 .hero {
   display: grid;
   gap: 40px;
@@ -29,7 +24,7 @@
 .hero-lead {
   max-inline-size: var(--measure);
   margin: 0 0 28px;
-  font: 400 1.375rem / 1.45 var(--prose, "Source Serif 4", Georgia, serif);
+  font: 400 1.375rem / 1.45 var(--prose);
 }
 .hero .cap-signs {
   margin-block-end: 16px;
@@ -45,7 +40,7 @@
   padding: 12px 16px 16px;
 }
 .hero-card .cap-cue-title {
-  font-family: "Source Serif 4", Georgia, serif;
+  font-family: var(--prose);
 }
 
 .cap-part {
@@ -65,7 +60,7 @@
   margin: 0;
   padding: 16px 0;
   border-block-end: 1px solid var(--line);
-  font: 400 1.125rem / 1.55 "Source Serif 4", Georgia, serif;
+  font: 400 1.125rem / 1.55 var(--prose);
 }
 .rules b {
   font-family: var(--ui);
