@@ -1,6 +1,7 @@
 // Builds Carrel's public site at https://carrel.dustinedwards.info into www/dist (or the directory named): one page
 // saying what Carrel is, in the NASA manual theme the family's public sites share (Capsomer's manual.css) in Carrel's
-// olive, and the family footer. Static files only, and no script on any page. The writing app itself is Desk, at
+// olive, and the family footer. Static files only; the one script is Capsomer's theme switch, served as files from this
+// origin (/theme.js before first paint, /site.js for the letterhead's theme button). The writing app itself is Desk, at
 // https://desk.dustinedwards.info, behind Cloudflare Access; nothing here reaches it.
 //
 //   node www/build.mjs [outDir]
@@ -17,6 +18,7 @@ import { securityTxt } from "@dustinedwards/site-runtime/security-txt";
 import { familyFooterHtml } from "capsomer/behavior/family-footer";
 import { patchSvg } from "capsomer/behavior/manual";
 import { letterheadHtml } from "capsomer/behavior/site-header";
+import { build } from "vite";
 
 import { SITE_HEADERS } from "./headers.mjs";
 
@@ -67,7 +69,10 @@ function writeStyles(outDir) {
     `@layer cap.tokens {\n${inlineCss(join(capsomer, "tokens", `family-${FAMILY}.css`))}\n}`,
     inlineCss(join(capsomer, "components", "manual", "manual.css")),
     inlineCss(join(capsomer, "components", "family-footer", "family-footer.css")),
-    // The family letterhead at the top of every page, pinned while it scrolls.
+    // The theme button's tip (the popover's tooltip form) and the button itself, then the family letterhead at the top
+    // of every page, pinned while it scrolls.
+    inlineCss(join(capsomer, "components", "popover", "popover.css")),
+    inlineCss(join(capsomer, "components", "theme-switch", "theme-switch.css")),
     inlineCss(join(capsomer, "components", "site-header", "site-header.css")),
     readFileSync(join(HERE, "site.css"), "utf8"),
   ].join("\n\n");
@@ -203,7 +208,7 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 /** The share card: the top of the page at 1200 by 630. */
 const CARD = { url: "/og-card.png", width: 1200, height: 630, alt: "Carrel: one desk for everything you write" };
 
-/** The family letterhead (capsomer/site-header); the page has no script, so it follows the system's theme. */
+/** The family letterhead (capsomer/site-header) with its theme button, wired by /site.js. */
 const HEADER = letterheadHtml({
   name: "Carrel",
   mark: '<img src="/favicon.svg" alt="" width="32" height="32">',
@@ -215,7 +220,6 @@ const HEADER = letterheadHtml({
     ["/#run", "Run your own"],
   ],
   current: "Home",
-  theme: false,
 });
 
 /** @param {{ title: string, description: string, body: string, index?: boolean }} p */
@@ -227,21 +231,46 @@ const documentHtml = ({ title, description, body, index = true }) => `<!doctype 
 ${headHtml(headTags({ origin: ORIGIN, path: "/", title, description, image: CARD, siteName: "Carrel", locale: "en_US", noindex: !index }))}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/site.css">
+<script src="/theme.js"></script>
 </head>
 <body>
 ${HEADER}
 <div class="cap-page">
 ${body}
 </div>
+<script type="module" src="/site.js"></script>
 </body>
 </html>
 `;
 
 /**
- * @param {string} outDir
- * @returns {{ files: string[] }}
+ * Bundles a script of www/browser/ with Capsomer's behavior in it, minified, as one file.
+ *
+ * @param {string} file
+ * @param {"es" | "iife"} format
+ * @returns {Promise<string>}
  */
-export function buildSite(outDir) {
+async function bundle(file, format) {
+  const result = await build({
+    configFile: false,
+    logLevel: "silent",
+    build: {
+      write: false,
+      minify: true,
+      lib: { entry: join(HERE, "browser", file), formats: [format], name: "carrel" },
+    },
+  });
+  const [{ output }] = /** @type {import("vite").Rolldown.RolldownOutput[]} */ (Array.isArray(result) ? result : [result]);
+  const [chunk] = output;
+  if (output.length !== 1 || chunk?.type !== "chunk") throw new Error(`${file}: expected one chunk`);
+  return chunk.code;
+}
+
+/**
+ * @param {string} outDir
+ * @returns {Promise<{ files: string[] }>}
+ */
+export async function buildSite(outDir) {
   // Only an earlier build is deleted: a mistyped outDir must not take the working tree with it.
   if (existsSync(outDir) && readdirSync(outDir).length > 0 && !existsSync(join(outDir, "site.css"))) {
     throw new Error(`${outDir} is not empty and holds no earlier build; refusing to delete it`);
@@ -252,6 +281,8 @@ export function buildSite(outDir) {
   const headersFile = join(outDir, "_headers");
   writeFileSync(headersFile, readFileSync(headersFile, "utf8").replace("{{SITE_HEADERS}}", Object.entries(SITE_HEADERS).map(([name, value]) => `  ${name}: ${value}`).join("\n")));
   writeStyles(outDir);
+  writeFileSync(join(outDir, "theme.js"), await bundle("theme.js", "iife"));
+  writeFileSync(join(outDir, "site.js"), await bundle("site.js", "es"));
 
   writeFileSync(
     join(outDir, "index.html"),
@@ -291,6 +322,6 @@ export function buildSite(outDir) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const outDir = process.argv[2] ?? join(HERE, "dist");
-  const { files } = buildSite(outDir);
+  const { files } = await buildSite(outDir);
   console.log(`www: ${files.length} files in ${relative(process.cwd(), outDir) || "."}`);
 }
