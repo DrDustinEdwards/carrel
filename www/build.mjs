@@ -236,7 +236,7 @@ ${headHtml(headTags({ origin: ORIGIN, path: "/", title, description, image: CARD
 </head>
 <body>
 ${HEADER}
-<div class="page">
+<div class="cap-page page">
 ${body}
 </div>
 </body>

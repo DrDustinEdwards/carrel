@@ -3,15 +3,9 @@
    flight plan's time line, the facts in form boxes, Carrel's patch and the family footer. Unlayered, so it wins where it
    meets Capsomer's layers. */
 
-/* The family letterhead at the top lines up with the page's column. */
-:root {
-  --header-max: calc(1180px - 32px);
-}
-
+/* The page: Capsomer's family column (.cap-page), so the letterhead, content and footer line up. */
 .page {
-  max-inline-size: 1180px;
-  margin-inline: auto;
-  padding: 24px 16px 0;
+  padding-block-start: 24px;
 }
 
 .hero {
