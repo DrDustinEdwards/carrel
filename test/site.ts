@@ -126,3 +126,17 @@ export async function refusal(promise: Promise<unknown>): Promise<number> {
     throw thrown;
   }
 }
+
+/**
+ * The fake site with what site-api v0.10.0 adds, from its reference adapter: a live post's scheduled
+ * update, and a file's focal point, caption and replaced bytes. Each can be left out, as a site that
+ * has not shipped it (without `media`, a file takes no writes at all). Its replace says sizes may be
+ * stale, as a site with an image cache (dustinedwards.info) does.
+ */
+export function nextSite(offers: { scheduledUpdates?: boolean; media?: boolean } = {}): ReturnType<typeof fakeSite<ReturnType<typeof memoryAdapter>>> {
+  const adapter = memoryAdapter({ schedules: offers.scheduledUpdates === true, mediaWrites: offers.media === true });
+  const media = adapter.media!;
+  const replace = media.replace?.bind(media);
+  if (replace) media.replace = async (id, input) => ({ ...(await replace(id, input)), sizesNeedPurge: true });
+  return fakeSite(adapter);
+}

@@ -11,3 +11,14 @@ export function size(bytes: number): string {
 export function dims(width: number | null, height: number | null): string {
   return width && height ? `${width} by ${height}` : "not measured";
 }
+
+/**
+ * The types the crop editor opens and writes back: rasters a browser's canvas exports. Never an SVG,
+ * which served from Carrel's own origin would be script running as Carrel.
+ */
+export const CROPPABLE: readonly string[] = ["image/jpeg", "image/png", "image/webp"];
+
+/** A content type without its parameters, lower case. */
+export function cropType(contentType: string): string {
+  return contentType.split(";")[0]!.trim().toLowerCase();
+}

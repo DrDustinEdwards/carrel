@@ -6,7 +6,7 @@ Carrel is Dustin's private writing hub. Its signed-in app is Desk, at https://de
 
 - Current state is `carrel/core.md` in Capsid. The look is Capsomer.
 - Tests: keep the minimal set (a few browser tests for flows that must never break, one integration test per real behavior, unit tests only for tricky logic, shared code tested once where it lives), and remove any test that pins design, repeats coverage or has never caught a real mistake, unless it guards a harm that cannot be undone.
-- Checks and reviewers flag; they never decide. AI never rewrites Dustin's prose unasked; drafting continues from his own passages. Only the Owner publishes or sends anything outside Carrel.
+- Checks and reviewers flag; they never decide. AI never rewrites Dustin's prose unasked; drafting continues from his own passages. Only the Owner publishes or sends anything outside Carrel, except that an Author publishes, schedules and unpublishes the posts they wrote on the projects they are granted (`publish_own`, app/lib/roles.ts).
 
 ## Commands
 

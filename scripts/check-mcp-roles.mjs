@@ -27,7 +27,7 @@ const FORBIDDEN = [
   [/\bisReviewer\b/, "reads isReviewer"],
   [/\.role\b/, "reads a role"],
   [/\brole\s*[!=]==?/, "compares a role"],
-  [/["'`](owner|editor|reader|reviewer)["'`]/, "names a role as a value"],
+  [/["'`](owner|editor|author|reader|reviewer)["'`]/, "names a role as a value"],
   [/\bcan\s*\(/, "calls can()"],
   [/\b(roleOn|requireAction|requireCan)\b/, "asks for a role directly"],
   [/from\s+["']~\/lib\/roles["']/, "imports roles.ts for anything but a type"],

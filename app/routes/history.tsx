@@ -18,7 +18,7 @@ import { ComparePanel, type Side, SourcePanel, sides, utc, type View } from "~/c
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
-import { readDoc, readDraft, writeToSite } from "~/lib/content.server";
+import { mayPublishItem, readDoc, readDraft, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions, orderPair, readRevision, revisionPatch } from "~/lib/history.server";
 import { kindNoun } from "~/lib/kind-words";
@@ -141,12 +141,14 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     siteError,
     againstSite: Boolean(draft && doc),
     aiDrafts: aiDrafts.map((d) => ({ id: d.id, client: d.client, createdAt: d.createdAt })),
-    canRestore: Boolean(doc && can(project.role, restoreNeeds(doc.status))),
+    canRestore: Boolean(doc && (await mayRestore(env.DB, project, viewer, itemId, doc.status))),
   };
 }
 
-/** A live post's earlier text goes back live; a draft's goes back as the site's draft. */
-const restoreNeeds = (status: string) => (status === "draft" ? "edit" : "publish");
+/** A live post's earlier text goes back live, which is a publish (the Owner's, or the Author's on their
+ * own post); a draft's goes back as the site's draft. writeToSite holds the same rule. */
+const mayRestore = (db: D1Database, project: Parameters<typeof mayPublishItem>[1], viewer: Parameters<typeof mayPublishItem>[2], itemId: string, status: string) =>
+  status === "draft" ? Promise.resolve(can(project.role, "edit")) : mayPublishItem(db, project, viewer, itemId);
 
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
@@ -156,7 +158,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const version = String(form.get("version") ?? "");
   const doc = await readDoc(env, project, params.item);
   if (!doc || !version) throw new Response("Not found", { status: 404 });
-  if (!can(project.role, restoreNeeds(doc.status))) throw new Response("Forbidden", { status: 403 });
+  if (!(await mayRestore(env.DB, project, viewer, params.item, doc.status))) throw new Response("Forbidden", { status: 403 });
   const source = await readRevision(env, project, params.item, version);
   if (source === null) return { ok: false as const, message: "The site could not open that revision's source." };
   const outcome = await writeToSite(

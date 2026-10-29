@@ -206,10 +206,10 @@ describe("a site that offers none of the writes", () => {
   });
 
   it("is told so by its meta, so the page shows no alt, tag, trash or selection tools", async () => {
-    expect((await mediaMeta(env, await project("owner@test.invalid")))!.offers).toEqual({ alt: false, tags: false, trash: false });
+    expect((await mediaMeta(env, await project("owner@test.invalid")))!.offers).toEqual({ alt: false, tags: false, trash: false, focus: false, caption: false, replace: false });
     await seedFile();
     const data = (await mediaLoader({ request: new Request(`https://carrel.test/p/${SLUG}/media?view=trash`), params: { project: SLUG }, context: await contextFor("owner@test.invalid") } as never)) as { offers: unknown; view: string; items: unknown[] };
-    expect(data.offers).toEqual({ alt: false, tags: false, trash: false });
+    expect(data.offers).toEqual({ alt: false, tags: false, trash: false, focus: false, caption: false, replace: false });
     expect(data.view).toBe("library"); // no Trash view to open
     expect(data.items).toHaveLength(1);
   });
@@ -240,7 +240,7 @@ describe("the page's loader", () => {
         tagInvalid: boolean;
       };
     const library = await load("");
-    expect(library.offers).toEqual({ alt: true, tags: true, trash: true });
+    expect(library.offers).toEqual({ alt: true, tags: true, trash: true, focus: true, caption: true, replace: true });
     expect(library.items.map((i) => i.id)).toEqual([a.id]);
     const trash = await load("?view=trash");
     expect(trash).toMatchObject({ view: "trash", items: [{ id: b.id }], trashFiles: [{ id: b.id }] });

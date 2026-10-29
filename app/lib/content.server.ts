@@ -4,7 +4,7 @@
 
 import type { ContentDoc } from "@dustinedwards/site-api";
 import { SiteApiError } from "@dustinedwards/site-api/client";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changes, drafts } from "~/db/schema";
@@ -12,13 +12,13 @@ import { indexDoc, removeFromIndex } from "~/lib/index.server";
 import { checkLegalWrite } from "~/lib/legal.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
-import { can, type Action, type Role } from "~/lib/roles";
+import { can, mayPublish, type Action, type Role } from "~/lib/roles";
 import { siteClient, siteConnection } from "~/lib/sites.server";
 import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
 
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
 
-type WriteAction = "save" | "publish" | "schedule" | "unpublish";
+type WriteAction = "save" | "publish" | "schedule" | "unschedule" | "unpublish";
 
 export type WriteOutcome =
   | { ok: true; action: WriteAction; version: string; status: ContentDoc["status"]; changeId: string }
@@ -36,8 +36,11 @@ function requireCan(project: { role: Role }, action: Action) {
   if (!can(project.role, action)) forbid();
 }
 
-/** A 404 from the site means the item is not there yet, which is how a new post starts. */
-export async function readDoc(env: Env, project: SiteProject, itemId: string, fetcher?: typeof fetch) {
+/**
+ * A 404 from the site means the item is not there yet, which is how a new post starts. The doc carries
+ * the update waiting to go live on it, on a site that schedules updates (site-api v0.10.0).
+ */
+export async function readDoc(env: Env, project: SiteProject, itemId: string, fetcher?: typeof fetch): Promise<ContentDoc | null> {
   requireCan(project, "read");
   try {
     return await siteClient(env, project.site, fetcher).get(itemId);
@@ -86,12 +89,37 @@ export async function discardDraft(db: D1Database, project: ProjectRole, viewer:
 }
 
 /**
- * What a write needs. Saving changes to a published or scheduled item changes the public site, so it
+ * Who wrote a post: the person whose save created it in Carrel, read from the authorship record (the
+ * save with no version before it). After a delete and a new post under the same id, the newest
+ * creation counts. null for a post made anywhere else, which then has no Author, only the Owner.
+ */
+async function itemAuthor(db: D1Database, projectId: number, itemId: string): Promise<number | null> {
+  const row = await drizzle(db)
+    .select({ personId: changes.personId })
+    .from(changes)
+    .where(and(eq(changes.projectId, projectId), eq(changes.itemId, itemId), eq(changes.action, "save"), isNull(changes.versionBefore)))
+    .orderBy(desc(changes.createdAt))
+    .get();
+  return row?.personId ?? null;
+}
+
+/**
+ * Whether this person may change what the public sees of this post: the Owner on any post, an Author
+ * on a post they wrote (roles.ts, `mayPublish`). The authorship record is read only for an Author.
+ */
+export async function mayPublishItem(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string): Promise<boolean> {
+  if (can(project.role, "publish")) return true;
+  if (!can(project.role, "publish_own")) return false;
+  return mayPublish(project.role, (await itemAuthor(db, project.id, itemId)) === viewer.id);
+}
+
+/**
+ * Whether a write changes the public site. Saving changes to a published or scheduled item does, so it
  * is a publish, not an edit: an Editor may save drafts only.
  */
-function actionNeeded(action: WriteAction, current: ContentDoc | null): Action {
-  if (action !== "save") return "publish";
-  return current && current.status !== "draft" ? "publish" : "edit";
+function isPublic(action: WriteAction, current: ContentDoc | null): boolean {
+  if (action !== "save") return true;
+  return current !== null && current.status !== "draft";
 }
 
 export async function writeToSite(
@@ -103,6 +131,7 @@ export async function writeToSite(
     | { action: "save"; source: string; expectedVersion: string | null }
     | { action: "publish"; expectedVersion: string; source?: string }
     | { action: "schedule"; expectedVersion: string; publishAt: string; source?: string }
+    | { action: "unschedule"; expectedVersion: string }
     | { action: "unpublish"; expectedVersion: string },
   fetcher?: typeof fetch,
   /**
@@ -111,11 +140,25 @@ export async function writeToSite(
    */
   opts: { client?: string; keepDraft?: boolean } = {},
 ): Promise<WriteOutcome> {
-  // Checked twice: before any request, from the role alone, and again against the item's live state.
-  requireCan(project, request.action === "save" ? "edit" : "publish");
+  // Checked twice: before any request, from the role alone, and again against the item's live state
+  // and, for an Author, whether they wrote it.
+  if (request.action === "save") requireCan(project, "edit");
+  else if (!can(project.role, "publish") && !can(project.role, "publish_own")) forbid();
   const client = siteClient(env, project.site, fetcher);
   const current = await readDoc(env, project, itemId, fetcher);
-  requireCan(project, actionNeeded(request.action, current));
+  if (isPublic(request.action, current) && !(await mayPublishItem(env.DB, project, viewer, itemId))) forbid();
+
+  // Scheduling a live post keeps it live only on a site that holds the update apart (v0.10.0). An
+  // older site would take the post down until the time came, so Carrel does not ask it.
+  if ((request.action === "schedule" || request.action === "unschedule") && current?.status === "published") {
+    const { capabilities } = await client.meta();
+    if (capabilities.scheduledUpdates !== true) {
+      return { ok: false, reason: "refused", message: "This site cannot keep a post live while an update waits, so scheduling would take it off the site until then. Save the change now, or schedule it once the site supports scheduled updates." };
+    }
+  }
+  if (request.action === "unschedule" && !current?.scheduledUpdate) {
+    return { ok: false, reason: "refused", message: "No update is scheduled on this post." };
+  }
 
   // A legal page has its shared sections written in and its date stamped; a page the site keeps public is not taken down.
   const legal = await checkLegalWrite(env.DB, project, itemId, request, current, new Date());
@@ -139,6 +182,9 @@ export async function writeToSite(
           publishAt: request.publishAt,
           source: request.source,
         });
+        break;
+      case "unschedule":
+        result = await client.cancelSchedule(itemId, { expectedVersion: request.expectedVersion, changeId });
         break;
       case "unpublish":
         result = await client.unpublish(itemId, { expectedVersion: request.expectedVersion, changeId });

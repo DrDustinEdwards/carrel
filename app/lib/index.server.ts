@@ -36,6 +36,8 @@ export type IndexedItem = {
   status: ContentStatus;
   path: string | null;
   publishAt: string | null;
+  /** When the update waiting on a live post goes live; null when none waits. */
+  updateAt: string | null;
   publishedAt: string | null;
   updatedAt: string | null;
 };
@@ -51,6 +53,7 @@ function summaryRow(projectId: number, item: ContentSummary, syncedAt: string) {
     status: item.status,
     path: item.path,
     publishAt: item.publishAt,
+    updateAt: item.scheduledUpdate?.publishAt ?? null,
     publishedAt: item.publishedAt,
     updatedAt: item.updatedAt,
     syncedAt,
@@ -129,14 +132,14 @@ export async function refreshIndex(
     const row = summaryRow(project.id, item, syncedAt);
     statements.push(
       env.DB.prepare(
-        `INSERT INTO site_items (project_id, item_id, kind, title, status, path, publish_at, published_at, updated_at, synced_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO site_items (project_id, item_id, kind, title, status, path, publish_at, update_at, published_at, updated_at, synced_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (project_id, item_id) DO UPDATE SET kind = excluded.kind, title = excluded.title,
-           status = excluded.status, path = excluded.path, publish_at = excluded.publish_at,
+           status = excluded.status, path = excluded.path, publish_at = excluded.publish_at, update_at = excluded.update_at,
            published_at = excluded.published_at, updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
       ).bind(
         row.projectId, row.itemId, row.kind, row.title, row.status, row.path,
-        row.publishAt, row.publishedAt, row.updatedAt, row.syncedAt,
+        row.publishAt, row.updateAt, row.publishedAt, row.updatedAt, row.syncedAt,
       ),
     );
   }
@@ -230,6 +233,7 @@ export async function searchItemsPage(
       status: siteItems.status,
       path: siteItems.path,
       publishAt: siteItems.publishAt,
+      updateAt: siteItems.updateAt,
       publishedAt: siteItems.publishedAt,
       updatedAt: siteItems.updatedAt,
     })

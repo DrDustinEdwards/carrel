@@ -42,7 +42,9 @@ describe("the app policy", () => {
     expect(policy).toContain("base-uri 'none'");
     expect(policy).toContain("form-action 'self'");
     expect(policy).toContain("frame-ancestors 'none'");
-    expect(policy).toContain("frame-src 'self'");
+    // The preview iframe is Carrel's own route: default-src 'self' covers it, with no frame-src of its own.
+    expect(policy).toContain("default-src 'self'");
+    expect(policy).not.toContain("frame-src");
     expect(policy).toContain(`style-src 'self' 'nonce-${NONCE}'`);
     expect(policy).toContain("style-src-attr 'unsafe-inline'");
   });

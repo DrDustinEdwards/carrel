@@ -4,28 +4,36 @@
 // every delete; Carrel shows its answer.
 //
 // Roles, checked here so the page and any later tool meet the same rule: a Reader browses, an Editor
-// also uploads (and inserts into a post), edits alt text and tags, and moves files to the trash and
-// back (all reversible), and only the Owner deletes for good or empties the trash.
+// also uploads (and inserts into a post), edits alt text, caption, tags and the focal point, and moves
+// files to the trash and back (all reversible), and only the Owner deletes for good, empties the trash
+// or replaces a file's bytes (which changes every page that shows it, and cannot be taken back here).
 //
 // The writes (site-api v0.4.0) are each optional per site: the site's meta says which it offers
 // (`mediaAlt`, `mediaTags`, `mediaTrash`), and the screens hide what it does not. A 501 means the same.
+// The focal point, the caption and replacing a file are site-api v0.10.0 (`mediaFocus`, `mediaCaption`,
+// `mediaReplace`), through the package's client like the rest.
 
 import type { MediaBulkInput, MediaDetail, MediaItem, MediaList, MediaUploadLimits, MediaUse } from "@dustinedwards/site-api";
 import { SiteApiError } from "@dustinedwards/site-api/client";
+import { focusOf } from "@dustinedwards/site-runtime/image";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changes } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, type Action } from "~/lib/roles";
+import { CROPPABLE, cropType } from "~/components/media/format";
 import { absoluteMediaUrl, siteClient, siteConnection } from "~/lib/sites.server";
 
 function requireCan(project: SiteProject, action: Action) {
   if (!can(project.role, action)) throw new Response("Forbidden", { status: 403 });
 }
 
-/** A file as Carrel's screens show it: the site's item, plus the absolute address a browser loads. */
-export type MediaView = MediaItem & { src: string };
+/**
+ * A file as Carrel's screens show it: the site's item, its focal point and caption (null and "" on a
+ * site that does not keep them), plus the absolute address a browser loads.
+ */
+export type MediaView = MediaItem & { focus: string | null; caption: string; src: string };
 
 /** Who did it: the person, and the AI client when it came through the AI door (credited in the record). */
 export type MediaActor = { viewer: Viewer; client?: string };
@@ -34,7 +42,7 @@ export type MediaActor = { viewer: Viewer; client?: string };
  * One row in the authorship record per media action that the site carried out (migration 0007): the
  * same change id Carrel sent the site, so the two histories join. A refused action writes nothing.
  */
-type MediaAction = "media-upload" | "media-delete" | "media-alt" | "media-tags" | "media-trash" | "media-restore";
+type MediaAction = "media-upload" | "media-delete" | "media-alt" | "media-tags" | "media-trash" | "media-restore" | "media-focus" | "media-caption" | "media-replace";
 
 async function record(
   env: Env,
@@ -57,14 +65,28 @@ async function record(
   });
 }
 
-function view(project: SiteProject, env: Env, item: MediaItem): MediaView {
+function view<T extends MediaItem>(project: SiteProject, env: Env, item: T): T & MediaView {
   const connection = siteConnection(env, project.site);
   const origin = connection.state === "connected" ? connection.origin : "";
-  return { ...item, src: origin ? absoluteMediaUrl(origin, item.url) : item.url };
+  // A focal point the site's own image route would not take (site-runtime ./image) is shown as none.
+  return { ...item, focus: focusOf(item.focus), caption: item.caption ?? "", src: origin ? absoluteMediaUrl(origin, item.url) : item.url };
 }
 
-/** Which writes the site offers beyond upload and delete (site-api v0.4.0); a site lacking one never sees its screen. */
-export type MediaOffers = { alt: boolean; tags: boolean; trash: boolean };
+/**
+ * A focal point as the site stores it, from a point on the picture (each 0 to 1 from the top left),
+ * clamped and rounded to three decimals, in the form site-runtime's ./image reads (`focusOf`). null
+ * when either is not a number.
+ */
+function focusValue(x: number, y: number): string | null {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const part = (n: number) => String(Math.round(Math.min(1, Math.max(0, n)) * 1000) / 1000);
+  return focusOf(`${part(x)}x${part(y)}`);
+}
+
+/** Which writes the site offers beyond upload and delete (site-api v0.4.0 and v0.10.0); a site lacking one never sees its screen. */
+export type MediaOffers = { alt: boolean; tags: boolean; trash: boolean; focus: boolean; caption: boolean; replace: boolean };
+
+export const NO_MEDIA_OFFERS: MediaOffers = { alt: false, tags: false, trash: false, focus: false, caption: false, replace: false };
 
 /** What the site accepts and which writes it offers, from its meta. null when the site offers no media (a v0.1.0 site). */
 export async function mediaMeta(env: Env, project: SiteProject, fetcher?: typeof fetch): Promise<{ limits: MediaUploadLimits; offers: MediaOffers } | null> {
@@ -73,7 +95,14 @@ export async function mediaMeta(env: Env, project: SiteProject, fetcher?: typeof
   if (!capabilities.media || !capabilities.mediaUpload) return null;
   return {
     limits: capabilities.mediaUpload,
-    offers: { alt: capabilities.mediaAlt === true, tags: capabilities.mediaTags === true, trash: capabilities.mediaTrash === true },
+    offers: {
+      alt: capabilities.mediaAlt === true,
+      tags: capabilities.mediaTags === true,
+      trash: capabilities.mediaTrash === true,
+      focus: capabilities.mediaFocus === true,
+      caption: capabilities.mediaCaption === true,
+      replace: capabilities.mediaReplace === true,
+    },
   };
 }
 
@@ -103,11 +132,10 @@ export async function listMedia(
 }
 
 /** One file with every place the site's reference check finds it. null when the site has no such file. */
-export async function mediaDetail(env: Env, project: SiteProject, id: string, fetcher?: typeof fetch): Promise<(MediaDetail & { src: string }) | null> {
+export async function mediaDetail(env: Env, project: SiteProject, id: string, fetcher?: typeof fetch): Promise<(MediaDetail & MediaView) | null> {
   requireCan(project, "read");
   try {
-    const detail = await siteClient(env, project.site, fetcher).media.get(id);
-    return { ...detail, src: view(project, env, detail).src };
+    return view(project, env, await siteClient(env, project.site, fetcher).media.get(id));
   } catch (error) {
     if (error instanceof SiteApiError && (error.status === 404 || error.status === 400)) return null;
     throw error;
@@ -132,19 +160,14 @@ export async function uploadMedia(
   const limits = await mediaLimits(env, project, fetcher);
   if (!limits) return { ok: false, message: "This site has no media library yet." };
   const type = file.type.split(";")[0]!.trim().toLowerCase();
-  if (!limits.types.includes(type)) {
-    return { ok: false, message: `${file.name} is ${type || "an unknown type"}; this site accepts ${limits.types.map((t) => t.split("/")[1]).join(", ")}.` };
-  }
-  if (file.size > limits.maxBytes) {
-    return { ok: false, message: `${file.name} is ${megabytes(file.size)}; this site accepts files up to ${megabytes(limits.maxBytes)}.` };
-  }
-  if (file.size === 0) return { ok: false, message: `${file.name} is empty.` };
+  const limit = checkLimits(limits, file, type);
+  if (limit) return { ok: false, message: limit };
   const changeId = crypto.randomUUID();
   try {
     const item = await siteClient(env, project.site, fetcher).media.upload({
       bytes: new Uint8Array(await file.bytes()),
       contentType: type,
-      filename: file.name.replace(/[/\\]/g, "-").slice(0, 200),
+      filename: cleanName(file.name),
       alt: alt.trim().slice(0, 2000),
       changeId,
     });
@@ -243,6 +266,87 @@ export function restoreMedia(env: Env, project: SiteProject, actor: MediaActor, 
   return writeOne(env, project, actor, "media-restore", id, expectedVersion, (changeId) =>
     siteClient(env, project.site, fetcher).media.restore(id, { expectedVersion, changeId }),
   );
+}
+
+/**
+ * Sets the point of the picture its crops are cut around (site-api v0.10.0, `mediaFocus`): x and y each
+ * from 0 to 1 from the top left, or null to clear it and leave the crop to the site's own guess.
+ */
+export function setMediaFocus(env: Env, project: SiteProject, actor: MediaActor, id: string, point: { x: number; y: number } | null, expectedVersion: string, fetcher?: typeof fetch) {
+  const focus = point ? focusValue(point.x, point.y) : null;
+  if (point && focus === null) return Promise.resolve<WriteOutcome>({ ok: false, conflict: false, message: "That is not a point on the picture." });
+  return writeOne(env, project, actor, "media-focus", id, expectedVersion, (changeId) => siteClient(env, project.site, fetcher).media.setFocus(id, { focus, expectedVersion, changeId }));
+}
+
+/** The caption a figure shows under the file, beside its alt text (site-api v0.10.0, `mediaCaption`). */
+export function setMediaCaption(env: Env, project: SiteProject, actor: MediaActor, id: string, caption: string, expectedVersion: string, fetcher?: typeof fetch) {
+  return writeOne(env, project, actor, "media-caption", id, expectedVersion, (changeId) =>
+    siteClient(env, project.site, fetcher).media.setCaption(id, { caption: caption.trim().slice(0, 2000), expectedVersion, changeId }),
+  );
+}
+
+export type ReplaceOutcome = { ok: true; item: MediaView; recorded: boolean; sizesNeedPurge: boolean } | { ok: false; conflict: boolean; message: string };
+
+/**
+ * Replaces a file's bytes under the same id and address (site-api v0.10.0, `mediaReplace`): every post
+ * that uses it shows the new one, and its alt text, caption and tags stay. The Owner's alone, like a
+ * delete: it changes live pages, and the old bytes are gone from the site. The new file meets the
+ * site's own limits first, as an upload does; a file of another type is refused, since the address
+ * names the type.
+ */
+export async function replaceMedia(
+  env: Env,
+  project: SiteProject,
+  actor: MediaActor,
+  id: string,
+  file: { name: string; type: string; size: number; bytes: () => Promise<ArrayBuffer> },
+  expectedVersion: string,
+  fetcher?: typeof fetch,
+): Promise<ReplaceOutcome> {
+  requireCan(project, "publish");
+  const meta = await mediaMeta(env, project, fetcher);
+  if (!meta?.offers.replace) return { ok: false, conflict: false, message: "This site does not replace files yet." };
+  const type = file.type.split(";")[0]!.trim().toLowerCase();
+  const limit = checkLimits(meta.limits, file, type);
+  if (limit) return { ok: false, conflict: false, message: limit };
+  const current = await mediaDetail(env, project, id, fetcher);
+  if (!current) return { ok: false, conflict: false, message: "The site has no such file. It may have been deleted." };
+  if (current.contentType.split(";")[0]!.trim().toLowerCase() !== type) {
+    return { ok: false, conflict: false, message: `${file.name} is ${type}, and this file is ${current.contentType}. A replacement keeps the file's address, so it must be the same type; upload it as a new file instead.` };
+  }
+  const changeId = crypto.randomUUID();
+  let item: MediaItem;
+  let sizesNeedPurge: boolean;
+  try {
+    ({ sizesNeedPurge, ...item } = await siteClient(env, project.site, fetcher).media.replace(id, { bytes: new Uint8Array(await file.bytes()), contentType: type, filename: cleanName(file.name), expectedVersion, changeId }));
+  } catch (error) {
+    const failed = writeFailure(error);
+    return failed.ok ? { ok: false, conflict: false, message: "The site did not replace the file." } : failed;
+  }
+  let recorded = true;
+  try {
+    await record(env, project, actor, "media-replace", id, changeId, { before: expectedVersion, after: item.version ?? null });
+  } catch (error) {
+    recorded = false;
+    console.error(JSON.stringify({ record: "failed", mediaId: id, action: "media-replace", changeId, error: String(error) }));
+  }
+  return { ok: true, item: view(project, env, item), recorded, sizesNeedPurge };
+}
+
+/**
+ * A file's bytes, read from where the site serves it, for the crop editor: through Carrel, so the
+ * browser draws a same-origin image it may export. Only a file the site lists, and no larger than the
+ * site's own upload limit.
+ */
+export async function mediaBytes(env: Env, project: SiteProject, id: string, fetcher?: typeof fetch): Promise<{ bytes: ArrayBuffer; type: string; name: string } | null> {
+  const meta = await mediaMeta(env, project, fetcher);
+  const detail = meta ? await mediaDetail(env, project, id, fetcher) : null;
+  if (!meta || !detail || !CROPPABLE.includes(cropType(detail.contentType)) || detail.bytes > meta.limits.maxBytes) return null;
+  const response = await (fetcher ?? fetch)(detail.src);
+  if (!response.ok) return null;
+  const bytes = await response.arrayBuffer();
+  if (bytes.byteLength > meta.limits.maxBytes) return null;
+  return { bytes, type: cropType(detail.contentType), name: detail.filename ?? detail.id.split("/").pop() ?? detail.id };
 }
 
 export type BulkOp = MediaBulkInput["op"];
@@ -370,6 +474,19 @@ export async function emptyMediaTrash(env: Env, project: SiteProject, actor: Med
     }
   }
   return { deleted: answer.deleted, refused: answer.refused.map((r) => ({ ...r, usedBy: r.usedBy ?? [] })), more: answer.more, unrecorded };
+}
+
+/** Why the site would refuse this file, or null when it meets the site's own limits. */
+function checkLimits(limits: MediaUploadLimits, file: { name: string; size: number }, type: string): string | null {
+  if (!limits.types.includes(type)) return `${file.name} is ${type || "an unknown type"}; this site accepts ${limits.types.map((t) => t.split("/")[1]).join(", ")}.`;
+  if (file.size > limits.maxBytes) return `${file.name} is ${megabytes(file.size)}; this site accepts files up to ${megabytes(limits.maxBytes)}.`;
+  if (file.size === 0) return `${file.name} is empty.`;
+  return null;
+}
+
+/** A file name as the site takes it: no path, at most 200 characters. */
+function cleanName(name: string): string {
+  return name.replace(/[/\\]/g, "-").slice(0, 200);
 }
 
 function megabytes(bytes: number): string {

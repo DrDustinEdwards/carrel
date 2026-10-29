@@ -58,7 +58,7 @@ export async function checkLegalWrite(
   db: D1Database,
   project: SiteProject,
   itemId: string,
-  request: { action: "save" | "publish" | "schedule" | "unpublish"; source?: string },
+  request: { action: "save" | "publish" | "schedule" | "unschedule" | "unpublish"; source?: string },
   current: ContentDoc | null,
   now: Date,
 ): Promise<LegalCheck> {

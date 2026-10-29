@@ -102,7 +102,7 @@ const PATH = [
   ["Draft", "You write in the editor. Every keystroke is saved to the database, and saving never publishes."],
   ["Check", "The search title, description, image alt text and share card are checked as you type."],
   ["Preview", "The site renders the post itself, in a sandbox, so you see what readers will see."],
-  ["Publish", "Only the Owner publishes. Editors write and save; Readers read and comment."],
+  ["Publish", "The Owner publishes; an Author publishes the posts they wrote. Editors write and save; Readers read and comment."],
   ["Announce", "Once a post is live, a queued note can go out to your social accounts."],
 ];
 

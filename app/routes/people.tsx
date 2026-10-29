@@ -22,6 +22,7 @@ import { PageHead } from "capsomer/react/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { addAgent, addPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
+import { isMemberRole } from "~/lib/roles";
 
 import type { Route } from "./+types/people";
 
@@ -57,7 +58,7 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
       }
       case "role": {
         const role = String(form.get("role") ?? "");
-        await setProjectRole(db, viewer, personId, Number(form.get("project")), role === "reader" || role === "editor" ? role : null);
+        await setProjectRole(db, viewer, personId, Number(form.get("project")), isMemberRole(role) ? role : null);
         return { ok: true, intent };
       }
       case "disable":
@@ -158,79 +159,76 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         <Banner tone="ok">Saved.</Banner>
       ) : null}
 
+      {/* One card per person, each project's role in a grid inside it: the page grows down with more
+          projects, never sideways (a table of people by projects was wider than the window). */}
       <Panel title="Access" count={people.length} src="A disabled person is refused at both doors on their next request, whatever Access says. Their roles are kept." flush>
-        <div className="cap-table-wrap" role="region" aria-labelledby="people-caption" tabIndex={0}>
-          <table className="cap-table">
-            <caption id="people-caption" className="cap-sr-only">
-              People and their role on each project
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Person</th>
-                <th scope="col">Kind</th>
-                {projects.map((p) => (
-                  <th key={p.id} scope="col">
-                    {p.name}
-                  </th>
-                ))}
-                <th scope="col">
-                  <span className="cap-sr-only">Enable or disable</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {people.map((person) => {
-                const kind = person.isOwner ? "Owner" : person.email.startsWith("agent:") ? "Agent (AI)" : person.isReviewer ? "Reviewer (AI)" : "Person";
-                return (
-                  <tr key={person.id}>
-                    <th scope="row">
-                      {person.name || person.email}
-                      <span className="cap-table-aside">{person.email}</span>
-                      {person.disabledAt ? <Pill variant="secondary">Disabled {person.disabledAt.slice(0, 10)}</Pill> : null}
-                    </th>
-                    <td>
-                      <Pill variant="outline">{kind}</Pill>
-                    </td>
-                    {projects.map((project) => {
-                      const role = person.roles.find((r) => r.projectId === project.id)?.role ?? "";
-                      if (person.isOwner) return <td key={project.id}>Owner</td>;
-                      const id = `role-${person.id}-${project.id}`;
-                      return (
-                        <td key={project.id}>
-                          <Form method="post" className="app-inline">
-                            <input type="hidden" name="intent" value="role" />
-                            <input type="hidden" name="person" value={person.id} />
-                            <input type="hidden" name="project" value={project.id} />
-                            <label className="cap-sr-only" htmlFor={id}>
-                              {person.email} on {project.name}
-                            </label>
-                            <Select
-                              id={id}
-                              name="role"
-                              size="sm"
-                              defaultValue={role}
-                              options={[
-                                { value: "", label: "No access" },
-                                { value: "reader", label: "Reader" },
-                                // Reviewers read and flag only: Editor is not offered, and the server refuses it anyway.
-                                ...(person.isReviewer ? [] : [{ value: "editor", label: "Editor" }]),
-                              ]}
-                            />
-                            <Button type="submit" size="sm" pending={busy}>
-                              Set<span className="cap-sr-only"> role for {person.email} on {project.name}</span>
-                            </Button>
-                          </Form>
-                        </td>
-                      );
-                    })}
-                    <td>
-                      {person.isOwner ? null : <AccessButton person={person} />}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="cap-panel-pad app-people">
+          <p className="cap-muted app-note">
+            A Reader reads and comments. An Editor also writes and saves drafts. An Author on a site's project also publishes, schedules and unpublishes the posts they wrote
+            in Carrel. Only the Owner publishes anyone else's post, sends anything else outside Carrel and manages people.
+          </p>
+          <ul className="app-people-list" aria-label="People and their role on each project">
+            {people.map((person) => {
+              const kind = person.isOwner ? "Owner" : person.email.startsWith("agent:") ? "Agent (AI)" : person.isReviewer ? "Reviewer (AI)" : "Person";
+              return (
+                <li key={person.id} className="app-person">
+                  <div className="app-person-head">
+                    <h3>{person.name || person.email}</h3>
+                    {person.name ? <span className="cap-muted">{person.email}</span> : null}
+                    <Pill variant="outline">{kind}</Pill>
+                    {person.disabledAt ? <Pill variant="secondary">Disabled {person.disabledAt.slice(0, 10)}</Pill> : null}
+                    {person.isOwner ? null : (
+                      <span className="app-person-access">
+                        <AccessButton person={person} />
+                      </span>
+                    )}
+                  </div>
+                  {person.isOwner ? (
+                    <p className="cap-muted app-note">Owner of every project.</p>
+                  ) : (
+                    <ul className="app-person-roles" aria-label={`${person.name || person.email} on each project`}>
+                      {projects.map((project) => {
+                        const role = person.roles.find((r) => r.projectId === project.id)?.role ?? "";
+                        const id = `role-${person.id}-${project.id}`;
+                        return (
+                          <li key={project.id}>
+                            <Form method="post" className="app-person-role">
+                              <input type="hidden" name="intent" value="role" />
+                              <input type="hidden" name="person" value={person.id} />
+                              <input type="hidden" name="project" value={project.id} />
+                              <label htmlFor={id}>
+                                {project.name}
+                                <span className="cap-sr-only">, role for {person.email}</span>
+                              </label>
+                              <span className="app-inline">
+                                <Select
+                                  id={id}
+                                  name="role"
+                                  size="sm"
+                                  defaultValue={role}
+                                  options={[
+                                    { value: "", label: "No access" },
+                                    { value: "reader", label: "Reader" },
+                                    // Reviewers read and flag only: Editor and Author are not offered, and the server refuses them anyway.
+                                    ...(person.isReviewer ? [] : [{ value: "editor", label: "Editor" }]),
+                                    // An Author publishes their own posts: a person on a site's project, never an agent.
+                                    ...(person.isReviewer || person.email.startsWith("agent:") || project.kind !== "site" ? [] : [{ value: "author", label: "Author" }]),
+                                  ]}
+                                />
+                                <Button type="submit" size="sm" pending={busy}>
+                                  Set<span className="cap-sr-only"> role for {person.email} on {project.name}</span>
+                                </Button>
+                              </span>
+                            </Form>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </Panel>
 
@@ -247,8 +245,8 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
           <fieldset className="cap-field">
             <legend className="cap-field-label">Kind</legend>
             <div className="cap-field-options">
-              <Check type="radio" name="reviewer" value="no" defaultChecked label="A person, who reads, and edits where you share a project as Editor" />
-              <Check type="radio" name="reviewer" value="yes" label="A reviewer (another company's AI agent), who reads and flags only, through the AI door" />
+              <Check type="radio" name="reviewer" value="no" defaultChecked label="A person, given a role on each project under Access" />
+              <Check type="radio" name="reviewer" value="yes" label="A reviewer: another company's AI agent, which reads and flags only, through the AI door" />
             </div>
           </fieldset>
           <div className="app-actions">

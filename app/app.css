@@ -27,6 +27,7 @@
 @import "capsomer/empty.css";
 @import "capsomer/panel.css";
 @import "capsomer/table.css";
+@import "capsomer/posts-list.css";
 @import "capsomer/row-list.css";
 @import "capsomer/disclosure.css";
 @import "capsomer/breadcrumb.css";
@@ -100,6 +101,40 @@
   margin-inline-start: var(--space-3);
 }
 
+/* A site's posts (routes/project.tsx) are laid out by Capsomer's posts list (its classes on Carrel's
+   table). A row's status can hold more than one pill (an update waiting, AI drafts): they sit apart,
+   each time in its pill's own color, and wrap on a phone's card. */
+.cap-posts-status > .cap-pill + .cap-pill {
+  margin-inline-start: var(--space-2);
+}
+.cap-posts-status .cap-time {
+  color: inherit;
+}
+/* The kind has its own column, and joins the path only on a phone's card. */
+.cap-posts-meta > .cap-posts-kind {
+  display: none;
+}
+
+@container cap-table (max-width: 639px) {
+  .cap-posts-wrap.cap-table-wrap[data-reflow] > .cap-posts-table > tbody > tr {
+    & > .app-posts-kind {
+      display: none;
+    }
+    & .cap-posts-kind {
+      display: inline;
+    }
+    & > .cap-posts-status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+
+      & > .cap-pill + .cap-pill {
+        margin-inline-start: 0;
+      }
+    }
+  }
+}
+
 /* A search and its filters on one row, the button last; they wrap on a phone. */
 .cap-panel-pad:has(> .app-filters) {
   display: grid;
@@ -135,13 +170,83 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: var(--space-5);
+  /* Fields side by side line up on their inputs, whatever help one carries above its own. */
+  align-items: end;
 }
 
-/* A select and its button on one line, inside a table cell. */
+/* A select and its button on one line (a role on People). The select keeps the width of its
+   longest choice, so the button never sits over it. */
 .app-inline {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+
+  & > :is(.cap-select-wrap, select) {
+    flex: 1 1 auto;
+    min-inline-size: 8.5rem;
+  }
+  & > .cap-btn {
+    flex: none;
+  }
+}
+
+/* People (routes/people.tsx): one card per person, their role on each project in a grid. */
+.app-people {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.app-people-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-person {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-5);
+  border-block-start: 1px solid var(--line);
+
+  &:last-child {
+    padding-block-end: 0;
+  }
+}
+
+.app-person-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+
+  & h3 {
+    margin: 0;
+    font-size: var(--fs-body);
+  }
+}
+
+.app-person-access {
+  margin-inline-start: auto;
+}
+
+.app-person-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-person-role {
+  display: grid;
+  gap: var(--space-1);
+
+  & > label {
+    font-size: var(--fs-detail);
+    font-weight: 600;
+  }
 }
 
 /* The steps after adding a person: a long list inside an alert, kept readable. */
@@ -172,6 +277,14 @@
 @media (min-width: 1100px) {
   .app-media[data-detail] {
     grid-template-columns: minmax(0, 1fr) 24rem;
+  }
+}
+
+/* Narrower, the open file's details come first, above the library, rather than after the whole grid. */
+@media (max-width: 1099px) {
+  .app-media[data-detail] > .cap-panel:last-child {
+    order: -1;
+    scroll-margin-block-start: calc(var(--top-h, 0px) + var(--space-4));
   }
 }
 
@@ -398,8 +511,18 @@
 @media (min-width: 1100px) {
   .app-editor:not([data-layout="split"]) .app-editor-grid {
     grid-template-columns: minmax(0, 1fr) 22rem;
+    grid-template-areas:
+      "main side"
+      "more side";
+  }
+  .app-editor:not([data-layout="split"]) .app-editor-main {
+    grid-area: main;
+  }
+  .app-editor:not([data-layout="split"]) .app-editor-more {
+    grid-area: more;
   }
   .app-editor:not([data-layout="split"]) .app-editor-side {
+    grid-area: side;
     position: sticky;
     top: calc(var(--top-h) + var(--space-5));
     max-height: calc(100dvh - var(--top-h) - var(--space-6));
@@ -412,6 +535,29 @@
   gap: var(--space-5);
   min-width: 0;
   align-content: start;
+}
+
+/* Under the text (a phone, a narrow window, the split view), saving and publishing come first and the
+   binder, which is for moving to another post, last. */
+@media (max-width: 1099px) {
+  .app-editor-side > .cap-panel:first-child {
+    order: 1;
+  }
+}
+.app-editor[data-layout="split"] .app-editor-side > .cap-panel:first-child {
+  order: 1;
+}
+
+/* The binder's tree in a panel: the panel's body is a grid, and a grid item is as wide as its longest
+   line unless told otherwise, which pushed each row's status out of the panel. */
+.app-binder {
+  min-width: 0;
+}
+
+.app-editor-more {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
 }
 
 .app-editor-body {
@@ -547,6 +693,190 @@
 @media (max-width: 36rem) {
   .app-pick-alt {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The focal point (components/media/focus-picker.tsx): the picture with its point, and under it the
+   crops the site may cut around it, side by side at one height so their shapes compare. --focus-x and
+   --focus-y are set on .app-focus by the picker. */
+.app-focus {
+  --focus-x: 50%;
+  --focus-y: 50%;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.app-focus-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  background: var(--sunken);
+  cursor: crosshair;
+  overflow: hidden;
+
+  & img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* A ring in two tones, so it shows on a light picture and a dark one alike. */
+.app-focus-mark {
+  position: absolute;
+  inset-inline-start: var(--focus-x);
+  inset-block-start: var(--focus-y);
+  width: 1.5rem;
+  height: 1.5rem;
+  translate: -50% -50%;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #000;
+  pointer-events: none;
+}
+
+.app-focus-previews {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  & li {
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--fs-detail);
+    color: var(--muted);
+  }
+
+  & img {
+    display: block;
+    height: 4rem;
+    width: auto;
+    object-fit: cover;
+    object-position: var(--focus-x) var(--focus-y);
+    border-radius: var(--radius-s);
+  }
+
+  & [data-ratio="1 / 1"] img {
+    aspect-ratio: 1 / 1;
+  }
+
+  & [data-ratio="16 / 9"] img {
+    aspect-ratio: 16 / 9;
+  }
+
+  & [data-ratio="4 / 5"] img {
+    aspect-ratio: 4 / 5;
+  }
+}
+
+.app-focus-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+/* The media detail's folded tools: the note after a section's name, and a tool under another. */
+.app-summary-note {
+  margin-inline-start: auto;
+  color: var(--muted);
+  font-size: var(--fs-detail);
+  font-weight: 400;
+}
+
+.app-tool {
+  display: grid;
+  gap: var(--space-3);
+
+  /* A button with its one-line note beside it. */
+  &[data-inline] {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  & + & {
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--line);
+  }
+}
+
+.app-tag-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: calc(var(--space-2) * -1) 0 0;
+  font-size: var(--fs-detail);
+}
+
+.app-detail-end {
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--line);
+
+  & > form:last-child:not(:first-child) {
+    margin-inline-start: auto;
+  }
+}
+
+/* The crop editor's picture: the width of the dialog at most, and short enough that the fields and the
+   buttons fit under it in a laptop's window. The pointer draws on it. */
+.app-crop-canvas {
+  display: block;
+  max-width: 100%;
+  max-height: min(24rem, 45dvh);
+  width: auto;
+  height: auto;
+  margin-inline: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* The shape, then the four numbers: one row where the dialog has room, else the shape across and the
+   numbers two by two. */
+.app-crop-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+
+  & > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 48rem) {
+  .app-crop-fields {
+    grid-template-columns: minmax(9rem, 1.6fr) repeat(4, minmax(0, 1fr));
+
+    & > :first-child {
+      grid-column: auto;
+    }
+  }
+}
+
+/* A dialog footer with more than one action beside Cancel: on a phone the footer stacks every button
+   full width (Capsomer's dialog), so the group gives way and its buttons stack with Cancel. */
+@media (max-width: 39.99rem) {
+  .app-dialog-actions {
+    display: contents;
+  }
+}
+
+@media (forced-colors: active) {
+  .app-focus-mark {
+    border-color: Highlight;
+    box-shadow: none;
   }
 }
 
@@ -983,4 +1313,27 @@ img.ProseMirror-separator {
 .ProseMirror-focused .ProseMirror-selectednode.app-src-inline {
   outline: var(--ring-width, 3px) solid var(--ring);
   outline-offset: 2px;
+}
+
+.app-uploaded {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+
+/* A dialog whose field already says why its button refuses (the schedule dialog): the button keeps
+   its reason for a screen reader, and the footer does not say it a second time beside the button. */
+.app-reason-unseen .cap-btn-reason {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.app-upload .cap-media > .app-actions {
+  margin-block-start: var(--space-4);
 }

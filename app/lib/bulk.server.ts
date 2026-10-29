@@ -90,7 +90,7 @@ export async function bulkApply(
 /** What went wrong for one post, said plainly. Anything unexpected is logged and reported, never dropped. */
 function failure(id: string, error: unknown): ItemResult {
   if (error instanceof Response && error.status === 403) {
-    return { id, title: id, ok: false, message: "Changing a live post is the Owner's step, so this one was left as it was." };
+    return { id, title: id, ok: false, message: "Changing a live post is the Owner's step, or its Author's, so this one was left as it was." };
   }
   if (error instanceof SiteNotConnected) return { id, title: id, ok: false, message: error.detail };
   console.error(JSON.stringify({ bulk: "item-failed", id, error: error instanceof Response ? `response ${error.status}` : String(error) }));

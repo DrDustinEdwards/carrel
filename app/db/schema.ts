@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql to 0018_voice.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0021_author_role.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -28,7 +28,7 @@ export const projectMembers = sqliteTable(
   {
     projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
     personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
-    role: text("role", { enum: ["reader", "editor"] }).notNull(),
+    role: text("role", { enum: ["reader", "editor", "author"] }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.projectId, t.personId] })],
 );
@@ -50,6 +50,8 @@ export const siteItems = sqliteTable(
     status: text("status", { enum: ["draft", "scheduled", "published"] }).notNull(),
     path: text("path"),
     publishAt: text("publish_at"),
+    // When a live post's scheduled update goes live (migration 0021); null when none waits.
+    updateAt: text("update_at"),
     publishedAt: text("published_at"),
     updatedAt: text("updated_at"),
     bodyUpdatedAt: text("body_updated_at"),
@@ -79,7 +81,10 @@ export const changes = sqliteTable("changes", {
   // Media actions since migration 0007: item_id is then the site's media id, and a file has no version.
   // content-delete since migration 0009: item_id is the post's id, version_before the version deleted, version_after null.
   // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.
-  action: text("action", { enum: ["save", "publish", "schedule", "unpublish", "media-upload", "media-delete", "content-delete", "media-alt", "media-tags", "media-trash", "media-restore"] }).notNull(),
+  // unschedule, media-focus, media-caption and media-replace since migration 0021.
+  action: text("action", {
+    enum: ["save", "publish", "schedule", "unschedule", "unpublish", "media-upload", "media-delete", "content-delete", "media-alt", "media-tags", "media-trash", "media-restore", "media-focus", "media-caption", "media-replace"],
+  }).notNull(),
   versionBefore: text("version_before"),
   versionAfter: text("version_after"),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),

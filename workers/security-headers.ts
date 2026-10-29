@@ -47,9 +47,9 @@ const isHttpsOrigin = (origin: string) => /^https:\/\/[^\s;,'"]+$/.test(origin);
 export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
   return buildContentSecurityPolicy({
     nonce,
+    // 'strict-dynamic': the nonced entry scripts load the route chunks.
+    strictDynamic: true,
     sources: {
-      // 'strict-dynamic': the nonced entry scripts load the route chunks.
-      script: ["'strict-dynamic'"],
       img: ["data:", ...imageOrigins.filter(isHttpsOrigin)],
     },
     // The editor's palettes are placed with style attributes, which nonces do not cover.
@@ -57,8 +57,8 @@ export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrig
     // Carrel's hosts are excluded from Web Analytics, and HTML is sent no-transform, so the beacon is
     // never injected: the policy is not loosened for it.
     cloudflareWebAnalytics: false,
-    // The preview iframe, which is Carrel's own route serving the site's page under its own policy.
-    extraDirectives: ["frame-src 'self'"],
+    // The preview iframe is Carrel's own route serving the site's page under its own policy: default-src
+    // 'self' covers it, so no frame-src is written (site-runtime 0.26.0 refuses a redundant one).
     reportUri: `${reportOrigin}${CSP_REPORT_PATH}`,
     reportTo: CSP_REPORT_GROUP,
   }).value;
