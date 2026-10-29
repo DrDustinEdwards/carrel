@@ -1,6 +1,6 @@
 // The AI door: everything on carrel-mcp.dustinedwards.info (design decision 7, corrected 2026-09-27).
 //
-// That hostname is exempt from Carrel's Worker-level Access (a hostname Bypass app, setup in the PR),
+// That hostname is exempt from Desk's Access (a hostname Bypass app, setup in the PR),
 // because an MCP client must reach the OAuth endpoints before anyone has signed in. So nothing here
 // trusts Access's own header. Instead this door is an OAuth 2.1 authorization server of its own
 // (@cloudflare/workers-oauth-provider): CIMD for Claude, Claude Code and ChatGPT, a tightened
