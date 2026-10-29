@@ -379,7 +379,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               ? "Update scheduled. The live post stays as it is until then."
               : "Scheduled."
             : outcome.action === "unschedule"
-              ? "Scheduled update cancelled. The live post is unchanged."
+              ? "Scheduled update canceled. The live post is unchanged."
               : outcome.action === "publish"
                 ? "Published."
                 : "Returned to draft.",

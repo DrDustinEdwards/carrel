@@ -98,18 +98,18 @@ export function CropEditor({ id, version, name, endpoint, canReplace, onSaved }:
   // Reads the file once the dialog opens.
   useEffect(() => {
     if (!open || image) return;
-    let cancelled = false;
+    let canceled = false;
     (async () => {
       const response = await fetch(`${endpoint}?bytes=${encodeURIComponent(id)}`);
       if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { error?: string }).error ?? `The file did not open (${response.status}).`);
       const blob = await response.blob();
       const bitmap = await createImageBitmap(blob);
-      if (cancelled) return;
+      if (canceled) return;
       setImage({ bitmap, type: blob.type || "image/jpeg" });
       setRect({ x: 0, y: 0, w: bitmap.width, h: bitmap.height });
-    })().catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : String(e)));
+    })().catch((e: unknown) => !canceled && setError(e instanceof Error ? e.message : String(e)));
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [open, image, endpoint, id]);
 

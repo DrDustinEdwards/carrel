@@ -6,7 +6,7 @@
 -- membership role the CHECK allows.
 --
 -- The authorship record gains four actions: 'unschedule' (a scheduled update to a live post was
--- cancelled, the live post left as it was), and 'media-focus', 'media-caption' and 'media-replace' (a
+-- canceled, the live post left as it was), and 'media-focus', 'media-caption' and 'media-replace' (a
 -- file's focal point, its caption, and its bytes replaced under the same id and address).
 --
 -- SQLite cannot change a CHECK constraint in place, so both tables are rebuilt as migrations 0007,
