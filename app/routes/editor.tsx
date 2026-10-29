@@ -1,8 +1,10 @@
-// The editor for one site item: the copied CodeMirror editor in a prose layout, autosave to D1 as
-// you type, the site's own render in a sandboxed preview, and the writes the viewer's role allows.
+// The editor for one site item: the formatted editor (or Markdown) in a prose layout, in the item's
+// live room, where everyone on the project works on one copy at once (ruling point 3, build step 10),
+// with comments and suggestions; the site's own render in a sandboxed preview; and the writes the
+// viewer's role allows, each sending the room's text through site-api's version check.
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
+import { useFetcher } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -19,14 +21,16 @@ import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
-import { AUTOSAVE_DELAY_MS, useSaveShortcut } from "~/components/editor/save-keys";
+import { useRoomEditing } from "~/components/editor/room-editing";
+import { useSaveShortcut } from "~/components/editor/save-keys";
 import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
 import { RouterLink } from "~/components/frame";
 import { SiteBinder } from "~/components/writing/binder";
 import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
-import { autosave, discardDraft, mayPublishItem, readDoc, readDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
+import { roomNames } from "~/lib/comments.server";
+import { discardDraft, mayPublishItem, readDoc, readDraft, readOwnDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions } from "~/lib/history.server";
 import { joinSource, splitSource } from "@dustinedwards/site-api/frontmatter";
@@ -41,7 +45,9 @@ import { searchItems, sitePaths } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { transitionsFor } from "capsomer/publish-transition";
 import { PageHead } from "capsomer/react/page-head";
+import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { can } from "~/lib/roles";
+import { openRoom, rebaseRoom, replaceRoom, roomPath, roomVersion, saveRoom, siteCoauthors, withOthers } from "~/lib/rooms.server";
 import { seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
@@ -62,7 +68,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
   const itemId = params.item;
 
-  const draft = await readDraft(env.DB, project, viewer, itemId);
   let doc = null;
   let siteError: string | null = null;
   try {
@@ -72,7 +77,15 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   }
   // An item that exists only as an AI draft is still the person's to open: the list shows it.
   const aiDrafts = await listAiDrafts(env.DB, project, viewer, itemId);
-  if (!doc && !draft && aiDrafts.length === 0 && !siteError) throw new Response("Not found", { status: 404 });
+  if (!doc && !siteError && aiDrafts.length === 0 && !(await readDraft(env.DB, project, viewer, itemId))) throw new Response("Not found", { status: 404 });
+  // Everyone on the item works in its room. A site that did not answer leaves a room not started yet
+  // unstarted, and the page read only.
+  const opened = await openRoom(env, project, viewer, itemId, {
+    dialect: "site",
+    current: doc ? { source: doc.source, version: doc.version } : null,
+    unknown: Boolean(siteError),
+  });
+  const roomViewer: RoomViewer = { id: viewer.id, name: viewer.name || viewer.email, role: project.role, access: can(project.role, "edit") ? "edit" : "suggest" };
 
   // The site's revisions of this item, for the History panel. A site that does not answer leaves the
   // panel saying so, never the editor failing.
@@ -120,6 +133,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       mediaAccept = null;
     }
   }
+  const coauthors = revisions ? await siteCoauthors(env.DB, project.id, itemId) : new Map<string, string[]>();
   const paths = sitePaths(targets);
   const connection = siteConnection(env, project.site);
   const linkTargets: { href: string; title: string; state: "published" | "scheduled" | "draft" }[] = targets
@@ -130,7 +144,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, siteId: project.site },
     itemId,
     binder: siteBinderTree(targets, `/p/${project.slug}`),
-    canEdit: can(project.role, "edit"),
+    canEdit: can(project.role, "edit") && opened !== null,
     media: mediaAccept ? { endpoint: `/p/${encodeURIComponent(project.slug)}/media/api`, accept: mediaAccept } : null,
     canPublish,
     // Dismissing a flag clears it for publish on any post, so it stays the Owner's.
@@ -150,13 +164,16 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     address: doc?.path ?? paths.get(itemId) ?? null,
     publishAt: doc?.publishAt ?? null,
     version: doc?.version ?? null,
-    source: draft?.source ?? doc?.source ?? "",
-    baseVersion: draft ? draft.baseVersion : (doc?.version ?? null),
-    draftAt: draft?.updatedAt ?? null,
-    // The site moved on since this draft was started: saving it would be refused as stale.
-    behind: Boolean(draft && doc && draft.baseVersion !== doc.version),
+    source: opened?.source ?? doc?.source ?? "",
+    baseVersion: opened ? opened.version : (doc?.version ?? null),
+    // The room's changes nobody has saved, and the person's own draft from before the room.
+    unsaved: opened?.unsaved ?? false,
+    ownDraft: opened?.ownDraft ?? null,
+    // The site moved on since the room's copy was started: saving it would be refused as stale.
+    behind: opened?.behind ?? false,
+    room: opened ? { path: roomPath("p", project.slug, itemId), viewer: roomViewer, names: await roomNames(env.DB, project.id) } : null,
     siteError,
-    revisions: revisions ? revisions.slice(0, HISTORY_SHOWN).map((r) => ({ version: r.version, at: r.at, author: r.author, message: r.message })) : null,
+    revisions: revisions ? revisions.slice(0, HISTORY_SHOWN).map((r) => ({ version: r.version, at: r.at, author: withOthers(r.author, coauthors.get(r.version)), message: r.message })) : null,
     revisionCount: revisions?.length ?? 0,
     historyError,
     linkTargets,
@@ -174,7 +191,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 }
 
 type ActionResult =
-  | { intent: "autosave"; updatedAt: string }
   | { intent: "discard"; discarded: true }
   | { intent: "publish"; needsConfirm: true }
   | { intent: "dismiss-flag"; dismissed: number }
@@ -188,17 +204,41 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   const itemId = params.item;
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
-  const source = String(form.get("source") ?? "").replace(/\r\n/g, "\n");
-  const version = String(form.get("expectedVersion") ?? "") || null;
+  // Every write sends the room's text at that moment, checked against the room's version.
+  const fromRoom = (write: (source: string, expectedVersion: string | null) => Promise<WriteOutcome>) => saveRoom(env, project, viewer, itemId, write);
+  const onSiteVersion = (version: string | null) => {
+    if (!version) throw new Response("Save the post to the site first.", { status: 400 });
+    return version;
+  };
+  /** A write with no text, then the room takes the site's new version if nothing else changed. */
+  const withoutText = async (action: "unschedule" | "unpublish") => {
+    const version = await roomVersion(env, project, itemId);
+    if (!version) throw new Response(action === "unpublish" ? "Only a post on the site can be unpublished." : "Only a post on the site has a scheduled update.", { status: 400 });
+    const outcome = await writeToSite(env, project, viewer, itemId, { action, expectedVersion: version });
+    const now = outcome.ok ? await readDoc(env, project, itemId) : null;
+    if (now) await rebaseRoom(env, project, itemId, { version: now.version, source: now.source });
+    return outcome;
+  };
 
   switch (intent) {
-    case "autosave": {
-      const saved = await autosave(env.DB, project, viewer, itemId, { source, baseVersion: version });
-      return { intent, updatedAt: saved.updatedAt };
-    }
-    case "discard":
-      await discardDraft(env.DB, project, viewer, itemId);
+    case "discard": {
+      // Everyone in the room goes back to the site's text.
+      const current = await readDoc(env, project, itemId);
+      if (!current) throw new Response("Only a post on the site has a version to go back to.", { status: 400 });
+      await replaceRoom(env, project, viewer, itemId, { markdown: current.source, version: current.version });
       return { intent, discarded: true };
+    }
+    case "use-own-draft": {
+      // The person's own draft from before live editing, put in the room for everyone.
+      const own = await readOwnDraft(env.DB, project, viewer, itemId);
+      if (!own) throw new Response("That draft is gone.", { status: 404 });
+      await replaceRoom(env, project, viewer, itemId, { markdown: own.source, version: (await roomVersion(env, project, itemId)) ?? own.baseVersion, unsaved: true });
+      await discardDraft(env.DB, project, viewer, itemId);
+      return { intent: "discard", discarded: true };
+    }
+    case "drop-own-draft":
+      await discardDraft(env.DB, project, viewer, itemId);
+      return { intent: "discard", discarded: true };
     case "dismiss-flag": {
       const id = Number(form.get("flag"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
@@ -222,44 +262,32 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       }
     }
     case "save":
-      return { intent: "write", outcome: await writeToSite(env, project, viewer, itemId, { action: "save", source, expectedVersion: version }) };
+      return { intent: "write", outcome: await fromRoom((source, expectedVersion) => writeToSite(env, project, viewer, itemId, { action: "save", source, expectedVersion })) };
     case "publish": {
       // Refused before the ceremony, so a person who may not publish is never asked to confirm.
       if (!(await mayPublishItem(env.DB, project, viewer, itemId))) throw new Response("Forbidden", { status: 403 });
-      if (!version) throw new Response("Save the post to the site before publishing it.", { status: 400 });
+      if (!(await roomVersion(env, project, itemId))) throw new Response("Save the post to the site before publishing it.", { status: 400 });
       const current = await readDoc(env, project, itemId);
       // The site's ceremony, kept: a post that has never been public is published only on a second, explicit ask.
       if (current && !current.publishedAt && form.get("confirm") !== "first-publish") return { intent, needsConfirm: true };
-      return { intent: "write", outcome: await writeToSite(env, project, viewer, itemId, { action: "publish", source, expectedVersion: version }) };
+      return { intent: "write", outcome: await fromRoom((source, expectedVersion) => writeToSite(env, project, viewer, itemId, { action: "publish", source, expectedVersion: onSiteVersion(expectedVersion) })) };
     }
     case "schedule": {
       const publishAt = String(form.get("publishAt") ?? "");
-      if (!version || Number.isNaN(Date.parse(publishAt))) throw new Response("A schedule needs a saved post and a time.", { status: 400 });
+      if (!(await roomVersion(env, project, itemId)) || Number.isNaN(Date.parse(publishAt))) throw new Response("A schedule needs a saved post and a time.", { status: 400 });
       return {
         intent: "write",
-        outcome: await writeToSite(env, project, viewer, itemId, {
-          action: "schedule",
-          source,
-          expectedVersion: version,
-          publishAt: new Date(publishAt).toISOString(),
-        }),
+        outcome: await fromRoom((source, expectedVersion) =>
+          writeToSite(env, project, viewer, itemId, { action: "schedule", source, expectedVersion: onSiteVersion(expectedVersion), publishAt: new Date(publishAt).toISOString() }),
+        ),
       };
     }
     case "unschedule":
-      if (!version) throw new Response("Only a post on the site has a scheduled update.", { status: 400 });
-      return { intent: "write", outcome: await writeToSite(env, project, viewer, itemId, { action: "unschedule", expectedVersion: version }) };
     case "unpublish":
-      if (!version) throw new Response("Only a post on the site can be unpublished.", { status: 400 });
-      return { intent: "write", outcome: await writeToSite(env, project, viewer, itemId, { action: "unpublish", expectedVersion: version }) };
+      return { intent: "write", outcome: await withoutText(intent) };
     default:
       throw new Response("Bad request", { status: 400 });
   }
-}
-
-/** Autosave writes only the viewer's own draft, so the page has nothing to reload, and the site is not asked. */
-export function shouldRevalidate({ formData, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
-  if (formData?.get("intent") === "autosave") return false;
-  return defaultShouldRevalidate;
 }
 
 export default function EditorRoute({ loaderData }: Route.ComponentProps) {
@@ -273,95 +301,61 @@ function useHydrated(): boolean {
   return useSyncExternalStore(noSubscribe, () => true, () => false);
 }
 
-/** The time of day a draft was saved: in UTC with its zone until the page is live (the server knows no other), then the viewer's. */
-function savedClock(iso: string, hydrated: boolean): string {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: hydrated ? undefined : "UTC", timeZoneName: "short" });
-}
-
 function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
-  const [source, setSource] = useState(data.source);
   const hydrated = useHydrated();
   const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
-  const [savedSource, setSavedSource] = useState(data.source);
-  const [savedAt, setSavedAt] = useState<string | null>(data.draftAt);
   const [layout, chooseLayout] = useEditorLayout();
   const [asking, setAsking] = useState<null | { kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule"; flag?: number; opener: HTMLElement | null }>(null);
-  const autosaver = useFetcher<ActionResult>();
   const writer = useFetcher<ActionResult>();
   const { say } = useMessage();
   useTypingRecede();
 
-  const readOnly = !data.canEdit;
+  // The item's room: one copy for everyone on the project, as they type.
+  const editing = useRoomEditing({
+    path: data.room?.path ?? "",
+    initial: data.source,
+    unsaved: data.unsaved,
+    viewer: data.room?.viewer ?? { id: 0, name: "", role: "reader", access: "suggest" },
+    names: data.room?.names ?? {},
+    hideFrontMatter: true,
+  });
+  const { room } = editing;
+  const source = data.room ? room.source : data.source;
+  const setSource = (next: string) => {
+    const patched = room.setSource(next);
+    if (!patched.ok) say("Accept or reject the suggestions in that passage first.");
+  };
+  useEffect(() => {
+    if (room.notice) say(room.notice);
+  }, [room.notice, say]);
+
+  // Reading only: no room (the site did not answer), or a role that suggests, whose changes the room marks.
+  const readOnly = !data.room;
+  const mayEdit = data.canEdit;
   const live = data.status === "published" || data.status === "scheduled";
   const onSite = data.version !== null;
   // Changes to a live post change the public site, which is the Owner's to do, or the Author's on their own post.
   const maySave = data.canEdit && (!live || data.canPublish);
 
-
-  // Autosave a beat after typing stops. The base version travels with it, so a later save is checked
-  // against the version this draft started from.
-  const inFlight = useRef<string | null>(null);
-  useEffect(() => {
-    if (readOnly || source === savedSource || autosaver.state !== "idle") return;
-    const timer = window.setTimeout(() => {
-      inFlight.current = source;
-      void autosaver.submit({ intent: "autosave", source, expectedVersion: data.baseVersion ?? "" }, { method: "post" });
-    }, AUTOSAVE_DELAY_MS);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, savedSource, readOnly, data.baseVersion, autosaver.state]);
-
-  // Counted as saved only once the server said so; a failed autosave leaves the text unsaved and retried.
-  useEffect(() => {
-    if (autosaver.state !== "idle" || inFlight.current === null) return;
-    if (autosaver.data?.intent === "autosave") {
-      setSavedSource(inFlight.current);
-      setSavedAt(autosaver.data.updatedAt);
-    }
-    inFlight.current = null;
-  }, [autosaver.state, autosaver.data]);
-
-  // After a discard, the loader has the site's text again, which replaces the local copy.
-  const discarded = writer.data?.intent === "discard" && writer.state === "idle";
-  useEffect(() => {
-    if (discarded) {
-      setSource(data.source);
-      setSavedSource(data.source);
-      setSavedAt(null);
-    }
-  }, [discarded, data.source]);
-
-  // After an import, the loader has the imported draft, which replaces the local copy.
-  const imported = writer.data?.intent === "google" && writer.data.imported === true && writer.state === "idle";
-  useEffect(() => {
-    if (imported) {
-      setSource(data.source);
-      setSavedSource(data.source);
-      setSavedAt(data.draftAt);
-    }
-  }, [imported, data.source, data.draftAt]);
-
-  // A write that reached the site clears the draft there, so the local copy counts as saved.
   const outcome = writer.data?.intent === "write" ? writer.data.outcome : null;
-  useEffect(() => {
-    if (outcome?.ok && writer.state === "idle") {
-      setSavedSource(source);
-      setSavedAt(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outcome, writer.state]);
 
-  // What the controls send is read at the moment they send it: the publish controls keep an Undo that
-  // runs later, and it must carry the version the site has then, not the one this render saw.
-  const latest = useRef({ source, version: data.baseVersion });
-  latest.current = { source, version: data.baseVersion };
+  // The preview reads the room's copy, which the room keeps a second behind the typing.
+  const [previewAt, setPreviewAt] = useState(data.baseVersion ?? "");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPreviewAt(String(source.length) + ":" + Date.now().toString(36)), 2000);
+    return () => window.clearTimeout(timer);
+  }, [source]);
+
   const waiting = useRef<((result: ActionResult) => void) | null>(null);
   const viaGate = useRef(false);
-  const send = (intent: string, extra: Record<string, string> = {}) =>
-    new Promise<ActionResult>((resolve) => {
+  // Before a write the room is asked to confirm it has every change made here, so the save holds them.
+  const send = async (intent: string, extra: Record<string, string> = {}) => {
+    await room.flush();
+    return new Promise<ActionResult>((resolve) => {
       waiting.current = resolve;
-      void writer.submit({ intent, source: latest.current.source, expectedVersion: latest.current.version ?? "", ...extra }, { method: "post" });
+      void writer.submit({ intent, ...extra }, { method: "post" });
     });
+  };
   useEffect(() => {
     if (writer.state === "idle" && writer.data && waiting.current) {
       const done = waiting.current;
@@ -409,9 +403,17 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const transitions = data.status ? transitionsFor(data.status === "draft" ? "draft" : "published", data.everPublished) : [];
   const saveTransition = transitions.find((t) => t.id === "save-draft" || t.id === "save");
   const saveState =
-    autosaver.state !== "idle" ? "Saving to Carrel" : source !== savedSource ? "Not yet saved" : savedAt ? `Draft saved in Carrel ${savedClock(savedAt, hydrated)}` : onSite ? siteState(data.status, data.everPublished) : "";
+    room.status === "offline"
+      ? "Offline: changes wait here"
+      : room.unsaved
+        ? onSite
+          ? "Changes kept in Carrel, not yet on the site"
+          : "Kept in Carrel, not yet on the site"
+        : onSite
+          ? siteState(data.status, data.everPublished)
+          : "";
   // Absolute, not relative: from /p/x/e/item a bare "preview" would resolve to /p/x/e/preview.
-  const previewSrc = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview?at=${encodeURIComponent(savedAt ?? data.version ?? "")}`;
+  const previewSrc = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview?at=${encodeURIComponent(previewAt)}`;
   const failure = outcome && !outcome.ok && !viaGate.current ? outcome : null;
   const google = writer.data?.intent === "google" && !busy ? writer.data : null;
 
@@ -468,7 +470,25 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="The site's copy changed">
-            It changed after this draft was started, so saving it will be refused. Discard the draft to load the site's version, then reapply your changes.
+            It changed after this copy was started, so saving it will be refused. Discard the unsaved changes to load the site's version, then make them again.
+          </Banner>
+        ) : null}
+        {data.ownDraft && mayEdit ? (
+          <Banner
+            tone="info"
+            title="You have a draft of your own from before shared editing"
+            actions={
+              <>
+                <Button size="sm" pending={busy} onClick={() => void send("use-own-draft")}>
+                  Put it in for everyone
+                </Button>
+                <Button size="sm" variant="quiet" pending={busy} onClick={() => void send("drop-own-draft")}>
+                  Delete it
+                </Button>
+              </>
+            }
+          >
+            It was saved <Time at={data.ownDraft.updatedAt} format="exact" />. Putting it in replaces the text everyone here is working on.
           </Banner>
         ) : null}
         {data.aiPublished && data.status === "published" ? (
@@ -477,7 +497,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </Banner>
         ) : null}
         {data.canEdit && live && !data.canPublish ? (
-          <Banner tone="info">This {kindNoun(data.kind)} is live. Your changes autosave here as your draft; sending them to the site is the Owner's step, or its Author's.</Banner>
+          <Banner tone="info">This {kindNoun(data.kind)} is live. Changes stay in Carrel, where everyone on it sees them; sending them to the site is the Owner's step, or its Author's.</Banner>
         ) : null}
         {data.pendingUpdate && data.status === "published" ? (
           <Banner
@@ -512,12 +532,16 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           <div className="app-editor-body" data-layout={layout}>
             {layout !== "preview" ? (
               <section className="app-editor-pane" aria-label="Write">
-                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly} sections={data.sections} kind={data.kind} />
+                {data.room ? editing.bar : null}
+                {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
+                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} sections={data.sections} kind={data.kind} />
                 <WritingSurface
                   label={kindWord(data.kind)}
                   value={splitSource(source).body}
-                  onChange={(body) => setSource((current) => joinSource({ ...splitSource(current), body }))}
+                  onChange={(body) => setSource(joinSource({ ...splitSource(source), body }))}
                   readOnly={readOnly}
+                  room={data.room ? { rich: editing.rich, markdownLocked: editing.markdownLocked } : undefined}
+                  onEditor={editing.setEditor}
                   linkTargets={data.linkTargets.map((t) => ({ href: t.href, title: t.title, hint: t.href, note: t.state !== "published" ? `not live yet (${t.state})` : undefined }))}
                   media={data.media ? { ...data.media, figure: (url: string, alt: string, caption?: string) => figureMarkup(data.project.siteId, url, alt, caption) } : null}
                 />
@@ -585,9 +609,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   {onSite && data.canPublish && data.status === "published" && data.scheduledUpdates ? (
                     <Button onClick={(event) => ask("schedule", event.currentTarget)}>{data.pendingUpdate ? "Replace the scheduled update" : "Schedule as an update"}</Button>
                   ) : null}
-                  {savedAt ? (
+                  {room.unsaved && onSite ? (
                     <Button variant="quiet" pending={busy} onClick={(event) => ask("discard", event.currentTarget)}>
-                      Discard my draft
+                      Discard unsaved changes
                     </Button>
                   ) : null}
                 </div>
@@ -606,6 +630,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               </div>
             </Panel>
           ) : null}
+
+          {data.room ? editing.panels : null}
 
           {/* Drawn once the page is live: Capsomer 0.36's gate shows the live time with <Time format="exact">,
               whose first render in a zone other than UTC differs from the server's and fails hydration. */}
@@ -649,7 +675,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               historyError={data.historyError}
               historyPath={historyPath}
               noun={kindNoun(data.kind)}
-              againstSite={Boolean(savedAt) && onSite}
+              againstSite={room.unsaved && onSite}
               aiDrafts={data.aiDrafts}
             />
           ) : null}
@@ -658,10 +684,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
       <ConfirmDialog
         open={asking?.kind === "discard"}
-        title="Discard your draft?"
-        lead="Your working copy in Carrel is deleted, and the editor goes back to the site's text. This cannot be undone."
+        title="Discard the unsaved changes?"
+        lead="The text goes back to the site's version for everyone working on it, and every change since the last save is lost, suggestions too. This cannot be undone."
         body={[]}
-        action="Discard my draft"
+        action="Discard unsaved changes"
         returnTo={asking?.opener}
         perform={async () => void (await send("discard"))}
         onClose={() => setAsking(null)}

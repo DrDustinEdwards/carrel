@@ -8,10 +8,11 @@
  * key per site, SITE_DUSTINEDWARDS_KEY, SITE_GERMOMICS_KEY, SITE_FOXHOUND_KEY, SITE_FOXING_KEY,
  * SITE_TXASM_KEY and SITE_JULIEEDWARDS_KEY (absent until the site is connected).
  *
- * NEVER PUBLIC, BY DEPLOY ORDER. Cloudflare Access is turned on at the Worker level
- * (Workers & Pages > carrel-desk > Access, "All traffic"), which covers every URL that reaches this
- * Worker. So the first deploy has no route at all, workers_dev and preview_urls are false, Access
- * is turned on, and only then is the custom domain added by uncommenting `routes` below. Setting
+ * NEVER PUBLIC, BY DEPLOY ORDER. desk.dustinedwards.info has a hostname Access application (not
+ * Worker-level Access, which refuses WebSockets and so the co-editing rooms: docs/coediting.md), and
+ * workers/gate.ts refuses any request without its token. So the first deploy has no route at all,
+ * workers_dev and preview_urls are false, the Access application is made, and only then is the
+ * custom domain added by uncommenting `routes` below. Setting
  * workers_dev and preview_urls here, not in the dashboard, means a deploy cannot turn them back on.
  *
  * ACCESS_TEAM_DOMAIN is the Zero Trust team domain, the issuer of every Access token. It lives in
@@ -19,8 +20,7 @@
  *
  * THE AI DOOR IS THE ONE EXCEPTION, by hostname. carrel-mcp.dustinedwards.info must be reachable
  * before anyone signs in, because an MCP client fetches the OAuth metadata and token endpoints there.
- * So it gets a hostname Access application with a Bypass policy, which Cloudflare applies before the
- * Worker-level application. Carrel's own OAuth provider guards /mcp there instead, with Access for
+ * So it gets a hostname Access application with a Bypass policy, of its own. Carrel's own OAuth provider guards /mcp there instead, with Access for
  * SaaS as its login. Add that Bypass app BEFORE uncommenting the second route below.
  */
 {
@@ -36,7 +36,7 @@
 	"compatibility_flags": ["global_fetch_strictly_public"],
 	"workers_dev": false,
 	"preview_urls": false,
-	// Uncomment only after Worker-level Access is on (setup step 7), and the second route only after
+	// Uncomment only after Desk's Access application exists (setup step 7), and the second route only after
 	// the carrel-mcp hostname's Bypass application exists.
 	// "routes": [
 	// 	{
@@ -91,6 +91,23 @@
 		{
 			"binding": "BACKUPS",
 			"bucket_name": "carrel-backups"
+		}
+	],
+	// One room per open file for live co-editing (workers/doc-room.ts, y-partyserver): the shared working
+	// copy, who is in it and the comments, in each object's own SQLite storage. Nothing reaches a room but
+	// the browser door, behind Access.
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "DOC_ROOM",
+				"class_name": "DocRoom"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1-doc-room",
+			"new_sqlite_classes": ["DocRoom"]
 		}
 	],
 	"send_email": [

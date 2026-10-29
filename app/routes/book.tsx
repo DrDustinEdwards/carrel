@@ -15,6 +15,7 @@ import { StatTile, StatTiles } from "capsomer/react/stat-tile";
 import { Status } from "capsomer/react/status";
 import { PageHead } from "capsomer/react/page-head";
 
+import { SharePanel } from "~/components/share-panel";
 import { ProgressPanel } from "~/components/writing/progress-panel";
 import { StatusLabelPill } from "~/components/writing/status-label";
 
@@ -22,6 +23,7 @@ import { bookRepo, draftPaths, exportGate, listFiles, listFindings, refreshBook,
 import { getEnv, getViewer } from "~/lib/context";
 import { slugify } from "@drdustinedwards/site-helpers/slug";
 import { chapterOf, nextNumbered, readingOrder, titleFromSegment } from "~/lib/novels/layout";
+import { shareFromForm } from "~/lib/people-admin.server";
 import { can } from "~/lib/roles";
 import { reorderBook } from "~/lib/binder.server";
 import { parseOrder } from "~/lib/writing/binder";
@@ -91,6 +93,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     project: { slug: project.slug, name: project.name, book: project.book },
     canEdit: can(project.role, "edit"),
     canPublish,
+    canShare: can(project.role, "manage"),
     connected: connection.repo !== null,
     connectionDetail: connection.detail,
     chapters,
@@ -122,6 +125,8 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     });
     return { refreshed: null, error: null, goal: saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error } };
   }
+
+  if (intent === "share") return { refreshed: null, error: null, share: await shareFromForm(env, getViewer(context), project.id, form) };
 
   // A move in the binder: the whole new order, which the server turns into one commit of renames.
   if (intent === "reorder") {
@@ -163,7 +168,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 }
 
 export default function Book({ loaderData, actionData }: Route.ComponentProps) {
-  const { project, canEdit, canPublish, connected, connectionDetail, chapters, bible, others, words, open, exportReady, unsaved, hasBookFile, labels, progress } = loaderData;
+  const { project, canEdit, canPublish, canShare, connected, connectionDetail, chapters, bible, others, words, open, exportReady, unsaved, hasBookFile, labels, progress } = loaderData;
   const goalResult = actionData && "goal" in actionData ? actionData.goal : null;
   const navigation = useNavigation();
   const refreshing = navigation.state !== "idle" && navigation.formData?.get("intent") === "refresh";
@@ -425,6 +430,8 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
           </Panel>
         </div>
       </div>
+
+      {canShare ? <SharePanel site={false} /> : null}
     </div>
   );
 }

@@ -4,8 +4,8 @@ Since 2026-10-26 Carrel has two faces, as Capsid has its public site and the Por
 
 - **Carrel**, https://carrel.dustinedwards.info: the public page saying what Carrel is (`www/`). A static assets Worker,
   `carrel` (named `carrel-www` until 2026-10-27), with its own committed config (`www/wrangler.jsonc`). No script, no binding, nothing private.
-- **Desk**, https://desk.dustinedwards.info: the signed-in writing app (the `carrel-desk` Worker, named `carrel` until 2026-10-27), behind Worker-level Cloudflare
-  Access as before. The AI door stays at carrel-mcp.dustinedwards.info.
+- **Desk**, https://desk.dustinedwards.info: the signed-in writing app (the `carrel-desk` Worker, named `carrel` until 2026-10-27), behind Cloudflare
+  Access (a hostname application since co-editing: docs/coediting.md). The AI door stays at carrel-mcp.dustinedwards.info.
 
 `npm run www` builds the page into `www/dist`; CI builds it on every push. `npm run deploy:www` deploys it, as does the
 "Deploy public site" workflow (on a push to main touching `www/`, or by hand).

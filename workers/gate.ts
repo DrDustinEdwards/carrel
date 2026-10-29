@@ -54,5 +54,7 @@ export async function gate(
   if (!viewer) return refuse("unknown-person");
   // A reviewer is an AI agent, not a person: it has no business at the browser door.
   if (viewer.isReviewer) return refuse("reviewer-at-browser-door");
-  return withPrivateHeaders(await render(request, viewer));
+  const response = await render(request, viewer);
+  // A live editor's WebSocket (101) is the socket itself: copying it would drop the socket.
+  return response.status === 101 ? response : withPrivateHeaders(response);
 }

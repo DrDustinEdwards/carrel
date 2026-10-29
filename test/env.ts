@@ -26,16 +26,20 @@ export async function addPerson(email: string, opts: { owner?: boolean; disabled
   return row!.id;
 }
 
+// Each project takes an id no earlier test used: a file's live room is named by its project's id, and
+// rooms (Durable Objects) outlive the tables a test clears.
+let lastProjectId = Math.floor(Math.random() * 1e9);
+
 export async function addProject(slug: string, site: string | null = null): Promise<number> {
-  const row = await testEnv.DB.prepare("INSERT INTO projects (slug, name, site) VALUES (?, ?, ?) RETURNING id")
-    .bind(slug, slug, site)
+  const row = await testEnv.DB.prepare("INSERT INTO projects (id, slug, name, site) VALUES (?, ?, ?, ?) RETURNING id")
+    .bind(++lastProjectId, slug, slug, site)
     .first<{ id: number }>();
   return row!.id;
 }
 
 export async function addBook(slug: string, folder = slug): Promise<number> {
-  const row = await testEnv.DB.prepare("INSERT INTO projects (slug, name, book) VALUES (?, ?, ?) RETURNING id")
-    .bind(slug, `Book ${slug}`, folder)
+  const row = await testEnv.DB.prepare("INSERT INTO projects (id, slug, name, book) VALUES (?, ?, ?, ?) RETURNING id")
+    .bind(++lastProjectId, slug, `Book ${slug}`, folder)
     .first<{ id: number }>();
   return row!.id;
 }

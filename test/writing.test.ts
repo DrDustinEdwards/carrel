@@ -13,7 +13,7 @@ import { addUntyped, progressEntries, readGoal, saveGoal, saveStatusList, status
 import { dayKey, dayTotals, pace, recentDays, streak, targetFor, writingDaysBetween, type Goal } from "~/lib/writing/progress";
 import { cleanLabels, labelFor, STARTING_STATUSES } from "~/lib/writing/status";
 import { action as bookAction, loader as bookLoader } from "~/routes/book";
-import { action as fileAction } from "~/routes/book.file";
+import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
 import { action as outlinerAction, loader as outlinerLoader } from "~/routes/book.outliner";
 
 import { sharedBook, testEnv } from "./env";
@@ -236,18 +236,18 @@ describe("typed words on save", () => {
     expect((await authorshipRecord(testEnv.DB, project)).length).toBe(2);
   });
 
-  it("takes pastes from autosave and an AI draft's words from Use as my draft, through the editor's route", async () => {
+  it("leaves an AI draft's words out of the day when it is taken as the working copy, and a discard drops them, through the editor's route", async () => {
     await refresh();
     const { viewer, project } = await as("owner@test.invalid", "edit");
     const current = gh.files.get(`${SLUG}/${ONE}`)!;
     const url = `/b/${SLUG}/f/${ONE}`;
     const params = { project: SLUG, "*": ONE };
-    await post(fileAction, "owner@test.invalid", url, { intent: "autosave", source: `${current.source}pasted words here\n`, expectedVersion: current.sha, untyped: "3" }, params);
+    await settle(fileLoader({ request: new Request(`https://carrel.test${url}`), params, context: await contextFor("owner@test.invalid") } as never));
     const ai = await testEnv.DB.prepare("INSERT INTO ai_drafts (project_id, item_id, person_id, client, source, base_version, note) VALUES (?, ?, ?, 'Claude', ?, ?, '') RETURNING id")
       .bind(project.id, ONE, viewer.id, `${HEADER("Drafting")}An AI wrote these five words.\n`, current.sha)
       .first<{ id: number }>();
     await post(fileAction, "owner@test.invalid", url, { intent: "use-ai-draft", draft: String(ai!.id) }, params);
-    expect(await testEnv.DB.prepare("SELECT words FROM untyped_words").first<{ words: number }>()).toEqual({ words: 3 + 6 });
+    expect(await testEnv.DB.prepare("SELECT words FROM untyped_words").first<{ words: number }>()).toEqual({ words: 6 });
     await post(fileAction, "owner@test.invalid", url, { intent: "discard" }, params);
     expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM untyped_words").first<{ n: number }>()).toEqual({ n: 0 });
   });

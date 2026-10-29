@@ -21,6 +21,9 @@ export function isMemberRole(value: unknown): value is MemberRole {
  * be in use on pages the site's reference check cannot see, such as another site linking it.
  * `delete_content` removes a post from a site. Also the Owner's alone: unlike unpublish, it takes the
  * post off the site's list altogether.
+ * `suggest` makes tracked changes in a file's live editor, which someone with `edit` accepts or rejects:
+ * a Reader is a coauthor who comments and suggests (ruling of 2026-10-10, point 2b), as a commenter in
+ * Google Docs suggests. The room enforces it (workers/doc-room.ts, `suggestOnly`).
  * `read_mentions` and `decide_mention` are the Owner's alone: Dustin ruled (2026-09-26) that the inbox belongs to
  * Dustin alone (a mention is text a stranger sent, and the site reserves deleting one to its admin).
  * They are two actions so the page can be opened to Editors and Readers by changing one line here.
@@ -28,6 +31,7 @@ export function isMemberRole(value: unknown): value is MemberRole {
 export type Action =
   | "read"
   | "comment"
+  | "suggest"
   | "edit"
   | "publish"
   | "publish_own"
@@ -39,10 +43,10 @@ export type Action =
   | "decide_mention";
 
 const ALLOWED: Record<Role, ReadonlySet<Action>> = {
-  reader: new Set(["read", "comment"]),
-  editor: new Set(["read", "comment", "edit"]),
-  author: new Set(["read", "comment", "edit", "publish_own"]),
-  owner: new Set(["read", "comment", "edit", "publish", "publish_own", "send_external", "manage", "delete_media", "delete_content", "read_mentions", "decide_mention"]),
+  reader: new Set(["read", "comment", "suggest"]),
+  editor: new Set(["read", "comment", "suggest", "edit"]),
+  author: new Set(["read", "comment", "suggest", "edit", "publish_own"]),
+  owner: new Set(["read", "comment", "suggest", "edit", "publish", "publish_own", "send_external", "manage", "delete_media", "delete_content", "read_mentions", "decide_mention"]),
 };
 
 /** A person with no role on a project may do nothing on it, including read it. */

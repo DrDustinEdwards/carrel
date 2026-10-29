@@ -6,13 +6,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { refreshIndex } from "~/lib/index.server";
+import { openRoom } from "~/lib/rooms.server";
 import { action as editorAction, loader as editorLoader } from "~/routes/editor";
 import { loader as historyLoader } from "~/routes/history";
 import { loader as previewLoader } from "~/routes/preview";
 import { loader as projectLoader } from "~/routes/project";
 
 import { addPerson, addProject, resetDb } from "./env";
-import { connectedEnv, fakeSite, kindedAdapter, routeContext } from "./site";
+import { typeIn } from "./room";
+import { connectedEnv, fakeSite, kindedAdapter, routeContext, viewerFor } from "./site";
 
 const SLUG = "de-info";
 const OWNER = "owner@test.invalid";
@@ -77,15 +79,15 @@ describe("every kind the site reports", () => {
     ]);
 
     const source = "---\ntitle: Acorn15\nhost: Gordonia terrae\n---\nA cluster DJ phage, found in 2015.\n";
-    const saved = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "save", source, expectedVersion: opened.version! }) }), params, context: await contextFor(env) } as never);
+    await typeIn(projectId, id, opened.room!.viewer, source);
+    const saved = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "save" }) }), params, context: await contextFor(env) } as never);
     expect(saved).toMatchObject({ intent: "write", outcome: { ok: true, action: "save", status: "published" } });
-    const version = (saved as { outcome: { version: string } }).outcome.version;
 
     const previewed = (await settled(async () => previewLoader({ request: new Request(`${url}/preview`), params, context: await contextFor(env) } as never))) as Response;
     expect(previewed.status).toBe(200);
     expect(await previewed.text()).toContain("found in 2015");
 
-    const published = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "publish", source, expectedVersion: version }) }), params, context: await contextFor(env) } as never);
+    const published = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "publish" }) }), params, context: await contextFor(env) } as never);
     expect(published).toMatchObject({ intent: "write", outcome: { ok: true, action: "publish", status: "published" } });
     expect((await site.adapter.content.get(id))?.source).toContain("found in 2015");
 
@@ -103,8 +105,11 @@ describe("every kind the site reports", () => {
     expect(listed.items.map((i) => i.itemId)).not.toContain("equipment.heat-block");
 
     const params = { project: SLUG, item: "equipment.heat-block" };
+    // The site does not hold the entry, so its room starts from this text, as a new file's would.
+    const owner = await viewerFor(OWNER);
+    await openRoom(env, { id: projectId, role: "owner" }, owner, "equipment.heat-block", { dialect: "site", current: null, starter: "---\nname: Heat block\n---\n" });
     const written = await editorAction({
-      request: new Request(`https://carrel.test/p/${SLUG}/e/equipment.heat-block`, { method: "POST", body: form({ intent: "save", source: "---\nname: Heat block\n---\n", expectedVersion: "" }) }),
+      request: new Request(`https://carrel.test/p/${SLUG}/e/equipment.heat-block`, { method: "POST", body: form({ intent: "save" }) }),
       params,
       context: await contextFor(env),
     } as never);
@@ -120,7 +125,8 @@ describe("every kind the site reports", () => {
     const opened = (await editorLoader({ request: new Request(url), params, context: await contextFor(env) } as never)) as Awaited<ReturnType<typeof editorLoader>>;
     const source = opened.source.replace("year: 2017\n", "year: 2017\nresearchers: [Megan Adams, Travis Miller]\n");
     expect(source).not.toBe(opened.source);
-    const saved = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "save", source, expectedVersion: opened.version! }) }), params, context: await contextFor(env) } as never);
+    await typeIn(projectId, id, opened.room!.viewer, source);
+    const saved = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "save" }) }), params, context: await contextFor(env) } as never);
     expect(saved).toMatchObject({ intent: "write", outcome: { ok: true, action: "save" } });
     expect((await site.adapter.content.get(id))?.source).toBe(source);
   });

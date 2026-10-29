@@ -1,6 +1,7 @@
 // The editor for one file in a book: a scene, a bible entry, an outline or the title page. The same
-// CodeMirror editor as posts, autosave to D1 as you type, and Save, which commits to Git with the
-// version the text started from. Beside a scene: its flags and the bible entries it names.
+// editor as posts, in the file's live room, where everyone on the book works on one copy at once with
+// comments and suggestions, and Save, which commits the room's text to Git with the version it started
+// from. Beside a scene: its flags and the bible entries it names.
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
@@ -14,8 +15,9 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { useRoomEditing } from "~/components/editor/room-editing";
 import { WritingSurface } from "~/components/editor/writing-surface";
-import { AUTOSAVE_DELAY_MS, useSaveShortcut } from "~/components/editor/save-keys";
+import { useSaveShortcut } from "~/components/editor/save-keys";
 import { useTypingRecede } from "~/components/editor/typing";
 import { RouterLink } from "~/components/frame";
 import { Binder } from "~/components/writing/binder";
@@ -32,12 +34,15 @@ import {
   type BookWrite,
 } from "~/lib/books.server";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
-import { autosave, discardDraft, readDraft } from "~/lib/content.server";
+import { roomNames } from "~/lib/comments.server";
+import { discardDraft, readDraft, readOwnDraft } from "~/lib/content.server";
+import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { getEnv, getViewer } from "~/lib/context";
 import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
 import { countProseWords, isBookPath, kindOf, TEMPLATES, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
+import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
 
@@ -71,7 +76,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const path = params["*"] ?? "";
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
 
-  const draft = await readDraft(env.DB, project, viewer, path);
   const { repo, detail } = bookRepo(env);
   let git: { source: string; sha: string } | null = null;
   let gitError: string | null = null;
@@ -85,11 +89,20 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   // Without Git, the index's copy stands in, read-only for saving but fine for reading.
   const file = git ?? (!repo || gitError ? await indexedFile(env.DB, project, path) : null);
   const canEdit = can(project.role, "edit");
-  const fresh = !file && !draft;
+  const fresh = !file && !(await readDraft(env.DB, project, viewer, path));
   if (fresh && !canEdit) throw new Response("Not found", { status: 404 });
 
+  // Everyone on the book works on the file in its room, started the first time from Git (or the
+  // index standing in for it), or from the template for a new file.
+  const opened = await openRoom(env, project, viewer, path, {
+    dialect: "plain",
+    current: file ? { source: file.source, version: file.sha } : null,
+    starter: starter(path, new URL(request.url).searchParams.get("name"), project.name),
+  });
+  const roomViewer: RoomViewer = { id: viewer.id, name: viewer.name || viewer.email, role: project.role, access: canEdit ? "edit" : "suggest" };
+
   const kind = kindOf(path);
-  const source = draft?.source ?? file?.source ?? starter(path, new URL(request.url).searchParams.get("name"), project.name);
+  const source = opened?.source ?? file?.source ?? "";
 
   const indexed = await listFiles(env.DB, project);
   // The bible entries a scene names, and every world rule, for the side panel.
@@ -123,12 +136,13 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     connected: repo !== null,
     connectionDetail: detail ?? gitError,
     source,
-    baseVersion: draft ? draft.baseVersion : (file?.sha ?? null),
+    baseVersion: opened?.version ?? file?.sha ?? null,
     version: git?.sha ?? file?.sha ?? null,
-    draftAt: draft?.updatedAt ?? null,
-    fresh,
-    // Git moved on since this draft was started: saving it would be refused as stale.
-    behind: Boolean(draft && git && draft.baseVersion !== git.sha),
+    unsaved: opened?.unsaved ?? false,
+    ownDraft: opened?.ownDraft ?? null,
+    // Git moved on since the room's copy was started: saving it would be refused as stale.
+    behind: opened?.behind ?? false,
+    room: opened ? { path: roomPath("b", project.slug, path), viewer: roomViewer, names: await roomNames(env.DB, project.id) } : null,
     findings: await listFindings(env.DB, project, { path }),
     problems: parseFile(source).problems,
     bible,
@@ -141,7 +155,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 }
 
 type ActionResult =
-  | { intent: "autosave"; updatedAt: string }
   | { intent: "discard"; discarded: true }
   | { intent: "check"; findings: Finding[] }
   | { intent: "dismiss"; dismissed: number }
@@ -157,18 +170,28 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
   const source = String(form.get("source") ?? "").replace(/\r\n/g, "\n");
-  const version = String(form.get("expectedVersion") ?? "") || null;
 
   switch (intent) {
-    case "autosave": {
-      const saved = await autosave(env.DB, project, viewer, path, { source, baseVersion: version });
-      await addUntyped(env.DB, project.id, viewer.id, path, untypedField(form.get("untyped")));
-      return { intent, updatedAt: saved.updatedAt };
-    }
-    case "discard":
-      await discardDraft(env.DB, project, viewer, path);
+    case "discard": {
+      // Everyone in the room goes back to Git's text.
+      const { repo } = bookRepo(env);
+      const git = repo ? await repo.read(`${project.book}/${path}`).catch(() => null) : null;
+      const file = git ?? (await indexedFile(env.DB, project, path));
+      if (!file) throw new Response("Only a file in Git has a version to go back to.", { status: 400 });
+      await replaceRoom(env, project, viewer, path, { markdown: file.source, version: file.sha });
       await clearUntyped(env.DB, project.id, viewer.id, path);
       return { intent, discarded: true };
+    }
+    case "use-own-draft": {
+      const own = await readOwnDraft(env.DB, project, viewer, path);
+      if (!own) throw new Response("That draft is gone.", { status: 404 });
+      await replaceRoom(env, project, viewer, path, { markdown: own.source, version: (await roomVersion(env, project, path)) ?? own.baseVersion, unsaved: true });
+      await discardDraft(env.DB, project, viewer, path);
+      return { intent: "discard", discarded: true };
+    }
+    case "drop-own-draft":
+      await discardDraft(env.DB, project, viewer, path);
+      return { intent: "discard", discarded: true };
     case "check":
       return { intent, findings: await checkDraft(env.DB, project, path, source) };
     case "dismiss": {
@@ -178,29 +201,35 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       return { intent, dismissed: id };
     }
     case "use-ai-draft": {
-      // The person's decision: the AI draft's text becomes their working draft, to edit and save.
+      // The person's decision: the AI draft's text becomes the working copy in the room, to edit and save.
       const id = Number(form.get("draft"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       const ai = await readAiDraft(env.DB, project, viewer, path, id);
-      await autosave(env.DB, project, viewer, path, { source: ai.source, baseVersion: ai.baseVersion });
+      await replaceRoom(env, project, viewer, path, { markdown: ai.source, version: (await roomVersion(env, project, path)) ?? ai.baseVersion, unsaved: true });
       // The AI's words were not typed, so they never count toward the day (ruling 6).
       await addUntyped(env.DB, project.id, viewer.id, path, countProseWords(parseFile(ai.source).body));
       return { intent, used: id };
     }
     case "save": {
       const { repo, detail } = bookRepo(env);
-      if (!repo) return { intent, outcome: { ok: false, reason: "failed", message: `${detail} Your text is kept here as your draft.` } };
-      return { intent, outcome: await saveBookFile(env.DB, repo, project, viewer, path, { source, expectedVersion: version, untyped: untypedField(form.get("untyped")) }) };
+      if (!repo) return { intent, outcome: { ok: false, reason: "failed", message: `${detail} The text is kept here in Carrel.` } };
+      const untyped = untypedField(form.get("untyped"));
+      return {
+        intent,
+        outcome: await saveRoom(env, project, viewer, path, (text, expectedVersion, others) =>
+          saveBookFile(env.DB, repo, project, viewer, path, { source: text, expectedVersion, untyped, shared: others }),
+        ),
+      };
     }
     default:
       throw new Response("Bad request", { status: 400 });
   }
 }
 
-/** Autosave and a check write nothing the page shows, so the page has nothing to reload and Git is not asked. */
+/** A check writes nothing the page shows, so the page has nothing to reload and Git is not asked. */
 export function shouldRevalidate({ formData, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
   const intent = formData?.get("intent");
-  if (intent === "autosave" || intent === "check") return false;
+  if (intent === "check") return false;
   return defaultShouldRevalidate;
 }
 
@@ -211,83 +240,50 @@ export default function BookFileRoute({ loaderData }: Route.ComponentProps) {
 type Ask = { kind: "discard" | "dismiss" | "use-ai"; id?: number; opener: HTMLElement | null };
 
 function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
-  const [source, setSource] = useState(data.source);
-  // A file started from a template is not saved anywhere yet.
-  const [savedSource, setSavedSource] = useState(data.fresh ? "" : data.source);
-  const [savedAt, setSavedAt] = useState<string | null>(data.draftAt);
   const [asking, setAsking] = useState<Ask | null>(null);
-  const autosaver = useFetcher<ActionResult>();
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
   const { say } = useMessage();
   useTypingRecede();
-  const readOnly = !data.canEdit;
   const base = `/b/${data.project.slug}`;
 
-  // Words pasted or dropped into the text and not yet reported: they reach the file but were not
-  // typed, so the day's count leaves them out (ruling 6). Each submission carries the count, and the
-  // part a submission carried comes off once the server has it.
-  const untyped = useRef(0);
-  const untypedSent = useRef({ autosave: 0, save: 0 });
-  const countUntyped = (text: string | undefined) => {
-    if (!readOnly && text) untyped.current += countProseWords(text);
+  // The file's room: one copy for everyone on the book, as they type.
+  const editing = useRoomEditing({
+    path: data.room?.path ?? "",
+    initial: data.source,
+    unsaved: data.unsaved,
+    viewer: data.room?.viewer ?? { id: 0, name: "", role: "reader", access: "suggest" },
+    names: data.room?.names ?? {},
+    hideFrontMatter: false,
+  });
+  const { room } = editing;
+  const source = data.room ? room.source : data.source;
+  const setSource = (next: string) => {
+    if (!room.setSource(next).ok) say("Accept or reject the suggestions in that passage first.");
   };
-
-  const inFlight = useRef<string | null>(null);
   useEffect(() => {
-    if (readOnly || source === savedSource || autosaver.state !== "idle") return;
-    const timer = window.setTimeout(() => {
-      inFlight.current = source;
-      untypedSent.current.autosave = untyped.current;
-      void autosaver.submit({ intent: "autosave", source, expectedVersion: data.baseVersion ?? "", untyped: String(untyped.current) }, { method: "post" });
-    }, AUTOSAVE_DELAY_MS);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, savedSource, readOnly, data.baseVersion, autosaver.state]);
+    if (room.notice) say(room.notice);
+  }, [room.notice, say]);
+  const readOnly = !data.room;
 
-  useEffect(() => {
-    if (autosaver.state !== "idle" || inFlight.current === null) return;
-    if (autosaver.data?.intent === "autosave") {
-      setSavedSource(inFlight.current);
-      setSavedAt(autosaver.data.updatedAt);
-      untyped.current = Math.max(0, untyped.current - untypedSent.current.autosave);
-    }
-    untypedSent.current.autosave = 0;
-    inFlight.current = null;
-  }, [autosaver.state, autosaver.data]);
-
-  const discarded = writer.data?.intent === "discard" && writer.state === "idle";
-  useEffect(() => {
-    if (discarded) {
-      untyped.current = 0;
-      setSource(data.source);
-      setSavedSource(data.source);
-      setSavedAt(null);
-    }
-  }, [discarded, data.source]);
-
-  // After Use as my draft, the loader has the AI draft as the working copy, which replaces the local one.
-  const usedAi = writer.data?.intent === "use-ai-draft" && writer.state === "idle";
-  useEffect(() => {
-    if (usedAi) {
-      // The text pasted into the draft it replaced is gone with it; the AI's words are counted by the server.
-      untyped.current = 0;
-      setSource(data.source);
-      setSavedSource(data.source);
-      setSavedAt(data.draftAt);
-    }
-  }, [usedAi, data.source, data.draftAt]);
+  // Words this person pasted or dropped into the text and not yet reported: they reach the file but
+  // were not typed, so the day's count leaves them out (ruling 6). A save carries the count, and the
+  // part it carried comes off once the server has it.
+  const untyped = useRef(0);
+  const untypedSent = useRef(0);
+  const countUntyped = (text: string | undefined) => {
+    if (data.canEdit && text) untyped.current += countProseWords(text);
+  };
 
   const outcome = writer.data?.intent === "save" ? writer.data.outcome : null;
   useEffect(() => {
-    if (outcome?.ok && writer.state === "idle") {
-      setSavedSource(source);
-      setSavedAt(null);
-      untyped.current = Math.max(0, untyped.current - untypedSent.current.save);
-    }
-    if (writer.state === "idle") untypedSent.current.save = 0;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (outcome?.ok && writer.state === "idle") untyped.current = Math.max(0, untyped.current - untypedSent.current);
+    if (writer.state === "idle") untypedSent.current = 0;
   }, [outcome, writer.state]);
+  // A discard or an AI draft taken replaces the text, and what was pasted into it goes with it.
+  useEffect(() => {
+    if (writer.state === "idle" && (writer.data?.intent === "discard" || writer.data?.intent === "use-ai-draft")) untyped.current = 0;
+  }, [writer.state, writer.data]);
 
   // Said once in the message region, as each save finishes.
   const said = useRef<unknown>(null);
@@ -297,9 +293,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     say(`Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${outcome.findings.length} flag${outcome.findings.length === 1 ? "" : "s"}; see the list.`}`);
   }, [outcome, writer.state, say]);
 
-  const send = (intent: string, extra: Record<string, string> = {}) => {
-    if (intent === "save") untypedSent.current.save = untyped.current;
-    return writer.submit({ intent, source, expectedVersion: data.baseVersion ?? "", untyped: String(intent === "save" ? untyped.current : 0), ...extra }, { method: "post" });
+  // Before a save the room is asked to confirm it has every change made here, so the save holds them.
+  const send = async (intent: string, extra: Record<string, string> = {}) => {
+    await room.flush();
+    if (intent === "save") untypedSent.current = untyped.current;
+    return writer.submit({ intent, untyped: String(intent === "save" ? untyped.current : 0), ...extra }, { method: "post" });
   };
 
   useSaveShortcut(() => {
@@ -309,15 +307,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const busy = writer.state !== "idle";
   const checked = checker.data?.intent === "check" ? checker.data.findings : null;
   const saveState =
-    autosaver.state !== "idle"
-      ? "Saving to Carrel"
-      : source !== savedSource
-        ? "Not yet saved"
-        : savedAt
-          ? `Draft saved in Carrel ${new Date(savedAt).toLocaleTimeString()}`
-          : data.version
-            ? "Matches Git"
-            : "";
+    room.status === "offline" ? "Offline: changes wait here" : room.unsaved ? "Changes kept in Carrel, not yet in Git" : data.version ? "Matches Git" : "";
   const openFlags = data.findings.filter((f) => f.status === "open").length;
   const ask = (kind: Ask["kind"], opener: HTMLElement | null, id?: number) => setAsking({ kind, opener, id });
 
@@ -352,7 +342,25 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         {data.connectionDetail ? <Banner tone="warn">{data.connectionDetail}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="Git moved on">
-            This file changed in Git after your draft was started, so saving it will be refused. Discard the draft to load Git's version, then reapply your changes.
+            This file changed in Git after this copy was started, so saving it will be refused. Discard the unsaved changes to load Git's version, then make them again.
+          </Banner>
+        ) : null}
+        {data.ownDraft && data.canEdit ? (
+          <Banner
+            tone="info"
+            title="You have a draft of your own from before shared editing"
+            actions={
+              <>
+                <Button size="sm" pending={busy} onClick={() => void send("use-own-draft")}>
+                  Put it in for everyone
+                </Button>
+                <Button size="sm" variant="quiet" pending={busy} onClick={() => void send("drop-own-draft")}>
+                  Delete it
+                </Button>
+              </>
+            }
+          >
+            It was saved <Time at={data.ownDraft.updatedAt} format="exact" />. Putting it in replaces the text everyone here is working on.
           </Banner>
         ) : null}
         {data.problems.length > 0 ? (
@@ -370,7 +378,17 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
             onPasteCapture={(event) => countUntyped(event.clipboardData?.getData("text/plain"))}
             onDropCapture={(event) => countUntyped(event.dataTransfer?.getData("text/plain"))}
           >
-            <WritingSurface label={data.kind === "scene" ? "Scene" : "File"} value={source} onChange={setSource} readOnly={readOnly} linkTargets={[]} dialect="plain" />
+            {data.room ? editing.bar : null}
+            <WritingSurface
+              label={data.kind === "scene" ? "Scene" : "File"}
+              value={source}
+              onChange={setSource}
+              readOnly={readOnly}
+              linkTargets={[]}
+              dialect="plain"
+              room={data.room ? { rich: editing.rich, markdownLocked: editing.markdownLocked } : undefined}
+              onEditor={editing.setEditor}
+            />
           </section>
         </div>
 
@@ -387,21 +405,23 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 </p>
                 {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
                 <div className="app-actions">
-                  <Button variant="primary" pending={busy} disabledReason={!data.connected ? "Git is not connected, so saving waits. Your text is kept here as your draft." : undefined} onClick={() => send("save")}>
+                  <Button variant="primary" pending={busy} disabledReason={!data.connected ? "Git is not connected, so saving waits. The text is kept here in Carrel." : undefined} onClick={() => void send("save")}>
                     Save to Git
                   </Button>
                   <Button pending={checker.state !== "idle"} onClick={() => checker.submit({ intent: "check", source }, { method: "post" })}>
                     Check this text
                   </Button>
-                  {savedAt ? (
+                  {room.unsaved && data.version ? (
                     <Button variant="quiet" pending={busy} onClick={(event) => ask("discard", event.currentTarget)}>
-                      Discard my draft
+                      Discard unsaved changes
                     </Button>
                   ) : null}
                 </div>
               </div>
             </Panel>
           ) : null}
+
+          {data.room ? editing.panels : null}
 
           <Panel title="Flags" count={openFlags} src="From the last save" id="flags">
             <div className="app-stack" data-tight>
@@ -448,7 +468,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </Panel>
 
           {data.aiDrafts.length > 0 ? (
-            <Panel title="AI drafts beside yours" count={data.aiDrafts.length} src="None has touched your draft or Git">
+            <Panel title="AI drafts beside yours" count={data.aiDrafts.length} src="None has touched the text or Git">
               <div className="app-stack" data-tight>
                 {data.aiDrafts.map((d) => (
                   <Disclosure
@@ -470,7 +490,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       </Link>
                       {data.canEdit ? (
                         <Button size="sm" pending={busy} onClick={(event) => ask("use-ai", event.currentTarget, d.id)}>
-                          Use as my draft
+                          Use as the working copy
                         </Button>
                       ) : null}
                     </div>
@@ -508,12 +528,12 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
       <ConfirmDialog
         open={asking?.kind === "discard"}
-        title="Discard your draft?"
-        lead="Your working copy in Carrel is deleted, and the editor goes back to Git's text. This cannot be undone."
+        title="Discard the unsaved changes?"
+        lead="The text goes back to Git's version for everyone working on it, and every change since the last save is lost, suggestions too. This cannot be undone."
         body={[]}
-        action="Discard my draft"
+        action="Discard unsaved changes"
         returnTo={asking?.opener}
-        perform={async () => void (await writer.submit({ intent: "discard" }, { method: "post" }))}
+        perform={async () => void (await send("discard"))}
         onClose={() => setAsking(null)}
       />
       <ConfirmDialog
@@ -530,10 +550,10 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       />
       <ConfirmDialog
         open={asking?.kind === "use-ai"}
-        title="Use the AI draft as your draft?"
-        lead="Its text replaces your working draft, which you then edit and save as usual. Your current draft is not kept."
+        title="Use the AI draft as the working copy?"
+        lead="Its text replaces the text everyone here is working on, which you then edit and save as usual. Changes since the last save are not kept."
         body={[]}
-        action="Replace my draft"
+        action="Replace the text"
         returnTo={asking?.opener}
         perform={async () => {
           if (asking?.id !== undefined) await writer.submit({ intent: "use-ai-draft", draft: String(asking.id) }, { method: "post" });

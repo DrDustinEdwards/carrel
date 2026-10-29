@@ -12,7 +12,7 @@ import { carrelOrigin } from "~/lib/mcp/server";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
 /** Capsid's origin, from the var CAPSID_ORIGIN; read loosely, as carrelOrigin does, for an older wrangler.jsonc without it. */
-function capsidOrigin(env: Env): string {
+export function capsidOrigin(env: Env): string {
   const configured = (env as { CAPSID_ORIGIN?: string }).CAPSID_ORIGIN?.trim();
   return (configured || "https://mcp.dustinedwards.info").replace(/\/+$/, "");
 }
