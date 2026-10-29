@@ -21,7 +21,7 @@ import { timedFetch } from "~/lib/timed-fetch.server";
  * company's agent, through the AI door only), and the Owner, whom the admin policy on Desk's Access
  * application lists directly, so no sync can add or remove the Owner.
  */
-async function allowList(db: D1Database): Promise<string[]> {
+async function accessEmails(db: D1Database): Promise<string[]> {
   const d = drizzle(db);
   const rows = await d
     .select({ email: people.email })
@@ -67,7 +67,7 @@ export async function syncAccess(env: Env, change: { removed: string[] }, fetche
   let added = 0;
   let dropped = 0;
   try {
-    const members = await allowList(env.DB);
+    const members = await accessEmails(env.DB);
     const removed = change.removed.map((e) => e.toLowerCase()).filter((e) => !members.includes(e));
     const response = await fetcher(`${capsidOrigin(env)}/ops/access-sync`, {
       method: "POST",
