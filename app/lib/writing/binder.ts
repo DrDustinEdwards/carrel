@@ -4,7 +4,7 @@
 // one commit. Pure, so the browser, the server and the tests share it.
 
 import { kindPlural } from "~/lib/kind-words";
-import { chapterOf, kindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
+import { chapterOf, fileKindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
 
 /** A row of the binder as the loader sends it; the page turns `meta` into the row's muted note. */
 export type BinderNode = { id: string; label: string; href?: string; meta?: string; children?: BinderNode[] };
@@ -74,7 +74,7 @@ export function binderTree(files: IndexedLike[], base: string): BinderNode[] {
 /** Only scenes and chapters move: a scene into any chapter, a chapter among the chapters. */
 export function canMoveTo(id: string, parent: string | null): boolean {
   const path = pathOf(id);
-  if (path && kindOf(path) === "scene") return parent !== null && parent.startsWith("ch:");
+  if (path && fileKindOf(path) === "scene") return parent !== null && parent.startsWith("ch:");
   if (chapterOfId(id)) return parent === ROOT.chapters;
   return false;
 }

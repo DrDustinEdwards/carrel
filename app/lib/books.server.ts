@@ -12,7 +12,7 @@ import { requireAction, type Viewer } from "~/lib/people.server";
 import { can, type Action, type Role } from "~/lib/roles";
 import { checkFile, fingerprints, type BookContext, type Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
-import { describe, isBookFolder, isBookPath, kindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
+import { describe, isBookFolder, isBookPath, fileKindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
 import { GitConflict, novelsConnection, novelsRepo, type NovelsRepo } from "~/lib/novels/repo.server";
 import { voiceExcerpts } from "@dustinedwards/site-runtime/prose";
 import { takeUntyped } from "~/lib/writing.server";
@@ -104,7 +104,7 @@ export async function indexedFile(db: D1Database, project: BookProject, path: st
 
 async function indexFile(db: D1Database, projectId: number, path: string, file: { source: string; sha: string }, now: string) {
   const { meta, words } = describe(path, file.source);
-  const values = { kind: kindOf(path), sha: file.sha, source: file.source, meta: JSON.stringify(meta), words, syncedAt: now };
+  const values = { kind: fileKindOf(path), sha: file.sha, source: file.source, meta: JSON.stringify(meta), words, syncedAt: now };
   await drizzle(db)
     .insert(bookFiles)
     .values({ projectId, path, ...values })
@@ -410,7 +410,7 @@ export async function saveBookFile(
   await d.delete(drafts).where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, path), eq(drafts.personId, viewer.id)));
 
   // A bible entry can change what every scene's checks say; a scene can change its successor's timeline.
-  const kind = kindOf(path);
+  const kind = fileKindOf(path);
   let paths: string[] | "all" = [path];
   if (kind === "character" || kind === "place" || kind === "rule") paths = "all";
   else if (kind === "scene") {

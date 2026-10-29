@@ -23,7 +23,7 @@ export type VisibleProject = {
   kind: "site" | "book" | null;
 };
 
-function kindOf(row: { site: string | null; book: string | null }): VisibleProject["kind"] {
+function projectKindOf(row: { site: string | null; book: string | null }): VisibleProject["kind"] {
   return row.site ? "site" : row.book ? "book" : null;
 }
 
@@ -66,7 +66,7 @@ export async function visibleProjects(db: D1Database, viewer: Viewer): Promise<V
       .from(projects)
       .orderBy(asc(projects.name))
       .all();
-    return rows.map(({ site, book, ...r }) => ({ ...r, role: "owner" as const, kind: kindOf({ site, book }) }));
+    return rows.map(({ site, book, ...r }) => ({ ...r, role: "owner" as const, kind: projectKindOf({ site, book }) }));
   }
   const rows = await d
     .select({ id: projects.id, slug: projects.slug, name: projects.name, role: projectMembers.role, site: projects.site, book: projects.book })
@@ -75,7 +75,7 @@ export async function visibleProjects(db: D1Database, viewer: Viewer): Promise<V
     .where(eq(projectMembers.personId, viewer.id))
     .orderBy(asc(projects.name))
     .all();
-  return rows.map(({ site, book, ...r }) => ({ ...r, kind: kindOf({ site, book }) }));
+  return rows.map(({ site, book, ...r }) => ({ ...r, kind: projectKindOf({ site, book }) }));
 }
 
 /**

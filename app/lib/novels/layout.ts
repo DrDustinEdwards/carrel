@@ -31,7 +31,7 @@ export function isBookPath(path: string): boolean {
   return false;
 }
 
-export function kindOf(path: string): FileKind {
+export function fileKindOf(path: string): FileKind {
   if (path === "book.md") return "book";
   if (path.startsWith("chapters/")) return "scene";
   if (path.startsWith("bible/characters/")) return "character";
@@ -102,7 +102,7 @@ function wordCount(data: Record<string, HeaderValue>, key: string): number | nul
 }
 
 export function readMeta(path: string, data: Record<string, HeaderValue>, hasHeader: boolean): Meta {
-  const kind = kindOf(path);
+  const kind = fileKindOf(path);
   switch (kind) {
     case "scene":
       return {
@@ -181,7 +181,7 @@ function orderKey(path: string): number[] {
 /** Scenes in reading order: chapters by their number, then scenes by theirs (so 100 follows 99). */
 export function readingOrder<T extends { path: string }>(files: T[]): T[] {
   return files
-    .filter((f) => kindOf(f.path) === "scene")
+    .filter((f) => fileKindOf(f.path) === "scene")
     .sort((a, b) => {
       const [ka, kb] = [orderKey(a.path), orderKey(b.path)];
       return ka[0]! - kb[0]! || ka[1]! - kb[1]! || (a.path < b.path ? -1 : 1);
