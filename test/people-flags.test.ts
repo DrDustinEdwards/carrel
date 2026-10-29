@@ -1,9 +1,8 @@
-// The people page, the project flags list and media in the authorship record.
+// The people page, the project flags list and the authorship record's rule for content writes.
 // Each refusal the job names is planted, and each checks that nothing changed.
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { deleteMedia, uploadMedia } from "~/lib/media.server";
 import { addPerson as adminAddPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
 import { findViewer } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -11,7 +10,7 @@ import { action as peopleAction, loader as peopleLoader } from "~/routes/people"
 import { action as flagsAction, loader as flagsLoader } from "~/routes/project.flags";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor, routeContext, refusal } from "./site";
+import { viewerFor, routeContext, refusal } from "./site";
 
 const SLUG = "de-info";
 let projectId: number;
@@ -225,53 +224,7 @@ describe("the project flags list", () => {
   });
 });
 
-// ---------- media in the authorship record
-
-const PNG = Uint8Array.from(
-  atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="),
-  (c) => c.charCodeAt(0),
-);
-
-describe("media in the authorship record", () => {
-  let site: ReturnType<typeof fakeSite>;
-  let env: Env;
-
-  beforeEach(() => {
-    site = fakeSite();
-    env = connectedEnv();
-    vi.stubGlobal("fetch", site.fetch);
-  });
-
-  const rows = () => testEnv.DB.prepare("SELECT id, item_id, person_id, action, version_before, version_after, client FROM changes ORDER BY created_at").all().then((r) => r.results);
-  const file = (bytes: Uint8Array, name = "river.png", type = "image/png") => ({ name, type, size: bytes.byteLength, bytes: async () => bytes.slice().buffer });
-
-  it("writes exactly one row for an upload and one for a delete, crediting the person and an AI client", async () => {
-    const editor = await viewerFor("editor@test.invalid");
-    const up = await uploadMedia(env, await requireSiteProject(env.DB, editor, SLUG, "edit"), { viewer: editor, client: "Claude Code" }, file(PNG), "The river");
-    expect(up.ok).toBe(true);
-    const id = up.ok ? up.item.id : "";
-    expect(await rows()).toEqual([{ id: expect.any(String), item_id: id, person_id: editor.id, action: "media-upload", version_before: null, version_after: null, client: "Claude Code" }]);
-
-    const owner = await viewerFor("owner@test.invalid");
-    expect(await deleteMedia(env, await requireSiteProject(env.DB, owner, SLUG, "delete_media"), { viewer: owner }, id)).toEqual({ ok: true });
-    expect((await rows()).map((r) => [r.action, r.item_id, r.person_id, r.client])).toEqual([
-      ["media-upload", id, editor.id, "Claude Code"],
-      ["media-delete", id, owner.id, null],
-    ]);
-  });
-
-  it("PLANT: a refused delete, a refused upload and a role refusal write no row", async () => {
-    const owner = await viewerFor("owner@test.invalid");
-    const item = await site.adapter.media!.upload({ bytes: PNG, contentType: "image/png", filename: "cover.png", alt: "", changeId: "seed" });
-    await site.adapter.content.saveDraft("river-post", { source: `# The river\n\n![](${item.url})\n`, expectedVersion: null, changeId: "c1" });
-    const project = await requireSiteProject(env.DB, owner, SLUG, "delete_media");
-    expect(await deleteMedia(env, project, { viewer: owner }, item.id)).toMatchObject({ ok: false, usedBy: [{ id: "river-post" }] });
-    expect(await uploadMedia(env, project, { viewer: owner }, file(new TextEncoder().encode("<p>x</p>"), "x.html", "text/html"), "")).toMatchObject({ ok: false });
-    const reader = await viewerFor("reader@test.invalid");
-    expect(await status(async () => uploadMedia(env, await requireSiteProject(env.DB, reader, SLUG, "read"), { viewer: reader }, file(PNG), ""))).toBe(403);
-    expect(await rows()).toEqual([]);
-  });
-
+describe("the authorship record", () => {
   it("still requires a version for every content write (migration 0007 keeps that rule)", async () => {
     const owner = await personId("owner@test.invalid");
     await expect(

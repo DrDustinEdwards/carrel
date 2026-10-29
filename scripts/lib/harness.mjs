@@ -226,8 +226,8 @@ export const SCREENS = [
       await page.waitForTimeout(300);
     },
   },
-  { name: "media-empty-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash`, after: (page) => press(page, "button", /^Empty the trash/, "alertdialog") },
-  { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media`, open: "media", after: (page) => press(page, "button", /^Delete/, "alertdialog") },
+  { name: "media-empty-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash`, after: (page) => press(page, "button", /^Empty Trash/, "alertdialog") },
+  { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media?view=trash`, open: "media", after: (page) => press(page, "button", /^Delete for good/, "alertdialog") },
   { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Discard my draft/, "alertdialog") },
   { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Schedule/, "dialog") },
   { name: "post-first-publish", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Publish$/, "alertdialog") },

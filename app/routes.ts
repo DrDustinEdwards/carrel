@@ -28,7 +28,6 @@ export default [
     route("social", "routes/social.tsx"),
   ]),
   route("p/:project/media/api", "routes/media.api.ts"),
-  route("p/:project/media/bulk", "routes/media.bulk.ts"),
   route("p/:project/bulk", "routes/project.bulk.ts"),
   route("p/:project/mentions/api", "routes/mentions.api.ts"),
   route("p/:project/e/:item/preview", "routes/preview.ts"),
