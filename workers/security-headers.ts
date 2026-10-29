@@ -47,9 +47,9 @@ const isHttpsOrigin = (origin: string) => /^https:\/\/[^\s;,'"]+$/.test(origin);
 export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
   return buildContentSecurityPolicy({
     nonce,
+    // 'strict-dynamic': the nonced entry scripts load the route chunks.
+    strictDynamic: true,
     sources: {
-      // 'strict-dynamic': the nonced entry scripts load the route chunks.
-      script: ["'strict-dynamic'"],
       img: ["data:", ...imageOrigins.filter(isHttpsOrigin)],
     },
     // The editor's palettes are placed with style attributes, which nonces do not cover.
