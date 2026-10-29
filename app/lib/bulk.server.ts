@@ -104,7 +104,7 @@ async function tagOne(env: Env, project: SiteProject, viewer: Viewer, id: string
   const title = doc.title || id;
   // Saving to the site clears the person's working copy, which would lose unsaved edits.
   if (await readDraft(env.DB, project, viewer, id)) {
-    return { id, title, ok: false, message: "You have a working draft of this post in Carrel. Open it and change the tags there, so the draft is not lost." };
+    return { id, title, ok: false, message: "This post has changes in Carrel nobody has saved. Open it and change the tags there, so they are not lost." };
   }
   const parts = splitSource(doc.source);
   if (parts.front === null) return { id, title, ok: false, message: "This post has no frontmatter, so it has no tags to change." };

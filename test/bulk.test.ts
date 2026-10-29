@@ -212,7 +212,7 @@ describe("bulk tag", () => {
     const before = sourceOf("one");
     const [result] = await bulkApply(env, project, viewer, { op: "tag-add", tag: "new" }, ["one"], site.fetch);
     expect(result).toMatchObject({ ok: false });
-    expect(result!.message).toMatch(/working draft/);
+    expect(result!.message).toMatch(/nobody has saved/);
     expect(sourceOf("one")).toBe(before);
     expect((await testEnv.DB.prepare("SELECT source FROM drafts WHERE item_id = 'one'").first<{ source: string }>())?.source).toBe("half a sentence");
   });

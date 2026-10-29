@@ -8,16 +8,27 @@
 //
 // The server renders a labeled textarea holding the Markdown, so the page reads the same before the
 // script runs; the editor replaces it once it loads.
+//
+// In a file's room (`room`), the document is the room's shared copy, bound by Tiptap's Collaboration
+// extension, with the others' carets, suggesting and the comment marks (room-extensions.ts). The
+// Markdown is then the room's to work out (use-room.ts), and `value` only feeds the word count.
 
+import { disableSuggestChanges, enableSuggestChanges, isSuggestChangesEnabled } from "@handlewithcare/prosemirror-suggest-changes";
 import { Editor, type JSONContent } from "@tiptap/core";
+import Collaboration from "@tiptap/extension-collaboration";
 import { Placeholder } from "@tiptap/extensions";
+import type { Awareness } from "y-protocols/awareness";
+import type * as Y from "yjs";
 import { useEffect, useRef, useState } from "react";
 import { countWords, filterLinkTargets, looksLikeUrl, minutesForWords, type LinkTarget, type Scaffold } from "capsomer/behavior/markdown-editor";
 import { place } from "capsomer/behavior/popover";
 
+import { FRAGMENT, markdownOf } from "~/lib/editor/collab";
 import { fingerprints, fromDoc, pastedBlocks, toDoc, type Dialect, type JsonNode } from "~/lib/editor/markdown.mjs";
 import { baseExtensions } from "~/lib/editor/schema.mjs";
+import type { JsonDoc, Suggester } from "~/lib/editor/suggest";
 
+import { commentMarks, commentsKey, refreshCarets, roomCarets, suggesting, type Anchored, type Who } from "./room-extensions";
 import { sourceBlockView, SourceInlineView } from "./source-views";
 import { GLYPH, Icon } from "./toolbar-icons";
 
@@ -25,6 +36,26 @@ export type RichEditorHandle = {
   /** Puts Markdown (a figure, an image) in as blocks at the cursor, as the editor's own blocks are put. */
   insertMarkdown: (markdown: string) => void;
   focus: () => void;
+  /** The editor itself, for the room's panels (comments, suggestions). */
+  editor: Editor;
+};
+
+/** The room an editor is in (use-room.ts), and what this person does in it. */
+export type RichRoom = {
+  doc: Y.Doc;
+  awareness: Awareness;
+  /** Each caret's person, from the room's own list. */
+  who: Who;
+  /** Changes when the room's list of people does, so the carets are drawn again. */
+  peopleKey: string;
+  suggester: Suggester;
+  /** Typing makes suggestions. Always, for someone who may only suggest. */
+  suggest: boolean;
+  threads: Anchored[];
+  activeThread: string | null;
+  onThreadClick: (id: string) => void;
+  /** A post's front matter is edited in its fields, so the text does not show it a second time. */
+  hideFrontMatter: boolean;
 };
 
 export type RichEditorProps = {
@@ -41,6 +72,7 @@ export type RichEditorProps = {
   imageMarkdown?: (image: { url: string; alt: string; name: string }) => string;
   accept?: string;
   onReady?: (handle: RichEditorHandle) => void;
+  room?: RichRoom;
 };
 
 const defaultImage = ({ url, alt }: { url: string; alt: string }) => `![${alt.replace(/[[\]]/g, "")}](${url})`;
@@ -49,7 +81,7 @@ type Palette = { from: number; to: number; query: string; active: number };
 type Upload = { name: string; state: "sending" } | { name: string; state: "alt"; url: string } | null;
 
 export function RichEditor(props: RichEditorProps) {
-  const { ariaLabel, value, readOnly, dialect, placeholder = "Write here.", scaffolds = [], linkTargets = [], onUpload, accept } = props;
+  const { ariaLabel, value, readOnly, dialect, placeholder = "Write here.", scaffolds = [], linkTargets = [], onUpload, accept, room } = props;
   const host = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
   const origin = useRef<{ tail: string; prints: Map<number, string>; last: string }>({ tail: "", prints: new Map(), last: value });
@@ -73,7 +105,12 @@ export function RichEditor(props: RichEditorProps) {
   const altRef = useRef<HTMLInputElement>(null);
 
   /** The Markdown the document stands for: unchanged blocks as their bytes, the rest spelled again. */
-  const markdown = (editor: Editor) => fromDoc(editor.getJSON() as JsonNode, origin.current.tail, origin.current.prints, dialect);
+  const markdown = (editor: Editor) =>
+    room ? markdownOf(room.doc, editor.getJSON() as JsonDoc) : fromDoc(editor.getJSON() as JsonNode, origin.current.tail, origin.current.prints, dialect);
+  const roomRef = useRef(room);
+  roomRef.current = room;
+  /** Source blocks are Markdown, which a suggestion cannot mark: while suggesting they are read only. */
+  const sourceLocked = () => readOnlyRef.current || Boolean(editorRef.current && isSuggestChangesEnabled(editorRef.current.state));
 
   const load = (editor: Editor, source: string) => {
     const loaded = toDoc(source, dialect);
@@ -88,10 +125,25 @@ export function RichEditor(props: RichEditorProps) {
   useEffect(() => {
     if (!host.current) return;
     const loaded = toDoc(value, dialect);
+    const inRoom = roomRef.current;
     const editor = new Editor({
       element: host.current,
-      extensions: [...baseExtensions().filter((e) => e.name !== "sourceBlock" && e.name !== "sourceInline"), sourceBlockView(() => readOnlyRef.current), SourceInlineView, Placeholder.configure({ placeholder })],
-      content: loaded.doc as JSONContent,
+      extensions: [
+        ...baseExtensions({ room: Boolean(inRoom) }).filter((e) => e.name !== "sourceBlock" && e.name !== "sourceInline"),
+        sourceBlockView(sourceLocked),
+        SourceInlineView,
+        Placeholder.configure({ placeholder }),
+        ...(inRoom
+          ? [
+              Collaboration.configure({ document: inRoom.doc, field: FRAGMENT }),
+              roomCarets(inRoom.awareness, () => roomRef.current!.who),
+              suggesting(inRoom.suggester),
+              commentMarks(() => ({ threads: roomRef.current!.threads, active: roomRef.current!.activeThread })),
+            ]
+          : []),
+      ],
+      // In a room the content is the room's.
+      ...(inRoom ? {} : { content: loaded.doc as JSONContent }),
       editable: !readOnly,
       // Carrel's CSP takes no inline styles: Tiptap's base rules are in app.css instead.
       injectCSS: false,
@@ -103,6 +155,11 @@ export function RichEditor(props: RichEditorProps) {
           "aria-label": ariaLabel,
           "aria-placeholder": placeholder,
           spellcheck: "true",
+        },
+        handleClickOn: (_view, _pos, _node, _nodePos, event) => {
+          const mark = (event.target as HTMLElement | null)?.closest?.("[data-comment]");
+          if (mark && roomRef.current) roomRef.current.onThreadClick(mark.getAttribute("data-comment")!);
+          return false;
         },
         handleKeyDown: (_view, event) => {
           const mod = event.ctrlKey || event.metaKey;
@@ -149,6 +206,9 @@ export function RichEditor(props: RichEditorProps) {
         },
       },
       onUpdate: ({ editor: e }) => {
+        syncSlash(e);
+        // In a room, the room works out the Markdown for everyone, and `value` brings it back.
+        if (roomRef.current) return;
         const md = markdown(e);
         origin.current.last = md;
         setWords(countWords(md));
@@ -159,8 +219,9 @@ export function RichEditor(props: RichEditorProps) {
     });
     origin.current = { tail: loaded.tail, prints: fingerprints(editor.getJSON() as JsonNode), last: value };
     editorRef.current = editor;
+    if (inRoom?.suggest) enableSuggestChanges(editor.state, editor.view.dispatch);
     setReady(true);
-    propsRef.current.onReady?.({ insertMarkdown, focus: () => editor.commands.focus() });
+    propsRef.current.onReady?.({ insertMarkdown, focus: () => editor.commands.focus(), editor });
     return () => {
       editor.destroy();
       editorRef.current = null;
@@ -169,12 +230,36 @@ export function RichEditor(props: RichEditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // A new value from outside (a discarded draft, an AI draft taken as the working copy) is loaded.
+  // A new value from outside (a discarded draft, an AI draft taken as the working copy) is loaded. In a
+  // room, a replacement arrives through the room itself, and the value is only counted.
   useEffect(() => {
     const editor = editorRef.current;
-    if (editor && value !== origin.current.last) load(editor, value);
+    if (room) setWords(countWords(value));
+    else if (editor && value !== origin.current.last) load(editor, value);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
+
+  // Suggesting on or off, as the person chooses (always on for someone who may only suggest).
+  const suggestOn = room?.suggest ?? false;
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || !roomRef.current) return;
+    if (suggestOn !== isSuggestChangesEnabled(editor.state)) (suggestOn ? enableSuggestChanges : disableSuggestChanges)(editor.state, editor.view.dispatch);
+  }, [suggestOn, ready]);
+
+  // The room's list of people changed: the carets are drawn again under the names it gives.
+  const peopleKey = room?.peopleKey;
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor && peopleKey !== undefined) editor.view.dispatch(refreshCarets(editor.state));
+  }, [peopleKey]);
+
+  // The threads or the open one changed: their marks are drawn again.
+  const threadsKey = room ? `${room.activeThread}|${room.threads.map((t) => `${t.id}:${t.anchor}`).join(",")}` : "";
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor && roomRef.current) editor.view.dispatch(editor.state.tr.setMeta(commentsKey, true).setMeta("addToHistory", false));
+  }, [threadsKey]);
 
   useEffect(() => {
     editorRef.current?.setEditable(!readOnly, false);
@@ -357,7 +442,7 @@ export function RichEditor(props: RichEditorProps) {
   const off = readOnly || !ready;
 
   return (
-    <div className="cap-md app-rich" data-ready={ready ? "" : undefined}>
+    <div className="cap-md app-rich" data-ready={ready ? "" : undefined} data-hide-front={room?.hideFrontMatter ? "" : undefined}>
       <div className="cap-md-frame">
         <div className="cap-md-toolbar" role="toolbar" aria-label="Formatting" ref={toolbar} onKeyDown={onToolbarKey}>
           {all.map((t, i) => (

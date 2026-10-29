@@ -1337,3 +1337,174 @@ img.ProseMirror-separator {
 .app-upload .cap-media > .app-actions {
   margin-block-start: var(--space-4);
 }
+
+/* A file's room (components/editor/room-*.tsx): each person takes one of Capsomer's eight series
+   colors, the same on every screen, with its own text color for a name set on it. The carets, the
+   avatars in the room bar and the selection share it. */
+[data-who="0"] { --who: var(--series-1); --who-text: var(--series-text-1); }
+[data-who="1"] { --who: var(--series-2); --who-text: var(--series-text-2); }
+[data-who="2"] { --who: var(--series-3); --who-text: var(--series-text-3); }
+[data-who="3"] { --who: var(--series-4); --who-text: var(--series-text-4); }
+[data-who="4"] { --who: var(--series-5); --who-text: var(--series-text-5); }
+[data-who="5"] { --who: var(--series-6); --who-text: var(--series-text-6); }
+[data-who="6"] { --who: var(--series-7); --who-text: var(--series-text-7); }
+[data-who="7"] { --who: var(--series-8); --who-text: var(--series-text-8); }
+
+.app-room-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-block-end: var(--space-3);
+}
+
+.app-room-people {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.app-room-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm, 0.875rem);
+}
+
+/* The ring in the person's color is the link to their caret; the name is in the text beside it. */
+.app-room-person {
+  display: inline-flex;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--who);
+}
+
+.app-caret {
+  position: relative;
+  margin-inline: -1px;
+  border-inline-start: 2px solid var(--who);
+  pointer-events: none;
+  word-break: normal;
+}
+
+.app-caret-name {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: -2px;
+  padding: 0 0.35em;
+  border-radius: 4px 4px 4px 0;
+  background: var(--who);
+  color: var(--who-text);
+  font-family: var(--ui, inherit);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.app-caret-selection {
+  background: color-mix(in srgb, var(--who) 24%, transparent);
+}
+
+/* Suggestions: an insertion underlined, a deletion struck through, in the text color so they read in
+   both themes; the line's own color, not hue alone, says which is which. */
+.app-rich-surface ins,
+.app-suggestion-text ins {
+  text-decoration: underline 2px;
+  text-decoration-color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.app-rich-surface del,
+.app-suggestion-text del {
+  text-decoration: line-through 2px;
+  text-decoration-color: var(--crit);
+  background: var(--crit-soft);
+}
+
+.app-rich-surface [data-suggestion="modification"] {
+  outline: 1px dashed var(--info);
+  outline-offset: 2px;
+}
+
+.app-rich[data-hide-front] .app-src-block[data-front] {
+  display: none;
+}
+
+.app-comment-mark {
+  background: color-mix(in srgb, var(--warn) 22%, transparent);
+  border-block-end: 2px solid var(--warn);
+  cursor: pointer;
+
+  &[data-active] {
+    background: color-mix(in srgb, var(--warn) 40%, transparent);
+  }
+}
+
+.app-thread {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+
+  &[data-active] {
+    border-color: var(--warn);
+    box-shadow: 0 0 0 1px var(--warn);
+  }
+  &:focus-visible {
+    outline: var(--ring-width, 2px) solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+.app-thread-quote {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 3px solid var(--warn);
+  color: var(--muted);
+  font-style: italic;
+}
+
+.app-thread-comments,
+.app-suggestions {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-comment,
+.app-suggestion {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.app-comment-meta,
+.app-comment-body,
+.app-suggestion-text {
+  margin: 0;
+}
+
+.app-comment-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.app-comment-form {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+
+  & textarea {
+    width: 100%;
+  }
+}
+
+.app-resolved > summary {
+  cursor: pointer;
+  color: var(--muted);
+}

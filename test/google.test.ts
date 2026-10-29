@@ -287,7 +287,7 @@ describe("Send to Docs and Import", () => {
     const { owner, project } = await seeded();
     await sendToDocs(env, project, owner, "post-one", both());
     await autosave(testEnv.DB, project, owner, "post-one", { source: "My unsaved words.", baseVersion: null });
-    expect(await importFromDocs(env, project, owner, "post-one", both())).toMatchObject({ ok: false, message: expect.stringContaining("an import never replaces a draft") });
+    expect(await importFromDocs(env, project, owner, "post-one", both())).toMatchObject({ ok: false, message: expect.stringContaining("an import never replaces unsaved work") });
     expect((await readDraft(testEnv.DB, project, owner, "post-one"))?.source).toBe("My unsaved words.");
   });
 

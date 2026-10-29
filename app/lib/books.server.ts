@@ -353,6 +353,8 @@ export async function saveBookFile(
     client?: string | null;
     /** Words in this text that were not typed (pasted or dropped since the last autosave), besides those already recorded. */
     untyped?: number;
+    /** Someone else changed the text in its room since the last save, so its new words are not all this person's. */
+    shared?: boolean;
   },
 ): Promise<BookWrite> {
   requireCan(project, "edit");
@@ -388,9 +390,9 @@ export async function saveBookFile(
   // Only typed words count toward the day (ruling 6). Pastes, drops and an AI draft taken as the
   // working draft were counted as they arrived, and come off here. An AI client's save counts for
   // nothing, and so does a save whose starting text the index does not hold: every word would read
-  // as added.
+  // as added, and one of text several people wrote in its room: whose word is whose is not known.
   const untyped = (await takeUntyped(db, project.id, viewer.id, path)) + Math.max(0, input.untyped ?? 0);
-  const wordsTyped = input.client || !known ? null : Math.max(0, delta.added - untyped);
+  const wordsTyped = input.client || !known || input.shared ? null : Math.max(0, delta.added - untyped);
   await d.insert(authorship).values({
     id: changeId,
     projectId: project.id,

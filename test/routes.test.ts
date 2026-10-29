@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { autosave } from "~/lib/content.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { action as editorAction } from "~/routes/editor";
+import { action as editorAction, loader as editorLoader } from "~/routes/editor";
 import { loader as previewLoader } from "~/routes/preview";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
@@ -81,18 +81,14 @@ describe("publishing from the editor", () => {
     const site = fakeSite();
     vi.stubGlobal("fetch", site.fetch);
     const env = connectedEnv();
-    const version = await seedPost(site);
+    await seedPost(site);
+    await editorLoader({ request: new Request(`https://carrel.test/p/${SLUG}/e/post-one`), params: { project: SLUG, item: "post-one" }, context: await contextFor("owner@test.invalid", env) } as never);
 
-    const ask = await post("owner@test.invalid", env, { intent: "publish", expectedVersion: version, source: "---\ntitle: Site copy\n---\nOn the site.\n" });
+    const ask = await post("owner@test.invalid", env, { intent: "publish" });
     expect(ask).toEqual({ intent: "publish", needsConfirm: true });
     expect(site.adapter.store.get("post-one")!.doc.status).toBe("draft");
 
-    const done = await post("owner@test.invalid", env, {
-      intent: "publish",
-      confirm: "first-publish",
-      expectedVersion: version,
-      source: "---\ntitle: Site copy\n---\nOn the site.\n",
-    });
+    const done = await post("owner@test.invalid", env, { intent: "publish", confirm: "first-publish" });
     expect(done).toMatchObject({ intent: "write", outcome: { ok: true, status: "published" } });
   });
 
@@ -100,9 +96,9 @@ describe("publishing from the editor", () => {
     const site = fakeSite();
     vi.stubGlobal("fetch", site.fetch);
     const env = connectedEnv();
-    const version = await seedPost(site);
+    await seedPost(site);
     await expect(
-      post("editor@test.invalid", env, { intent: "publish", confirm: "first-publish", expectedVersion: version, source: "x" }),
+      post("editor@test.invalid", env, { intent: "publish", confirm: "first-publish" }),
     ).rejects.toSatisfy((thrown: unknown) => thrown instanceof Response && thrown.status === 403);
     expect(site.adapter.store.get("post-one")!.doc.status).toBe("draft");
   });

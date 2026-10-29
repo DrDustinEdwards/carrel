@@ -90,13 +90,61 @@ export function loadMarkdown(ydoc: Y.Doc, input: { markdown: string; version: st
 }
 
 /** Adds the fingerprints of blocks an editor read in from Markdown typed in the Markdown view. */
-export function addPrints(ydoc: Y.Doc, prints: Map<number, string>, tail?: string): void {
+function addPrints(ydoc: Y.Doc, prints: Map<number, string>, tail?: string): void {
   const shared = metaOf(ydoc).get(PRINTS);
   if (!(shared instanceof Y.Map)) return;
   ydoc.transact(() => {
     for (const [id, print] of prints) shared.set(String(id), print);
     if (tail !== undefined && tail !== readMeta(ydoc).tail) metaOf(ydoc).set("tail", tail);
   });
+}
+
+const SUGGESTION_MARKS = new Set(["insertion", "deletion", "modification"]);
+function hasSuggestion(node: JsonDoc): boolean {
+  return Boolean(node.attrs?.smark) || (node.marks ?? []).some((m) => SUGGESTION_MARKS.has(m.type)) || (node.content ?? []).some(hasSuggestion);
+}
+
+export type Patched = { ok: true; changed: boolean } | { ok: false; reason: "suggestions" };
+
+/**
+ * Takes Markdown typed in the Markdown view (or a front matter field) into the shared copy, changing
+ * only the blocks whose bytes differ, so the others keep their place, their comments and their
+ * suggestions. Refused when a block it would change holds a pending suggestion, which Markdown cannot
+ * show: those are accepted or rejected first.
+ */
+export function patchMarkdown(ydoc: Y.Doc, markdown: string): Patched {
+  if (markdown === roomMarkdown(ydoc)) return { ok: true, changed: false };
+  const meta = readMeta(ydoc);
+  const schema = roomSchema();
+  const prints = printsOf(ydoc);
+  const current = roomJson(ydoc).content ?? [];
+  const loaded = toDoc(markdown, meta.dialect);
+  const incoming = (loaded.doc.content ?? []) as JsonDoc[];
+  /** The bytes a block in the room writes now, and whether those are the incoming block's. */
+  const unchanged = (raw: JsonDoc, fresh: JsonDoc) => {
+    const settled = hasSuggestion(raw) ? (settle(schema, { type: "doc", content: [raw] }).content ?? []) : [raw];
+    if (settled.length !== 1) return false;
+    const md = fresh.attrs?.md as { source: string; before: string };
+    const written = fromDoc({ type: "doc", content: settled } as JsonNode, "", prints, meta.dialect);
+    return written === md.before + md.source || (!settled[0]!.attrs?.md && written === md.source);
+  };
+  let head = 0;
+  while (head < current.length && head < incoming.length && unchanged(current[head]!, incoming[head]!)) head++;
+  let tail = 0;
+  while (tail < current.length - head && tail < incoming.length - head && unchanged(current[current.length - 1 - tail]!, incoming[incoming.length - 1 - tail]!)) tail++;
+  const replaced = current.slice(head, current.length - tail);
+  if (replaced.some(hasSuggestion)) return { ok: false, reason: "suggestions" };
+  // New blocks take origin ids no block in the room has, so no print is read for the wrong block.
+  const ids = [...prints.keys(), ...current.map((b) => (b.attrs?.md as { id?: number } | null)?.id ?? -1)];
+  let next = Math.max(-1, ...ids) + 1;
+  const fresh = incoming.slice(head, incoming.length - tail).map((b) => ({ ...b, attrs: { ...b.attrs, md: { ...(b.attrs?.md as object), id: next++ } } }));
+  const node = schema.nodeFromJSON({ type: "doc", content: [...current.slice(0, head), ...fresh, ...current.slice(current.length - tail)] });
+  const added = fingerprints({ type: "doc", content: fresh.map((b) => schema.nodeFromJSON(b).toJSON()) } as JsonNode);
+  ydoc.transact(() => {
+    prosemirrorToYXmlFragment(node, ydoc.getXmlFragment(FRAGMENT));
+    addPrints(ydoc, added, loaded.tail);
+  });
+  return { ok: true, changed: true };
 }
 
 /** After a save: the version it made, and the text it wrote, so nothing reads as unsaved. */

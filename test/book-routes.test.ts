@@ -14,6 +14,7 @@ import { loader as homeLoader } from "~/routes/home";
 
 import { sharedBook, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
+import { typeIn } from "./room";
 import { routeContext, settle } from "./site";
 
 const SLUG = "test-book";
@@ -27,10 +28,11 @@ beforeAll(async () => {
 
 let gh: ReturnType<typeof fakeNovels>;
 let env: Env;
+let bookId: number;
 
 beforeEach(async () => {
   clearTokenCache();
-  await sharedBook(SLUG);
+  bookId = await sharedBook(SLUG);
   gh = fakeNovels({
     [`${SLUG}/bible/characters/wade.md`]: "---\nname: Wade\n---\nRanch hand.\n",
     [`${SLUG}/bible/places/harlan-place.md`]: "---\nname: Harlan place\n---\n",
@@ -123,45 +125,43 @@ describe("the file editor", () => {
 
   it("starts a new file from its template, named from the link", async () => {
     const scene = (await openFile("editor@test.invalid", "chapters/02-a/01-b.md")) as Awaited<ReturnType<typeof fileLoader>>;
-    expect(scene.fresh).toBe(true);
+    // Not in Git, and the template is work nobody has saved yet.
+    expect(scene).toMatchObject({ version: null, unsaved: true });
     expect(scene.source).toMatch(/^---\nstatus:\nsummary:\ntarget:\npov:\ndate:\nlocation:\ncharacters: \[\]\ngoal:\nconflict:\noutcome:\n---/);
     const person = (await openFile("editor@test.invalid", "bible/characters/june-harlan.md", env, "?name=June%20Harlan")) as Awaited<ReturnType<typeof fileLoader>>;
     expect(person.source).toContain("name: June Harlan");
   });
 
-  it("saves through the route: a commit, the flags, and the draft gone", async () => {
+  it("saves the room's text through the route: a commit, the flags, and nothing left unsaved", async () => {
     await bookPost("editor@test.invalid", { intent: "refresh" });
     const opened = (await openFile("editor@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
-    await filePost("editor@test.invalid", SCENE, { intent: "autosave", source: "draft", expectedVersion: opened.version! });
-    const result = (await filePost("editor@test.invalid", SCENE, {
-      intent: "save",
-      source: `${HEADER}Wade opened the gate. It was a masterpiece.\n`,
-      expectedVersion: opened.version!,
-    })) as { intent: "save"; outcome: { ok: boolean; findings: { excerpt: string }[] } };
+    await typeIn(bookId, SCENE, opened.room!.viewer, `${HEADER}Wade opened the gate. It was a masterpiece.\n`);
+    const result = (await filePost("editor@test.invalid", SCENE, { intent: "save" })) as { intent: "save"; outcome: { ok: boolean; findings: { excerpt: string }[] } };
     expect(result.outcome.ok).toBe(true);
     expect(result.outcome.findings.map((f) => f.excerpt)).toEqual(["masterpiece"]);
     expect(gh.commits).toHaveLength(1);
+    expect(gh.files.get(`${SLUG}/${SCENE}`)!.source).toBe(`${HEADER}Wade opened the gate. It was a masterpiece.\n`);
     const reopened = (await openFile("editor@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
-    expect(reopened.draftAt).toBeNull();
+    expect(reopened.unsaved).toBe(false);
     expect(reopened.findings.map((f) => f.status)).toEqual(["open"]);
   });
 
-  it("PLANT: without Git, Save keeps the draft and says why; nothing is committed", async () => {
+  it("PLANT: without Git, Save keeps the text in Carrel and says why; nothing is committed", async () => {
     const offline = { ...testEnv };
-    await filePost("editor@test.invalid", SCENE, { intent: "autosave", source: "kept", expectedVersion: "" }, offline);
-    const result = (await filePost("editor@test.invalid", SCENE, { intent: "save", source: "kept", expectedVersion: "" }, offline)) as {
-      outcome: { ok: boolean; message: string };
-    };
+    const opened = (await openFile("editor@test.invalid", SCENE, offline)) as Awaited<ReturnType<typeof fileLoader>>;
+    await typeIn(bookId, SCENE, opened.room!.viewer, "kept\n");
+    const result = (await filePost("editor@test.invalid", SCENE, { intent: "save" }, offline)) as { outcome: { ok: boolean; message: string } };
     expect(result.outcome.ok).toBe(false);
-    expect(result.outcome.message).toMatch(/not set up yet.*Your text is kept here as your draft\./);
+    expect(result.outcome.message).toMatch(/not set up yet.*The text is kept here in Carrel\./);
     expect(gh.commits).toHaveLength(0);
-    expect(((await openFile("editor@test.invalid", SCENE, offline)) as Awaited<ReturnType<typeof fileLoader>>).source).toBe("kept");
+    expect(((await openFile("editor@test.invalid", SCENE, offline)) as Awaited<ReturnType<typeof fileLoader>>).source).toBe("kept\n");
   });
 
   it("PLANT: an Editor cannot dismiss a flag through the route", async () => {
     await bookPost("owner@test.invalid", { intent: "refresh" });
     const opened = (await openFile("owner@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
-    await filePost("owner@test.invalid", SCENE, { intent: "save", source: `${HEADER}A masterpiece.\n`, expectedVersion: opened.version! });
+    await typeIn(bookId, SCENE, opened.room!.viewer, `${HEADER}A masterpiece.\n`);
+    await filePost("owner@test.invalid", SCENE, { intent: "save" });
     const flag = ((await openFile("owner@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>).findings[0]!;
     expect(((await filePost("editor@test.invalid", SCENE, { intent: "dismiss", finding: String(flag.id) })) as Response).status).toBe(403);
     expect(await filePost("owner@test.invalid", SCENE, { intent: "dismiss", finding: String(flag.id) })).toEqual({ intent: "dismiss", dismissed: flag.id });

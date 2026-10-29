@@ -21,7 +21,7 @@ import { timedFetch } from "~/lib/timed-fetch.server";
  * company's agent, through the AI door only), and the Owner, whom the admin policy on Desk's Access
  * application lists directly, so no sync can add or remove the Owner.
  */
-export async function allowList(db: D1Database): Promise<string[]> {
+async function allowList(db: D1Database): Promise<string[]> {
   const d = drizzle(db);
   const rows = await d
     .select({ email: people.email })
@@ -39,7 +39,7 @@ export async function allowList(db: D1Database): Promise<string[]> {
   return rows.map((r) => r.email.toLowerCase()).sort();
 }
 
-export type AccessSyncRow = typeof accessSync.$inferSelect;
+type AccessSyncRow = typeof accessSync.$inferSelect;
 
 /** What the People page says about Access: not set up (no key), or the last sync's outcome (null before the first). */
 export type AccessState = { configured: false } | { configured: true; last: AccessSyncRow | null };

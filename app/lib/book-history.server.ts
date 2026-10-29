@@ -12,6 +12,7 @@ import { formerPaths, movesOf } from "~/lib/binder.server";
 import type { BookProject } from "~/lib/books.server";
 import type { NovelsRepo } from "~/lib/novels/repo.server";
 import { can } from "~/lib/roles";
+import { coauthorsOf, withOthers } from "~/lib/rooms.server";
 
 export type BookVersion = {
   /** The commit that made this version. */
@@ -33,7 +34,7 @@ export async function bookVersions(db: D1Database, repo: NovelsRepo | null, proj
   const paths = await formerPaths(db, project.id, path);
   const d = drizzle(db);
   const saves = await d
-    .select({ commit: authorship.commitSha, path: authorship.path, at: authorship.createdAt, name: people.name, email: people.email, client: authorship.client, added: authorship.wordsAdded, removed: authorship.wordsRemoved })
+    .select({ id: authorship.id, personId: authorship.personId, commit: authorship.commitSha, path: authorship.path, at: authorship.createdAt, name: people.name, email: people.email, client: authorship.client, added: authorship.wordsAdded, removed: authorship.wordsRemoved })
     .from(authorship)
     .innerJoin(people, eq(people.id, authorship.personId))
     .where(and(eq(authorship.projectId, project.id), inArray(authorship.path, paths)))
@@ -43,9 +44,11 @@ export async function bookVersions(db: D1Database, repo: NovelsRepo | null, proj
     ? new Map((await d.select({ id: people.id, name: people.name, email: people.email }).from(people).where(inArray(people.id, [...new Set(moves.map((m) => m.personId))])).all()).map((p) => [p.id, p.name || p.email]))
     : new Map<number, string>();
 
+  // A save of text several people wrote in the file's room names them all.
+  const others = await coauthorsOf(db, saves.map((s) => ({ changeId: s.id, saver: s.personId })));
   const byCommit = new Map<string, BookVersion>();
   for (const s of saves) {
-    const who = s.name || s.email;
+    const who = withOthers(s.name || s.email, others.get(s.id));
     byCommit.set(s.commit, {
       version: s.commit,
       path: s.path,

@@ -143,14 +143,14 @@ export async function setProjectRole(db: D1Database, viewer: Viewer, personId: n
   return { removed: [] };
 }
 
-export type ShareResult = { email: string; added: boolean; change: AccessChange };
+type ShareResult = { email: string; added: boolean; change: AccessChange };
 
 /**
  * Shares one project with a coauthor by email, from the project's own page: someone new is added as
  * a person (never a reviewer) and given the role, someone already in Carrel just gets the role. The
  * rules are addPerson's and setProjectRole's, so the People page and this panel cannot disagree.
  */
-export async function shareProject(db: D1Database, viewer: Viewer, projectId: number, input: { email: string; name: string; role: string }): Promise<ShareResult> {
+async function shareProject(db: D1Database, viewer: Viewer, projectId: number, input: { email: string; name: string; role: string }): Promise<ShareResult> {
   requireOwner(viewer);
   if (!isMemberRole(input.role)) throw new PeopleRefusal("Choose a role.");
   const email = input.email.trim().toLowerCase();

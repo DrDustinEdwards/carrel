@@ -19,6 +19,8 @@ export function sourceBlockView(readOnly: () => boolean) {
         area.className = "app-src-text";
         area.spellcheck = false;
         const show = () => {
+          // In a file's room the post's front matter is edited in its fields above the text, not here.
+          dom.toggleAttribute("data-front", current.attrs.kind === "Front matter");
           label.textContent = `${current.attrs.kind}, Markdown`;
           area.setAttribute("aria-label", `${current.attrs.kind}, Markdown`);
           if (area.value !== current.attrs.text) area.value = current.attrs.text;

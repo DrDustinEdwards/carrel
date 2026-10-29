@@ -12,10 +12,10 @@
 // told the new version, and everyone who had a hand in the text goes into the authorship record.
 
 import { getServerByName } from "partyserver";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { changeContributors, drafts, people } from "~/db/schema";
+import { changeContributors, changes, drafts, people, rooms } from "~/db/schema";
 import { roomName } from "~/lib/editor/collab";
 import type { Dialect } from "~/lib/editor/markdown.mjs";
 import type { Viewer } from "~/lib/people.server";
@@ -39,36 +39,45 @@ export type OpenRoom = {
   behind: boolean;
   /** People connected now, before this page joins. */
   people: number;
+  /** The opener's own draft from before the room, when the room had already started from something else. */
+  ownDraft: { source: string; updatedAt: string } | null;
 };
 
 /**
- * The room for one file, ready for an editor to join. `initial` is the text to start from the first
- * time (the opener's own earlier draft first); `current` is what the site or Git holds now, or null
- * when it did not answer or the file is new.
+ * The room for one file, ready for an editor to join. The first time, it starts from the opener's own
+ * earlier draft, else `current`, what the site or Git holds now (null for a new file), else `starter`.
+ * `unknown`: the site or Git did not answer, so a room not started yet is not started from nothing,
+ * and the answer is null.
  */
 export async function openRoom(
   env: Env,
   project: Where,
   viewer: Viewer,
   itemId: string,
-  input: { dialect: Dialect; current: { source: string; version: string } | null; starter?: string },
-): Promise<OpenRoom> {
+  input: { dialect: Dialect; current: { source: string; version: string } | null; starter?: string; unknown?: boolean },
+): Promise<OpenRoom | null> {
   const room = await stub(env, project.id, itemId);
   let status = await room.status();
+  // Only someone who may edit brings a draft in; a Reader opens the file as it stands.
+  const draft = can(project.role, "edit")
+    ? await drizzle(env.DB)
+        .select({ source: drafts.source, baseVersion: drafts.baseVersion, updatedAt: drafts.updatedAt })
+        .from(drafts)
+        .where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, itemId), eq(drafts.personId, viewer.id)))
+        .get()
+    : undefined;
+  let ownDraft: OpenRoom["ownDraft"] = null;
   if (!status.seeded) {
-    const draft = await drizzle(env.DB)
-      .select({ source: drafts.source, baseVersion: drafts.baseVersion })
-      .from(drafts)
-      .where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, itemId), eq(drafts.personId, viewer.id)))
-      .get();
-    // Only someone who may edit brings a draft in; a Reader opens the file as it stands.
-    const own = draft && can(project.role, "edit") ? draft : null;
+    const own = draft ?? null;
+    if (!own && input.unknown) return null;
     const start = own ? { markdown: own.source, version: own.baseVersion } : input.current ? { markdown: input.current.source, version: input.current.version } : { markdown: input.starter ?? "", version: null };
-    // A draft is unsaved work: the room's last saved text is what the site or Git holds.
-    await room.seed({ ...start, dialect: input.dialect, ...(own ? { saved: input.current?.source ?? "" } : {}) });
+    // A draft, or a new file's template, is unsaved work: the room's last saved text is what the site or Git holds.
+    await room.seed({ ...start, dialect: input.dialect, ...(own || !input.current ? { saved: input.current?.source ?? "" } : {}) });
     // The draft now lives in the room, where everyone sees it.
     if (own) await drizzle(env.DB).delete(drafts).where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, itemId), eq(drafts.personId, viewer.id)));
     status = await room.status();
+  } else if (draft && draft.source !== status.markdown) {
+    ownDraft = { source: draft.source, updatedAt: draft.updatedAt };
   }
   let unsaved = status.markdown !== status.meta.saved;
   const moved = input.current !== null && status.meta.version !== input.current.version;
@@ -84,14 +93,21 @@ export async function openRoom(
     unsaved,
     behind: input.current !== null && status.meta.version !== input.current.version,
     people: status.people,
+    ownDraft,
   };
 }
 
-/** Replaces the room's whole text for everyone. Takes edit: Discard, the site's version, an AI draft, an update reopened. */
-export async function replaceRoom(env: Env, project: Where, viewer: Viewer, itemId: string, input: { markdown: string; version: string | null }): Promise<void> {
+/** Whether anyone has opened the file for live editing yet (its room keeps a copy in D1 from then on). */
+export async function hasRoom(db: D1Database, projectId: number, itemId: string): Promise<boolean> {
+  const row = await drizzle(db).select({ itemId: rooms.itemId }).from(rooms).where(and(eq(rooms.projectId, projectId), eq(rooms.itemId, itemId))).get();
+  return Boolean(row);
+}
+
+/** Replaces the room's whole text for everyone. Takes edit: Discard, the site's version, an AI draft, a draft from before the room, an import. */
+export async function replaceRoom(env: Env, project: Where, viewer: Viewer, itemId: string, input: { markdown: string; version: string | null; unsaved?: boolean }): Promise<void> {
   if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
   const room = await stub(env, project.id, itemId);
-  await room.replace({ ...input, by: viewer.name || viewer.email });
+  if (!(await room.replace({ ...input, by: viewer.name || viewer.email }))) throw new Response("Open the file before replacing its text.", { status: 409 });
 }
 
 /** The room's version now, for a write that sends no text (unpublish, unschedule). */
@@ -99,11 +115,17 @@ export async function roomVersion(env: Env, project: Where, itemId: string): Pro
   return (await (await stub(env, project.id, itemId)).snapshot()).version;
 }
 
+/** After a write that sent no text: the site's new version and text, for the room to take if nothing else changed. */
+export async function rebaseRoom(env: Env, project: Where, itemId: string, now: { version: string; source: string }): Promise<void> {
+  await (await stub(env, project.id, itemId)).rebase(now);
+}
+
 type Written = { ok: true; version: string; changeId: string } | { ok: false };
 
 /**
  * Saves the room's text through `write`, which sends it with the room's version (site-api's
- * expectedVersion, or Git's sha) and says what happened. On success the room takes the new version,
+ * expectedVersion, or Git's sha) and says what happened; `others` is whether anyone besides the
+ * person saving changed the text since the last save. On success the room takes the new version,
  * and every person who changed the text before it was taken is recorded beside the change.
  */
 export async function saveRoom<T extends Written>(
@@ -111,11 +133,13 @@ export async function saveRoom<T extends Written>(
   project: Where,
   viewer: Viewer,
   itemId: string,
-  write: (source: string, expectedVersion: string | null) => Promise<T>,
+  write: (source: string, expectedVersion: string | null, others: boolean) => Promise<T>,
 ): Promise<T> {
   const room = await stub(env, project.id, itemId);
   const snap = await room.snapshot();
-  const result = await write(snap.markdown, snap.version);
+  // An empty room is not an empty file: nothing is written until the file has been opened.
+  if (!snap.seeded) throw new Response("Open the file before saving it.", { status: 409 });
+  const result = await write(snap.markdown, snap.version, snap.contributors.some((id) => id !== viewer.id));
   if (!result.ok) return result;
   const credited = await room.saved({ version: result.version, markdown: snap.markdown, snapshotAt: snap.at });
   const ids = [...new Set([viewer.id, ...credited])];
@@ -126,15 +150,39 @@ export async function saveRoom<T extends Written>(
   return result;
 }
 
-/** Who had a hand in one save, besides the person who pressed Save. */
-export async function contributorsOf(env: Env, changeId: string, saver: number): Promise<string[]> {
-  const rows = await drizzle(env.DB)
-    .select({ name: people.name, email: people.email, id: people.id })
-    .from(changeContributors)
-    .innerJoin(people, eq(people.id, changeContributors.personId))
-    .where(eq(changeContributors.changeId, changeId))
+/**
+ * Who had a hand in each save besides the person who pressed Save, by change id: the names the
+ * history shows as "with ...".
+ */
+export async function coauthorsOf(db: D1Database, saves: { changeId: string; saver: number }[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  if (saves.length === 0) return out;
+  const saver = new Map(saves.map((s) => [s.changeId, s.saver]));
+  // D1 binds at most 100 values a statement.
+  for (let i = 0; i < saves.length; i += 90) {
+    const rows = await drizzle(db)
+      .select({ changeId: changeContributors.changeId, id: people.id, name: people.name, email: people.email })
+      .from(changeContributors)
+      .innerJoin(people, eq(people.id, changeContributors.personId))
+      .where(inArray(changeContributors.changeId, saves.slice(i, i + 90).map((s) => s.changeId)))
+      .all();
+    for (const r of rows) if (r.id !== saver.get(r.changeId)) out.set(r.changeId, [...(out.get(r.changeId) ?? []), r.name || r.email]);
+  }
+  return out;
+}
+
+/** A save's author with the others who wrote its text: "Dustin with Ana, Ben". */
+export const withOthers = (author: string, others: string[] | undefined) => (others?.length ? `${author} with ${others.join(", ")}` : author);
+
+/** The same for a post's revisions on its site, by the version each save made. */
+export async function siteCoauthors(db: D1Database, projectId: number, itemId: string): Promise<Map<string, string[]>> {
+  const saves = await drizzle(db)
+    .select({ changeId: changes.id, saver: changes.personId, version: changes.versionAfter })
+    .from(changes)
+    .where(and(eq(changes.projectId, projectId), eq(changes.itemId, itemId)))
     .all();
-  return rows.filter((r) => r.id !== saver).map((r) => r.name || r.email);
+  const others = await coauthorsOf(db, saves);
+  return new Map(saves.flatMap((s) => (s.version && others.has(s.changeId) ? [[s.version, others.get(s.changeId)!] as const] : [])));
 }
 
 /** The path a page's editor connects to: /collab/p/<project>/<post> or /collab/b/<book>/<file path>. */

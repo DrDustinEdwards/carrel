@@ -24,6 +24,7 @@ import { listRevisions, orderPair, readRevision, revisionPatch } from "~/lib/his
 import { kindNoun } from "~/lib/kind-words";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
+import { siteCoauthors, withOthers } from "~/lib/rooms.server";
 import { SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/history";
@@ -129,6 +130,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     }
   }
 
+  const coauthors = await siteCoauthors(env.DB, project.id, itemId);
   return {
     project: { slug: project.slug, name: project.name },
     itemId,
@@ -137,7 +139,8 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     by,
     view,
     picked,
-    revisions: list.map((r) => ({ version: r.version, at: r.at, author: r.author, message: r.message })),
+    // A save of text several people wrote in the post's room names them all.
+    revisions: list.map((r) => ({ version: r.version, at: r.at, author: withOthers(r.author, coauthors.get(r.version)), message: r.message })),
     siteError,
     againstSite: Boolean(draft && doc),
     aiDrafts: aiDrafts.map((d) => ({ id: d.id, client: d.client, createdAt: d.createdAt })),

@@ -51,7 +51,7 @@ const bytesOf = (message: WSMessage): Uint8Array | null =>
  * Whether `update` changes only suggestions, and only the suggester's own: with every suggestion
  * rejected the document reads the same before and after, and nobody else has more suggested.
  */
-export function suggestOnly(doc: Y.Doc, update: Uint8Array, by: number): boolean {
+function suggestOnly(doc: Y.Doc, update: Uint8Array, by: number): boolean {
   const probe = new Y.Doc();
   Y.applyUpdate(probe, Y.encodeStateAsUpdate(doc));
   const schema = roomSchema();
@@ -159,23 +159,26 @@ export class DocRoom extends YServer<Env> {
   }
 
   /**
-   * Replaces the whole text for everyone (Discard, the site's newer version, an AI draft taken, an
-   * update reopened). `expectedVersion`, when given, must still be the room's, so two people asking for
+   * Replaces the whole text for everyone (Discard, the site's newer version, an AI draft taken, a
+   * draft from before the room, an import). `unsaved`: the new text is not what the site or Git holds. `expectedVersion`, when given, must still be the room's, so two people asking for
    * the site's newer version cannot load it twice over someone's new work.
    */
-  async replace(input: { markdown: string; version: string | null; by: string; expectedVersion?: string | null }): Promise<boolean> {
+  async replace(input: { markdown: string; version: string | null; by: string; expectedVersion?: string | null; unsaved?: boolean }): Promise<boolean> {
     await this.__unsafe_ensureInitialized();
+    // A room nobody has opened has no dialect to read the text in: it starts from `seed`.
+    if (!isSeeded(this.document)) return false;
     if (input.expectedVersion !== undefined && readMeta(this.document).version !== input.expectedVersion) return false;
-    loadMarkdown(this.document, { markdown: input.markdown, version: input.version });
+    // Text nobody has saved yet (an AI draft taken, an import) leaves the last saved text as it was.
+    loadMarkdown(this.document, { markdown: input.markdown, version: input.version, ...(input.unsaved ? { saved: readMeta(this.document).saved } : {}) });
     await this.#persist();
     this.#broadcast({ t: "replaced", by: input.by });
     return true;
   }
 
-  /** What a save writes now, and the version it must be checked against. */
-  async snapshot(): Promise<{ markdown: string; version: string | null; at: string }> {
+  /** What a save writes now, the version it must be checked against, and who has changed it since the last save. */
+  async snapshot(): Promise<{ seeded: boolean; markdown: string; version: string | null; at: string; contributors: number[] }> {
     await this.__unsafe_ensureInitialized();
-    return { markdown: roomMarkdown(this.document), version: readMeta(this.document).version, at: new Date().toISOString() };
+    return { seeded: isSeeded(this.document), markdown: roomMarkdown(this.document), version: readMeta(this.document).version, at: new Date().toISOString(), contributors: Object.keys(this.#contributors()).map(Number) };
   }
 
   /**
@@ -197,6 +200,19 @@ export class DocRoom extends YServer<Env> {
     return credited;
   }
 
+  /**
+   * After a write that sent no text (unpublish, unschedule): the new version, taken only when the site
+   * still holds the text the room last saved, so unsaved work stays checked against what it started from.
+   */
+  async rebase(input: { version: string; source: string }): Promise<boolean> {
+    await this.__unsafe_ensureInitialized();
+    const meta = readMeta(this.document);
+    if (!isSeeded(this.document) || meta.saved !== input.source) return false;
+    markSaved(this.document, input.version, meta.saved);
+    await this.#persist();
+    return true;
+  }
+
   // ---- connections
 
   onConnect(conn: Connection, ctx: ConnectionContext) {
@@ -208,13 +224,13 @@ export class DocRoom extends YServer<Env> {
       return;
     }
     conn.setState((prev: unknown) => ({ ...(prev as object | null), viewer }));
-    super.onConnect(conn, ctx);
+    void super.onConnect(conn, ctx);
     this.#sendPeople();
     void this.#sendComments(conn);
   }
 
   onClose(conn: Connection, code: number, reason: string, wasClean: boolean) {
-    super.onClose(conn, code, reason, wasClean);
+    void super.onClose(conn, code, reason, wasClean);
     this.#sendPeople();
   }
 

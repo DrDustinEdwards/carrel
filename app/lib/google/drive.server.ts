@@ -11,6 +11,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { manuscripts, sentDocs } from "~/db/schema";
 import { autosave, readDoc, readDraft } from "~/lib/content.server";
+import { hasRoom, replaceRoom } from "~/lib/rooms.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
@@ -220,21 +221,24 @@ export async function lastSentDoc(db: D1Database, project: SiteProject, itemId: 
 }
 
 /**
- * Brings the Doc's text back as a new draft, never over one: with a working draft open, it is
- * refused until that draft is saved or discarded. The frontmatter kept at Send goes back on top.
+ * Brings the Doc's text back as the working copy, never over unsaved work: with changes nobody has
+ * saved, it is refused until they are saved or discarded. The frontmatter kept at Send goes back on top.
  */
 export async function importFromDocs(env: Env, project: SiteProject, viewer: Viewer, itemId: string, fetcher: Fetch = timedFetch) {
   requireSend(project);
   const sent = await lastSentDoc(env.DB, project, itemId);
   if (!sent) return { ok: false as const, message: "This post has not been sent to Google Docs from Carrel, so there is no Doc to import." };
   if (await readDraft(env.DB, project, viewer, itemId)) {
-    return { ok: false as const, message: "You have a working draft of this post. Save it to the site or discard it first; an import never replaces a draft." };
+    return { ok: false as const, message: "This post has changes nobody has saved. Save them to the site or discard them first; an import never replaces unsaved work." };
   }
   const token = await userAccessToken(env, viewer.id, fetcher);
   const res = await fetcher(`${DRIVE}/${encodeURIComponent(sent.docId)}/export?mimeType=text%2Fmarkdown`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return { ok: false as const, message: `Google did not export the Doc (${res.status}). It may have been deleted or moved out of reach.` };
   const body = (await res.text()).replace(/\r\n/g, "\n");
   const current = await readDoc(env, project, itemId, fetcher);
-  await autosave(env.DB, project, viewer, itemId, { source: `${sent.frontmatter}${body}`, baseVersion: current?.version ?? null });
+  const source = `${sent.frontmatter}${body}`;
+  // A file open for live editing takes the import in its room, where everyone sees it.
+  if (await hasRoom(env.DB, project.id, itemId)) await replaceRoom(env, project, viewer, itemId, { markdown: source, version: current?.version ?? null, unsaved: true });
+  else await autosave(env.DB, project, viewer, itemId, { source, baseVersion: current?.version ?? null });
   return { ok: true as const, words: body.split(/\s+/).filter(Boolean).length };
 }

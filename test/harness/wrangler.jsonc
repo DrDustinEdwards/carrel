@@ -17,6 +17,9 @@
 			"database_id": "00000000-0000-0000-0000-000000000000"
 		}
 	],
+	// As wrangler.jsonc.example: each file's live room.
+	"durable_objects": { "bindings": [{ "name": "DOC_ROOM", "class_name": "DocRoom" }] },
+	"migrations": [{ "tag": "v1-doc-room", "new_sqlite_classes": ["DocRoom"] }],
 	"vars": {
 		"ACCESS_TEAM_DOMAIN": "https://harness.cloudflareaccess.com",
 		"ALERT_EMAIL": "owner@harness.invalid",

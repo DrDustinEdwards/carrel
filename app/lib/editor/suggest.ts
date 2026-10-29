@@ -27,8 +27,7 @@ import { EditorState, Plugin, PluginKey, type Transaction } from "@tiptap/pm/sta
 
 import { SUGGESTION_BLOCKS } from "./schema.mjs";
 
-export const SUGGESTION_TYPES = ["insertion", "deletion", "modification"] as const;
-export type SuggestionType = (typeof SUGGESTION_TYPES)[number];
+const SUGGESTION_TYPES = ["insertion", "deletion", "modification"] as const;
 
 type MarkJson = { type: string; attrs?: Record<string, unknown> };
 export type JsonDoc = { type: string; attrs?: Record<string, unknown>; content?: JsonDoc[]; marks?: MarkJson[]; text?: string };
@@ -87,7 +86,7 @@ export function suggestionCounts(schema: Schema, json: JsonDoc): Map<string, num
 }
 
 /** Keeps a block's suggestion marks and its `smark` attribute the same, whichever side changed. */
-export function blockMarkMirror(): Plugin {
+function blockMarkMirror(): Plugin {
   return new Plugin({
     key: new PluginKey("carrel-block-marks"),
     appendTransaction(trs, _old, state) {

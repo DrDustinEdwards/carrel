@@ -3,13 +3,18 @@
 // editor exactly as before. Both get Carrel's blocks, its link targets and its image upload, set in
 // the serif prose layout, with "Insert from library" beside them. The choice is remembered on this
 // device. The formatted editor is components/editor/rich-editor.tsx; the Markdown one is Capsomer's.
+// In a file's room (`room`), the formatted editor is bound to the room's shared copy, and Markdown
+// typed in the Markdown view goes into it block by block (room-editing.tsx).
 
 import { EditorView } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { MarkdownEditor, type LinkTarget } from "capsomer/react/markdown-editor";
 import { Segmented } from "capsomer/react/segmented";
 
-import { RichEditor, type RichEditorHandle } from "~/components/editor/rich-editor";
+import type { Editor } from "@tiptap/core";
+import { Alert } from "capsomer/react/banner";
+
+import { RichEditor, type RichEditorHandle, type RichRoom } from "~/components/editor/rich-editor";
 import { LibraryInsert } from "~/components/media/library-insert";
 import { uploadImage, type EditorMedia } from "~/components/media/upload";
 import type { Dialect } from "~/lib/editor/markdown.mjs";
@@ -40,6 +45,8 @@ export function WritingSurface({
   linkTargets,
   media,
   dialect = "site",
+  room,
+  onEditor,
 }: {
   /** What the surface is called to a screen reader, for example "Post" or "Scene". */
   label: string;
@@ -51,6 +58,10 @@ export function WritingSurface({
   media?: EditorMedia | null;
   /** A site's Markdown (directives, math) or a book's. */
   dialect?: Dialect;
+  /** The file's room, once its copy has arrived, and why the Markdown view may only show the text. */
+  room?: { rich: (RichRoom & { key: string }) | null; markdownLocked: string | null };
+  /** The formatted editor, once made, for the room's panels. */
+  onEditor?: (editor: Editor | null) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const rich = useRef<RichEditorHandle | null>(null);
@@ -62,6 +73,12 @@ export function WritingSurface({
       // Storage refused: the formatted editor, as the default.
     }
   }, []);
+  // The panels let go of the formatted editor when it is put away, and of each one made again.
+  const editorKey = room?.rich?.key;
+  useEffect(() => {
+    if (mode !== "formatted") onEditor?.(null);
+    return () => onEditor?.(null);
+  }, [mode, editorKey]);
   const choose = (next: Mode) => {
     setMode(next);
     try {
@@ -100,8 +117,13 @@ export function WritingSurface({
         />
         {images ? <LibraryInsert media={images} insert={(md) => (mode === "formatted" ? rich.current?.insertMarkdown(md) : insertIntoMarkdown(root.current, md))} /> : null}
       </div>
-      {mode === "formatted" ? (
+      {mode === "formatted" && room && !room.rich ? (
+        // The room's copy has not arrived yet: the text as the server read it, not yet editable.
+        <textarea className="cap-input cap-md-source" aria-label={`${label}, loading`} value={value} readOnly rows={12} />
+      ) : mode === "formatted" ? (
         <RichEditor
+          key={room?.rich?.key}
+          room={room?.rich ?? undefined}
           ariaLabel={readOnly ? `${label}, formatted, read only` : `${label}, formatted`}
           value={value}
           onChange={onChange}
@@ -115,15 +137,18 @@ export function WritingSurface({
           accept={images?.accept}
           onReady={(handle) => {
             rich.current = handle;
+            onEditor?.(handle.editor);
           }}
         />
       ) : (
+        <>
+        {room?.markdownLocked ? <Alert tone="info">{room.markdownLocked}</Alert> : null}
         <MarkdownEditor
           label={<span className="cap-sr-only">{label}</span>}
-          ariaLabel={readOnly ? `${label}, markdown, read only` : `${label}, markdown`}
+          ariaLabel={readOnly || room?.markdownLocked ? `${label}, markdown, read only` : `${label}, markdown`}
           value={value}
           onChange={onChange}
-          readOnly={readOnly}
+          readOnly={readOnly || Boolean(room?.markdownLocked)}
           placeholder="Write in markdown."
           scaffolds={SCAFFOLDS}
           linkTargets={linkTargets}
@@ -131,6 +156,7 @@ export function WritingSurface({
           onUpload={onUpload}
           imageMarkdown={imageMarkdown}
         />
+        </>
       )}
     </div>
   );

@@ -7,7 +7,7 @@ import { SiteApiError } from "@dustinedwards/site-api/client";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { changes, drafts } from "~/db/schema";
+import { changes, drafts, rooms } from "~/db/schema";
 import { indexDoc, removeFromIndex } from "~/lib/index.server";
 import { checkLegalWrite } from "~/lib/legal.server";
 import type { Viewer } from "~/lib/people.server";
@@ -50,7 +50,24 @@ export async function readDoc(env: Env, project: SiteProject, itemId: string, fe
   }
 }
 
-export async function readDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string) {
+/**
+ * The working copy: the file's live room when it has changes nobody has saved (its D1 mirror, a
+ * second behind at most), else the person's own draft from before the room. Null when neither has
+ * anything the site or Git does not.
+ */
+export async function readDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string): Promise<Draft | null> {
+  requireCan(project, "read");
+  const room = await drizzle(db)
+    .select({ source: rooms.source, savedSource: rooms.savedSource, baseVersion: rooms.baseVersion, updatedAt: rooms.updatedAt })
+    .from(rooms)
+    .where(and(eq(rooms.projectId, project.id), eq(rooms.itemId, itemId)))
+    .get();
+  if (room) return room.source !== room.savedSource ? { source: room.source, baseVersion: room.baseVersion, updatedAt: room.updatedAt } : null;
+  return readOwnDraft(db, project, viewer, itemId);
+}
+
+/** The person's own draft, from before the file's room or for a file nobody has opened since. */
+export async function readOwnDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string): Promise<Draft | null> {
   requireCan(project, "read");
   const row = await drizzle(db)
     .select({ source: drafts.source, baseVersion: drafts.baseVersion, updatedAt: drafts.updatedAt })

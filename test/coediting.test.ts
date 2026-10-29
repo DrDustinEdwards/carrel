@@ -7,19 +7,16 @@
 import { EditorState } from "@tiptap/pm/state";
 import { enableSuggestChanges } from "@handlewithcare/prosemirror-suggest-changes";
 import { initProseMirrorDoc, prosemirrorToYXmlFragment } from "@tiptap/y-tiptap";
-import * as decoding from "lib0/decoding";
-import * as encoding from "lib0/encoding";
-import { getServerByName } from "partyserver";
 import { beforeEach, describe, expect, it } from "vitest";
-import * as syncProtocol from "y-protocols/sync";
 import * as Y from "yjs";
 
-import { FRAGMENT, loadMarkdown, roomMarkdown, roomName, roomSchema } from "~/lib/editor/collab";
-import { ROOM_VIEWER_HEADER, type RoomViewer, type ServerMessage } from "~/lib/editor/room-protocol";
+import { FRAGMENT, loadMarkdown, patchMarkdown, roomMarkdown, roomSchema } from "~/lib/editor/collab";
+import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
 import { listSuggestions, settle, suggestingDispatch, suggestionPlugins } from "~/lib/editor/suggest";
 import { openRoom, saveRoom } from "~/lib/rooms.server";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { join } from "./room";
 import { viewerFor } from "./site";
 
 const corpus = import.meta.glob("./fixtures/markdown/*.md", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -38,58 +35,6 @@ beforeEach(async () => {
 });
 
 const project = (role: "owner" | "editor" | "reader") => ({ id: projectId, role });
-
-/** One person in the room: a Yjs document kept in step over a WebSocket, as the browser's provider does. */
-async function join(itemId: string, viewer: RoomViewer) {
-  const room = await getServerByName(testEnv.DOC_ROOM, roomName(projectId, itemId));
-  const response = await room.fetch(new Request(`https://carrel.test/collab/p/de-info/${itemId}`, { headers: { Upgrade: "websocket", [ROOM_VIEWER_HEADER]: JSON.stringify(viewer) } }));
-  const ws = response.webSocket!;
-  ws.accept();
-  const doc = new Y.Doc();
-  const said: ServerMessage[] = [];
-  let synced!: () => void;
-  const ready = new Promise<void>((resolve) => (synced = resolve));
-  // Binary frames come as Blobs here; reading them in turn keeps them in the order they came.
-  let inbox = Promise.resolve();
-  ws.addEventListener("message", (event) => {
-    inbox = inbox.then(() => receive(event.data as string | ArrayBuffer | Blob));
-  });
-  const receive = async (data: string | ArrayBuffer | Blob) => {
-    if (typeof data === "string") {
-      if (data.startsWith("__YPS:")) said.push(JSON.parse(data.slice(6)) as ServerMessage);
-      return;
-    }
-    const bytes = new Uint8Array(data instanceof Blob ? await data.arrayBuffer() : data);
-    const decoder = decoding.createDecoder(bytes);
-    if (decoding.readVarUint(decoder) !== 0) return;
-    const reply = encoding.createEncoder();
-    encoding.writeVarUint(reply, 0);
-    const kind = syncProtocol.readSyncMessage(decoder, reply, doc, "room");
-    if (encoding.length(reply) > 1) ws.send(encoding.toUint8Array(reply));
-    if (kind === syncProtocol.messageYjsSyncStep2) synced();
-  };
-  doc.on("update", (update: Uint8Array, origin: unknown) => {
-    if (origin === "room") return;
-    const e = encoding.createEncoder();
-    encoding.writeVarUint(e, 0);
-    syncProtocol.writeUpdate(e, update);
-    ws.send(encoding.toUint8Array(e));
-  });
-  const hello = encoding.createEncoder();
-  encoding.writeVarUint(hello, 0);
-  syncProtocol.writeSyncStep1(hello, doc);
-  ws.send(encoding.toUint8Array(hello));
-  await ready;
-  /** Waits until the room has handled everything sent so far. */
-  let flushes = 0;
-  const flush = async () => {
-    const want = ++flushes;
-    ws.send(`__YPS:${JSON.stringify({ t: "flush", n: want })}`);
-    for (let i = 0; i < 100 && !said.some((m) => m.t === "flushed" && m.n === want); i++) await new Promise((r) => setTimeout(r, 10));
-  };
-  const send = (message: object) => ws.send(`__YPS:${JSON.stringify(message)}`);
-  return { doc, said, flush, send, close: () => ws.close() };
-}
 
 const as = (id: number, name: string, role: RoomViewer["role"], access: RoomViewer["access"]): RoomViewer => ({ id, name, role, access });
 
@@ -125,8 +70,8 @@ describe("a room", () => {
     const opened = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "First line.\n\nSecond line.\n", version: "v1" } });
     expect(opened).toMatchObject({ source: "First line.\n\nSecond line.\n", version: "v1", unsaved: false, behind: false });
 
-    const a = await join(itemId, as(ids.owner, "owner", "owner", "edit"));
-    const b = await join(itemId, as(ids.editor, "editor", "editor", "edit"));
+    const a = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
+    const b = await join(projectId, itemId, as(ids.editor, "editor", "editor", "edit"));
     edit(a.doc, typeAtEnd(" More."));
     await a.flush();
     edit(b.doc, (s) => s.apply(s.tr.insertText("Now ", s.doc.child(0).nodeSize + 1)));
@@ -162,7 +107,7 @@ describe("a room", () => {
     const followed = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "One, from the AI door.\n", version: "v2" } });
     expect(followed).toMatchObject({ source: "One, from the AI door.\n", version: "v2", behind: false });
 
-    const a = await join(itemId, as(ids.owner, "owner", "owner", "edit"));
+    const a = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
     edit(a.doc, typeAtEnd(" Mine."));
     await a.flush();
     const behind = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "Three.\n", version: "v3" } });
@@ -187,8 +132,8 @@ describe("a coauthor who suggests", () => {
     const itemId = item();
     const owner = await viewerFor("owner@test.invalid");
     await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "The cat sat.\n", version: "v1" } });
-    const coauthor = await join(itemId, as(ids.reader, "reader", "reader", "suggest"));
-    const owners = await join(itemId, as(ids.owner, "owner", "owner", "edit"));
+    const coauthor = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
+    const owners = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
 
     // A plain edit is refused: the room keeps its text and tells the editor to load again.
     edit(coauthor.doc, typeAtEnd(" Plainly."));
@@ -198,7 +143,7 @@ describe("a coauthor who suggests", () => {
     expect(roomMarkdown(owners.doc)).toBe("The cat sat.\n");
 
     // A suggestion goes through, marked as theirs, and a save leaves it out.
-    const theirs = await join(itemId, as(ids.reader, "reader", "reader", "suggest"));
+    const theirs = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
     const suggest = suggestingDispatch({ by: String(ids.reader), clientId: theirs.doc.clientID, round: () => null });
     edit(theirs.doc, (start) => {
       let on = start;
@@ -230,13 +175,32 @@ describe("a coauthor who suggests", () => {
   });
 });
 
+describe("the Markdown view on a shared copy", () => {
+  it("changes only the blocks typed in, keeps another's suggestion elsewhere, and refuses to type over one", () => {
+    const room = new Y.Doc();
+    loadMarkdown(room, { markdown: "---\ntitle: A\n---\n\nOne  *two*.\n\nThree.\n", version: "v1", dialect: "site" });
+    edit(room, (start) => {
+      let on = start;
+      enableSuggestChanges(on, (tr) => (on = on.apply(tr)));
+      const at = on.doc.child(0).nodeSize + on.doc.child(1).nodeSize + on.doc.child(2).nodeSize - 2;
+      return on.apply(suggestingDispatch({ by: "3", clientId: 7, round: () => null })(on, on.tr.insertText(" Four.", at)));
+    });
+    expect(patchMarkdown(room, "---\ntitle: B\n---\n\nOne  *two*.\n\nThree.\n")).toEqual({ ok: true, changed: true });
+    // The front matter changed; the paragraph's odd spacing and the suggestion are untouched.
+    expect(roomMarkdown(room)).toBe("---\ntitle: B\n---\n\nOne  *two*.\n\nThree.\n");
+    const { doc: pm } = initProseMirrorDoc(room.getXmlFragment(FRAGMENT), roomSchema());
+    expect(listSuggestions(pm).map((x) => x.inserted)).toEqual([" Four."]);
+    expect(patchMarkdown(room, "---\ntitle: B\n---\n\nOne  *two*.\n\nThree!\n")).toEqual({ ok: false, reason: "suggestions" });
+  });
+});
+
 describe("comments", () => {
   it("reach everyone in the room, and only the writer or someone who edits resolves a thread", async () => {
     const itemId = item();
     const owner = await viewerFor("owner@test.invalid");
     await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "Text.\n", version: "v1" } });
-    const coauthor = await join(itemId, as(ids.reader, "reader", "reader", "suggest"));
-    const editor = await join(itemId, as(ids.editor, "editor", "editor", "edit"));
+    const coauthor = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
+    const editor = await join(projectId, itemId, as(ids.editor, "editor", "editor", "edit"));
     editor.send({ t: "comment", body: "Is this right?", anchor: null, quote: "Text" });
     await editor.flush();
     await new Promise((r) => setTimeout(r, 50));

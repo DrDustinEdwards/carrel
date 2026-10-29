@@ -58,9 +58,9 @@ function suggestionMark(name, tag, extra = {}) {
   });
 }
 
-export const Insertion = suggestionMark("insertion", "ins");
-export const Deletion = suggestionMark("deletion", "del");
-export const Modification = suggestionMark("modification", "span", {
+const Insertion = suggestionMark("insertion", "ins");
+const Deletion = suggestionMark("deletion", "del");
+const Modification = suggestionMark("modification", "span", {
   type: { default: null, rendered: false },
   attrName: { default: null, rendered: false },
   previousValue: { default: null, rendered: false },
@@ -119,10 +119,15 @@ const ListItemNoTab = ListItem.extend({
   },
 });
 
-/** The extensions every editor and the round-trip check share. */
-export function baseExtensions() {
+/**
+ * The extensions every editor and the round-trip check share. In a file's room, undo is the shared
+ * copy's (Collaboration's), which takes back only this person's own changes.
+ * @param {{ room?: boolean }} [options]
+ */
+export function baseExtensions(options = {}) {
   return [
     StarterKit.configure({
+      ...(options.room ? { undoRedo: false } : {}),
       codeBlock: false,
       underline: false,
       trailingNode: false,
