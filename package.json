@@ -41,7 +41,7 @@
     "@codemirror/view": "6.43.7",
     "@drdustinedwards/site-helpers": "github:DrDustinEdwards/prelum#v0.17.0",
     "@dustinedwards/d1-dump": "github:DrDustinEdwards/d1-dump#v0.6.0",
-    "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.10.1",
+    "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.11.0",
     "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#v0.27.0",
     "@fontsource-variable/source-serif-4": "5.3.0",
     "@lezer/highlight": "1.2.3",
