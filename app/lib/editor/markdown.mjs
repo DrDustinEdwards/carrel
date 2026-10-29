@@ -173,7 +173,7 @@ function blockJson(node, source) {
 
 /** What a source block is, for its label: "Front matter", "Code", "Table", "Chart" and so on. */
 /** @param {any} node */
-function kindOf(node) {
+function blockLabel(node) {
   if (node.type === "yaml") return "Front matter";
   if (node.type === "code") return node.lang ? `Code (${node.lang})` : "Code";
   if (node.type === "table") return "Table";
@@ -201,7 +201,7 @@ export function toDoc(source, dialect) {
   tree.children.forEach((/** @type {any} */ node, /** @type {number} */ id) => {
     const [start, end] = span(node);
     const text = source.slice(start, end);
-    const json = blockJson(node, source) ?? { type: "sourceBlock", attrs: { text, kind: kindOf(node) } };
+    const json = blockJson(node, source) ?? { type: "sourceBlock", attrs: { text, kind: blockLabel(node) } };
     json.attrs = { ...json.attrs, md: { id, source: text, before: source.slice(at, start) } };
     content.push(json);
     at = end;

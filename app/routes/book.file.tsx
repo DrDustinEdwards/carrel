@@ -40,7 +40,7 @@ import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { getEnv, getViewer } from "~/lib/context";
 import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
-import { countProseWords, isBookPath, kindOf, TEMPLATES, titleFromSegment } from "~/lib/novels/layout";
+import { countProseWords, isBookPath, fileKindOf, TEMPLATES, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
@@ -53,7 +53,7 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
 }
 
 function starter(path: string, name: string | null, bookName: string): string {
-  const kind = kindOf(path);
+  const kind = fileKindOf(path);
   const fallback = titleFromSegment(path.split("/").pop()!.replace(/\.md$/, ""));
   if (kind === "scene") return TEMPLATES.scene("");
   if (kind === "character" || kind === "place" || kind === "rule") return TEMPLATES[kind](name?.trim() || fallback);
@@ -62,7 +62,7 @@ function starter(path: string, name: string | null, bookName: string): string {
 }
 
 function labelFor(path: string): string {
-  const kind = kindOf(path);
+  const kind = fileKindOf(path);
   const file = titleFromSegment(path.split("/").pop()!.replace(/\.md$/, ""));
   if (kind === "scene") return `${titleFromSegment(path.split("/")[1]!)}: ${file}`;
   if (kind === "book") return "Title page";
@@ -101,7 +101,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   });
   const roomViewer: RoomViewer = { id: viewer.id, name: viewer.name || viewer.email, role: project.role, access: canEdit ? "edit" : "suggest" };
 
-  const kind = kindOf(path);
+  const kind = fileKindOf(path);
   const source = opened?.source ?? file?.source ?? "";
 
   const indexed = await listFiles(env.DB, project);

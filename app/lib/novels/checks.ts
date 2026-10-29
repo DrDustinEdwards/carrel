@@ -4,7 +4,7 @@
 
 import { parseFile } from "./frontmatter";
 import {
-  kindOf,
+  fileKindOf,
   readMeta,
   readingOrder,
   type CharacterEntry,
@@ -233,7 +233,7 @@ export function checkVoice(path: string, source: string, examples: BookContext["
 
 /** Every check that applies to a file of this kind. */
 export function checkFile(path: string, source: string, context: BookContext): Finding[] {
-  const kind = kindOf(path);
+  const kind = fileKindOf(path);
   const parsed = parseFile(source);
   const meta: Meta = readMeta(path, parsed.data, Object.keys(parsed.data).length > 0);
   if (meta.kind === "rule") return checkRuleFile(path, source, meta.entry);
