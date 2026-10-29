@@ -86,7 +86,7 @@ export type Meta =
   | { kind: "outline" | "note" };
 
 /** The name a bible file stands for when its header gives none: its file name. */
-function fallbackName(path: string): string {
+function nameFromFile(path: string): string {
   const file = path.split("/").pop()!.replace(/\.md$/, "");
   return titleFromSegment(file);
 }
@@ -126,12 +126,12 @@ export function readMeta(path: string, data: Record<string, HeaderValue>, hasHea
     case "character":
       return {
         kind,
-        entry: { name: text(data, "name") || fallbackName(path), aliases: list(data, "aliases"), born: text(data, "born"), died: text(data, "died") },
+        entry: { name: text(data, "name") || nameFromFile(path), aliases: list(data, "aliases"), born: text(data, "born"), died: text(data, "died") },
       };
     case "place":
-      return { kind, entry: { name: text(data, "name") || fallbackName(path), aliases: list(data, "aliases") } };
+      return { kind, entry: { name: text(data, "name") || nameFromFile(path), aliases: list(data, "aliases") } };
     case "rule":
-      return { kind, entry: { name: text(data, "name") || fallbackName(path), forbidden: list(data, "forbidden") } };
+      return { kind, entry: { name: text(data, "name") || nameFromFile(path), forbidden: list(data, "forbidden") } };
     case "book":
       return {
         kind,
