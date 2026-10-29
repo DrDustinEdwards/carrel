@@ -11,7 +11,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { people, projectMembers, projects } from "~/db/schema";
 import { agentEmail, isAgentName } from "~/lib/agent-keys.server";
 import type { Viewer } from "~/lib/people.server";
-import type { Role } from "~/lib/roles";
+import type { MemberRole } from "~/lib/roles";
 
 /** A refusal the Owner reads on the page: the rule said no, and nothing changed. */
 export class PeopleRefusal extends Error {
@@ -33,7 +33,7 @@ export type PersonRow = {
   isOwner: boolean;
   isReviewer: boolean;
   disabledAt: string | null;
-  roles: { projectId: number; role: Exclude<Role, "owner"> }[];
+  roles: { projectId: number; role: MemberRole }[];
 };
 
 export type ProjectRow = { id: number; slug: string; name: string; kind: "site" | "book" | null };
@@ -109,16 +109,22 @@ async function target(db: D1Database, personId: number) {
 /**
  * Sets a person's role on a project, or removes it (role null). The Owner has no per-project role to
  * set: the Owner is the Owner everywhere, and cannot be demoted here. A reviewer reads and flags only,
- * so a reviewer can be a Reader and never an Editor.
+ * so a reviewer can be a Reader and never an Editor or an Author. An Author publishes their own posts,
+ * so the role is for people on a site project: never an AI agent (agents never publish), and never on
+ * a book, which has no posts.
  */
-export async function setProjectRole(db: D1Database, viewer: Viewer, personId: number, projectId: number, role: "reader" | "editor" | null): Promise<void> {
+export async function setProjectRole(db: D1Database, viewer: Viewer, personId: number, projectId: number, role: MemberRole | null): Promise<void> {
   requireOwner(viewer);
   const person = await target(db, personId);
   if (person.isOwner) throw new PeopleRefusal("The Owner's role cannot be changed: the Owner is the Owner on every project.");
-  if (role === "editor" && person.isReviewer) throw new PeopleRefusal(`${person.email} is a reviewer. Reviewers read and flag only, so they can be a Reader, never an Editor.`);
+  if ((role === "editor" || role === "author") && person.isReviewer) {
+    throw new PeopleRefusal(`${person.email} is a reviewer. Reviewers read and flag only, so they can be a Reader, never an Editor or an Author.`);
+  }
+  if (role === "author" && person.email.startsWith(agentEmail(""))) throw new PeopleRefusal(`${person.email} is an AI agent. Agents never publish, so they can be a Reader or an Editor, never an Author.`);
   const d = drizzle(db);
-  const project = await d.select({ id: projects.id }).from(projects).where(eq(projects.id, projectId)).get();
+  const project = await d.select({ id: projects.id, site: projects.site }).from(projects).where(eq(projects.id, projectId)).get();
   if (!project) throw new PeopleRefusal("No such project.");
+  if (role === "author" && !project.site) throw new PeopleRefusal("Author is a role on a site's project: a book has no posts to publish. Make them an Editor here.");
   if (role === null) {
     await d.delete(projectMembers).where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.personId, personId)));
     return;

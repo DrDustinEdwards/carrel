@@ -22,6 +22,7 @@ import { PageHead } from "capsomer/react/page-head";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { addAgent, addPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
+import { isMemberRole } from "~/lib/roles";
 
 import type { Route } from "./+types/people";
 
@@ -57,7 +58,7 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
       }
       case "role": {
         const role = String(form.get("role") ?? "");
-        await setProjectRole(db, viewer, personId, Number(form.get("project")), role === "reader" || role === "editor" ? role : null);
+        await setProjectRole(db, viewer, personId, Number(form.get("project")), isMemberRole(role) ? role : null);
         return { ok: true, intent };
       }
       case "disable":
@@ -112,6 +113,10 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
   return (
     <div className="app-page">
       <PageHead title="People" lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page." />
+      <p className="cap-muted">
+        A Reader reads and comments. An Editor also writes and saves drafts. An Author on a site's project also publishes, schedules and unpublishes the posts they wrote
+        in Carrel. Only the Owner publishes anyone else's post, sends anything else outside Carrel and manages people.
+      </p>
 
       {actionData && !actionData.ok ? <Alert tone="crit" title="Nothing changed">{actionData.message}</Alert> : null}
 
@@ -212,8 +217,10 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                               options={[
                                 { value: "", label: "No access" },
                                 { value: "reader", label: "Reader" },
-                                // Reviewers read and flag only: Editor is not offered, and the server refuses it anyway.
+                                // Reviewers read and flag only: Editor and Author are not offered, and the server refuses them anyway.
                                 ...(person.isReviewer ? [] : [{ value: "editor", label: "Editor" }]),
+                                // An Author publishes their own posts: a person on a site's project, never an agent.
+                                ...(person.isReviewer || person.email.startsWith("agent:") || project.kind !== "site" ? [] : [{ value: "author", label: "Author" }]),
                               ]}
                             />
                             <Button type="submit" size="sm" pending={busy}>
@@ -247,7 +254,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
           <fieldset className="cap-field">
             <legend className="cap-field-label">Kind</legend>
             <div className="cap-field-options">
-              <Check type="radio" name="reviewer" value="no" defaultChecked label="A person, who reads, and edits where you share a project as Editor" />
+              <Check type="radio" name="reviewer" value="no" defaultChecked label="A person, who reads, edits where you share a project as Editor, and also publishes their own posts where you share it as Author" />
               <Check type="radio" name="reviewer" value="yes" label="A reviewer (another company's AI agent), who reads and flags only, through the AI door" />
             </div>
           </fieldset>

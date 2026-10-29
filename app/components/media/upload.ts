@@ -6,8 +6,8 @@ export type EditorMedia = {
   endpoint: string;
   /** The types the site accepts, for the file chooser's `accept`. A hint, not a control: the site checks. */
   accept: string;
-  /** The site's own Markdown for an image with its alt text. */
-  figure: (url: string, alt: string) => string;
+  /** The site's own Markdown for an image with its alt text, and its caption when it has one. */
+  figure: (url: string, alt: string, caption?: string) => string;
 };
 
 export type Uploaded = {

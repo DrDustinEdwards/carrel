@@ -190,9 +190,11 @@ Each site's files stay in that site's own storage and are served by the site; Ca
 - **Writes beyond upload and delete (site-api v0.4.0):** a file's **alt text** and **tags** are edited in the details panel (a form each; the versions are the site's, so a stale save is a plain "the file changed" message and the page refreshes to what the site holds). **Trash and restore** are reversible, so an Editor may; the library's **Trash** view lists the trashed files, and the Owner can **Empty the trash** behind a confirm dialog that names every file (without script, the page asks on its own). The tag filter narrows the library to one tag.
 - **Selection and the bulk bar:** Editors and the Owner tick files (Capsomer's tile checkbox and bulk bar; the bar needs script) and **Add tag**, **Remove tag**, **Move to trash** (or **Restore**, in the Trash view) or, for the Owner, **Delete for good**, whose confirm dialog names every file. `POST /p/<project>/media/bulk` answers JSON. The site answers file by file, so nothing aborts: the Result panel lists each file as done or left as it was, with the reason, and a file a post uses is refused by the site's check with the post named. At most 100 files a request, as the site allows.
 - **Only the Owner deletes for good or empties the trash** (`delete_media`, checked in `media.server.ts` before the site is asked). Alt text, tags, trash and restore are the Editor's (`edit`). `test/media-writes.test.ts` names each refusal.
-- **Each write is optional per site.** Carrel reads `mediaAlt`, `mediaTags` and `mediaTrash` from the site's meta and hides the alt form, the tag form and filter, the Trash view and the selection tools for what the site lacks; a write that arrives anyway and is answered 501 says "This site does not offer that." The site's adapter for dustinedwards.info is specified in [docs/dustinedwards-media-adapter.md](docs/dustinedwards-media-adapter.md).
+- **Several files at once:** the upload drop zone takes up to 50 files; each uploads on its own (three at a time) with its own progress bar, and a failed one stays as a tile with the reason and Retry (`app/components/media/upload-queue.tsx`). Without script the form posts every chosen file and the page lists each result. One alt text goes with a single file; several are described one by one after.
+- **Caption, focal point, crop, replace (site-api v0.10.0, `mediaCaption`, `mediaFocus`, `mediaReplace`):** the details panel edits a file's **caption** beside its alt text (From library puts it in the figure), sets its **focal point** by clicking the picture or with the arrow keys or two percent fields, with square, wide and tall previews (stored by the site as the R2 object's customMetadata `focus`, "XxY" from 0 to 1, which site-runtime's `./image` reads for its crops), **crops** it in the browser and saves the crop as a new file, and, for the Owner, **replaces** the file with a new one of the same type, or with the crop, under the same id and address, so every post that shows it shows the new one. The crop reads the file's bytes through `GET /p/<project>/media/api?bytes=<id>` (same origin, so the canvas can be exported; JPEG, PNG and WebP only, never SVG). Until site-api's client carries these calls, `app/lib/site-next.server.ts` makes them, with the contract written at its top.
+- **Each write is optional per site.** Carrel reads `mediaAlt`, `mediaTags` and `mediaTrash` (and the v0.10.0 `mediaCaption`, `mediaFocus` and `mediaReplace`) from the site's meta and hides the alt form, the tag form and filter, the Trash view and the selection tools for what the site lacks; a write that arrives anyway and is answered 501 says "This site does not offer that." The site's adapter for dustinedwards.info is specified in [docs/dustinedwards-media-adapter.md](docs/dustinedwards-media-adapter.md).
 - **Not here:** folders (the dustinedwards media schema has none; a site whose schema grows them gets a contract change first) and "rebuild from the bucket" (a repair, in Capsid's allowlist work, not a Carrel screen). Capsomer's own media inspector autosaves through a client call; this page keeps server forms, so the versioned writes, their refusals and the authorship record are one path.
-- **Authorship:** every media action the site carried out writes one row in `changes`: the person, the AI client when it came through the AI door, the project, the site's media id, and the same change id Carrel sent the site, so the two histories join. Alt text, tags, trash and restore are recorded as `media-alt`, `media-tags`, `media-trash` and `media-restore`, with the file's version before and after. A bulk action writes one row per file, each under its own change id; emptying the trash writes a `media-delete` row per deleted file under the id the site gave it (`<change id>-<n>`). A refused action writes nothing.
+- **Authorship:** every media action the site carried out writes one row in `changes`: the person, the AI client when it came through the AI door, the project, the site's media id, and the same change id Carrel sent the site, so the two histories join. Alt text, tags, trash and restore are recorded as `media-alt`, `media-tags`, `media-trash` and `media-restore`, and caption, focal point and replace (migration 0021) as `media-caption`, `media-focus` and `media-replace`, with the file's version before and after. A bulk action writes one row per file, each under its own change id; emptying the trash writes a `media-delete` row per deleted file under the id the site gave it (`<change id>-<n>`). A refused action writes nothing.
 
 ## History
 
@@ -253,7 +255,7 @@ Credentials are secrets named for the account key, with dashes as underscores: `
 
 ## People and flags
 
-- **People** (`/people`, the Owner only; anyone else gets a 404): who is in Carrel, their kind (Owner, person, or reviewer), and their role on each project. The Owner adds a person, shares a project as Reader or Editor, removes a role, and disables or re-enables someone. Everything goes through `app/lib/people-admin.server.ts`, which checks the Owner. It refuses a second Owner (the database refuses one too), disabling or re-roling the Owner, and a reviewer as Editor (reviewers read and flag only).
+- **People** (`/people`, the Owner only; anyone else gets a 404): who is in Carrel, their kind (Owner, person, or reviewer), and their role on each project. The Owner adds a person, shares a project as Reader, Editor or Author, removes a role, and disables or re-enables someone. Everything goes through `app/lib/people-admin.server.ts`, which checks the Owner. It refuses a second Owner (the database refuses one too), disabling or re-roling the Owner, a reviewer as Editor or Author (reviewers read and flag only), and Author for an AI agent or on a book.
 - **Access is outside Carrel.** Adding a person here does not let them past Cloudflare Access, and the page says so after each add, naming where to allow the same email:
   - Carrel's pages: the Worker's Access policy. The Worker's Access tab offers only *Cloudflare account* and *Email domain*, so one extra address goes in an Emails rule in Zero Trust > Access controls > Policies, or on the Worker's application in Zero Trust.
   - The AI door: the *Carrel people* policy of the *Carrel AI Door* application.
@@ -268,33 +270,38 @@ A privacy or terms page is an ordinary page on the site (item `page.privacy` or 
 - **Shared sections** (the `legal_sections` table, migration 0008): text every site says alike, written once. A page names one with `<!-- shared:hosting -->`; on every write to the site Carrel writes the section's text between that marker and `<!-- /shared:hosting -->`, with `{{site_name}}`, `{{operator_name}}`, `{{contact}}`, `{{jurisdiction}}` and `{{data_held}}` filled in from the page's own fields. Each site still publishes its own page, so changing a section changes nothing public until a page is next saved; the Legal tab marks a page whose text is behind its sections. Only the Owner changes a section. A save as draft keeps an empty field's `{{token}}`; a publish, or a save to a live page, is refused naming the empty field or the unknown section. Tests: `test/legal.test.ts`.
 - **`last_updated`** is stamped with the day when the Owner publishes a text that changed, or a draft going public, and not by a draft save or a change to a field other than the text.
 - **The license page**: dustinedwards.info's `/terms` is the license named by the Dataset JSON-LD and the `Link: rel="license"` header, so Carrel refuses to unpublish `page.terms` (`keepPublic` in `app/lib/sites.server.ts`) and refuses to change the path of any legal page. Its wording can change. The test is `PLANT: the page the site's data license names` in `test/legal.test.ts`.
-- AI sessions treat legal pages like any other page: drafts are saved as labeled AI drafts, and only the Owner publishes.
+- AI sessions treat legal pages like any other page: drafts are saved as labeled AI drafts, and only the Owner publishes. A legal page is made by the site, not in Carrel, so it has no Author.
 
 ## Who may do what
 
-| Action | Reader | Editor | Owner |
-|---|---|---|---|
-| See the list, open a post, preview | yes | yes | yes |
-| Autosave a working draft (private to the person) | | yes | yes |
-| Save a draft post to the site | | yes | yes |
-| Save changes to a published or scheduled post | | | yes |
-| Publish, schedule, return to draft | | | yes |
-| Save a book's file to Git (it changes nothing public) | | yes | yes |
-| Read a book's flags and authorship record | yes | yes | yes |
-| Dismiss a flag, export a book | | | yes |
-| Browse the media library | yes | yes | yes |
-| Upload media, insert an image into a post | | yes | yes |
-| Edit a file's alt text and tags, move files to the trash and restore them, in bulk or one at a time | | yes | yes |
-| Delete a media file from the site for good, empty the trash | | | yes |
-| Read a post's history and compare revisions or drafts | yes | yes | yes |
-| Add or remove a tag on, or duplicate, several posts at once (a live post's change is the Owner's) | | yes | yes |
-| Delete posts from a site | | | yes |
-| See a project's flags list | yes | yes | yes |
-| See the Legal tab and the shared sections | yes | yes | yes |
-| Change or remove a shared section | | | yes |
-| See a site's mention queue; approve, reject or delete a mention; sweep the expired ones | | | yes |
-| Manage people and their roles | | | yes |
+| Action | Reader | Editor | Author | Owner |
+|---|---|---|---|---|
+| See the list, open a post, preview | yes | yes | yes | yes |
+| Autosave a working draft (private to the person) | | yes | yes | yes |
+| Save a draft post to the site | | yes | yes | yes |
+| Save changes to a published or scheduled post | | | own posts | yes |
+| Publish, schedule, schedule an update to a live post, cancel it, return to draft, restore a live post's earlier text | | | own posts | yes |
+| Save a book's file to Git (it changes nothing public) | | yes | | yes |
+| Read a book's flags and authorship record | yes | yes | | yes |
+| Dismiss a flag, export a book | | | | yes |
+| Browse the media library | yes | yes | yes | yes |
+| Upload media (several at once), insert an image into a post | | yes | yes | yes |
+| Edit a file's alt text, caption, tags and focal point, crop it into a new file, move files to the trash and restore them | | yes | yes | yes |
+| Replace a file's bytes under the same address (it changes every page that shows it) | | | | yes |
+| Delete a media file from the site for good, empty the trash | | | | yes |
+| Read a post's history and compare revisions or drafts | yes | yes | yes | yes |
+| Add or remove a tag on, or duplicate, several posts at once (a live post's change is the Owner's, or its Author's) | | yes | yes | yes |
+| Delete posts from a site | | | | yes |
+| See a project's flags list | yes | yes | yes | yes |
+| See the Legal tab and the shared sections | yes | yes | yes | yes |
+| Change or remove a shared section | | | | yes |
+| See a site's mention queue; approve, reject or delete a mention; sweep the expired ones | | | | yes |
+| Manage people and their roles | | | | yes |
 
 A person with no role on a project gets the same 404 as for a project that does not exist.
 
+**The Author** (Dustin's ruling, 2026-10-29, after EmDash's `content:publish_own`) sits between Editor and Owner: everything an Editor does, and publishing, scheduling and unpublishing the posts they wrote. A post's author is the person whose save created it in Carrel, read from the authorship record (`itemAuthor` in `app/lib/content.server.ts`); a post made anywhere else has no author, so only the Owner publishes it. An Author never publishes someone else's post, dismisses a flag, deletes, replaces a file or manages people. The role is for people on a site's project: People refuses it for a reviewer, an AI agent (agents never publish) and a book project (no posts). An Author's AI sessions still never publish: `carrel_publish_item` is the Owner's own sessions alone (decision 2a). Granting it needs migration 0021.
+
 The roles are checked in `app/lib/content.server.ts`, `app/lib/books.server.ts` and `app/lib/ai.server.ts`, not in the routes or the MCP tools, so both doors meet the same rule. A first publish asks for confirmation, as the site's own editor does.
+
+**Scheduling an update to a live post** (site-api v0.10.0, `scheduledUpdates`, DrDustinEdwards/site-api#59). On a published post the editor offers Schedule update: the live post stays as it is, and the site publishes the new text at the chosen time. The editor then says when, offers Edit the scheduled text (it loads into the working draft) and Cancel the scheduled update, and Schedule update again replaces the one waiting. Saving the live post meanwhile asks first, because the waiting update's own text still replaces the live one when it runs. The Posts list marks a live post with an update waiting (`site_items.update_at`, migration 0021). On a site without the capability Carrel offers no Schedule update and refuses one before asking the site, since an older site would take the post down until the time came. The calls are in `app/lib/site-next.server.ts` until site-api's client carries them.

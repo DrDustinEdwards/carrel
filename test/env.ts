@@ -40,7 +40,7 @@ export async function addBook(slug: string, folder = slug): Promise<number> {
   return row!.id;
 }
 
-export async function share(projectId: number, personId: number, role: "reader" | "editor"): Promise<void> {
+export async function share(projectId: number, personId: number, role: "reader" | "editor" | "author"): Promise<void> {
   await testEnv.DB.prepare("INSERT INTO project_members (project_id, person_id, role) VALUES (?, ?, ?)")
     .bind(projectId, personId, role)
     .run();

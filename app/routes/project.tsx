@@ -269,7 +269,10 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                     {kinds.length > 1 ? <td>{item.kind}</td> : null}
                     <td>
                       {item.status === "published" ? (
-                        <Pill tone="ok">Published</Pill>
+                        <>
+                          <Pill tone="ok">Published</Pill>
+                          {item.updateAt ? <Pill tone="info">Update scheduled {when(item.updateAt)}</Pill> : null}
+                        </>
                       ) : item.status === "scheduled" ? (
                         <Pill tone="info">Scheduled{item.publishAt ? ` ${when(item.publishAt)}` : ""}</Pill>
                       ) : (

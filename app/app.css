@@ -550,6 +550,111 @@
   }
 }
 
+/* The focal point (components/media/focus-picker.tsx): the picture with its point, and the crops the
+   site may cut around it. --focus-x and --focus-y are set on .app-focus by the picker. */
+.app-focus {
+  --focus-x: 50%;
+  --focus-y: 50%;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.app-focus-frame {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  background: var(--sunken);
+  cursor: crosshair;
+  overflow: hidden;
+
+  & img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* A ring in two tones, so it shows on a light picture and a dark one alike. */
+.app-focus-mark {
+  position: absolute;
+  inset-inline-start: var(--focus-x);
+  inset-block-start: var(--focus-y);
+  width: 1.5rem;
+  height: 1.5rem;
+  translate: -50% -50%;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #000;
+  pointer-events: none;
+}
+
+.app-focus-previews {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  & li {
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--fs-detail);
+    color: var(--muted);
+  }
+
+  & img {
+    width: 100%;
+    object-fit: cover;
+    object-position: var(--focus-x) var(--focus-y);
+    border-radius: var(--radius-m);
+  }
+
+  & [data-ratio="1 / 1"] img {
+    aspect-ratio: 1 / 1;
+  }
+
+  & [data-ratio="16 / 9"] img {
+    aspect-ratio: 16 / 9;
+  }
+
+  & [data-ratio="4 / 5"] img {
+    aspect-ratio: 4 / 5;
+  }
+}
+
+@media (max-width: 36rem) {
+  .app-focus {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The crop editor's picture: the full width of the dialog at most, and the pointer draws on it. */
+.app-crop-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+@media (forced-colors: active) {
+  .app-focus-mark {
+    border-color: Highlight;
+    box-shadow: none;
+  }
+}
+
 /* While someone types, the rest of the screen falls quiet; a mouse move or focus brings it back. */
 html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-site-tabs, .cap-admin-bar, .app-editor .cap-page-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar):not(:focus-within) {
   opacity: 0.08;

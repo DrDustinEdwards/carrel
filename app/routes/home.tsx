@@ -10,6 +10,7 @@ import { PageHead } from "capsomer/react/page-head";
 import { getEnv, getViewer } from "~/lib/context";
 import { isConnected, oauthConnection } from "~/lib/google/oauth.server";
 import { visibleProjects } from "~/lib/people.server";
+import { ROLE_LABEL } from "~/lib/roles";
 
 import type { Route } from "./+types/home";
 
@@ -25,7 +26,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 const KIND = { site: "Site", book: "Book" } as const;
-const ROLE = { owner: "Owner", editor: "Editor", reader: "Reader" } as const;
 
 const SiteGlyph = (
   <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -90,7 +90,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                   media={p.kind === "book" ? BookGlyph : SiteGlyph}
                   mediaVariant="icon"
                   detail={p.kind ? KIND[p.kind] : "Not set up for writing yet"}
-                  meta={<Pill variant="outline">{ROLE[p.role]}</Pill>}
+                  meta={<Pill variant="outline">{ROLE_LABEL[p.role]}</Pill>}
                 />
               ))}
             </RowList>

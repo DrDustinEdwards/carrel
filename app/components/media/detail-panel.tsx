@@ -1,29 +1,38 @@
-// The details of one file in the media library (routes/media.tsx): its facts, the alt text and tags
-// forms, where it is used, and the trash and delete buttons. A panel on the page, not a modal dialog,
+// The details of one file in the media library (routes/media.tsx): its facts, the alt text, caption
+// and tags forms, the focal point, crop and replace, where it is used, and the trash and delete buttons. A panel on the page, not a modal dialog,
 // so each edit is a form that posts and works without script.
 
-import { Form, Link } from "react-router";
+import { Form, Link, useNavigate } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Status } from "capsomer/react/status";
 
-import type { MediaDetail } from "@dustinedwards/site-api";
+import type { MediaDetail, MediaUploadLimits } from "@dustinedwards/site-api";
 import type { MediaOffers } from "~/lib/media.server";
 
-import { dims, size, type MediaUse } from "./format";
+import { CropEditor } from "./crop-editor";
+import { FocusPicker } from "./focus-picker";
+import { CROPPABLE, cropType, dims, size, type MediaUse } from "./format";
 
 type Written =
   | { intent: string; ok: true; id: string; recorded: boolean }
   | { intent: string; ok: false; id: string; message: string; conflict: boolean };
 
 type Props = {
-  detail: MediaDetail & { src: string };
+  detail: MediaDetail & { src: string; focus: string | null; caption: string };
   site: string;
   offers: MediaOffers;
   canUpload: boolean;
   canDelete: boolean;
+  /** The Owner replaces a file's bytes (media.server.ts). */
+  canReplace: boolean;
+  limits: MediaUploadLimits | null;
+  /** Carrel's media endpoint for this project, which the crop reads from and saves a new file to. */
+  endpoint: string;
+  /** Something changed on the site outside a form post (a crop); the page reloads its data. */
+  onChanged: () => void;
   /** The last write's result, shown when it is this file's. */
   written: Written | null;
   /** A delete the site refused. */
@@ -38,10 +47,14 @@ type Props = {
   onAskDelete: (button: HTMLElement) => void;
 };
 
-export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, written, refused, serverAsks, busy, pending, here, onAskDelete }: Props) {
+export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, canReplace, limits, endpoint, onChanged, written, refused, serverAsks, busy, pending, here, onAskDelete }: Props) {
+  const navigate = useNavigate();
   const name = detail.filename ?? detail.id;
   const writable = canUpload && Boolean(detail.version);
   const inTrash = Boolean(detail.trashedAt);
+  const image = detail.contentType.startsWith("image/");
+  const croppable = CROPPABLE.includes(cropType(detail.contentType));
+  const replaceable = offers.replace && canReplace && Boolean(detail.version) && !inTrash;
   return (
       <Panel title={name} level={2} headingId="detail-title" actions={<Link to={here({})} className="cap-btn" data-variant="quiet" data-size="sm" preventScrollReset>Close<span className="cap-sr-only"> the details</span></Link>}>
         <div className="app-detail">
@@ -70,6 +83,12 @@ export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, w
                 <dd>{detail.alt || <span className="cap-muted">none</span>}</dd>
               </>
             ) : null}
+            {offers.caption && !(writable && !inTrash) ? (
+              <>
+                <dt>Caption</dt>
+                <dd>{detail.caption || <span className="cap-muted">none</span>}</dd>
+              </>
+            ) : null}
             {offers.tags && !(writable && !inTrash) ? (
               <>
                 <dt>Tags</dt>
@@ -80,7 +99,14 @@ export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, w
 
           {written && written.id === detail.id ? (
             written.ok ? (
-              <Banner tone="ok">{written.intent === "trash" ? "Moved to the trash." : written.intent === "restore" ? "Restored to the library." : "Saved."}
+              <Banner tone="ok">
+                {written.intent === "trash"
+                  ? "Moved to the trash."
+                  : written.intent === "restore"
+                    ? "Restored to the library."
+                    : written.intent === "replace"
+                      ? "Replaced. Every post that shows this file shows the new one."
+                      : "Saved."}
                 {written.recorded ? "" : " The site has it, but Carrel could not save the authorship record."}
               </Banner>
             ) : (
@@ -100,6 +126,59 @@ export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, w
               <div className="app-actions">
                 <Button type="submit" name="intent" value="set-alt" pending={pending === "set-alt"}>
                   Save alt text
+                </Button>
+              </div>
+            </Form>
+          ) : null}
+
+          {offers.caption && writable && !inTrash ? (
+            <Form method="post" className="app-form" key={`caption:${detail.id}:${detail.version}`}>
+              <input type="hidden" name="id" value={detail.id} />
+              <input type="hidden" name="version" value={detail.version} />
+              <Field label="Caption" help="The line a figure shows under the picture, for everyone. Alt text describes the picture; a caption says something about it.">
+                <textarea className="cap-input" name="caption" rows={2} defaultValue={detail.caption} maxLength={2000} />
+              </Field>
+              <div className="app-actions">
+                <Button type="submit" name="intent" value="set-caption" pending={pending === "set-caption"}>
+                  Save caption
+                </Button>
+              </div>
+            </Form>
+          ) : null}
+
+          {offers.focus && writable && !inTrash && image ? (
+            <FocusPicker id={detail.id} version={detail.version!} src={detail.src} name={name} focus={detail.focus} pending={pending === "set-focus"} />
+          ) : null}
+
+          {croppable && !inTrash && (canUpload || replaceable) ? (
+            <div className="app-actions">
+              <CropEditor
+                id={detail.id}
+                version={detail.version ?? ""}
+                name={name}
+                endpoint={endpoint}
+                canReplace={replaceable}
+                onSaved={(newId) => {
+                  if (newId) void navigate(here({ id: newId }), { preventScrollReset: true });
+                  else onChanged();
+                }}
+              />
+            </div>
+          ) : null}
+
+          {replaceable && limits ? (
+            <Form method="post" encType="multipart/form-data" className="app-form" key={`replace:${detail.id}:${detail.version}`}>
+              <input type="hidden" name="id" value={detail.id} />
+              <input type="hidden" name="version" value={detail.version} />
+              <Field
+                label="Replace the file"
+                help={`A new ${detail.contentType} file, up to ${size(limits.maxBytes)}, under the same address: every post that shows this file shows the new one, and the old one is gone from the site. Alt text, caption and tags stay.`}
+              >
+                <input className="cap-input" type="file" name="file" accept={cropType(detail.contentType)} required />
+              </Field>
+              <div className="app-actions">
+                <Button type="submit" name="intent" value="replace" variant="danger" pending={pending === "replace"}>
+                  Replace<span className="cap-sr-only"> {name}</span>
                 </Button>
               </div>
             </Form>

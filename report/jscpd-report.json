@@ -1,0 +1,1931 @@
+{
+  "duplicates": [
+    {
+      "firstFile": {
+        "end": 37,
+        "endLoc": {
+          "column": 23,
+          "line": 37,
+          "position": 1555
+        },
+        "name": "components/editor/flags-panel.tsx",
+        "start": 28,
+        "startLoc": {
+          "column": 118,
+          "line": 28,
+          "position": 1279
+        }
+      },
+      "format": "tsx",
+      "fragment": "                {f.status === \"open\" ? <Status tone=\"warn\">Open</Status> : <Pill variant=\"secondary\">Dismissed</Pill>}\n                <span>\n                  {f.message}\n                  {f.excerpt ? (\n                    <>\n                      {\" \"}\n                      <q className=\"cap-muted\">{f.excerpt}</q>\n                    </>\n                  ) : null}\n                </span>",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 10,
+      "secondFile": {
+        "end": 36,
+        "endLoc": {
+          "column": 23,
+          "line": 36,
+          "position": 1684
+        },
+        "name": "components/editor/search-sharing.tsx",
+        "start": 27,
+        "startLoc": {
+          "column": 81,
+          "line": 27,
+          "position": 1408
+        }
+      },
+      "tokens": 52
+    },
+    {
+      "firstFile": {
+        "end": 85,
+        "endLoc": {
+          "column": 8,
+          "line": 85,
+          "position": 3775
+        },
+        "name": "db/schema.ts",
+        "start": 78,
+        "startLoc": {
+          "column": 42,
+          "line": 78,
+          "position": 3139
+        }
+      },
+      "format": "typescript",
+      "fragment": "  projectId: integer(\"project_id\").notNull().references(() => projects.id, { onDelete: \"cascade\" }),\n  itemId: text(\"item_id\").notNull(),\n  personId: integer(\"person_id\").notNull().references(() => people.id),\n  // Media actions since migration 0007: item_id is then the site's media id, and a file has no version.\n  // content-delete since migration 0009: item_id is the post's id, version_before the version deleted, version_after null.\n  // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.\n  // unschedule, media-focus, media-caption and media-replace since migration 0021.\n  action: text(\"action\", {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 145,
+        "endLoc": {
+          "column": 8,
+          "line": 145,
+          "position": 7139
+        },
+        "name": "db/schema.ts",
+        "start": 142,
+        "startLoc": {
+          "column": 42,
+          "line": 142,
+          "position": 6963
+        }
+      },
+      "tokens": 51
+    },
+    {
+      "firstFile": {
+        "end": 41,
+        "endLoc": {
+          "column": 7,
+          "line": 41,
+          "position": 2223
+        },
+        "name": "lib/books.server.ts",
+        "start": 34,
+        "startLoc": {
+          "column": 96,
+          "line": 34,
+          "position": 1969
+        }
+      },
+      "format": "typescript",
+      "fragment": "        .select({ id: projects.id, slug: projects.slug, name: projects.name, book: projects.book, site: projects.site })\n        .from(projects)\n        .where(eq(projects.slug, slug))\n        .get()\n    : undefined;\n  if (!row) throw new Response(\"Not found\", { status: 404 });\n  const role = await requireAction(db, viewer, row.id, action);\n  if (!row.book || row.site) throw new Response(\"Not found\", { status: 404 });",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 36,
+        "endLoc": {
+          "column": 7,
+          "line": 36,
+          "position": 1121
+        },
+        "name": "lib/projects.server.ts",
+        "start": 29,
+        "startLoc": {
+          "column": 75,
+          "line": 29,
+          "position": 867
+        }
+      },
+      "tokens": 70
+    },
+    {
+      "firstFile": {
+        "end": 106,
+        "endLoc": {
+          "column": 4,
+          "line": 106,
+          "position": 5473
+        },
+        "name": "lib/bulk.server.ts",
+        "start": 101,
+        "startLoc": {
+          "column": 115,
+          "line": 101,
+          "position": 5138
+        }
+      },
+      "format": "typescript",
+      "fragment": "async function tagOne(env: Env, project: SiteProject, viewer: Viewer, id: string, op: \"tag-add\" | \"tag-remove\", tag: string, fetcher?: typeof fetch): Promise<ItemResult> {\n  const doc = await readDoc(env, project, id, fetcher);\n  if (!doc) return { id, title: id, ok: false, message: \"The site does not have this post.\" };\n  const title = doc.title || id;\n  // Saving to the site clears the person's working copy, which would lose unsaved edits.\n  if (await readDraft(env.DB, project, viewer, id)) {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 6,
+      "secondFile": {
+        "end": 157,
+        "endLoc": {
+          "column": 7,
+          "line": 157,
+          "position": 8264
+        },
+        "name": "lib/bulk.server.ts",
+        "start": 153,
+        "startLoc": {
+          "column": 78,
+          "line": 153,
+          "position": 8016
+        }
+      },
+      "tokens": 61
+    },
+    {
+      "firstFile": {
+        "end": 202,
+        "endLoc": {
+          "column": 13,
+          "line": 202,
+          "position": 10886
+        },
+        "name": "lib/mcp/tools.ts",
+        "start": 195,
+        "startLoc": {
+          "column": 182,
+          "line": 195,
+          "position": 10560
+        }
+      },
+      "format": "typescript",
+      "fragment": "    description: `Reads a post as the site holds it (its Markdown source and version), with Dustin's own working draft if he has one, the AI drafts saved beside it, and its flags. ${RULE}`,\n    inputSchema: { type: \"object\", properties: { project: PROJECT, item: ITEM }, required: [\"project\", \"item\"], additionalProperties: false },\n    annotations: READ,\n    outside: true,\n    run: async (args, ctx) => {\n      const p = await project(ctx, args, \"read\");\n      const item = str(args, \"item\");\n      const [doc, draft, aiDrafts, flags] = await Promise.all([",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 313,
+        "endLoc": {
+          "column": 13,
+          "line": 313,
+          "position": 18675
+        },
+        "name": "lib/mcp/tools.ts",
+        "start": 306,
+        "startLoc": {
+          "column": 349,
+          "line": 306,
+          "position": 18349
+        }
+      },
+      "tokens": 78
+    },
+    {
+      "firstFile": {
+        "end": 352,
+        "endLoc": {
+          "column": 9,
+          "line": 352,
+          "position": 20786
+        },
+        "name": "lib/mcp/tools.ts",
+        "start": 344,
+        "startLoc": {
+          "column": 82,
+          "line": 344,
+          "position": 20515
+        }
+      },
+      "format": "typescript",
+      "fragment": "      const added = await addFinding(ctx.env.DB, p, ctx.session, str(args, \"item\"), {\n        message: str(args, \"message\", { max: MAX.message }),\n        excerpt: str(args, \"excerpt\", { optional: true, max: MAX.excerpt }) || null,\n      });\n      return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };\n    },\n  },\n  {\n    name: \"carrel_publish_item\",",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 9,
+      "secondFile": {
+        "end": 505,
+        "endLoc": {
+          "column": 9,
+          "line": 505,
+          "position": 29677
+        },
+        "name": "lib/mcp/tools.ts",
+        "start": 494,
+        "startLoc": {
+          "column": 69,
+          "line": 494,
+          "position": 29371
+        }
+      },
+      "tokens": 71
+    },
+    {
+      "firstFile": {
+        "end": 19,
+        "endLoc": {
+          "column": 7,
+          "line": 19,
+          "position": 909
+        },
+        "name": "routes/ai-draft.preview.ts",
+        "start": 13,
+        "startLoc": {
+          "column": 54,
+          "line": 13,
+          "position": 677
+        }
+      },
+      "format": "typescript",
+      "fragment": "import type { Route } from \"./+types/ai-draft.preview\";\n\nexport async function loader({ params, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"read\");\n  const id = Number(params.id);",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 19,
+        "endLoc": {
+          "column": 7,
+          "line": 19,
+          "position": 944
+        },
+        "name": "routes/preview.ts",
+        "start": 13,
+        "startLoc": {
+          "column": 45,
+          "line": 13,
+          "position": 712
+        }
+      },
+      "tokens": 53
+    },
+    {
+      "firstFile": {
+        "end": 13,
+        "endLoc": {
+          "column": 8,
+          "line": 13,
+          "position": 673
+        },
+        "name": "routes/ai-draft.tsx",
+        "start": 6,
+        "startLoc": {
+          "column": 45,
+          "line": 6,
+          "position": 335
+        }
+      },
+      "format": "tsx",
+      "fragment": "import { Form, Link, redirect, useNavigation } from \"react-router\";\nimport { Banner } from \"capsomer/react/banner\";\nimport { Button } from \"capsomer/react/button\";\nimport { ConfirmDialog } from \"capsomer/react/confirm-dialog\";\nimport { Empty } from \"capsomer/react/empty\";\nimport { Panel } from \"capsomer/react/panel\";\nimport { Row, RowList } from \"capsomer/react/row-list\";\nimport { Segmented } from \"capsomer/react/segmented\";",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 14,
+        "endLoc": {
+          "column": 8,
+          "line": 14,
+          "position": 822
+        },
+        "name": "routes/project.flags.tsx",
+        "start": 7,
+        "startLoc": {
+          "column": 32,
+          "line": 7,
+          "position": 484
+        }
+      },
+      "tokens": 50
+    },
+    {
+      "firstFile": {
+        "end": 45,
+        "endLoc": {
+          "column": 7,
+          "line": 45,
+          "position": 1909
+        },
+        "name": "routes/ai-draft.tsx",
+        "start": 38,
+        "startLoc": {
+          "column": 11,
+          "line": 38,
+          "position": 1675
+        }
+      },
+      "format": "tsx",
+      "fragment": "  return id;\n}\n\nexport async function loader({ params, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"read\");\n  const draft = await readAiDraft(env.DB, project, viewer, params.item, draftId(params.id));",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 63,
+        "endLoc": {
+          "column": 7,
+          "line": 63,
+          "position": 3542
+        },
+        "name": "routes/editor.tsx",
+        "start": 56,
+        "startLoc": {
+          "column": 80,
+          "line": 56,
+          "position": 3308
+        }
+      },
+      "tokens": 54
+    },
+    {
+      "firstFile": {
+        "end": 60,
+        "endLoc": {
+          "column": 74,
+          "line": 60,
+          "position": 2830
+        },
+        "name": "routes/ai-draft.tsx",
+        "start": 53,
+        "startLoc": {
+          "column": 69,
+          "line": 53,
+          "position": 2608
+        }
+      },
+      "format": "tsx",
+      "fragment": "    seo: await seoOf(env, project, draft.source, { id: params.item }),\n  };\n}\n\nexport async function action({ params, context }: Route.ActionArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"edit\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 45,
+        "endLoc": {
+          "column": 74,
+          "line": 45,
+          "position": 2247
+        },
+        "name": "routes/unpublish.tsx",
+        "start": 38,
+        "startLoc": {
+          "column": 85,
+          "line": 38,
+          "position": 2025
+        }
+      },
+      "tokens": 52
+    },
+    {
+      "firstFile": {
+        "end": 33,
+        "endLoc": {
+          "column": 7,
+          "line": 33,
+          "position": 1525
+        },
+        "name": "routes/book.chapter.tsx",
+        "start": 27,
+        "startLoc": {
+          "column": 54,
+          "line": 27,
+          "position": 1273
+        }
+      },
+      "format": "tsx",
+      "fragment": "  return [{ title: data ? `${data.chapter.title} · ${data.project.name} · Carrel` : \"Carrel\" }];\n}\n\nexport async function loader({ params, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const project = await requireBookProject(env.DB, getViewer(context), params.project, \"read\");\n  const files = readingOrder(await listFiles(env.DB, project)).filter((f) => chapterOf(f.path) === params.chapter);",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 38,
+        "endLoc": {
+          "column": 7,
+          "line": 38,
+          "position": 1958
+        },
+        "name": "routes/book.corkboard.tsx",
+        "start": 32,
+        "startLoc": {
+          "column": 42,
+          "line": 32,
+          "position": 1706
+        }
+      },
+      "tokens": 59
+    },
+    {
+      "firstFile": {
+        "end": 63,
+        "endLoc": {
+          "column": 7,
+          "line": 63,
+          "position": 2794
+        },
+        "name": "routes/book.chapter.tsx",
+        "start": 56,
+        "startLoc": {
+          "column": 10,
+          "line": 56,
+          "position": 2571
+        }
+      },
+      "format": "tsx",
+      "fragment": "    scenes,\n  };\n}\n\nexport async function action({ params, request, context }: Route.ActionArgs) {\n  const env = getEnv(context);\n  const project = await requireBookProject(env.DB, getViewer(context), params.project, \"edit\");\n  const slug = slugify(String((await request.formData()).get(\"name\") ?? \"\"), { max: 60 });",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 86,
+        "endLoc": {
+          "column": 7,
+          "line": 86,
+          "position": 3671
+        },
+        "name": "routes/book.outliner.tsx",
+        "start": 79,
+        "startLoc": {
+          "column": 18,
+          "line": 79,
+          "position": 3448
+        }
+      },
+      "tokens": 53
+    },
+    {
+      "firstFile": {
+        "end": 74,
+        "endLoc": {
+          "column": 7,
+          "line": 74,
+          "position": 3322
+        },
+        "name": "routes/book.file.tsx",
+        "start": 63,
+        "startLoc": {
+          "column": 11,
+          "line": 63,
+          "position": 2923
+        }
+      },
+      "format": "tsx",
+      "fragment": "  if (kind === \"book\") return \"Title page\";\n  return file;\n}\n\nexport async function loader({ params, request, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireBookProject(env.DB, viewer, params.project, \"read\");\n  const path = params[\"*\"] ?? \"\";\n  if (!isBookPath(path)) throw new Response(\"Not found\", { status: 404 });\n\n  const draft = await readDraft(env.DB, project, viewer, path);",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 12,
+      "secondFile": {
+        "end": 44,
+        "endLoc": {
+          "column": 7,
+          "line": 44,
+          "position": 2234
+        },
+        "name": "routes/book.history.tsx",
+        "start": 34,
+        "startLoc": {
+          "column": 19,
+          "line": 34,
+          "position": 1836
+        }
+      },
+      "tokens": 95
+    },
+    {
+      "firstFile": {
+        "end": 74,
+        "endLoc": {
+          "column": 7,
+          "line": 74,
+          "position": 3322
+        },
+        "name": "routes/book.file.tsx",
+        "start": 67,
+        "startLoc": {
+          "column": 77,
+          "line": 67,
+          "position": 3051
+        }
+      },
+      "format": "tsx",
+      "fragment": "export async function loader({ params, request, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireBookProject(env.DB, viewer, params.project, \"read\");\n  const path = params[\"*\"] ?? \"\";\n  if (!isBookPath(path)) throw new Response(\"Not found\", { status: 404 });\n\n  const draft = await readDraft(env.DB, project, viewer, path);",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 157,
+        "endLoc": {
+          "column": 7,
+          "line": 157,
+          "position": 7087
+        },
+        "name": "routes/book.file.tsx",
+        "start": 151,
+        "startLoc": {
+          "column": 100,
+          "line": 151,
+          "position": 6817
+        }
+      },
+      "tokens": 68
+    },
+    {
+      "firstFile": {
+        "end": 164,
+        "endLoc": {
+          "column": 59,
+          "line": 164,
+          "position": 7418
+        },
+        "name": "routes/book.file.tsx",
+        "start": 156,
+        "startLoc": {
+          "column": 73,
+          "line": 156,
+          "position": 7078
+        }
+      },
+      "format": "tsx",
+      "fragment": "  if (!isBookPath(path)) throw new Response(\"Not found\", { status: 404 });\n  const form = await request.formData();\n  const intent = String(form.get(\"intent\") ?? \"\");\n  const source = String(form.get(\"source\") ?? \"\").replace(/\\r\\n/g, \"\\n\");\n  const version = String(form.get(\"expectedVersion\") ?? \"\") || null;\n\n  switch (intent) {\n    case \"autosave\": {\n      const saved = await autosave(env.DB, project, viewer, path, { source, baseVersion: version });",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 9,
+      "secondFile": {
+        "end": 193,
+        "endLoc": {
+          "column": 59,
+          "line": 193,
+          "position": 10145
+        },
+        "name": "routes/editor.tsx",
+        "start": 185,
+        "startLoc": {
+          "column": 28,
+          "line": 185,
+          "position": 9805
+        }
+      },
+      "tokens": 88
+    },
+    {
+      "firstFile": {
+        "end": 240,
+        "endLoc": {
+          "column": 32,
+          "line": 240,
+          "position": 11291
+        },
+        "name": "routes/book.file.tsx",
+        "start": 234,
+        "startLoc": {
+          "column": 3,
+          "line": 234,
+          "position": 11062
+        }
+      },
+      "format": "tsx",
+      "fragment": "  };\n\n  const inFlight = useRef<string | null>(null);\n  useEffect(() => {\n    if (readOnly || source === savedSource || autosaver.state !== \"idle\") return;\n    const timer = window.setTimeout(() => {\n      inFlight.current = source;",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 293,
+        "endLoc": {
+          "column": 32,
+          "line": 293,
+          "position": 15533
+        },
+        "name": "routes/editor.tsx",
+        "start": 284,
+        "startLoc": {
+          "column": 60,
+          "line": 284,
+          "position": 15151
+        }
+      },
+      "tokens": 53
+    },
+    {
+      "firstFile": {
+        "end": 252,
+        "endLoc": {
+          "column": 43,
+          "line": 252,
+          "position": 11934
+        },
+        "name": "routes/book.file.tsx",
+        "start": 242,
+        "startLoc": {
+          "column": 132,
+          "line": 242,
+          "position": 11478
+        }
+      },
+      "format": "tsx",
+      "fragment": "      void autosaver.submit({ intent: \"autosave\", source, expectedVersion: data.baseVersion ?? \"\", untyped: String(untyped.current) }, { method: \"post\" });\n    }, AUTOSAVE_DELAY_MS);\n    return () => window.clearTimeout(timer);\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [source, savedSource, readOnly, data.baseVersion, autosaver.state]);\n\n  useEffect(() => {\n    if (autosaver.state !== \"idle\" || inFlight.current === null) return;\n    if (autosaver.data?.intent === \"autosave\") {\n      setSavedSource(inFlight.current);\n      setSavedAt(autosaver.data.updatedAt);",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 11,
+      "secondFile": {
+        "end": 305,
+        "endLoc": {
+          "column": 43,
+          "line": 305,
+          "position": 16195
+        },
+        "name": "routes/editor.tsx",
+        "start": 294,
+        "startLoc": {
+          "column": 98,
+          "line": 294,
+          "position": 15632
+        }
+      },
+      "tokens": 93
+    },
+    {
+      "firstFile": {
+        "end": 18,
+        "endLoc": {
+          "column": 8,
+          "line": 18,
+          "position": 1015
+        },
+        "name": "routes/book.history.tsx",
+        "start": 8,
+        "startLoc": {
+          "column": 53,
+          "line": 8,
+          "position": 502
+        }
+      },
+      "format": "tsx",
+      "fragment": "import { Alert, Banner } from \"capsomer/react/banner\";\nimport { Empty } from \"capsomer/react/empty\";\nimport { Panel } from \"capsomer/react/panel\";\nimport { PageHead } from \"capsomer/react/page-head\";\n\nimport { DraftLinks } from \"~/components/history/draft-links\";\nimport { ComparePanel, type Side, SourcePanel, sides, utc, type View } from \"~/components/history/history-view\";\nimport { RevisionPicker } from \"~/components/history/revision-picker\";\nimport { RouterLink } from \"~/components/frame\";\nimport { listAiDrafts, readAiDraft } from \"~/lib/ai.server\";\nimport { bookVersions, readVersion } from \"~/lib/book-history.server\";",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 11,
+      "secondFile": {
+        "end": 21,
+        "endLoc": {
+          "column": 8,
+          "line": 21,
+          "position": 1323
+        },
+        "name": "routes/history.tsx",
+        "start": 11,
+        "startLoc": {
+          "column": 46,
+          "line": 11,
+          "position": 810
+        }
+      },
+      "tokens": 73
+    },
+    {
+      "firstFile": {
+        "end": 177,
+        "endLoc": {
+          "column": 14,
+          "line": 177,
+          "position": 8736
+        },
+        "name": "routes/book.tsx",
+        "start": 171,
+        "startLoc": {
+          "column": 52,
+          "line": 171,
+          "position": 8548
+        }
+      },
+      "format": "tsx",
+      "fragment": "  const file = (path: string) => `${base}/f/${path}`;\n  const link = ({ href, children }: { href: string; children: ReactNode }) => <Link to={href}>{children}</Link>;\n\n  return (\n    <div className=\"app-page\">\n      <PageHead\n        title={project.name}",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 63,
+        "endLoc": {
+          "column": 14,
+          "line": 63,
+          "position": 3037
+        },
+        "name": "routes/home.tsx",
+        "start": 58,
+        "startLoc": {
+          "column": 65,
+          "line": 58,
+          "position": 2850
+        }
+      },
+      "tokens": 51
+    },
+    {
+      "firstFile": {
+        "end": 178,
+        "endLoc": {
+          "column": 14,
+          "line": 178,
+          "position": 8765
+        },
+        "name": "routes/book.tsx",
+        "start": 171,
+        "startLoc": {
+          "column": 52,
+          "line": 171,
+          "position": 8548
+        }
+      },
+      "format": "tsx",
+      "fragment": "  const file = (path: string) => `${base}/f/${path}`;\n  const link = ({ href, children }: { href: string; children: ReactNode }) => <Link to={href}>{children}</Link>;\n\n  return (\n    <div className=\"app-page\">\n      <PageHead\n        title={project.name}\n        lead={",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 77,
+        "endLoc": {
+          "column": 14,
+          "line": 77,
+          "position": 3618
+        },
+        "name": "routes/project.flags.tsx",
+        "start": 70,
+        "startLoc": {
+          "column": 68,
+          "line": 70,
+          "position": 3401
+        }
+      },
+      "tokens": 59
+    },
+    {
+      "firstFile": {
+        "end": 62,
+        "endLoc": {
+          "column": 74,
+          "line": 62,
+          "position": 3525
+        },
+        "name": "routes/editor.tsx",
+        "start": 56,
+        "startLoc": {
+          "column": 78,
+          "line": 56,
+          "position": 3306
+        }
+      },
+      "format": "tsx",
+      "fragment": "  return [{ title: data ? `${data.title || data.itemId} · Carrel` : \"Carrel\" }];\n}\n\nexport async function loader({ params, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"read\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 30,
+        "endLoc": {
+          "column": 74,
+          "line": 30,
+          "position": 1402
+        },
+        "name": "routes/unpublish.tsx",
+        "start": 23,
+        "startLoc": {
+          "column": 41,
+          "line": 23,
+          "position": 1080
+        }
+      },
+      "tokens": 52
+    },
+    {
+      "firstFile": {
+        "end": 65,
+        "endLoc": {
+          "column": 7,
+          "line": 65,
+          "position": 3573
+        },
+        "name": "routes/editor.tsx",
+        "start": 59,
+        "startLoc": {
+          "column": 37,
+          "line": 59,
+          "position": 3350
+        }
+      },
+      "format": "tsx",
+      "fragment": "export async function loader({ params, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"read\");\n  const itemId = params.item;\n\n  const draft = await readDraft(env.DB, project, viewer, itemId);",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 40,
+        "endLoc": {
+          "column": 7,
+          "line": 40,
+          "position": 2217
+        },
+        "name": "routes/history.tsx",
+        "start": 35,
+        "startLoc": {
+          "column": 46,
+          "line": 35,
+          "position": 1995
+        }
+      },
+      "tokens": 52
+    },
+    {
+      "firstFile": {
+        "end": 154,
+        "endLoc": {
+          "column": 74,
+          "line": 154,
+          "position": 8364
+        },
+        "name": "routes/history.tsx",
+        "start": 144,
+        "startLoc": {
+          "column": 140,
+          "line": 144,
+          "position": 7940
+        }
+      },
+      "format": "tsx",
+      "fragment": "    canRestore: Boolean(doc && (doc.status === \"draft\" ? can(project.role, \"edit\") : await mayPublishItem(env.DB, project, viewer, itemId))),\n  };\n}\n\n// A live post's earlier text goes back live, which is a publish (the Owner's, or the Author's on their\n// own post); a draft's goes back as the site's draft. writeToSite holds the same rule.\n\nexport async function action({ params, request, context }: Route.ActionArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"edit\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 11,
+      "secondFile": {
+        "end": 76,
+        "endLoc": {
+          "column": 74,
+          "line": 76,
+          "position": 3253
+        },
+        "name": "routes/legal.tsx",
+        "start": 69,
+        "startLoc": {
+          "column": 12,
+          "line": 69,
+          "position": 3022
+        }
+      },
+      "tokens": 54
+    },
+    {
+      "firstFile": {
+        "end": 154,
+        "endLoc": {
+          "column": 74,
+          "line": 154,
+          "position": 8364
+        },
+        "name": "routes/history.tsx",
+        "start": 144,
+        "startLoc": {
+          "column": 139,
+          "line": 144,
+          "position": 7939
+        }
+      },
+      "format": "tsx",
+      "fragment": "    canRestore: Boolean(doc && (doc.status === \"draft\" ? can(project.role, \"edit\") : await mayPublishItem(env.DB, project, viewer, itemId))),\n  };\n}\n\n// A live post's earlier text goes back live, which is a publish (the Owner's, or the Author's on their\n// own post); a draft's goes back as the site's draft. writeToSite holds the same rule.\n\nexport async function action({ params, request, context }: Route.ActionArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"edit\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 11,
+      "secondFile": {
+        "end": 46,
+        "endLoc": {
+          "column": 74,
+          "line": 46,
+          "position": 2242
+        },
+        "name": "routes/project.flags.tsx",
+        "start": 38,
+        "startLoc": {
+          "column": 45,
+          "line": 38,
+          "position": 1926
+        }
+      },
+      "tokens": 55
+    },
+    {
+      "firstFile": {
+        "end": 155,
+        "endLoc": {
+          "column": 7,
+          "line": 155,
+          "position": 8381
+        },
+        "name": "routes/history.tsx",
+        "start": 145,
+        "startLoc": {
+          "column": 2,
+          "line": 145,
+          "position": 7944
+        }
+      },
+      "format": "tsx",
+      "fragment": "  };\n}\n\n// A live post's earlier text goes back live, which is a publish (the Owner's, or the Author's on their\n// own post); a draft's goes back as the site's draft. writeToSite holds the same rule.\n\nexport async function action({ params, request, context }: Route.ActionArgs) {\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"edit\");\n  const form = await request.formData();",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 11,
+      "secondFile": {
+        "end": 45,
+        "endLoc": {
+          "column": 7,
+          "line": 45,
+          "position": 1896
+        },
+        "name": "routes/project.new.tsx",
+        "start": 38,
+        "startLoc": {
+          "column": 63,
+          "line": 38,
+          "position": 1652
+        }
+      },
+      "tokens": 57
+    },
+    {
+      "firstFile": {
+        "end": 11,
+        "endLoc": {
+          "column": 8,
+          "line": 11,
+          "position": 594
+        },
+        "name": "routes/legal.tsx",
+        "start": 5,
+        "startLoc": {
+          "column": 0,
+          "line": 5,
+          "position": 287
+        }
+      },
+      "format": "tsx",
+      "fragment": "import { Form, Link, useNavigation } from \"react-router\";\nimport { Alert, Banner } from \"capsomer/react/banner\";\nimport { Button } from \"capsomer/react/button\";\nimport { Empty } from \"capsomer/react/empty\";\nimport { Field } from \"capsomer/react/field\";\nimport { Panel } from \"capsomer/react/panel\";\nimport { Pill } from \"capsomer/react/status\";",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 11,
+        "endLoc": {
+          "column": 8,
+          "line": 11,
+          "position": 609
+        },
+        "name": "routes/manuscripts.tsx",
+        "start": 5,
+        "startLoc": {
+          "column": 0,
+          "line": 5,
+          "position": 302
+        }
+      },
+      "tokens": 50
+    },
+    {
+      "firstFile": {
+        "end": 22,
+        "endLoc": {
+          "column": 36,
+          "line": 22,
+          "position": 1260
+        },
+        "name": "routes/media.bulk.ts",
+        "start": 17,
+        "startLoc": {
+          "column": 88,
+          "line": 17,
+          "position": 1005
+        }
+      },
+      "format": "typescript",
+      "fragment": "const OPS: readonly BulkOp[] = [\"trash\", \"restore\", \"delete\", \"add-tags\", \"remove-tags\"];\n\nexport async function action({ params, request, context }: Route.ActionArgs) {\n  if (request.method !== \"POST\") return Response.json({ error: \"Method not allowed.\" }, { status: 405 });\n  const env = getEnv(context);\n  const viewer = getViewer(context);",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 6,
+      "secondFile": {
+        "end": 16,
+        "endLoc": {
+          "column": 36,
+          "line": 16,
+          "position": 840
+        },
+        "name": "routes/mentions.api.ts",
+        "start": 11,
+        "startLoc": {
+          "column": 52,
+          "line": 11,
+          "position": 585
+        }
+      },
+      "tokens": 61
+    },
+    {
+      "firstFile": {
+        "end": 25,
+        "endLoc": {
+          "column": 7,
+          "line": 25,
+          "position": 1393
+        },
+        "name": "routes/media.bulk.ts",
+        "start": 19,
+        "startLoc": {
+          "column": 0,
+          "line": 19,
+          "position": 1008
+        }
+      },
+      "format": "typescript",
+      "fragment": "export async function action({ params, request, context }: Route.ActionArgs) {\n  if (request.method !== \"POST\") return Response.json({ error: \"Method not allowed.\" }, { status: 405 });\n  const env = getEnv(context);\n  const viewer = getViewer(context);\n  const project = await requireSiteProject(env.DB, viewer, params.project, \"read\");\n  const form = await request.formData();\n  const op = OPS.find((o) => o === form.get(\"op\"));",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 32,
+        "endLoc": {
+          "column": 7,
+          "line": 32,
+          "position": 1262
+        },
+        "name": "routes/project.bulk.ts",
+        "start": 26,
+        "startLoc": {
+          "column": 0,
+          "line": 26,
+          "position": 877
+        }
+      },
+      "tokens": 90
+    },
+    {
+      "firstFile": {
+        "end": 80,
+        "endLoc": {
+          "column": 7,
+          "line": 80,
+          "position": 3586
+        },
+        "name": "routes/media.tsx",
+        "start": 73,
+        "startLoc": {
+          "column": 13,
+          "line": 73,
+          "position": 3332
+        }
+      },
+      "format": "tsx",
+      "fragment": "  return null;\n}\n\nexport async function loader({ params, request, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const project = await requireSiteProject(env.DB, getViewer(context), params.project, \"read\");\n  const url = new URL(request.url);\n  const q = url.searchParams.get(\"q\")?.trim().slice(0, 200) ?? \"\";",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 40,
+        "endLoc": {
+          "column": 7,
+          "line": 40,
+          "position": 1845
+        },
+        "name": "routes/project.tsx",
+        "start": 33,
+        "startLoc": {
+          "column": 72,
+          "line": 33,
+          "position": 1591
+        }
+      },
+      "tokens": 62
+    },
+    {
+      "firstFile": {
+        "end": 24,
+        "endLoc": {
+          "column": 8,
+          "line": 24,
+          "position": 1193
+        },
+        "name": "routes/mentions.tsx",
+        "start": 11,
+        "startLoc": {
+          "column": 61,
+          "line": 11,
+          "position": 689
+        }
+      },
+      "format": "tsx",
+      "fragment": "import { ConfirmDialog } from \"capsomer/react/confirm-dialog\";\nimport { Empty } from \"capsomer/react/empty\";\nimport { Field } from \"capsomer/react/field\";\nimport { Panel } from \"capsomer/react/panel\";\nimport { Select } from \"capsomer/react/select\";\nimport { Pill } from \"capsomer/react/status\";\nimport { Time } from \"capsomer/react/time\";\nimport { PageHead } from \"capsomer/react/page-head\";\n\nimport { BulkResult } from \"~/components/bulk-result\";\nimport { ProjectTabs } from \"~/components/project-tabs\";\n\nimport { getEnv, getViewer } from \"~/lib/context\";\nimport { isMentionFilter, listMentions, mentionsOffered, type MentionFilter } from \"~/lib/mentions.server\";",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 14,
+      "secondFile": {
+        "end": 22,
+        "endLoc": {
+          "column": 8,
+          "line": 22,
+          "position": 1008
+        },
+        "name": "routes/project.tsx",
+        "start": 9,
+        "startLoc": {
+          "column": 46,
+          "line": 9,
+          "position": 504
+        }
+      },
+      "tokens": 75
+    },
+    {
+      "firstFile": {
+        "end": 34,
+        "endLoc": {
+          "column": 95,
+          "line": 34,
+          "position": 1684
+        },
+        "name": "routes/project.flags.tsx",
+        "start": 29,
+        "startLoc": {
+          "column": 38,
+          "line": 29,
+          "position": 1440
+        }
+      },
+      "format": "tsx",
+      "fragment": "  return [{ title: data ? `Flags · ${data.project.name} · Carrel` : \"Carrel\" }];\n}\n\nexport async function loader({ params, context }: Route.LoaderArgs) {\n  const env = getEnv(context);\n  const project = await requireSiteProject(env.DB, getViewer(context), params.project, \"read\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 6,
+      "secondFile": {
+        "end": 30,
+        "endLoc": {
+          "column": 95,
+          "line": 30,
+          "position": 1465
+        },
+        "name": "routes/project.voice.tsx",
+        "start": 25,
+        "startLoc": {
+          "column": 38,
+          "line": 25,
+          "position": 1221
+        }
+      },
+      "tokens": 58
+    },
+    {
+      "firstFile": {
+        "end": 34,
+        "endLoc": {
+          "column": 14,
+          "line": 34,
+          "position": 1401
+        },
+        "name": "ai-routes.test.ts",
+        "start": 16,
+        "startLoc": {
+          "column": 22,
+          "line": 16,
+          "position": 855
+        }
+      },
+      "format": "typescript",
+      "fragment": "const SLUG = \"de-info\";\nlet site: ReturnType<typeof fakeSite>;\nlet env: Env;\n\nbeforeEach(async () => {\n  await resetDb();\n  await addPerson(\"owner@test.invalid\", { owner: true });\n  const editor = await addPerson(\"editor@test.invalid\");\n  const id = await addProject(SLUG, \"dustinedwards\");\n  await share(id, editor, \"editor\");\n  site = fakeSite();\n  // The routes call the site through the global fetch, as the Worker does.\n  vi.stubGlobal(\"fetch\", site.fetch);\n  env = connectedEnv();\n});\n\nconst context = (email: string) => routeContext(env, email);\n\nasync function published() {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 19,
+      "secondFile": {
+        "end": 32,
+        "endLoc": {
+          "column": 14,
+          "line": 32,
+          "position": 1242
+        },
+        "name": "editor-ux.test.ts",
+        "start": 15,
+        "startLoc": {
+          "column": 99,
+          "line": 15,
+          "position": 772
+        }
+      },
+      "tokens": 113
+    },
+    {
+      "firstFile": {
+        "end": 34,
+        "endLoc": {
+          "column": 14,
+          "line": 34,
+          "position": 1401
+        },
+        "name": "ai-routes.test.ts",
+        "start": 25,
+        "startLoc": {
+          "column": 16,
+          "line": 25,
+          "position": 1140
+        }
+      },
+      "format": "typescript",
+      "fragment": "  await share(id, editor, \"editor\");\n  site = fakeSite();\n  // The routes call the site through the global fetch, as the Worker does.\n  vi.stubGlobal(\"fetch\", site.fetch);\n  env = connectedEnv();\n});\n\nconst context = (email: string) => routeContext(env, email);\n\nasync function published() {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 10,
+      "secondFile": {
+        "end": 37,
+        "endLoc": {
+          "column": 14,
+          "line": 37,
+          "position": 1446
+        },
+        "name": "waiting.test.ts",
+        "start": 29,
+        "startLoc": {
+          "column": 23,
+          "line": 29,
+          "position": 1261
+        }
+      },
+      "tokens": 50
+    },
+    {
+      "firstFile": {
+        "end": 186,
+        "endLoc": {
+          "column": 1,
+          "line": 186,
+          "position": 8825
+        },
+        "name": "binder.test.ts",
+        "start": 177,
+        "startLoc": {
+          "column": 43,
+          "line": 177,
+          "position": 8500
+        }
+      },
+      "format": "typescript",
+      "fragment": "    [`${SLUG}/outline/plan.md`]: \"# Plan\\n\",\n  });\n  vi.stubGlobal(\"fetch\", gh.fetch);\n  env = { ...testEnv, NOVELS_APP_ID: \"123\", NOVELS_APP_PRIVATE_KEY: key };\n});\n\nasync function as(email: string, action: \"read\" | \"edit\" = \"read\") {\n  const viewer = await viewerFor(email);\n  return { viewer, project: await requireBookProject(testEnv.DB, viewer, SLUG, action) };\n}",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 10,
+      "secondFile": {
+        "end": 182,
+        "endLoc": {
+          "column": 1,
+          "line": 182,
+          "position": 9433
+        },
+        "name": "writing.test.ts",
+        "start": 173,
+        "startLoc": {
+          "column": 91,
+          "line": 173,
+          "position": 9108
+        }
+      },
+      "tokens": 81
+    },
+    {
+      "firstFile": {
+        "end": 204,
+        "endLoc": {
+          "column": 14,
+          "line": 204,
+          "position": 9579
+        },
+        "name": "binder.test.ts",
+        "start": 190,
+        "startLoc": {
+          "column": 49,
+          "line": 190,
+          "position": 8957
+        }
+      },
+      "format": "typescript",
+      "fragment": "  await refreshBook(testEnv.DB, gh.repo, project);\n}\n\nconst contextFor = (email: string) => routeContext(env, email);\n\nfunction body(fields: Record<string, string | string[]>) {\n  const form = new FormData();\n  for (const [k, v] of Object.entries(fields)) for (const one of [v].flat()) form.append(k, one);\n  return form;\n}\n\nconst post = async (route: (args: never) => Promise<unknown>, email: string, url: string, fields: Record<string, string | string[]>, params: Record<string, string>) =>\n  settle(route({ request: new Request(`https://carrel.test${url}`, { method: \"POST\", body: body(fields) }), params, context: await contextFor(email) } as never));\n\nasync function history(email: string, path: string, query = \"\") {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 15,
+      "secondFile": {
+        "end": 195,
+        "endLoc": {
+          "column": 14,
+          "line": 195,
+          "position": 10052
+        },
+        "name": "writing.test.ts",
+        "start": 181,
+        "startLoc": {
+          "column": 88,
+          "line": 181,
+          "position": 9430
+        }
+      },
+      "tokens": 179
+    },
+    {
+      "firstFile": {
+        "end": 35,
+        "endLoc": {
+          "column": 12,
+          "line": 35,
+          "position": 1402
+        },
+        "name": "book-routes.test.ts",
+        "start": 21,
+        "startLoc": {
+          "column": 50,
+          "line": 21,
+          "position": 1152
+        }
+      },
+      "format": "typescript",
+      "fragment": "const SCENE = \"chapters/01-arrival/01-the-gate.md\";\n\nlet key: string;\nbeforeAll(async () => {\n  key = (await githubStyleKey()).pkcs1Pem;\n});\n\nlet gh: ReturnType<typeof fakeNovels>;\nlet env: Env;\n\nbeforeEach(async () => {\n  clearTokenCache();\n  await sharedBook(SLUG);\n  gh = fakeNovels({\n    [`${SLUG}/bible/characters/wade.md`]: \"---\\nname: Wade\\n---\\nRanch hand.\\n\",",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 15,
+      "secondFile": {
+        "end": 169,
+        "endLoc": {
+          "column": 12,
+          "line": 169,
+          "position": 8743
+        },
+        "name": "writing.test.ts",
+        "start": 153,
+        "startLoc": {
+          "column": 2,
+          "line": 153,
+          "position": 8445
+        }
+      },
+      "tokens": 66
+    },
+    {
+      "firstFile": {
+        "end": 42,
+        "endLoc": {
+          "column": 23,
+          "line": 42,
+          "position": 1980
+        },
+        "name": "bulk.test.ts",
+        "start": 33,
+        "startLoc": {
+          "column": 2,
+          "line": 33,
+          "position": 1708
+        }
+      },
+      "format": "typescript",
+      "fragment": "  projectId = await addProject(SLUG, \"dustinedwards\");\n  await share(projectId, editor, \"editor\");\n  await share(projectId, reader, \"reader\");\n  start(fakeSite());\n});\n\nfunction start(next: Site) {\n  site = next;\n  vi.stubGlobal(\"fetch\", site.fetch);\n  env = connectedEnv();",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 10,
+      "secondFile": {
+        "end": 41,
+        "endLoc": {
+          "column": 23,
+          "line": 41,
+          "position": 1912
+        },
+        "name": "mentions.test.ts",
+        "start": 32,
+        "startLoc": {
+          "column": 8,
+          "line": 32,
+          "position": 1640
+        }
+      },
+      "tokens": 69
+    },
+    {
+      "firstFile": {
+        "end": 51,
+        "endLoc": {
+          "column": 20,
+          "line": 51,
+          "position": 2289
+        },
+        "name": "bulk.test.ts",
+        "start": 45,
+        "startLoc": {
+          "column": 0,
+          "line": 45,
+          "position": 1984
+        }
+      },
+      "format": "typescript",
+      "fragment": "async function as(email: string, action: \"read\" | \"edit\" | \"publish\" = \"read\") {\n  const viewer = await viewerFor(email);\n  return { viewer, project: await requireSiteProject(testEnv.DB, viewer, SLUG, action) };\n}\n\n/** A post on the site, written by the Owner; `live` publishes it. */\nasync function seed(id: string, source: string, live = false) {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 34,
+        "endLoc": {
+          "column": 20,
+          "line": 34,
+          "position": 1404
+        },
+        "name": "content.test.ts",
+        "start": 28,
+        "startLoc": {
+          "column": 0,
+          "line": 28,
+          "position": 1079
+        }
+      },
+      "tokens": 54
+    },
+    {
+      "firstFile": {
+        "end": 21,
+        "endLoc": {
+          "column": 56,
+          "line": 21,
+          "position": 886
+        },
+        "name": "content.test.ts",
+        "start": 11,
+        "startLoc": {
+          "column": 42,
+          "line": 11,
+          "position": 594
+        }
+      },
+      "format": "typescript",
+      "fragment": "import { connectedEnv, fakeSite, viewerFor, refusal } from \"./site\";\n\nconst SLUG = \"de-info\";\n\nlet projectId: number;\n\nbeforeEach(async () => {\n  await resetDb();\n  await addPerson(\"owner@test.invalid\", { owner: true });\n  const editor = await addPerson(\"editor@test.invalid\");\n  const reader = await addPerson(\"reader@test.invalid\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 11,
+      "secondFile": {
+        "end": 23,
+        "endLoc": {
+          "column": 56,
+          "line": 23,
+          "position": 1115
+        },
+        "name": "people-flags.test.ts",
+        "start": 14,
+        "startLoc": {
+          "column": 56,
+          "line": 14,
+          "position": 824
+        }
+      },
+      "tokens": 58
+    },
+    {
+      "firstFile": {
+        "end": 28,
+        "endLoc": {
+          "column": 7,
+          "line": 28,
+          "position": 1386
+        },
+        "name": "google.ts",
+        "start": 22,
+        "startLoc": {
+          "column": 39,
+          "line": 22,
+          "position": 1152
+        }
+      },
+      "format": "typescript",
+      "fragment": "export async function serviceAccountKey() {\n  const pair = (await crypto.subtle.generateKey(\n    { name: \"RSASSA-PKCS1-v1_5\", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: \"SHA-256\" },\n    true,\n    [\"sign\", \"verify\"],\n  )) as CryptoKeyPair;\n  const json = JSON.stringify({",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 202,
+        "endLoc": {
+          "column": 7,
+          "line": 202,
+          "position": 11132
+        },
+        "name": "novels.ts",
+        "start": 196,
+        "startLoc": {
+          "column": 36,
+          "line": 196,
+          "position": 10898
+        }
+      },
+      "tokens": 56
+    },
+    {
+      "firstFile": {
+        "end": 52,
+        "endLoc": {
+          "column": 9,
+          "line": 52,
+          "position": 2715
+        },
+        "name": "google.ts",
+        "start": 47,
+        "startLoc": {
+          "column": 191,
+          "line": 47,
+          "position": 2480
+        }
+      },
+      "format": "typescript",
+      "fragment": "  const state = { refuseFullText: false, saRevoked: false, userRevoked: false, grantedScope: \"https://www.googleapis.com/auth/drive.file\", scStatus: 200, docEdits: new Map<string, string>() };\n\n  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { \"Content-Type\": \"application/json\" } });\n\n  const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {\n    const request = new Request(input, init);",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 6,
+      "secondFile": {
+        "end": 60,
+        "endLoc": {
+          "column": 9,
+          "line": 60,
+          "position": 2969
+        },
+        "name": "novels.ts",
+        "start": 55,
+        "startLoc": {
+          "column": 56,
+          "line": 55,
+          "position": 2734
+        }
+      },
+      "tokens": 56
+    },
+    {
+      "firstFile": {
+        "end": 25,
+        "endLoc": {
+          "column": 1,
+          "line": 25,
+          "position": 900
+        },
+        "name": "health.test.ts",
+        "start": 13,
+        "startLoc": {
+          "column": 47,
+          "line": 13,
+          "position": 593
+        }
+      },
+      "format": "typescript",
+      "fragment": "type Sent = { subject: string; text: string; to: string };\n\nfunction mailbox(fail = false) {\n  const sent: Sent[] = [];\n  const EMAIL = {\n    async send(message: Sent) {\n      if (fail) throw new Error(\"send failed\");\n      sent.push(message);\n      return { messageId: `m${sent.length}` };\n    },\n  } as unknown as SendEmail;\n  return { sent, EMAIL };\n}",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 13,
+      "secondFile": {
+        "end": 32,
+        "endLoc": {
+          "column": 1,
+          "line": 32,
+          "position": 1408
+        },
+        "name": "mcp.test.ts",
+        "start": 20,
+        "startLoc": {
+          "column": 61,
+          "line": 20,
+          "position": 1101
+        }
+      },
+      "tokens": 79
+    },
+    {
+      "firstFile": {
+        "end": 69,
+        "endLoc": {
+          "column": 10,
+          "line": 69,
+          "position": 3028
+        },
+        "name": "kinds.test.ts",
+        "start": 64,
+        "startLoc": {
+          "column": 30,
+          "line": 64,
+          "position": 2745
+        }
+      },
+      "format": "typescript",
+      "fragment": "    const id = \"phage.acorn15\";\n    const params = { project: SLUG, item: id };\n    const url = `https://carrel.test/p/${SLUG}/e/${id}`;\n\n    const opened = (await editorLoader({ request: new Request(url), params, context: await contextFor(env) } as never)) as Awaited<ReturnType<typeof editorLoader>>;\n    expect(opened.title).toBe(\"Acorn15\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 6,
+      "secondFile": {
+        "end": 121,
+        "endLoc": {
+          "column": 9,
+          "line": 121,
+          "position": 6857
+        },
+        "name": "kinds.test.ts",
+        "start": 117,
+        "startLoc": {
+          "column": 28,
+          "line": 117,
+          "position": 6576
+        }
+      },
+      "tokens": 63
+    },
+    {
+      "firstFile": {
+        "end": 43,
+        "endLoc": {
+          "column": 7,
+          "line": 43,
+          "position": 1724
+        },
+        "name": "mcp.test.ts",
+        "start": 35,
+        "startLoc": {
+          "column": 34,
+          "line": 35,
+          "position": 1483
+        }
+      },
+      "format": "typescript",
+      "fragment": "let box: ReturnType<typeof mailbox>;\nlet env: Env;\n\nbeforeEach(async () => {\n  await resetDb();\n  await addPerson(\"owner@test.invalid\", { owner: true });\n  const editor = await addPerson(\"editor@test.invalid\");\n  const reader = await addPerson(\"reader@test.invalid\");\n  const reviewer = await addPerson(\"reviewer@test.invalid\", { reviewer: true });",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 9,
+      "secondFile": {
+        "end": 32,
+        "endLoc": {
+          "column": 7,
+          "line": 32,
+          "position": 1610
+        },
+        "name": "media-writes.test.ts",
+        "start": 24,
+        "startLoc": {
+          "column": 70,
+          "line": 24,
+          "position": 1369
+        }
+      },
+      "tokens": 50
+    },
+    {
+      "firstFile": {
+        "end": 44,
+        "endLoc": {
+          "column": 43,
+          "line": 44,
+          "position": 1841
+        },
+        "name": "mcp.test.ts",
+        "start": 36,
+        "startLoc": {
+          "column": 12,
+          "line": 36,
+          "position": 1498
+        }
+      },
+      "format": "typescript",
+      "fragment": "let env: Env;\n\nbeforeEach(async () => {\n  await resetDb();\n  await addPerson(\"owner@test.invalid\", { owner: true });\n  const editor = await addPerson(\"editor@test.invalid\");\n  const reader = await addPerson(\"reader@test.invalid\");\n  const reviewer = await addPerson(\"reviewer@test.invalid\", { reviewer: true });\n  await addPerson(\"stranger@test.invalid\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 9,
+      "secondFile": {
+        "end": 25,
+        "endLoc": {
+          "column": 43,
+          "line": 25,
+          "position": 1240
+        },
+        "name": "people-flags.test.ts",
+        "start": 17,
+        "startLoc": {
+          "column": 21,
+          "line": 17,
+          "position": 897
+        }
+      },
+      "tokens": 64
+    },
+    {
+      "firstFile": {
+        "end": 34,
+        "endLoc": {
+          "column": 14,
+          "line": 34,
+          "position": 1440
+        },
+        "name": "media-next.test.ts",
+        "start": 27,
+        "startLoc": {
+          "column": 1,
+          "line": 27,
+          "position": 1148
+        }
+      },
+      "format": "typescript",
+      "fragment": "});\n\nasync function seedFile(name = \"river.png\") {\n  const item = await site.adapter.media!.upload({ bytes: PNG, contentType: \"image/png\", filename: name, alt: \"\", changeId: `seed-${name}` });\n  return { ...item, version: (await site.adapter.media!.get(item.id))!.version! };\n}\n\nasync function post(fields: Record<string, string | File | (string | File)[]>, email: string) {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 8,
+      "secondFile": {
+        "end": 52,
+        "endLoc": {
+          "column": 14,
+          "line": 52,
+          "position": 2436
+        },
+        "name": "media-writes.test.ts",
+        "start": 47,
+        "startLoc": {
+          "column": 61,
+          "line": 47,
+          "position": 2146
+        }
+      },
+      "tokens": 81
+    },
+    {
+      "firstFile": {
+        "end": 31,
+        "endLoc": {
+          "column": 56,
+          "line": 31,
+          "position": 1602
+        },
+        "name": "media-writes.test.ts",
+        "start": 16,
+        "startLoc": {
+          "column": 31,
+          "line": 16,
+          "position": 1055
+        }
+      },
+      "format": "typescript",
+      "fragment": "import { connectedEnv, fakeSite, viewerFor, routeContext, refusal } from \"./site\";\n\nconst SLUG = \"de-info\";\nconst PNG = Uint8Array.from(\n  atob(\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==\"),\n  (c) => c.charCodeAt(0),\n);\n\nlet site: ReturnType<typeof fakeSite<ReturnType<typeof memoryAdapter>>>;\nlet env: Env;\n\nbeforeEach(async () => {\n  await resetDb();\n  await addPerson(\"owner@test.invalid\", { owner: true });\n  const editor = await addPerson(\"editor@test.invalid\");\n  const reader = await addPerson(\"reader@test.invalid\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 16,
+      "secondFile": {
+        "end": 34,
+        "endLoc": {
+          "column": 56,
+          "line": 34,
+          "position": 1713
+        },
+        "name": "media.test.ts",
+        "start": 19,
+        "startLoc": {
+          "column": 44,
+          "line": 19,
+          "position": 1166
+        }
+      },
+      "tokens": 103
+    },
+    {
+      "firstFile": {
+        "end": 40,
+        "endLoc": {
+          "column": 36,
+          "line": 40,
+          "position": 1855
+        },
+        "name": "media-writes.test.ts",
+        "start": 31,
+        "startLoc": {
+          "column": 54,
+          "line": 31,
+          "position": 1600
+        }
+      },
+      "format": "typescript",
+      "fragment": "  const reader = await addPerson(\"reader@test.invalid\");\n  const id = await addProject(SLUG, \"dustinedwards\");\n  await share(id, editor, \"editor\");\n  await share(id, reader, \"reader\");\n  site = fakeSite();\n  env = connectedEnv();\n  vi.stubGlobal(\"fetch\", site.fetch);\n});\n\nasync function project(email: string) {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 10,
+      "secondFile": {
+        "end": 44,
+        "endLoc": {
+          "column": 36,
+          "line": 44,
+          "position": 2010
+        },
+        "name": "media.test.ts",
+        "start": 35,
+        "startLoc": {
+          "column": 41,
+          "line": 35,
+          "position": 1755
+        }
+      },
+      "tokens": 66
+    },
+    {
+      "firstFile": {
+        "end": 36,
+        "endLoc": {
+          "column": 7,
+          "line": 36,
+          "position": 1765
+        },
+        "name": "media.test.ts",
+        "start": 28,
+        "startLoc": {
+          "column": 12,
+          "line": 28,
+          "position": 1495
+        }
+      },
+      "format": "typescript",
+      "fragment": "let env: Env;\n\nbeforeEach(async () => {\n  await resetDb();\n  await addPerson(\"owner@test.invalid\", { owner: true });\n  const editor = await addPerson(\"editor@test.invalid\");\n  const reader = await addPerson(\"reader@test.invalid\");\n  await addPerson(\"stranger@test.invalid\");\n  const id = await addProject(SLUG, \"dustinedwards\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 9,
+      "secondFile": {
+        "end": 22,
+        "endLoc": {
+          "column": 7,
+          "line": 22,
+          "position": 923
+        },
+        "name": "routes.test.ts",
+        "start": 14,
+        "startLoc": {
+          "column": 22,
+          "line": 14,
+          "position": 653
+        }
+      },
+      "tokens": 50
+    }
+  ],
+  "statistics": {
+    "detectionDate": "2026-10-29T05:25:38.522Z",
+    "formats": {
+      "css": {
+        "clones": 0,
+        "duplicatedLines": 0,
+        "duplicatedTokens": 0,
+        "lines": 1091,
+        "newClones": 0,
+        "newDuplicatedLines": 0,
+        "percentage": 0.0,
+        "percentageTokens": 0.0,
+        "sources": 1,
+        "tokens": 10712
+      },
+      "javascript": {
+        "clones": 0,
+        "duplicatedLines": 0,
+        "duplicatedTokens": 0,
+        "lines": 2918,
+        "newClones": 0,
+        "newDuplicatedLines": 0,
+        "percentage": 0.0,
+        "percentageTokens": 0.0,
+        "sources": 17,
+        "tokens": 22698
+      },
+      "tsx": {
+        "clones": 23,
+        "duplicatedLines": 204,
+        "duplicatedTokens": 1415,
+        "lines": 8965,
+        "newClones": 0,
+        "newDuplicatedLines": 0,
+        "percentage": 2.275515895147797,
+        "percentageTokens": 1.7823403451316289,
+        "sources": 48,
+        "tokens": 79390
+      },
+      "typescript": {
+        "clones": 26,
+        "duplicatedLines": 249,
+        "duplicatedTokens": 1873,
+        "lines": 19700,
+        "newClones": 0,
+        "newDuplicatedLines": 0,
+        "percentage": 1.2639593908629443,
+        "percentageTokens": 0.9651753599439342,
+        "sources": 137,
+        "tokens": 194058
+      }
+    },
+    "total": {
+      "clones": 49,
+      "duplicatedLines": 453,
+      "duplicatedTokens": 3288,
+      "lines": 32674,
+      "newClones": 0,
+      "newDuplicatedLines": 0,
+      "percentage": 1.3864234559588664,
+      "percentageTokens": 1.0715053868564612,
+      "sources": 203,
+      "tokens": 306858
+    }
+  }
+}

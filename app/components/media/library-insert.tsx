@@ -13,13 +13,14 @@ import { Field } from "capsomer/react/field";
 
 import type { EditorMedia } from "./upload";
 
-type Row = { id: string; url: string; src: string; filename: string | null; alt: string; contentType: string };
+type Row = { id: string; url: string; src: string; filename: string | null; alt: string; caption?: string; contentType: string };
 type Picked = { url: string; src: string; name: string };
 
 export function LibraryInsert({ media, insert: put }: { media: EditorMedia; insert: (markdown: string) => void }) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<Picked | null>(null);
   const [alt, setAlt] = useState("");
+  const [caption, setCaption] = useState("");
   const [q, setQ] = useState("");
   const [opener, setOpener] = useState<HTMLElement | null>(null);
   const altField = useRef<HTMLInputElement>(null);
@@ -38,6 +39,7 @@ export function LibraryInsert({ media, insert: put }: { media: EditorMedia; inse
     setOpen(false);
     setPicked(null);
     setAlt("");
+    setCaption("");
   };
 
   // Images only: a PDF in the library is not something a figure can show.
@@ -46,7 +48,7 @@ export function LibraryInsert({ media, insert: put }: { media: EditorMedia; inse
 
   const insert = () => {
     if (!picked || !alt.trim()) return;
-    put(media.figure(picked.url, alt.trim()));
+    put(media.figure(picked.url, alt.trim(), caption.trim()));
     close();
   };
 
@@ -86,6 +88,9 @@ export function LibraryInsert({ media, insert: put }: { media: EditorMedia; inse
                       }
                     }}
                   />
+                </Field>
+                <Field label="Caption" help="The line shown under the picture, for everyone. Leave it empty for none.">
+                  <input className="cap-input" value={caption} onChange={(event) => setCaption(event.target.value)} autoComplete="off" />
                 </Field>
                 <p className="cap-muted">{picked.name}</p>
               </div>
@@ -129,6 +134,7 @@ export function LibraryInsert({ media, insert: put }: { media: EditorMedia; inse
                           onClick={() => {
                             setPicked({ url: o.url, src: o.src, name: o.filename ?? o.id });
                             setAlt(o.alt);
+                            setCaption(o.caption ?? "");
                           }}
                         >
                           <span className="cap-media-thumb">

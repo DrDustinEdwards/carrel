@@ -19,7 +19,6 @@ import { BulkBar } from "capsomer/react/bulk-bar";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
 import { Disclosure } from "capsomer/react/disclosure";
-import { DropZone } from "capsomer/react/drop-zone";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
@@ -30,6 +29,7 @@ import { ProjectTabs } from "~/components/project-tabs";
 import { MediaDetailPanel } from "~/components/media/detail-panel";
 import { size } from "~/components/media/format";
 import { BulkResultPanel, TrashEmptiedPanel, type FileOutcome } from "~/components/media/results";
+import { MAX_QUEUE, UploadQueue } from "~/components/media/upload-queue";
 
 import { getEnv, getViewer } from "~/lib/context";
 import {
@@ -40,9 +40,13 @@ import {
   listTrash,
   mediaDetail,
   mediaMeta,
+  NO_MEDIA_OFFERS,
   parseMediaTags,
+  replaceMedia,
   restoreMedia,
   setMediaAlt,
+  setMediaCaption,
+  setMediaFocus,
   setMediaTags,
   trashMedia,
   uploadMedia,
@@ -83,10 +87,12 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
     canUpload: can(project.role, "edit"),
     canDelete: can(project.role, "delete_media"),
+    // Replacing a file's bytes changes every page that shows it, so it is the Owner's (media.server.ts).
+    canReplace: can(project.role, "publish"),
     q,
     cursor,
   };
-  const noOffers: MediaOffers = { alt: false, tags: false, trash: false };
+  const noOffers: MediaOffers = NO_MEDIA_OFFERS;
   const empty = {
     limits: null,
     offers: noOffers,
@@ -137,7 +143,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   }
 }
 
-type WriteIntent = "set-alt" | "set-tags" | "trash" | "restore";
+type WriteIntent = "set-alt" | "set-tags" | "set-caption" | "set-focus" | "trash" | "restore" | "replace";
 type Refusal = { id: string; message: string; usedBy: { type: string; id: string; title: string; detail: string }[] };
 
 type ActionResult =
@@ -146,7 +152,7 @@ type ActionResult =
   | { intent: "empty-trash"; needsConfirm: true }
   | { intent: "empty-trash"; ok: true; deleted: string[]; refused: Refusal[]; more: boolean; unrecorded: number }
   | { intent: "empty-trash"; ok: false; message: string }
-  | { intent: "upload"; ok: true; id: string; name: string }
+  | { intent: "upload"; ok: true; uploaded: { id: string; name: string }[]; refused: string[] }
   | { intent: "upload"; ok: false; message: string }
   | { intent: "delete"; needsConfirm: true; id: string }
   | { intent: "delete"; ok: true; id: string }
@@ -158,17 +164,38 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
   if (intent === "upload") {
+    // Without script the form posts every chosen file at once; each is its own upload, and one refused never stops the rest.
     const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
-    const file = form.get("file");
-    if (!(file instanceof File) || file.size === 0) return { intent, ok: false, message: "No file was chosen." };
-    try {
-      const outcome = await uploadMedia(env, project, { viewer }, { name: file.name, type: file.type, size: file.size, bytes: () => file.arrayBuffer() }, String(form.get("alt") ?? ""));
-      return outcome.ok ? { intent, ok: true, id: outcome.item.id, name: outcome.item.filename ?? outcome.item.id } : { intent, ok: false, message: outcome.message };
-    } catch (error) {
-      const message = reason(error);
-      if (message === null) throw error;
-      return { intent, ok: false, message };
+    const files = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
+    if (files.length === 0) return { intent, ok: false, message: "No file was chosen." };
+    const alt = files.length === 1 ? String(form.get("alt") ?? "") : "";
+    const uploaded: { id: string; name: string }[] = [];
+    const refused: string[] = [];
+    for (const file of files) {
+      try {
+        const outcome = await uploadMedia(env, project, { viewer }, { name: file.name, type: file.type, size: file.size, bytes: () => file.arrayBuffer() }, alt);
+        if (outcome.ok) uploaded.push({ id: outcome.item.id, name: outcome.item.filename ?? outcome.item.id });
+        else refused.push(outcome.message);
+      } catch (error) {
+        const message = reason(error);
+        if (message === null) throw error;
+        refused.push(`${file.name}: ${message}`);
+      }
     }
+    return uploaded.length === 0 ? { intent, ok: false, message: refused.join(" ") } : { intent, ok: true, uploaded, refused };
+  }
+  if (intent === "replace") {
+    const project = await requireSiteProject(env.DB, viewer, params.project, "publish");
+    const id = String(form.get("id") ?? "");
+    const version = String(form.get("version") ?? "");
+    const file = form.get("file");
+    if (!(file instanceof File) || file.size === 0) return { intent, ok: false, id, message: "Choose the new file first.", conflict: false };
+    const outcome = await writeOutcome(async (): Promise<WriteOutcome> => {
+      if (!version) return { ok: false, conflict: false, message: "Carrel does not know this file's version, so nothing was sent. Reload the page and try again." };
+      const replaced = await replaceMedia(env, project, { viewer }, id, { name: file.name, type: file.type, size: file.size, bytes: () => file.arrayBuffer() }, version);
+      return replaced.ok ? { ok: true, version: replaced.item.version ?? "", recorded: replaced.recorded } : replaced;
+    });
+    return outcome.ok ? { intent, ok: true, id, recorded: outcome.recorded } : { intent, ok: false, id, message: outcome.message, conflict: outcome.conflict };
   }
   if (intent === "delete") {
     const project = await requireSiteProject(env.DB, viewer, params.project, "delete_media");
@@ -184,13 +211,24 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       return { intent, ok: false, id, message, usedBy: [] };
     }
   }
-  if (intent === "set-alt" || intent === "set-tags" || intent === "trash" || intent === "restore") {
+  if (intent === "set-alt" || intent === "set-tags" || intent === "set-caption" || intent === "set-focus" || intent === "trash" || intent === "restore") {
     const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
     const id = String(form.get("id") ?? "");
     const version = String(form.get("version") ?? "");
     const outcome = await writeOutcome(async (): Promise<WriteOutcome> => {
       if (!version) return { ok: false, conflict: false, message: "Carrel does not know this file's version, so nothing was sent. Reload the page and try again." };
       if (intent === "set-alt") return setMediaAlt(env, project, { viewer }, id, String(form.get("alt") ?? ""), version);
+      if (intent === "set-caption") return setMediaCaption(env, project, { viewer }, id, String(form.get("caption") ?? ""), version);
+      if (intent === "set-focus") {
+        // "clear" leaves the crop to the site's own guess; otherwise x and y, each a percent from the top left.
+        if (form.get("clear") === "yes") return setMediaFocus(env, project, { viewer }, id, null, version);
+        const percent = (name: string) => {
+          const text = String(form.get(name) ?? "").trim();
+          const n = Number(text);
+          return text !== "" && n >= 0 && n <= 100 ? n / 100 : Number.NaN;
+        };
+        return setMediaFocus(env, project, { viewer }, id, { x: percent("x"), y: percent("y") }, version);
+      }
       if (intent === "trash") return trashMedia(env, project, { viewer }, id, version);
       if (intent === "restore") return restoreMedia(env, project, { viewer }, id, version);
       const parsed = parseMediaTags(String(form.get("tags") ?? ""));
@@ -227,10 +265,10 @@ async function writeOutcome(run: () => Promise<WriteOutcome>): Promise<WriteOutc
 
 type BulkOp = "trash" | "restore" | "delete" | "add-tags" | "remove-tags";
 
-const WRITE_INTENTS: readonly string[] = ["set-alt", "set-tags", "trash", "restore"];
+const WRITE_INTENTS: readonly string[] = ["set-alt", "set-tags", "set-caption", "set-focus", "trash", "restore", "replace"];
 
 export default function MediaLibrary({ loaderData, actionData }: Route.ComponentProps) {
-  const { project, canUpload, canDelete, q, tag, tagInvalid, view, offers, trashFiles, trashMore, unavailable, limits, items, nextCursor, detail, missingId } = loaderData;
+  const { project, canUpload, canDelete, canReplace, q, tag, tagInvalid, view, offers, trashFiles, trashMore, unavailable, limits, items, nextCursor, detail, missingId } = loaderData;
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const busy = navigation.state !== "idle";
@@ -317,9 +355,19 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
           {/* An alert on a refusal, a status on success: one is an event to act on, the other a confirmation. */}
           {actionData?.intent === "upload" ? (
             actionData.ok ? (
-              <Banner tone="ok">
-                Uploaded {actionData.name}. <Link to={here({ id: actionData.id })}>See its details</Link>.
-              </Banner>
+              <>
+                <Banner tone="ok">
+                  Uploaded{" "}
+                  {actionData.uploaded.map((u, i) => (
+                    <span key={u.id}>
+                      {i > 0 ? ", " : ""}
+                      <Link to={here({ id: u.id })}>{u.name}</Link>
+                    </span>
+                  ))}
+                  .
+                </Banner>
+                {actionData.refused.length > 0 ? <Alert tone="crit" title="Not uploaded">{actionData.refused.join(" ")}</Alert> : null}
+              </>
             ) : (
               <Alert tone="crit">{actionData.message}</Alert>
             )
@@ -414,17 +462,14 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
                 </Form>
                 {canUpload && limits && !trashView ? (
                   <Disclosure summary="Upload a file" defaultOpen={actionData?.intent === "upload" && !actionData.ok}>
-                    <Form method="post" encType="multipart/form-data" className="app-form">
-                      <DropZone name="file" accept={limits.types.join(",")} maxBytes={limits.maxBytes} maxFiles={1} hint={`Up to ${size(limits.maxBytes)}: ${limits.types.map((t) => t.split("/")[1]).join(", ")}.`} />
-                      <Field label="Alt text" help="What the image shows, for someone who cannot see it.">
-                        <input className="cap-input" type="text" name="alt" autoComplete="off" />
-                      </Field>
-                      <div className="app-actions">
-                        <Button type="submit" name="intent" value="upload" variant="primary" pending={busy && navigation.formData?.get("intent") === "upload"}>
-                          Upload
-                        </Button>
-                      </div>
-                    </Form>
+                    <UploadQueue
+                      endpoint={`/p/${encodeURIComponent(project.slug)}/media/api`}
+                      accept={limits.types.join(",")}
+                      maxBytes={limits.maxBytes}
+                      hint={`Up to ${MAX_QUEUE} files, each up to ${size(limits.maxBytes)}: ${limits.types.map((t) => t.split("/")[1]).join(", ")}.`}
+                      pending={busy && navigation.formData?.get("intent") === "upload"}
+                      onUploaded={() => void revalidator.revalidate()}
+                    />
                   </Disclosure>
                 ) : null}
               </div>
@@ -524,6 +569,10 @@ export default function MediaLibrary({ loaderData, actionData }: Route.Component
                 offers={offers}
                 canUpload={canUpload}
                 canDelete={canDelete}
+                canReplace={canReplace}
+                limits={limits}
+                endpoint={`/p/${encodeURIComponent(project.slug)}/media/api`}
+                onChanged={() => void revalidator.revalidate()}
                 written={written}
                 refused={refused}
                 serverAsks={serverAsks}

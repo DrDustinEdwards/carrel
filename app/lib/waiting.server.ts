@@ -97,6 +97,7 @@ export function withWaitingWork(items: IndexedItem[], waiting: Waiting[], filter
       status: "draft" as const,
       path: null,
       publishAt: null,
+      updateAt: null,
       publishedAt: null,
       updatedAt: w.at,
       aiDrafts: w.aiDrafts,

@@ -3,14 +3,21 @@
 
 import type { Scaffold } from "capsomer/react/markdown-editor";
 
-/** How the site places an image with its alt text (stage 3), in the site's own dialect. */
-const FIGURES: Record<string, (url: string, alt: string) => string> = {
+/** How the site places an image with its alt text and, when it has one, its caption (stage 3), in the site's own dialect. */
+const FIGURES: Record<string, (url: string, alt: string, caption: string) => string> = {
   // The site's figure directive, as its own editor inserts it (dustinedwards-info@f84b978,
-  // app/components/admin/use-image-upload.ts).
-  dustinedwards: (url, alt) => [`:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ":::"].join("\n"),
-  // germomics stores the article body as HTML, and its sanitizer keeps figure and img.
-  germomics: (url, alt) => `<figure><img src="${attr(url)}" alt="${attr(alt.trim())}"></figure>`,
+  // app/components/admin/use-image-upload.ts); the caption is the directive's body, as the Figure block writes it.
+  dustinedwards: (url, alt, caption) =>
+    [`:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ...(caption ? [oneLine(caption)] : []), ":::"].join("\n"),
+  // germomics stores the article body as HTML, and its sanitizer keeps figure, img and figcaption.
+  germomics: (url, alt, caption) =>
+    `<figure><img src="${attr(url)}" alt="${attr(alt.trim())}">${caption ? `<figcaption>${attr(oneLine(caption))}</figcaption>` : ""}</figure>`,
 };
+
+/** A caption on one line: a line break would end the figure's body early. */
+function oneLine(text: string): string {
+  return text.trim().replace(/\s*\n\s*/g, " ");
+}
 
 function attr(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -23,11 +30,12 @@ function urlPart(url: string): string {
   return url.replace(/["\s()<>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`);
 }
 
-/** Plain Markdown for a site with no figure syntax of its own. */
-const plain = (url: string, alt: string) => `![${alt.trim().replace(/[[\]]/g, "")}](${urlPart(url)})`;
+/** Plain Markdown for a site with no figure syntax of its own: the caption, when there is one, as an emphasized line under it. */
+const plain = (url: string, alt: string, caption: string) =>
+  `![${alt.trim().replace(/[[\]]/g, "")}](${urlPart(url)})${caption ? `\n*${oneLine(caption).replace(/[*_]/g, "\\$&")}*` : ""}`;
 
-export function figureMarkup(site: string, url: string, alt: string): string {
-  return (FIGURES[site] ?? plain)(url, alt);
+export function figureMarkup(site: string, url: string, alt: string, caption = ""): string {
+  return (FIGURES[site] ?? plain)(url, alt, caption.trim());
 }
 
 /**
