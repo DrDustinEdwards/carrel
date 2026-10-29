@@ -2,8 +2,10 @@
 // disabling. Every change goes through app/lib/people-admin.server.ts, which checks the Owner.
 //
 // Carrel decides what a person may do once they are in; Cloudflare Access decides whether they get
-// in at all. So after an add the page says where the same email must also be allowed. The dashboard
-// paths are from Cloudflare's docs as read on 2026-09-27: developers.cloudflare.com/workers/
+// in at all. With CAPSID_AGENT_KEY set, every change to a role or to disabled is synced to Desk's
+// Access group through Capsid (access-sync.server.ts, docs/coauthors.md), and the page says whether
+// Access is in step. Without it, after an add the page says where the same email must also be
+// allowed by hand. The dashboard paths are from Cloudflare's docs as read on 2026-09-27: developers.cloudflare.com/workers/
 // configuration/cloudflare-access/ (the Worker's Access tab offers only "Cloudflare account" and
 // "Email domain"; anything more is edited in Zero Trust), .../cloudflare-one/access-controls/policies/
 // policy-management/ (Zero Trust > Access controls > Policies), and .../cloudflare-one/integrations/
@@ -18,8 +20,10 @@ import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 import { Pill } from "capsomer/react/status";
+import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { accessState, syncAccess, type AccessState, type SyncOutcome } from "~/lib/access-sync.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { addAgent, addPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
 import { isMemberRole } from "~/lib/roles";
@@ -31,13 +35,16 @@ export function meta() {
 }
 
 export async function loader({ context }: Route.LoaderArgs) {
-  return listPeople(getEnv(context).DB, getViewer(context));
+  const env = getEnv(context);
+  const [listed, access] = await Promise.all([listPeople(env.DB, getViewer(context)), accessState(env)]);
+  return { ...listed, access };
 }
 
-type ActionResult = { ok: true; intent: string; added?: string; agent?: string } | { ok: false; intent: string; message: string };
+type ActionResult = { ok: true; intent: string; added?: string; agent?: string; access?: SyncOutcome } | { ok: false; intent: string; message: string };
 
 export async function action({ request, context }: Route.ActionArgs): Promise<ActionResult> {
-  const db = getEnv(context).DB;
+  const env = getEnv(context);
+  const db = env.DB;
   const viewer = getViewer(context);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -58,13 +65,18 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
       }
       case "role": {
         const role = String(form.get("role") ?? "");
-        await setProjectRole(db, viewer, personId, Number(form.get("project")), isMemberRole(role) ? role : null);
-        return { ok: true, intent };
+        const change = await setProjectRole(db, viewer, personId, Number(form.get("project")), isMemberRole(role) ? role : null);
+        return { ok: true, intent, access: await syncAccess(env, change) };
       }
       case "disable":
-      case "enable":
-        await setDisabled(db, viewer, personId, intent === "disable");
-        return { ok: true, intent };
+      case "enable": {
+        const change = await setDisabled(db, viewer, personId, intent === "disable");
+        return { ok: true, intent, access: await syncAccess(env, change) };
+      }
+      // Retry: the same whole list again, after Cloudflare or the setup is fixed.
+      case "sync":
+        if (!viewer.isOwner || viewer.isReviewer) throw new Response("Not found", { status: 404 });
+        return { ok: true, intent, access: await syncAccess(env, { removed: [] }) };
       default:
         throw new Response("Bad request", { status: 400 });
     }
@@ -75,6 +87,38 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
 }
 
 type Person = Route.ComponentProps["loaderData"]["people"][number];
+
+/** Whether Desk's Access group holds who Carrel says it should, from the last sync. Nothing when the sync is not set up. */
+function AccessStatus({ access, busy }: { access: AccessState; busy: boolean }) {
+  if (!access.configured) return null;
+  const last = access.last;
+  const retry = (
+    <Form method="post">
+      <Button type="submit" name="intent" value="sync" size="sm" pending={busy}>
+        {last ? "Retry" : "Sync now"}
+      </Button>
+    </Form>
+  );
+  if (last?.ok) {
+    return (
+      <Banner tone="ok" title="Cloudflare Access is in step">
+        Desk lets in each person with a role on a project, and no one else but you. Synced <Time at={last.syncedAt} />.
+      </Banner>
+    );
+  }
+  if (last) {
+    return (
+      <Alert tone="warn" title="Waiting for Cloudflare" action={retry}>
+        {last.refusal} Tried <Time at={last.syncedAt} />. Carrel's own roles already apply; only getting past Access waits.
+      </Alert>
+    );
+  }
+  return (
+    <Banner tone="info" title="Cloudflare Access has not been synced yet" actions={retry}>
+      Every change to a role syncs it. Sync now to bring Access in step with the people below.
+    </Banner>
+  );
+}
 
 /**
  * Disable and Enable are one control that stays mounted across the reload that follows, so it can say
@@ -107,7 +151,7 @@ function AccessButton({ person }: { person: Person }) {
 }
 
 export default function People({ loaderData, actionData }: Route.ComponentProps) {
-  const { people, projects } = loaderData;
+  const { people, projects, access } = loaderData;
   const busy = useNavigation().state !== "idle";
 
   return (
@@ -115,6 +159,8 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
       <PageHead title="People" lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page." />
 
       {actionData && !actionData.ok ? <Alert tone="crit" title="Nothing changed">{actionData.message}</Alert> : null}
+
+      <AccessStatus access={access} busy={busy} />
 
       {actionData?.ok && actionData.agent ? (
         <Alert tone="warn" title={`Added ${actionData.agent}. It has no key and no role yet.`}>
@@ -128,6 +174,14 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
               <li>Set the agent's role on each project it may use, below. Editor lets it save AI drafts, and it flags and previews as a Reader does.</li>
             </ol>
           </div>
+        </Alert>
+      ) : actionData?.ok && actionData.added && access.configured ? (
+        <Alert tone="info" title={`Added ${actionData.added}. Share a project with them below.`}>
+          <p>
+            Cloudflare Access lets them into Desk once they hold a role on a project, and keeps them out again when they are disabled or have no role left. Access emails a
+            login code only if <em>One-time PIN</em> is set up (Zero Trust &gt; Integrations &gt; Identity providers); without it, a person with no Cloudflare account
+            cannot sign in. The AI door (carrel-mcp.dustinedwards.info) is still allowed by hand, in its policy <em>Carrel people</em>.
+          </p>
         </Alert>
       ) : actionData?.ok && actionData.added ? (
         <Alert tone="warn" title={`Added ${actionData.added}. They cannot sign in yet.`}>

@@ -2,16 +2,19 @@
 // disable or re-enable them. Every change goes through here, with the Owner check inside each
 // function, so the page and any later tool meet the same rule.
 //
-// Carrel's rows decide what a person may do once they are in. Getting in is Cloudflare Access, which
-// Carrel does not manage: adding a person here does not let them past Access (people.tsx says where).
+// Carrel's rows decide what a person may do once they are in. Getting in is Cloudflare Access: each
+// change below that can change who is allowed in returns an AccessChange, and the caller passes it to
+// syncAccess (access-sync.server.ts), which posts the whole allow list to Capsid. Adding a person
+// changes nothing there, since a person with no role is not on the list.
 
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { people, projectMembers, projects } from "~/db/schema";
+import { syncAccess, type SyncOutcome } from "~/lib/access-sync.server";
 import { agentEmail, isAgentName } from "~/lib/agent-keys.server";
 import type { Viewer } from "~/lib/people.server";
-import type { MemberRole } from "~/lib/roles";
+import { isMemberRole, type MemberRole } from "~/lib/roles";
 
 /** A refusal the Owner reads on the page: the rule said no, and nothing changed. */
 export class PeopleRefusal extends Error {
@@ -25,6 +28,9 @@ export class PeopleRefusal extends Error {
 function requireOwner(viewer: Viewer) {
   if (!viewer.isOwner || viewer.isReviewer) throw new Response("Not found", { status: 404 });
 }
+
+/** Who a change may have taken out of Access, for syncAccess to free their seats. */
+export type AccessChange = { removed: string[] };
 
 export type PersonRow = {
   id: number;
@@ -113,7 +119,7 @@ async function target(db: D1Database, personId: number) {
  * so the role is for people on a site project: never an AI agent (agents never publish), and never on
  * a book, which has no posts.
  */
-export async function setProjectRole(db: D1Database, viewer: Viewer, personId: number, projectId: number, role: MemberRole | null): Promise<void> {
+export async function setProjectRole(db: D1Database, viewer: Viewer, personId: number, projectId: number, role: MemberRole | null): Promise<AccessChange> {
   requireOwner(viewer);
   const person = await target(db, personId);
   if (person.isOwner) throw new PeopleRefusal("The Owner's role cannot be changed: the Owner is the Owner on every project.");
@@ -127,12 +133,53 @@ export async function setProjectRole(db: D1Database, viewer: Viewer, personId: n
   if (role === "author" && !project.site) throw new PeopleRefusal("Author is a role on a site's project: a book has no posts to publish. Make them an Editor here.");
   if (role === null) {
     await d.delete(projectMembers).where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.personId, personId)));
-    return;
+    // Removed only if that was their last role; syncAccess keeps anyone still on the list.
+    return { removed: [person.email] };
   }
   await d
     .insert(projectMembers)
     .values({ projectId, personId, role })
     .onConflictDoUpdate({ target: [projectMembers.projectId, projectMembers.personId], set: { role } });
+  return { removed: [] };
+}
+
+export type ShareResult = { email: string; added: boolean; change: AccessChange };
+
+/**
+ * Shares one project with a coauthor by email, from the project's own page: someone new is added as
+ * a person (never a reviewer) and given the role, someone already in Carrel just gets the role. The
+ * rules are addPerson's and setProjectRole's, so the People page and this panel cannot disagree.
+ */
+export async function shareProject(db: D1Database, viewer: Viewer, projectId: number, input: { email: string; name: string; role: string }): Promise<ShareResult> {
+  requireOwner(viewer);
+  if (!isMemberRole(input.role)) throw new PeopleRefusal("Choose a role.");
+  const email = input.email.trim().toLowerCase();
+  const existing = await drizzle(db).select({ id: people.id }).from(people).where(eq(people.email, email)).get();
+  const id = existing?.id ?? (await addPerson(db, viewer, { email, name: input.name, reviewer: false })).id;
+  try {
+    return { email, added: !existing, change: await setProjectRole(db, viewer, id, projectId, input.role) };
+  } catch (error) {
+    // A new person the role was refused for (Author on a book) is not left behind with no role.
+    if (!existing) await drizzle(db).delete(people).where(eq(people.id, id));
+    throw error;
+  }
+}
+
+export type ShareAnswer = { ok: true; email: string; added: boolean; access: SyncOutcome } | { ok: false; message: string };
+
+/** The Share panel's form (app/components/share-panel.tsx), shared and then synced to Access. A refusal is answered, never thrown. */
+export async function shareFromForm(env: Env, viewer: Viewer, projectId: number, form: FormData): Promise<ShareAnswer> {
+  try {
+    const shared = await shareProject(env.DB, viewer, projectId, {
+      email: String(form.get("email") ?? ""),
+      name: String(form.get("name") ?? ""),
+      role: String(form.get("role") ?? ""),
+    });
+    return { ok: true, email: shared.email, added: shared.added, access: await syncAccess(env, shared.change) };
+  } catch (error) {
+    if (error instanceof PeopleRefusal) return { ok: false, message: error.message };
+    throw error;
+  }
 }
 
 /**
@@ -140,7 +187,7 @@ export async function setProjectRole(db: D1Database, viewer: Viewer, personId: n
  * up again) or re-enables them. The Owner cannot be disabled: that would lock Carrel with no one able
  * to undo it.
  */
-export async function setDisabled(db: D1Database, viewer: Viewer, personId: number, disabled: boolean, now = new Date()): Promise<void> {
+export async function setDisabled(db: D1Database, viewer: Viewer, personId: number, disabled: boolean, now = new Date()): Promise<AccessChange> {
   requireOwner(viewer);
   const person = await target(db, personId);
   if (person.isOwner || person.id === viewer.id) throw new PeopleRefusal("The Owner cannot be disabled.");
@@ -148,4 +195,5 @@ export async function setDisabled(db: D1Database, viewer: Viewer, personId: numb
     .update(people)
     .set({ disabledAt: disabled ? now.toISOString() : null })
     .where(disabled ? and(eq(people.id, personId), isNull(people.disabledAt)) : eq(people.id, personId));
+  return { removed: disabled ? [person.email] : [] };
 }

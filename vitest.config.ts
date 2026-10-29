@@ -21,6 +21,8 @@ export default defineConfig({
         d1Databases: ["DB"],
         kvNamespaces: ["OAUTH_KV"],
         r2Buckets: ["BACKUPS"],
+        // As wrangler.jsonc: a file's live room, exported by test/entry.ts as the real entry exports it.
+        durableObjects: { DOC_ROOM: { className: "DocRoom", useSQLite: true } },
         bindings: {
           ACCESS_TEAM_DOMAIN: "https://test-team.cloudflareaccess.com",
           ACCESS_AUD: "test-audience-tag",

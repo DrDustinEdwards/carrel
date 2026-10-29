@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql to 0021_author_role.sql, which own the shape. Change both in the
+// Mirrors drizzle/0001_init.sql to 0023_access_sync.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";
@@ -405,4 +405,57 @@ export const voiceCuts = sqliteTable(
     lastCutAt: text("last_cut_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   },
   (t) => [primaryKey({ columns: [t.projectId, t.phrase] })],
+);
+
+// The last Cloudflare Access sync (0023_access_sync.sql, access-sync.server.ts): one row, replaced by each sync.
+export const accessSync = sqliteTable("access_sync", {
+  id: integer("id").primaryKey(),
+  syncedAt: text("synced_at").notNull(),
+  ok: integer("ok", { mode: "boolean" }).notNull(),
+  refusal: text("refusal"),
+  added: integer("added").notNull().default(0),
+  dropped: integer("dropped").notNull().default(0),
+});
+
+// Live co-editing (0022_coediting.sql, workers/doc-room.ts). `rooms` is each file's shared working copy as
+// Markdown, mirrored by its room after every change so the nightly backup holds it; the room's own
+// storage is the live copy. `comments` are the threads on a file, a reply naming its thread's first
+// comment. `change_contributors` is everyone who had a hand in the text one save wrote, beside the
+// person who pressed Save (`changes.person_id`).
+export const rooms = sqliteTable(
+  "rooms",
+  {
+    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    itemId: text("item_id").notNull(),
+    source: text("source").notNull(),
+    baseVersion: text("base_version"),
+    savedSource: text("saved_source").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.itemId] })],
+);
+
+export const comments = sqliteTable("comments", {
+  id: text("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  parentId: text("parent_id"),
+  personId: integer("person_id").notNull().references(() => people.id),
+  body: text("body").notNull(),
+  anchor: text("anchor"),
+  quote: text("quote").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+  editedAt: text("edited_at"),
+  resolvedAt: text("resolved_at"),
+  resolvedBy: integer("resolved_by"),
+  deletedAt: text("deleted_at"),
+});
+
+export const changeContributors = sqliteTable(
+  "change_contributors",
+  {
+    changeId: text("change_id").notNull(),
+    personId: integer("person_id").notNull().references(() => people.id),
+  },
+  (t) => [primaryKey({ columns: [t.changeId, t.personId] })],
 );

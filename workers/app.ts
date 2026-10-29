@@ -12,9 +12,15 @@ import { refreshAllSites } from "~/lib/refresh.server";
 import { siteOrigins } from "~/lib/sites.server";
 import { processSocial } from "~/lib/social/queue.server";
 
+import { requireBookProject } from "~/lib/books.server";
+import { requireSiteProject } from "~/lib/projects.server";
+import { connectRoom } from "~/lib/rooms.server";
+
 import { cspReport, isCspReport } from "./csp-report";
 import { gate } from "./gate";
 import { newNonce, withDoorSecurityHeaders, withSecurityHeaders } from "./security-headers";
+
+export { DocRoom } from "./doc-room";
 
 const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
@@ -33,12 +39,20 @@ export default {
     }
     const nonce = newNonce();
     const response = await gate(request, env, async (req, viewer) => {
+      // A live editor's WebSocket into its file's room (rooms.server.ts): the same sign-in and role as the page.
+      if (new URL(req.url).pathname.startsWith("/collab/")) {
+        return connectRoom(req, env, viewer, (kind, slug) => (kind === "p" ? requireSiteProject(env.DB, viewer, slug, "read") : requireBookProject(env.DB, viewer, slug, "read"))).catch((error: unknown) => {
+          if (error instanceof Response) return error;
+          throw error;
+        });
+      }
       const context = new RouterContextProvider();
       context.set(cloudflareContext, { env, ctx });
       context.set(viewerContext, viewer);
       context.set(nonceContext, nonce);
       return requestHandler(req, context);
     });
+    if (response.status === 101) return response;
     return withSecurityHeaders(response, nonce, { imageOrigins: siteOrigins(env), reportOrigin: mcpOrigin(env) });
   },
 

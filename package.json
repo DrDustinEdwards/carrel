@@ -44,13 +44,17 @@
     "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.10.1",
     "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#v0.27.0",
     "@fontsource-variable/source-serif-4": "5.3.0",
+    "@handlewithcare/prosemirror-suggest-changes": "0.1.8",
     "@lezer/highlight": "1.2.3",
     "@modelcontextprotocol/server": "2.3.1",
     "@tiptap/core": "3.31.4",
+    "@tiptap/extension-collaboration": "3.31.4",
+    "@tiptap/extension-collaboration-caret": "3.31.4",
     "@tiptap/extension-list": "3.31.4",
     "@tiptap/extensions": "3.31.4",
     "@tiptap/pm": "3.31.4",
     "@tiptap/starter-kit": "3.31.4",
+    "@tiptap/y-tiptap": "3.0.10",
     "agents": "0.29.0",
     "capsomer": "github:DrDustinEdwards/capsomer#v0.37.0",
     "diff": "9.0.0",
@@ -68,9 +72,13 @@
     "micromark-extension-frontmatter": "2.0.0",
     "micromark-extension-gfm": "3.0.0",
     "micromark-extension-math": "3.1.0",
+    "partyserver": "0.5.10",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-router": "8.3.1",
+    "y-partyserver": "2.2.0",
+    "y-protocols": "1.0.7",
+    "yjs": "13.6.33",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -90,5 +98,8 @@
     "vite": "8.3.5",
     "vitest": "4.1.12",
     "wrangler": "4.151.3"
+  },
+  "overrides": {
+    "@cloudflare/workers-types": "5.20261019.1"
   }
 }

@@ -93,6 +93,23 @@
 			"bucket_name": "carrel-backups"
 		}
 	],
+	// One room per open file for live co-editing (workers/doc-room.ts, y-partyserver): the shared working
+	// copy, who is in it and the comments, in each object's own SQLite storage. Nothing reaches a room but
+	// the browser door, behind Access.
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "DOC_ROOM",
+				"class_name": "DocRoom"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1-doc-room",
+			"new_sqlite_classes": ["DocRoom"]
+		}
+	],
 	"send_email": [
 		{
 			"name": "EMAIL"
