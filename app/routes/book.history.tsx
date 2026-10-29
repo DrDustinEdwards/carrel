@@ -20,7 +20,7 @@ import { bookRepo, indexedFile, requireBookProject } from "~/lib/books.server";
 import { readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { orderPair } from "~/lib/history.server";
-import { isBookPath, kindOf, titleFromSegment } from "~/lib/novels/layout";
+import { isBookPath, fileKindOf, titleFromSegment } from "~/lib/novels/layout";
 
 import type { Route } from "./+types/book.history";
 
@@ -30,8 +30,8 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
 
 function labelFor(path: string): string {
   const file = titleFromSegment(path.split("/").pop()!.replace(/\.md$/, ""));
-  if (kindOf(path) === "scene") return `${titleFromSegment(path.split("/")[1]!)}: ${file}`;
-  if (kindOf(path) === "book") return "Title page";
+  if (fileKindOf(path) === "scene") return `${titleFromSegment(path.split("/")[1]!)}: ${file}`;
+  if (fileKindOf(path) === "book") return "Title page";
   return file;
 }
 
