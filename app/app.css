@@ -100,6 +100,92 @@
   margin-inline-start: var(--space-3);
 }
 
+/* A site's posts (routes/project.tsx): the title takes the spare width and wraps, its path on a quiet
+   line under it, so the status and the date fit beside it with no sideways scroll. On a phone each post
+   is a card (the table's reflow): the box and the title across the top, the rest under the title. */
+.app-posts .cap-table {
+  & .app-posts-title {
+    inline-size: 100%;
+    min-inline-size: 14rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+
+    & .cap-table-aside {
+      display: block;
+      margin-inline-start: 0;
+      font-weight: 400;
+    }
+  }
+  & .app-posts-status > .cap-pill + .cap-pill {
+    margin-inline-start: var(--space-2);
+  }
+}
+
+.app-posts-kind-inline {
+  display: none;
+}
+
+/* A time in a status pill reads in the pill's own color. */
+.app-posts-status .cap-time {
+  color: inherit;
+}
+
+@container cap-table (max-width: 639px) {
+  .app-posts.cap-table-wrap[data-reflow] > .cap-table > tbody > tr {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
+
+    & > .app-posts-check {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    & > .app-posts-title {
+      grid-column: 2 / -1;
+      grid-row: 1;
+      min-inline-size: 0;
+    }
+    & > .app-posts-kind {
+      display: none;
+    }
+    & .app-posts-kind-inline {
+      display: inline;
+    }
+    & > :is(.app-posts-status, .app-posts-updated) {
+      grid-column: 2 / -1;
+    }
+    & > .app-posts-status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+
+      & > .cap-pill + .cap-pill {
+        margin-inline-start: 0;
+      }
+    }
+    & > .app-posts-updated {
+      color: var(--muted);
+      font-size: var(--fs-detail);
+    }
+    /* The status says what it is; the date names itself on its own line. */
+    & > .app-posts-status::before {
+      content: none;
+    }
+    & > .app-posts-updated::before {
+      display: inline;
+      margin: 0 var(--space-2) 0 0;
+      font-size: inherit;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 400;
+    }
+  }
+  /* A reader has no boxes: the title starts the card. */
+  .app-posts.cap-table-wrap[data-reflow] > .cap-table:not(:has(.app-posts-check)) > tbody > tr > * {
+    grid-column: 1 / -1;
+  }
+}
+
 /* A search and its filters on one row, the button last; they wrap on a phone. */
 .cap-panel-pad:has(> .app-filters) {
   display: grid;
@@ -135,13 +221,83 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: var(--space-5);
+  /* Fields side by side line up on their inputs, whatever help one carries above its own. */
+  align-items: end;
 }
 
-/* A select and its button on one line, inside a table cell. */
+/* A select and its button on one line (a role on People). The select keeps the width of its
+   longest choice, so the button never sits over it. */
 .app-inline {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+
+  & > :is(.cap-select-wrap, select) {
+    flex: 1 1 auto;
+    min-inline-size: 8.5rem;
+  }
+  & > .cap-btn {
+    flex: none;
+  }
+}
+
+/* People (routes/people.tsx): one card per person, their role on each project in a grid. */
+.app-people {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.app-people-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-person {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-5);
+  border-block-start: 1px solid var(--line);
+
+  &:last-child {
+    padding-block-end: 0;
+  }
+}
+
+.app-person-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+
+  & h3 {
+    margin: 0;
+    font-size: var(--fs-body);
+  }
+}
+
+.app-person-access {
+  margin-inline-start: auto;
+}
+
+.app-person-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-person-role {
+  display: grid;
+  gap: var(--space-1);
+
+  & > label {
+    font-size: var(--fs-detail);
+    font-weight: 600;
+  }
 }
 
 /* The steps after adding a person: a long list inside an alert, kept readable. */
@@ -172,6 +328,14 @@
 @media (min-width: 1100px) {
   .app-media[data-detail] {
     grid-template-columns: minmax(0, 1fr) 24rem;
+  }
+}
+
+/* Narrower, the open file's details come first, above the library, rather than after the whole grid. */
+@media (max-width: 1099px) {
+  .app-media[data-detail] > .cap-panel:last-child {
+    order: -1;
+    scroll-margin-block-start: calc(var(--top-h, 0px) + var(--space-4));
   }
 }
 
@@ -398,8 +562,18 @@
 @media (min-width: 1100px) {
   .app-editor:not([data-layout="split"]) .app-editor-grid {
     grid-template-columns: minmax(0, 1fr) 22rem;
+    grid-template-areas:
+      "main side"
+      "more side";
+  }
+  .app-editor:not([data-layout="split"]) .app-editor-main {
+    grid-area: main;
+  }
+  .app-editor:not([data-layout="split"]) .app-editor-more {
+    grid-area: more;
   }
   .app-editor:not([data-layout="split"]) .app-editor-side {
+    grid-area: side;
     position: sticky;
     top: calc(var(--top-h) + var(--space-5));
     max-height: calc(100dvh - var(--top-h) - var(--space-6));
@@ -412,6 +586,29 @@
   gap: var(--space-5);
   min-width: 0;
   align-content: start;
+}
+
+/* Under the text (a phone, a narrow window, the split view), saving and publishing come first and the
+   binder, which is for moving to another post, last. */
+@media (max-width: 1099px) {
+  .app-editor-side > .cap-panel:first-child {
+    order: 1;
+  }
+}
+.app-editor[data-layout="split"] .app-editor-side > .cap-panel:first-child {
+  order: 1;
+}
+
+/* The binder's tree in a panel: the panel's body is a grid, and a grid item is as wide as its longest
+   line unless told otherwise, which pushed each row's status out of the panel. */
+.app-binder {
+  min-width: 0;
+}
+
+.app-editor-more {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
 }
 
 .app-editor-body {
@@ -550,20 +747,20 @@
   }
 }
 
-/* The focal point (components/media/focus-picker.tsx): the picture with its point, and the crops the
-   site may cut around it. --focus-x and --focus-y are set on .app-focus by the picker. */
+/* The focal point (components/media/focus-picker.tsx): the picture with its point, and under it the
+   crops the site may cut around it, side by side at one height so their shapes compare. --focus-x and
+   --focus-y are set on .app-focus by the picker. */
 .app-focus {
   --focus-x: 50%;
   --focus-y: 50%;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: start;
+  gap: var(--space-3);
 }
 
 .app-focus-frame {
   position: relative;
   display: block;
+  width: 100%;
   padding: 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-m);
@@ -598,7 +795,9 @@
 }
 
 .app-focus-previews {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -612,10 +811,12 @@
   }
 
   & img {
-    width: 100%;
+    display: block;
+    height: 4rem;
+    width: auto;
     object-fit: cover;
     object-position: var(--focus-x) var(--focus-y);
-    border-radius: var(--radius-m);
+    border-radius: var(--radius-s);
   }
 
   & [data-ratio="1 / 1"] img {
@@ -631,21 +832,96 @@
   }
 }
 
-@media (max-width: 36rem) {
-  .app-focus {
-    grid-template-columns: minmax(0, 1fr);
+.app-focus-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+/* The media detail's folded tools: the note after a section's name, and a tool under another. */
+.app-summary-note {
+  margin-inline-start: auto;
+  color: var(--muted);
+  font-size: var(--fs-detail);
+  font-weight: 400;
+}
+
+.app-tool {
+  display: grid;
+  gap: var(--space-3);
+
+  /* A button with its one-line note beside it. */
+  &[data-inline] {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  & + & {
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--line);
   }
 }
 
-/* The crop editor's picture: the full width of the dialog at most, and the pointer draws on it. */
+.app-tag-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: calc(var(--space-2) * -1) 0 0;
+  font-size: var(--fs-detail);
+}
+
+.app-detail-end {
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--line);
+
+  & > form:last-child:not(:first-child) {
+    margin-inline-start: auto;
+  }
+}
+
+/* The crop editor's picture: the width of the dialog at most, and short enough that the fields and the
+   buttons fit under it in a laptop's window. The pointer draws on it. */
 .app-crop-canvas {
   display: block;
   max-width: 100%;
+  max-height: min(24rem, 45dvh);
+  width: auto;
   height: auto;
+  margin-inline: auto;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-m);
   cursor: crosshair;
   touch-action: none;
+}
+
+/* The shape, then the four numbers: one row where the dialog has room, else the shape across and the
+   numbers two by two. */
+.app-crop-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+
+  & > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 48rem) {
+  .app-crop-fields {
+    grid-template-columns: minmax(9rem, 1.6fr) repeat(4, minmax(0, 1fr));
+
+    & > :first-child {
+      grid-column: auto;
+    }
+  }
+}
+
+/* A dialog footer with more than one action beside Cancel: on a phone the footer stacks every button
+   full width (Capsomer's dialog), so the group gives way and its buttons stack with Cancel. */
+@media (max-width: 39.99rem) {
+  .app-dialog-actions {
+    display: contents;
+  }
 }
 
 @media (forced-colors: active) {
@@ -1088,4 +1364,33 @@ img.ProseMirror-separator {
 .ProseMirror-focused .ProseMirror-selectednode.app-src-inline {
   outline: var(--ring-width, 3px) solid var(--ring);
   outline-offset: 2px;
+}
+
+/* The upload queue (components/media/upload-queue.tsx). With script the queue lists each file, so the
+   drop zone's own list of what it took would say it twice. */
+.app-upload[data-live] .cap-drop-status {
+  display: none;
+}
+
+.app-uploaded {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+
+/* A dialog whose field already says why its button refuses (the schedule dialog): the button keeps
+   its reason for a screen reader, and the footer does not say it a second time beside the button. */
+.app-reason-unseen .cap-btn-reason {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.app-upload .cap-media > .app-actions {
+  margin-block-start: var(--space-4);
 }

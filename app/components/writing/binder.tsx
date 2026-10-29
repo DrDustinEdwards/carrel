@@ -78,5 +78,9 @@ export function Binder({ nodes, book, current, canEdit }: { nodes: BinderNode[];
 export function SiteBinder({ nodes, current }: { nodes: BinderNode[]; current: string }) {
   const shown = useMemo(() => toTree(nodes), [nodes]);
   const open = nodes.find((k) => k.children?.some((c) => c.id === `item:${current}`))?.id;
-  return <Tree nodes={shown} aria-label="Binder" selection="single" defaultSelected={[`item:${current}`]} defaultExpanded={open ? [open] : []} />;
+  return (
+    <div className="app-binder">
+      <Tree nodes={shown} aria-label="Binder" selection="single" defaultSelected={[`item:${current}`]} defaultExpanded={open ? [open] : []} />
+    </div>
+  );
 }

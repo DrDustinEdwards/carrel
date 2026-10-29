@@ -267,7 +267,7 @@ export function CropEditor({ id, version, name, endpoint, canReplace, onSaved }:
                     drag.current = null;
                   }}
                 />
-                <div className="app-fields">
+                <div className="app-crop-fields">
                   <Field label="Shape">
                     <Select
                       value={aspect}
@@ -279,13 +279,13 @@ export function CropEditor({ id, version, name, endpoint, canReplace, onSaved }:
                       options={ASPECTS}
                     />
                   </Field>
-                  {field("From the left (px)", "x", width - 1)}
-                  {field("From the top (px)", "y", height - 1)}
+                  {field("Left (px)", "x", width - 1)}
+                  {field("Top (px)", "y", height - 1)}
                   {field("Width (px)", "w", width)}
                   {field("Height (px)", "h", height)}
                 </div>
                 {canReplace ? (
-                  <p className="cap-muted">Replace this file keeps its address, so every post that shows it shows the crop, and the original is gone from the site.</p>
+                  <p className="cap-muted app-note">Replace this file keeps its address, so every post that shows it shows the crop, and the original is gone from the site.</p>
                 ) : null}
               </>
             ) : null}
@@ -293,7 +293,7 @@ export function CropEditor({ id, version, name, endpoint, canReplace, onSaved }:
         </DialogBody>
         <DialogFooter align="between">
           <DialogClose part="cancel">Cancel</DialogClose>
-          <span className="app-actions">
+          <span className="app-actions app-dialog-actions">
             {canReplace ? (
               <Button variant="danger" pending={saving === "replace"} disabledReason={!image ? "The picture is not open yet." : undefined} onClick={() => void replace()}>
                 Replace this file

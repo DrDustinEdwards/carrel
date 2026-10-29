@@ -82,12 +82,6 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   }
 }
 
-function when(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toISOString().slice(0, 10);
-}
-
 type BulkOutcome = { id: string; title: string; ok: boolean; message: string; copyId?: string };
 type BulkOp = "tag-add" | "tag-remove" | "duplicate" | "delete";
 
@@ -223,7 +217,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
             {filtered ? "Nothing on this site fits the search and filters above." : "Refresh from the site to read what it has."}
           </Empty>
         ) : (
-          <div className="cap-table-wrap" role="region" aria-labelledby="posts-caption" tabIndex={0}>
+          <div className="cap-table-wrap app-posts" data-reflow="" role="region" aria-labelledby="posts-caption" tabIndex={0}>
             <table className="cap-table">
               <caption id="posts-caption" className="cap-sr-only">
                 {filters.kind ? kindPlural(filters.kind) : kinds.length > 1 ? "Everything" : "Posts"} on {project.site}
@@ -245,7 +239,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                 {items.map((item) => (
                   <tr key={item.itemId} data-state={selected.includes(item.itemId) ? "selected" : undefined}>
                     {canEdit ? (
-                      <td>
+                      <td className="app-posts-check">
                         <label className="cap-check">
                           <input
                             type="checkbox"
@@ -260,21 +254,36 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                         </label>
                       </td>
                     ) : null}
-                    <th scope="row">
+                    <th scope="row" className="app-posts-title">
                       <Link className="cap-table-open" to={`e/${encodeURIComponent(item.itemId)}`}>
                         {item.title || item.itemId}
                       </Link>
-                      <span className="cap-table-aside">{item.path ?? item.itemId}</span>
+                      <span className="cap-table-aside">
+                        {item.path ?? item.itemId}
+                        {/* The kind joins the path on a phone's card, where its column is not drawn. */}
+                        {kinds.length > 1 ? <span className="app-posts-kind-inline"> · {item.kind}</span> : null}
+                      </span>
                     </th>
-                    {kinds.length > 1 ? <td>{item.kind}</td> : null}
-                    <td>
+                    {kinds.length > 1 ? (
+                      <td className="app-posts-kind" data-label="Kind">
+                        {item.kind}
+                      </td>
+                    ) : null}
+                    {/* A time in a row is relative ("in 5 days"), as Capsomer's Time and posts list say it; the editor gives the exact time. */}
+                    <td className="app-posts-status" data-label="Status">
                       {item.status === "published" ? (
                         <>
                           <Pill tone="ok">Published</Pill>
-                          {item.updateAt ? <Pill tone="info">Update scheduled {when(item.updateAt)}</Pill> : null}
+                          {item.updateAt ? (
+                            <Pill tone="info">
+                              Update <Time at={item.updateAt} />
+                            </Pill>
+                          ) : null}
                         </>
                       ) : item.status === "scheduled" ? (
-                        <Pill tone="info">Scheduled{item.publishAt ? ` ${when(item.publishAt)}` : ""}</Pill>
+                        <Pill tone="info">
+                          Scheduled{item.publishAt ? <> <Time at={item.publishAt} /></> : null}
+                        </Pill>
                       ) : (
                         <Pill variant="secondary">{item.isNew ? "New draft" : "Draft"}</Pill>
                       )}
@@ -284,7 +293,9 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                         </Pill>
                       ) : null}
                     </td>
-                    <td>{item.updatedAt ? <Time at={item.updatedAt} /> : null}</td>
+                    <td className="app-posts-updated" data-label="Updated">
+                      {item.updatedAt ? <Time at={item.updatedAt} /> : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>

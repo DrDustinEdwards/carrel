@@ -5,11 +5,12 @@
 // progress. Without script the form posts every chosen file at once, and the page says what happened.
 
 import { useEffect, useRef, useState } from "react";
-import { Form } from "react-router";
+import { Form, Link } from "react-router";
 import { Button } from "capsomer/react/button";
 import { DropZone } from "capsomer/react/drop-zone";
 import { Field } from "capsomer/react/field";
 import { MediaTile, type MediaRecord } from "capsomer/react/media";
+import { Status } from "capsomer/react/status";
 
 /** Files sent at once; the rest wait their turn, so a large drop does not open dozens of requests. */
 const AT_ONCE = 3;
@@ -110,12 +111,15 @@ export function UploadQueue({ endpoint, accept, maxBytes, hint, pending, onUploa
   };
 
   const shown = entries.filter((e) => e.state !== "done");
-  const done = entries.filter((e) => e.state === "done").length;
+  const finished = entries.filter((e) => e.state === "done");
+  const done = finished.length;
   const failed = shown.filter((e) => e.state === "failed").length;
   const inFlight = shown.length - failed;
 
   return (
-    <Form method="post" encType="multipart/form-data" className="app-form">
+    // With script the queue below lists each file, so the drop zone's own list of what it took is
+    // hidden (data-live, app.css); without script that list is the only one, and stays.
+    <Form method="post" encType="multipart/form-data" className="app-form app-upload" data-live={live ? "" : undefined}>
       <DropZone name="file" accept={accept} maxBytes={maxBytes} maxFiles={MAX_QUEUE} multiple paste hint={hint} onAccepted={live ? add : undefined} />
       <Field label="Alt text" help="What the image shows, for someone who cannot see it. Used for a single file; with several, describe each one in its details after it uploads.">
         <input className="cap-input" type="text" name="alt" autoComplete="off" value={alt} onChange={(event) => setAlt(event.target.value)} />
@@ -132,8 +136,19 @@ export function UploadQueue({ endpoint, accept, maxBytes, hint, pending, onUploa
         {done > 0 && inFlight === 0 ? ` Uploaded ${done} ${done === 1 ? "file" : "files"}.` : ""}
         {failed > 0 ? ` ${failed} ${failed === 1 ? "file was" : "files were"} not uploaded.` : ""}
       </p>
+      {/* A finished upload leaves the queue for the library; this line says it arrived, with a way to it. */}
+      {done > 0 ? (
+        <p className="app-uploaded">
+          <Status tone="ok">{done === 1 ? "Uploaded" : `Uploaded ${done} files`}</Status>
+          {finished.map((e) => (
+            <Link key={e.key} to={`?id=${encodeURIComponent(e.id ?? "")}`} preventScrollReset>
+              {e.file.name}
+            </Link>
+          ))}
+        </p>
+      ) : null}
       {shown.length > 0 ? (
-        <div className="cap-media" data-size="s">
+        <div className="cap-media" data-size="m">
           <ul className="cap-media-grid" role="list" aria-label="Uploads">
             {shown.map((entry) => (
               <MediaTile key={entry.key} item={record(entry)} selectable={false} onRetry={(key) => patch(key, { state: "waiting", progress: 0, error: undefined })} />

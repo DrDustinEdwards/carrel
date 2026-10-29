@@ -13,6 +13,7 @@ import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 
+import { ExactTime, useExactTime } from "~/components/exact-time";
 import { FlagsPanel } from "~/components/editor/flags-panel";
 import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
@@ -264,14 +265,13 @@ export default function EditorRoute({ loaderData }: Route.ComponentProps) {
   return <Editor key={`${loaderData.project.slug}/${loaderData.itemId}`} data={loaderData} />;
 }
 
-const utc = (iso: string) => `${iso.slice(0, 16).replace("T", " ")} UTC`;
-
 function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [source, setSource] = useState(data.source);
+  const exactTime = useExactTime();
   const [savedSource, setSavedSource] = useState(data.source);
   const [savedAt, setSavedAt] = useState<string | null>(data.draftAt);
   const [layout, chooseLayout] = useEditorLayout();
-  const [asking, setAsking] = useState<null | { kind: "discard" | "import" | "schedule" | "dismiss" | "save-live"; flag?: number; opener: HTMLElement | null }>(null);
+  const [asking, setAsking] = useState<null | { kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule"; flag?: number; opener: HTMLElement | null }>(null);
   const autosaver = useFetcher<ActionResult>();
   const writer = useFetcher<ActionResult>();
   const { say } = useMessage();
@@ -406,7 +406,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     name: data.project.site,
     first: !data.everPublished,
     published: data.status === "published" && data.liveUrl ? { at: data.publishedAt ?? "", url: data.liveUrl } : null,
-    hold: data.status === "scheduled" && data.publishAt ? { reason: "scheduled", untilLabel: utc(data.publishAt), text: `Scheduled for ${utc(data.publishAt)}` } : null,
+    hold: data.status === "scheduled" && data.publishAt ? { reason: "scheduled", untilLabel: exactTime(data.publishAt), text: `Scheduled for ${exactTime(data.publishAt)}` } : null,
   };
   // The search and sharing checks, on the text as it is typed (none for a legal page or another kind).
   const seo = useMemo(() => seoCheck(data.project.siteId, source, { kind: data.kind, origin: data.origin, path: data.address }), [source, data.kind, data.project.siteId, data.origin, data.address]);
@@ -427,7 +427,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   }
 
   const historyPath = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/history`;
-  const ask = (kind: "discard" | "import" | "schedule" | "dismiss" | "save-live", opener: HTMLElement | null, flag?: number) => setAsking({ kind, opener, flag });
+  const ask = (kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule", opener: HTMLElement | null, flag?: number) => setAsking({ kind, opener, flag });
   // A save to a live post with an update waiting changes the live post now, and the update's own text
   // still replaces it when it runs (site-api v0.10.0), so the person is told first.
   function saveToSite(opener: HTMLElement | null) {
@@ -466,20 +466,29 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           <Banner tone="info">This {kindNoun(data.kind)} is live. Your changes autosave here as your draft; sending them to the site is the Owner's step, or its Author's.</Banner>
         ) : null}
         {data.pendingUpdate && data.status === "published" ? (
-          <Banner tone="info" title={`An update is scheduled for ${utc(data.pendingUpdate.publishAt)}`}>
-            The live {kindNoun(data.kind)} stays as it is until then, when the site publishes the scheduled text.
-            {data.canPublish ? (
-              <span className="app-actions">
-                {data.pendingUpdate.source ? (
-                  <Button size="sm" variant="quiet" onClick={() => setSource(data.pendingUpdate!.source)}>
-                    Edit the scheduled text
+          <Banner
+            tone="info"
+            title={
+              <>
+                An update is scheduled for <ExactTime at={data.pendingUpdate.publishAt} />
+              </>
+            }
+            actions={
+              data.canPublish ? (
+                <>
+                  {data.pendingUpdate.source ? (
+                    <Button size="sm" onClick={() => setSource(data.pendingUpdate!.source)}>
+                      Edit the update
+                    </Button>
+                  ) : null}
+                  <Button size="sm" variant="danger" pending={busy} onClick={(event) => ask("unschedule", event.currentTarget)}>
+                    Cancel the update
                   </Button>
-                ) : null}
-                <Button size="sm" pending={busy} onClick={() => void send("unschedule")}>
-                  Cancel the scheduled update
-                </Button>
-              </span>
-            ) : null}
+                </>
+              ) : undefined
+            }
+          >
+            The live {kindNoun(data.kind)} stays as it is until then, when the site publishes the scheduled text.
           </Banner>
         ) : null}
       </div>
@@ -507,21 +516,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               </section>
             ) : null}
           </div>
-          {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
-            <FlagsPanel flags={data.flags} aiDrafts={data.aiDrafts} canPublish={data.canDismiss} onDismiss={(button, flag) => ask("dismiss", button, flag)} />
-          ) : null}
-          {seo ? <SearchSharingPanel check={seo} /> : null}
-          {data.revisions || data.historyError ? (
-            <HistoryPanel
-              revisions={data.revisions}
-              revisionCount={data.revisionCount}
-              historyError={data.historyError}
-              historyPath={historyPath}
-              noun={kindNoun(data.kind)}
-              againstSite={Boolean(savedAt) && onSite}
-              aiDrafts={data.aiDrafts}
-            />
-          ) : null}
         </div>
 
         <aside className="app-editor-side" aria-label="Binder, saving and publishing">
@@ -534,6 +528,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 <p role="status" className="app-savestate">
                   {saveState}
                 </p>
+                {data.pendingUpdate && data.status === "published" ? (
+                  <p className="app-note">
+                    An update waits to go live <ExactTime at={data.pendingUpdate.publishAt} />.
+                  </p>
+                ) : null}
                 {failure ? <Alert tone="crit">{failure.message}</Alert> : null}
                 {google ? (
                   google.ok ? (
@@ -557,7 +556,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   ) : null}
                   {onSite && maySave && saveTransition ? (
                     <Button variant={data.status === "draft" ? "default" : "primary"} pending={busy} onClick={(event) => saveToSite(event.currentTarget)}>
-                      {saveTransition.label}
+                      {/* Beside a scheduled update, plain "Update" could mean either; this one changes the live post now. */}
+                      {data.status === "published" && data.scheduledUpdates && data.canPublish ? "Update the live post now" : saveTransition.label}
                     </Button>
                   ) : null}
                   {onSite && data.canPublish && data.status === "scheduled" ? (
@@ -569,7 +569,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     <Button onClick={(event) => ask("schedule", event.currentTarget)}>Schedule</Button>
                   ) : null}
                   {onSite && data.canPublish && data.status === "published" && data.scheduledUpdates ? (
-                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>{data.pendingUpdate ? "Reschedule update" : "Schedule update"}</Button>
+                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>{data.pendingUpdate ? "Replace the scheduled update" : "Schedule as an update"}</Button>
                   ) : null}
                   {savedAt ? (
                     <Button variant="quiet" pending={busy} onClick={(event) => ask("discard", event.currentTarget)}>
@@ -618,6 +618,26 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             </Panel>
           ) : null}
         </aside>
+
+        {/* Flags, search and history: after the side column in the page's order, so on a phone saving and
+            publishing come right after the text; on a wide screen they sit under the text (app.css). */}
+        <div className="app-editor-more">
+          {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
+            <FlagsPanel flags={data.flags} aiDrafts={data.aiDrafts} canPublish={data.canDismiss} onDismiss={(button, flag) => ask("dismiss", button, flag)} />
+          ) : null}
+          {seo ? <SearchSharingPanel check={seo} /> : null}
+          {data.revisions || data.historyError ? (
+            <HistoryPanel
+              revisions={data.revisions}
+              revisionCount={data.revisionCount}
+              historyError={data.historyError}
+              historyPath={historyPath}
+              noun={kindNoun(data.kind)}
+              againstSite={Boolean(savedAt) && onSite}
+              aiDrafts={data.aiDrafts}
+            />
+          ) : null}
+        </div>
       </div>
 
       <ConfirmDialog
@@ -657,13 +677,24 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         title="Change the live post now?"
         lead={
           data.pendingUpdate
-            ? `Your save changes the live ${kindNoun(data.kind)} at once. The update scheduled for ${utc(data.pendingUpdate.publishAt)} still waits, and its own text replaces the live one then, without this change. To keep this change, schedule the update again with it.`
+            ? `Your save changes the live ${kindNoun(data.kind)} at once. The update scheduled for ${exactTime(data.pendingUpdate.publishAt)} still waits, and its own text replaces the live one then, without this change. To keep this change, replace the scheduled update with it.`
             : ""
         }
         body={[]}
         action="Save to the live post"
         returnTo={asking?.opener}
         perform={async () => void (await send("save"))}
+        onClose={() => setAsking(null)}
+      />
+      <ConfirmDialog
+        open={asking?.kind === "unschedule"}
+        title="Cancel the scheduled update?"
+        lead={data.pendingUpdate ? `The live ${kindNoun(data.kind)} stays as it is, and the update's text is dropped from the site. This cannot be undone.` : ""}
+        body={[]}
+        action="Cancel the update"
+        cancelLabel="Keep the update"
+        returnTo={asking?.opener}
+        perform={async () => void (await send("unschedule"))}
         onClose={() => setAsking(null)}
       />
       <ScheduleDialog

@@ -24,3 +24,6 @@ coverage/
 
 # The site content CI checks out for check:roundtrip; never committed.
 .roundtrip/
+
+# jscpd's JSON report, written by npm run check:bloat; never committed.
+report/

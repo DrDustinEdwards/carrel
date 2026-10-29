@@ -53,8 +53,9 @@ export function FocusPicker({ id, version, src, name, focus, pending }: Props) {
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="version" value={version} />
       <fieldset className="cap-field">
-        <legend className="cap-field-label">Focal point</legend>
-        <p className="cap-field-help">The part of the picture the site keeps when it crops it to fit. {focus ? `Now at ${percents(focus).x}% across, ${percents(focus).y}% down.` : "None yet: the site guesses."}</p>
+        {/* Named by the disclosure it sits in (detail-panel.tsx); the legend is for a screen reader. */}
+        <legend className="cap-sr-only">Focal point</legend>
+        <p className="cap-field-help">The part of the picture the site keeps when it crops it to fit. Click the picture to move it. {focus ? "" : "None yet: the site guesses."}</p>
         <div className="app-focus" ref={frame}>
           <button
             type="button"
@@ -85,11 +86,11 @@ export function FocusPicker({ id, version, src, name, focus, pending }: Props) {
             ))}
           </ul>
         </div>
-        <div className="app-fields">
-          <Field label="Across (percent from the left)">
+        <div className="app-focus-fields">
+          <Field label="From the left (%)">
             <input className="cap-input" type="number" name="x" min={0} max={100} step={0.1} value={point.x} onChange={(event) => set(Number(event.target.value), point.y)} />
           </Field>
-          <Field label="Down (percent from the top)">
+          <Field label="From the top (%)">
             <input className="cap-input" type="number" name="y" min={0} max={100} step={0.1} value={point.y} onChange={(event) => set(point.x, Number(event.target.value))} />
           </Field>
         </div>
