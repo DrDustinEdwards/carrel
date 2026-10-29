@@ -94,11 +94,12 @@ describe("PLANT: roles, as the kit reads Carrel's", () => {
     ]);
   });
 
-  it("refuses an Editor's delete for good and replace, and a Reader's upload, before the site hears anything", async () => {
+  it("refuses an Editor's delete for good, replace and turn, and a Reader's upload, before the site hears anything", async () => {
     const item = await seedFile();
     const before = site.requests.length;
     expect(await post("editor@test.invalid", { intent: "delete", ids: [item.id], confirm: "1" })).toMatchObject({ ok: false, message: expect.stringContaining("Owner") });
     expect(await post("editor@test.invalid", { intent: "replace", ids: [item.id], versions: [item.version!] })).toMatchObject({ ok: false, message: expect.stringContaining("Owner") });
+    expect(await post("editor@test.invalid", { intent: "transform", ids: [item.id], versions: [item.version!], op: "rotate-right" })).toMatchObject({ ok: false, message: expect.stringContaining("Owner") });
     expect(site.requests.length).toBe(before);
 
     const form = new FormData();
@@ -108,6 +109,23 @@ describe("PLANT: roles, as the kit reads Carrel's", () => {
     expect(sent("POST")).toEqual([]);
     expect(site.adapter.mediaStore.size).toBe(1);
     expect(await rows()).toEqual([]);
+  });
+});
+
+describe("live updates", () => {
+  it("answers what others changed since the page's cursor, to anyone on the project and no one else", async () => {
+    const item = await seedFile();
+    const { data } = await page("reader@test.invalid");
+    const cursor = data!.page.changeCursor!;
+    expect(cursor).toEqual(expect.any(String));
+    // An Editor credits the file (recorded under migration 0024's action); the Reader's poll sees it.
+    expect(await post("editor@test.invalid", { intent: "credit", ids: [item.id], versions: [item.version!], credit: "Photo: Sample", license: "CC BY 4.0" })).toMatchObject({ ok: true });
+    const poll = async (email: string) => apiLoader({ request: new Request(`https://carrel.test/p/${SLUG}/media/api?changes=${encodeURIComponent(cursor)}`), params: { project: SLUG }, context: await contextFor(email) } as never);
+    const answer = (await poll("reader@test.invalid")) as Response;
+    expect(await answer.json()).toMatchObject({ rows: [{ id: item.id, credit: "Photo: Sample", src: `${SITE_ORIGIN}${item.url}` }], removed: [], more: false });
+    expect(await rows()).toEqual([{ item_id: item.id, person_id: (await viewerFor("editor@test.invalid")).id, action: "media-credit" }]);
+    await addPerson("stranger@test.invalid");
+    expect(await refusal(poll("stranger@test.invalid"))).toBe(404);
   });
 });
 

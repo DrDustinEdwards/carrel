@@ -14,6 +14,11 @@
     "micromark-extension-gfm": "the editor's Markdown round trip, as above",
     "micromark-extension-math": "the editor's Markdown round trip, as above"
   },
+  "copies": {
+    "app/lib/editor/markdown.mjs": "kindOf here names a Markdown source block's label (front matter, code, table), not site-api's media kind",
+    "app/lib/novels/layout.ts": "kindOf here names a book file's kind from its path (scene, character, outline), not site-api's media kind",
+    "app/lib/people.server.ts": "kindOf here names a project's kind (site or book), not site-api's media kind"
+  },
   "spelling": {
     "skip": [
       "docs/research/kill-matrix.json",

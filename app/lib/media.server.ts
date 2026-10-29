@@ -3,11 +3,15 @@
 // is Capsomer's MediaLibrary. Files stay in the site's own storage and are served by the site; the
 // site's reference check decides every delete, and Carrel shows its answer.
 //
-// Roles, as the kit reads them from Carrel's: a Reader browses, an Editor also uploads (and inserts
-// into a post), edits alt text, caption, tags and the focal point, and moves files to the trash and
-// back (all reversible), and only the Owner deletes for good, empties the trash or replaces a file's
-// bytes (which changes every page that shows it, and cannot be taken back here). The kit refuses a
-// step the person may not take before the site hears anything.
+// Roles, as the kit reads them from Carrel's: a Reader browses (and sees live what others changed),
+// an Editor also uploads or imports from a web address (and inserts into a post), edits alt text,
+// caption, credit and license, tags and the focal point, and moves files to the trash and back (all
+// reversible), and only the Owner deletes for good, empties the trash, or changes a file's bytes under
+// its address: replace, turn or mirror, go back to an earlier version, shrink (each changes every page
+// that shows it). The kit refuses a step the person may not take before the site hears anything.
+// The site's model suggests tags and alt text only when an Editor or the Owner asks (Suggest, the
+// query's suggest=1), and each suggestion is applied only when the person accepts it, as an ordinary
+// tag-add or alt post: nothing the model says is written unasked.
 
 import { runMediaIntent, type ContentSource, type IntentResult } from "@dustinedwards/site-api/admin";
 import { SiteApiError } from "@dustinedwards/site-api/client";
@@ -20,7 +24,7 @@ import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 
-/** The authorship record's action for each kind the kit records (migration 0007 and later). */
+/** The authorship record's action for each kind the kit records (migration 0007 and later; site-api v0.13's in 0024). */
 const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
   "media-upload": "media-upload",
   "media-delete": "media-delete",
@@ -33,6 +37,11 @@ const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
   "media-focus": "media-focus",
   "media-caption": "media-caption",
   "media-replace": "media-replace",
+  "media-import": "media-import",
+  "media-credit": "media-credit",
+  "media-transform": "media-transform",
+  "media-revert": "media-revert",
+  "media-resize": "media-resize",
 };
 
 /** Where a place that uses a file opens in Carrel: a post opens in its editor. */

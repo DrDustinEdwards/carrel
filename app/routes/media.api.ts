@@ -2,12 +2,15 @@
 // page. GET ?bytes=<id> is one image's own bytes, for the crop editor: through Carrel, so the browser
 // can export the canvas it draws them on, which an image from the site's origin would taint. GET with
 // the library's query is one page of the library's data (the editor's image picker); with only `q`, the
-// matching files for quick search. POST with an `intent` runs it through the content kit, as the
+// matching files for quick search. GET ?changes=<cursor> is what others changed on the site since that
+// cursor (site-api v0.13.0's loadMediaChanges), for the library's live updates: the files as they are
+// now and the ids deleted for good, or `{ reload: true }` when the site can no longer answer from it.
+// POST with an `intent` runs it through the content kit, as the
 // library's page does with no script; POST with only a file is the editor's paste, drop or Insert
 // image, answered with the site's address for it. A Reader may read; the kit refuses a write the role
 // does not allow before the site hears anything.
 
-import { loadMedia, readMediaQuery, runMediaIntent } from "@dustinedwards/site-api/admin";
+import { loadMedia, loadMediaChanges, readMediaQuery, runMediaIntent } from "@dustinedwards/site-api/admin";
 import { mediaDataOfKit, readMediaView } from "capsomer/behavior/media-library";
 
 import { getEnv, getViewer } from "~/lib/context";
@@ -30,6 +33,8 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       if (!file) return Response.json({ error: "The site has no image by that id that Carrel can open." }, { status: 404 });
       return new Response(file.bytes, { headers: { "content-type": file.type, "cache-control": "private, no-store", "x-content-type-options": "nosniff", "content-disposition": "attachment" } });
     }
+    const since = search.get("changes");
+    if (since !== null) return Response.json(await loadMediaChanges(source, since.slice(0, 500)), { headers: { "cache-control": "private, no-store" } });
     const kit = await loadMedia(source, readMediaQuery(search));
     const pick = search.get("pick") ?? "";
     return Response.json(mediaDataOfKit(kit, { usedHref: (use) => useHref(project.slug, use), view: { ...readMediaView(search), ...(pick ? { pick } : {}) } }));
