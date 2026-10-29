@@ -11,7 +11,7 @@ import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Segmented } from "capsomer/react/segmented";
-import { Time } from "capsomer/react/time";
+import { ExactTime } from "~/components/exact-time";
 import { PageHead } from "capsomer/react/page-head";
 
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
@@ -78,7 +78,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
         title={`AI draft from ${draft.client}`}
         lead={
           <>
-            Saved <Time at={draft.createdAt} format="exact" />
+            Saved <ExactTime at={draft.createdAt} />
             {draft.note ? ` · ${draft.note}` : ""}
           </>
         }

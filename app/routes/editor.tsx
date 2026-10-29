@@ -11,9 +11,8 @@ import { Panel } from "capsomer/react/panel";
 import { PublishGate, type GateCheck, type GateSite } from "capsomer/react/publish-gate";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
-import { Time } from "capsomer/react/time";
 
-import { ExactTime, useExactTime } from "~/components/exact-time";
+import { ExactTime, useExactTime, useHydrated } from "~/components/exact-time";
 import { FlagsPanel } from "~/components/editor/flags-panel";
 import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
@@ -265,9 +264,15 @@ export default function EditorRoute({ loaderData }: Route.ComponentProps) {
   return <Editor key={`${loaderData.project.slug}/${loaderData.itemId}`} data={loaderData} />;
 }
 
+/** The time of day a draft was saved: in UTC with its zone until the page is live (the server knows no other), then the viewer's. */
+function savedClock(iso: string, hydrated: boolean): string {
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: hydrated ? undefined : "UTC", timeZoneName: "short" });
+}
+
 function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [source, setSource] = useState(data.source);
   const exactTime = useExactTime();
+  const hydrated = useHydrated();
   const [savedSource, setSavedSource] = useState(data.source);
   const [savedAt, setSavedAt] = useState<string | null>(data.draftAt);
   const [layout, chooseLayout] = useEditorLayout();
@@ -395,7 +400,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const transitions = data.status ? transitionsFor(data.status === "draft" ? "draft" : "published", data.everPublished) : [];
   const saveTransition = transitions.find((t) => t.id === "save-draft" || t.id === "save");
   const saveState =
-    autosaver.state !== "idle" ? "Saving to Carrel" : source !== savedSource ? "Not yet saved" : savedAt ? `Draft saved in Carrel ${new Date(savedAt).toLocaleTimeString()}` : onSite ? siteState(data.status, data.everPublished) : "";
+    autosaver.state !== "idle" ? "Saving to Carrel" : source !== savedSource ? "Not yet saved" : savedAt ? `Draft saved in Carrel ${savedClock(savedAt, hydrated)}` : onSite ? siteState(data.status, data.everPublished) : "";
   // Absolute, not relative: from /p/x/e/item a bare "preview" would resolve to /p/x/e/preview.
   const previewSrc = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview?at=${encodeURIComponent(savedAt ?? data.version ?? "")}`;
   const failure = outcome && !outcome.ok && !viaGate.current ? outcome : null;
@@ -459,7 +464,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         ) : null}
         {data.aiPublished && data.status === "published" ? (
           <Banner tone="info">
-            {data.aiPublished.line} <Time at={data.aiPublished.at} format="exact" />
+            {data.aiPublished.line} <ExactTime at={data.aiPublished.at} />
           </Banner>
         ) : null}
         {data.canEdit && live && !data.canPublish ? (
@@ -593,7 +598,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             </Panel>
           ) : null}
 
-          {onSite && data.canPublish ? (
+          {/* Drawn once the page is live: Capsomer 0.36's gate shows the live time with <Time format="exact">,
+              whose first render in a zone other than UTC differs from the server's and fails hydration. */}
+          {onSite && data.canPublish && hydrated ? (
             <PublishGate
               label="Publish checks"
               sites={[gateSite]}
