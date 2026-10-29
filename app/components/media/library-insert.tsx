@@ -1,55 +1,78 @@
-// "From library": an image already on the site goes into the post, with its alt text. Capsomer's editor
-// uploads (a drop, a paste, its Insert image button) but has no way to pick a file the site already
-// holds, so this is Carrel's: a dialog over the project's media endpoint, then an alt step that starts
-// from the alt the file already has, then one insert at the cursor through the writing surface, in
-// whichever editor it shows.
+// "Insert from library": an image already on the site goes into the post, with its alt text. The
+// dialog holds Capsomer's MediaLibrary in picker mode, the same grid, search and tags as the media
+// page, over the project's media endpoint: its links and its search load the next view into the
+// dialog instead of leaving the editor. The picker's alt step starts from the file's own alt text; the
+// figure takes the file's own caption, which the post can change like any other text.
 
-import { useEffect, useRef, useState } from "react";
-import { useFetcher } from "react-router";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { Button } from "capsomer/react/button";
 import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Empty } from "capsomer/react/empty";
-import { Field } from "capsomer/react/field";
+import { MediaLibrary, type FormComponent, type MediaData } from "capsomer/react/media-library";
 
 import type { EditorMedia } from "./upload";
 
-type Row = { id: string; url: string; src: string; filename: string | null; alt: string; caption?: string; contentType: string };
-type Picked = { url: string; src: string; name: string };
-
 export function LibraryInsert({ media, insert: put }: { media: EditorMedia; insert: (markdown: string) => void }) {
   const [open, setOpen] = useState(false);
-  const [picked, setPicked] = useState<Picked | null>(null);
-  const [alt, setAlt] = useState("");
-  const [caption, setCaption] = useState("");
-  const [q, setQ] = useState("");
   const [opener, setOpener] = useState<HTMLElement | null>(null);
-  const altField = useRef<HTMLInputElement>(null);
-  const list = useFetcher<{ items: Row[]; nextCursor: string | null; error?: string }>();
+  const [data, setData] = useState<MediaData | null>(null);
+  const [error, setError] = useState("");
+  const library = media.endpoint.replace(/\/api$/, "");
+
+  const load = async (query: string) => {
+    setError("");
+    try {
+      const response = await fetch(`${media.endpoint}${query}`, { headers: { accept: "application/json" } });
+      const body = (await response.json().catch(() => null)) as (MediaData & { error?: undefined }) | { error?: string } | null;
+      if (body && "rows" in body) setData(body);
+      else setError((body && body.error) || `The library answered ${response.status}.`);
+    } catch (thrown) {
+      setError(thrown instanceof Error ? thrown.message : String(thrown));
+    }
+  };
+
+  const loadRef = useRef(load);
+  loadRef.current = load;
 
   useEffect(() => {
-    if (open && list.state === "idle" && !list.data) void list.load(media.endpoint);
-  }, [open, list, media.endpoint]);
+    if (open && !data && !error) void loadRef.current("");
+  }, [open, data, error]);
 
-  // Focus goes to the alt field once a file is picked: the step is otherwise silent.
-  useEffect(() => {
-    if (picked) altField.current?.focus();
-  }, [picked]);
+  // A link to another view of the library (a tag, a page, a file to choose) loads it here.
+  const follow = (event: MouseEvent<HTMLElement>) => {
+    const link = (event.target as Element).closest("a[href]");
+    if (!(link instanceof HTMLAnchorElement)) return;
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin || url.pathname !== library) return;
+    event.preventDefault();
+    void load(url.search);
+  };
+  // The search form is a GET of the library's own address: run it here too. One component for the
+  // dialog's life, so a render never remounts the form being typed in.
+  const PickerForm = useMemo<FormComponent>(
+    () =>
+      function PickerForm({ onSubmit, ...props }) {
+        return (
+          <form
+            {...props}
+            onSubmit={(event) => {
+              onSubmit?.(event);
+              if (event.defaultPrevented || (props.method ?? "get").toLowerCase() !== "get") return;
+              event.preventDefault();
+              const query = new URLSearchParams();
+              for (const [k, v] of new FormData(event.currentTarget)) if (typeof v === "string" && v) query.append(k, v);
+              void loadRef.current(`?${query}`);
+            }}
+          />
+        );
+      },
+    [],
+  );
 
   const close = () => {
     setOpen(false);
-    setPicked(null);
-    setAlt("");
-    setCaption("");
-  };
-
-  // Images only: a PDF in the library is not something a figure can show.
-  const images = (list.data?.items ?? []).filter((o) => o.contentType.startsWith("image/"));
-  const loading = !list.data;
-
-  const insert = () => {
-    if (!picked || !alt.trim()) return;
-    put(media.figure(picked.url, alt.trim(), caption.trim()));
-    close();
+    setData(null);
+    setError("");
   };
 
   return (
@@ -66,109 +89,36 @@ export function LibraryInsert({ media, insert: put }: { media: EditorMedia; inse
       </Button>
       <Dialog open={open} onOpenChange={(o) => !o && close()} placement="center" size="lg" returnTo={opener} aria-labelledby="library-title">
         <DialogHeader divider>
-          <DialogTitle id="library-title">{picked ? "Describe the image" : "Insert an image from the library"}</DialogTitle>
-          <DialogDescription>{picked ? "The image is on the site. It is not in the post until it has alt text." : "Pick an image already on the site, then describe it."}</DialogDescription>
+          <DialogTitle id="library-title">Insert an image from the library</DialogTitle>
+          <DialogDescription>Pick an image already on the site, then describe it. It is not in the post until it has alt text.</DialogDescription>
         </DialogHeader>
         <DialogBody>
-          {picked ? (
-            <div className="app-pick-alt" role="group" aria-label="Describe the image">
-              <img className="app-pick-thumb" src={picked.src} alt="" />
-              <div className="app-form">
-                <Field label="Alt text" required help="What the image shows, for someone who cannot see it.">
-                  <input
-                    ref={altField}
-                    className="cap-input"
-                    value={alt}
-                    onChange={(event) => setAlt(event.target.value)}
-                    autoComplete="off"
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        insert();
-                      }
-                    }}
-                  />
-                </Field>
-                <Field label="Caption" help="The line shown under the picture, for everyone. Leave it empty for none.">
-                  <input className="cap-input" value={caption} onChange={(event) => setCaption(event.target.value)} autoComplete="off" />
-                </Field>
-                <p className="cap-muted">{picked.name}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="app-form" role="group" aria-label="Insert an image from the library">
-              <p className="cap-sr-only" role="status">
-                {loading ? "Loading media" : images.length === 0 ? "No images" : `${images.length} image${images.length === 1 ? "" : "s"}`}
-              </p>
-              <form
-                className="app-filters"
-                role="search"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void list.load(`${media.endpoint}?q=${encodeURIComponent(q.trim())}`);
+          <div onClickCapture={follow}>
+            {error ? (
+              <Empty kind="failed" flush title="The library did not answer">
+                {error}
+              </Empty>
+            ) : data ? (
+              <MediaLibrary
+                data={data}
+                action={library}
+                Form={PickerForm}
+                mode="picker"
+                onPick={({ id, url, alt }) => {
+                  const caption = data.rows.find((r) => r.key === id)?.caption ?? "";
+                  put(media.figure(url, alt, caption));
+                  close();
                 }}
-              >
-                <Field label="Search the library">
-                  <input className="cap-input" type="search" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Name or alt text" />
-                </Field>
-                <Button type="submit">Search</Button>
-              </form>
-              {list.data?.error ? (
-                <Empty kind="failed" flush title="The library did not answer">
-                  {list.data.error}
-                </Empty>
-              ) : loading ? (
-                <p className="cap-muted">Loading media...</p>
-              ) : images.length === 0 ? (
-                <Empty kind={q.trim() ? "no-match" : "nothing-yet"} flush title={q.trim() ? `No images match “${q.trim()}”` : "No images in the library yet"}>
-                  {q.trim() ? "Try the name or the alt text." : "Drop or paste one into the editor to upload it."}
-                </Empty>
-              ) : (
-                <div className="cap-media" data-size="s">
-                  <ul className="cap-media-grid" role="list" aria-label="Images">
-                    {images.map((o) => (
-                      <li key={o.id} className="cap-media-tile">
-                        <button
-                          type="button"
-                          className="cap-media-open"
-                          onClick={() => {
-                            setPicked({ url: o.url, src: o.src, name: o.filename ?? o.id });
-                            setAlt(o.alt);
-                            setCaption(o.caption ?? "");
-                          }}
-                        >
-                          <span className="cap-media-thumb">
-                            <img src={o.src} alt="" loading="lazy" width={160} height={160} />
-                          </span>
-                          <span className="cap-media-name">{o.filename ?? o.id}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {list.data?.nextCursor ? <p className="cap-muted">Showing the first page. Search, or open the media library to page through the rest.</p> : null}
-            </div>
-          )}
+              />
+            ) : (
+              <p className="cap-muted" role="status">
+                Loading media...
+              </p>
+            )}
+          </div>
         </DialogBody>
         <DialogFooter align="between">
-          {picked ? (
-            <Button
-              onClick={() => {
-                setPicked(null);
-                setAlt("");
-              }}
-            >
-              Back to the library
-            </Button>
-          ) : (
-            <DialogClose part="cancel">Cancel</DialogClose>
-          )}
-          {picked ? (
-            <Button variant="primary" onClick={insert} disabledReason={alt.trim() === "" ? "Describe the image first." : undefined}>
-              Insert figure
-            </Button>
-          ) : null}
+          <DialogClose part="cancel">Cancel</DialogClose>
         </DialogFooter>
       </Dialog>
     </>

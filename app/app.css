@@ -49,6 +49,11 @@
 @import "capsomer/sortable-list.css";
 @import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
+@import "capsomer/chips.css";
+@import "capsomer/command-menu.css";
+@import "capsomer/shortcuts.css";
+@import "capsomer/content.css";
+@import "capsomer/media-library.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */
@@ -267,34 +272,6 @@
   }
 }
 
-/* The media library: the files, and beside them the details of the one that is open. */
-.app-media {
-  display: grid;
-  gap: var(--space-6);
-  align-items: start;
-  min-width: 0;
-}
-
-@media (min-width: 1100px) {
-  .app-media[data-detail] {
-    grid-template-columns: minmax(0, 1fr) 24rem;
-  }
-}
-
-/* Narrower, the open file's details come first, above the library, rather than after the whole grid. */
-@media (max-width: 1099px) {
-  .app-media[data-detail] > .cap-panel:last-child {
-    order: -1;
-    scroll-margin-block-start: calc(var(--top-h, 0px) + var(--space-4));
-  }
-}
-
-.app-detail {
-  display: grid;
-  gap: var(--space-5);
-  min-width: 0;
-}
-
 .app-facts {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -321,17 +298,6 @@
   & p {
     margin: 0;
   }
-}
-
-.app-list {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding-inline-start: 1.25em;
-}
-
-.app-more {
-  margin: var(--space-4) 0 0;
 }
 
 /* Social: the posts waiting on the Owner, and the account forms. */
@@ -676,126 +642,6 @@
   color: var(--muted);
 }
 
-/* "Insert from library": the picked image beside its alt text. */
-.app-pick-alt {
-  display: grid;
-  grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
-  gap: var(--space-5);
-  align-items: start;
-}
-
-.app-pick-thumb {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: var(--radius-m);
-}
-
-@media (max-width: 36rem) {
-  .app-pick-alt {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* The focal point (components/media/focus-picker.tsx): the picture with its point, and under it the
-   crops the site may cut around it, side by side at one height so their shapes compare. --focus-x and
-   --focus-y are set on .app-focus by the picker. */
-.app-focus {
-  --focus-x: 50%;
-  --focus-y: 50%;
-  display: grid;
-  gap: var(--space-3);
-}
-
-.app-focus-frame {
-  position: relative;
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-m);
-  background: var(--sunken);
-  cursor: crosshair;
-  overflow: hidden;
-
-  & img {
-    display: block;
-    width: 100%;
-    height: auto;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-}
-
-/* A ring in two tones, so it shows on a light picture and a dark one alike. */
-.app-focus-mark {
-  position: absolute;
-  inset-inline-start: var(--focus-x);
-  inset-block-start: var(--focus-y);
-  width: 1.5rem;
-  height: 1.5rem;
-  translate: -50% -50%;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px #000;
-  pointer-events: none;
-}
-
-.app-focus-previews {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  & li {
-    display: grid;
-    gap: var(--space-1);
-    font-size: var(--fs-detail);
-    color: var(--muted);
-  }
-
-  & img {
-    display: block;
-    height: 4rem;
-    width: auto;
-    object-fit: cover;
-    object-position: var(--focus-x) var(--focus-y);
-    border-radius: var(--radius-s);
-  }
-
-  & [data-ratio="1 / 1"] img {
-    aspect-ratio: 1 / 1;
-  }
-
-  & [data-ratio="16 / 9"] img {
-    aspect-ratio: 16 / 9;
-  }
-
-  & [data-ratio="4 / 5"] img {
-    aspect-ratio: 4 / 5;
-  }
-}
-
-.app-focus-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-/* The media detail's folded tools: the note after a section's name, and a tool under another. */
-.app-summary-note {
-  margin-inline-start: auto;
-  color: var(--muted);
-  font-size: var(--fs-detail);
-  font-weight: 400;
-}
-
 .app-tool {
   display: grid;
   gap: var(--space-3);
@@ -809,75 +655,6 @@
   & + & {
     padding-block-start: var(--space-4);
     border-block-start: 1px solid var(--line);
-  }
-}
-
-.app-tag-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  margin: calc(var(--space-2) * -1) 0 0;
-  font-size: var(--fs-detail);
-}
-
-.app-detail-end {
-  padding-block-start: var(--space-4);
-  border-block-start: 1px solid var(--line);
-
-  & > form:last-child:not(:first-child) {
-    margin-inline-start: auto;
-  }
-}
-
-/* The crop editor's picture: the width of the dialog at most, and short enough that the fields and the
-   buttons fit under it in a laptop's window. The pointer draws on it. */
-.app-crop-canvas {
-  display: block;
-  max-width: 100%;
-  max-height: min(24rem, 45dvh);
-  width: auto;
-  height: auto;
-  margin-inline: auto;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-m);
-  cursor: crosshair;
-  touch-action: none;
-}
-
-/* The shape, then the four numbers: one row where the dialog has room, else the shape across and the
-   numbers two by two. */
-.app-crop-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-
-  & > :first-child {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (min-width: 48rem) {
-  .app-crop-fields {
-    grid-template-columns: minmax(9rem, 1.6fr) repeat(4, minmax(0, 1fr));
-
-    & > :first-child {
-      grid-column: auto;
-    }
-  }
-}
-
-/* A dialog footer with more than one action beside Cancel: on a phone the footer stacks every button
-   full width (Capsomer's dialog), so the group gives way and its buttons stack with Cancel. */
-@media (max-width: 39.99rem) {
-  .app-dialog-actions {
-    display: contents;
-  }
-}
-
-@media (forced-colors: active) {
-  .app-focus-mark {
-    border-color: Highlight;
-    box-shadow: none;
   }
 }
 
@@ -1316,14 +1093,6 @@ img.ProseMirror-separator {
   outline-offset: 2px;
 }
 
-.app-uploaded {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-  margin: 0;
-}
-
 /* A dialog whose field already says why its button refuses (the schedule dialog): the button keeps
    its reason for a screen reader, and the footer does not say it a second time beside the button. */
 .app-reason-unseen .cap-btn-reason {
@@ -1334,11 +1103,6 @@ img.ProseMirror-separator {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-
-.app-upload .cap-media > .app-actions {
-  margin-block-start: var(--space-4);
-}
-
 /* A file's room (components/editor/room-*.tsx): each person takes one of Capsomer's eight series
    colors, the same on every screen, with its own text color for a name set on it. The carets, the
    avatars in the room bar and the selection share it. */
