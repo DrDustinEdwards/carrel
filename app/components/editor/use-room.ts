@@ -53,12 +53,15 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
 
   useEffect(() => {
     const doc = new Y.Doc();
-    const provider = new YProvider(window.location.host, path, doc, {
-      prefix: path,
-      protocol: window.location.protocol === "https:" ? "wss" : "ws",
-      // Another tab of the same person is another connection, so the room knows of both.
-      disableBc: true,
-    });
+    const provider = withoutUnload(
+      () =>
+        new YProvider(window.location.host, path, doc, {
+          prefix: path,
+          protocol: window.location.protocol === "https:" ? "wss" : "ws",
+          // Another tab of the same person is another connection, so the room knows of both.
+          disableBc: true,
+        }),
+    );
     setLive({ doc, provider });
     setSynced(false);
     let frame = 0;
@@ -105,7 +108,7 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
       cancelAnimationFrame(frame);
       for (const done of flushes.current.waiting.values()) done();
       flushes.current.waiting.clear();
-      provider.destroy();
+      withoutUnload(() => provider.destroy());
       doc.destroy();
     };
   }, [path, generation]);
@@ -139,3 +142,23 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
 
 /** A person's color in the room, the same on every screen: one of eight, set in app.css by `data-who`. */
 export const personSlot = (id: number) => Math.abs(id) % 8;
+
+/**
+ * Runs the provider's set up or tear down with its `unload` listener moved to `pagehide`: Carrel's
+ * Permissions-Policy forbids `unload` (it also spoils the back and forward cache). The listener tells
+ * the room this caret is gone; the room drops it when the socket closes in any case.
+ */
+function withoutUnload<T>(run: () => T): T {
+  type Listen = (type: string, listener: unknown, options?: unknown) => void;
+  const w = window as unknown as { addEventListener: Listen; removeEventListener: Listen };
+  const { addEventListener: add, removeEventListener: remove } = w;
+  const swap = (type: string) => (type === "unload" ? "pagehide" : type);
+  w.addEventListener = (type, ...rest) => add.call(w, swap(type), ...rest);
+  w.removeEventListener = (type, ...rest) => remove.call(w, swap(type), ...rest);
+  try {
+    return run();
+  } finally {
+    w.addEventListener = add;
+    w.removeEventListener = remove;
+  }
+}

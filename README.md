@@ -7,14 +7,14 @@ Current state is `carrel/core.md` in Capsid.
 - **The private shell:** a React Router Worker that admits a request only when Cloudflare Access has signed it and its email belongs to an active person in Carrel. It adds per-project roles and a health check that emails on a change of state.
 - **Sites through [site-api](https://github.com/DrDustinEdwards/site-api):**
   - the one view of the site's posts, with status and kind filters and FTS5 search;
-  - the site's CodeMirror editor in a prose layout, with autosave to D1;
+  - the formatted editor (Tiptap) and the site's CodeMirror Markdown editor in a prose layout, both live in the file's shared room, where everyone with a role on the project types at once (see Co-editing);
   - the site's own render in a sandboxed preview;
   - the search and sharing checks on a post as it is typed (`app/lib/seo-checks.ts`): a search title over Prelum's `SERP_TITLE_LIMIT` (60) or empty, a description missing, over `SERP_DESCRIPTION_LIMIT` (155) or under 50, an image in the body with no alt text, and no card image, beside the search result and link card the post will make (title, description, image URL, canonical URL). Each site's fields are one entry in `SOCIAL_FIELDS`. They flag and never hold a save or a publish, in the editor, on an AI draft's page and in `carrel_check_post_text`, `carrel_save_draft` and `carrel_get_checks`;
   - saving and publishing, by role;
   - a Content Security Policy on every page.
 - **Security headers:** every response on both hosts, redirects and refusals included, carries the portfolio's shared set from [site-runtime](https://github.com/DrDustinEdwards/site-runtime) (the OWASP Secure Headers Project's values: HSTS, framing refused, nosniff, Referrer-Policy, Permissions-Policy, COOP, CORP and the rest) and a Content-Security-Policy built from Carrel's own list, all in `workers/security-headers.ts`. Violations are reported to `/csp-report` on the AI door, the one host a browser reaches without Access (`workers/csp-report.ts`, which logs and stores nothing). `test/csp.test.ts` runs site-runtime's `checkSecurityHeaders` on rendered responses.
 - **Books in the private writing repository:**
-  - the book view, chapter view and a file editor for scenes, bible entries and outlines (the same editor, autosave to D1, Save commits to Git with the version it expects to replace);
+  - the book view, chapter view and a file editor for scenes, bible entries and outlines (the same editor and the same shared room; Save commits to Git with the version it expects to replace);
   - the checks on save: scene headers, continuity and timeline against the bible, world rules, the AI-habits lint and voice;
   - the authorship record, as a Markdown report;
   - export to ePub and Word, and a print page for PDF.
@@ -54,7 +54,7 @@ The tests never reach the network. Site tests run Carrel's code against site-api
 
 1. `npx wrangler d1 create carrel`, put the id in `wrangler.jsonc`, `npm run db:migrate:remote`, `npm run seed:owner -- <email> "<name>" --remote`.
 2. `npm run deploy` with no route: `workers_dev` and `preview_urls` are false, so nothing reaches the Worker yet.
-3. Turn on Access for the Worker (Workers & Pages, carrel, Access, All traffic) and `Get-Clipboard | npx wrangler secret put ACCESS_AUD`.
+3. Make a hostname Access application for `desk.dustinedwards.info` (not Worker-level Access, which refuses the WebSockets the co-editing rooms need: docs/coediting.md) and `Get-Clipboard | npx wrangler secret put ACCESS_AUD` with its AUD tag.
 4. Uncomment `routes` in `wrangler.jsonc` and deploy again to add `desk.dustinedwards.info`.
 5. From then on a merge to main deploys itself, migrations first: see `docs/auto-deploy.md`.
 
@@ -150,7 +150,7 @@ The AI door is its own hostname, `carrel-mcp.dustinedwards.info` (design decisio
 - **Named agent keys:** for an agent that cannot complete OAuth (Grok Build could not do CIMD as of 2026-09-07). One Worker secret per agent, and the secret's name is the agent: `AGENT_KEY_GROK` is `grok`. The agent sends it as `Authorization: Bearer <key>` on `/mcp`; it is compared in constant time over SHA-256 digests (`app/lib/agent-keys.server.ts`), and the name is never read from the request. The agent is the person row `agent:grok` in People (added in People under "Add an AI agent"), found again on every request, so disabling the row revokes the key at once. Its role is whatever People says (Editor on `dustinedwards.info` to start: read, save AI drafts, flag, preview); the key grants nothing, so `carrel_publish_item` refuses an agent with the Owner-only message, and a row marked Owner is refused as an agent. It is inert until a secret exists, and any other Authorization header (an OAuth token, a malformed one) goes to the OAuth path unchanged. Writes are credited to `agent:grok`, in the AI draft's client and person and in a flag's text, never to Dustin. Setting up one: generate the key into a file in your home folder without printing it, `Get-Content <file> -Raw | npx wrangler secret put AGENT_KEY_GROK`, add the agent and set its role in People, then point the agent at `https://carrel-mcp.dustinedwards.info/mcp` with that key as a bearer token (Grok Build: `bearer_token_file` in `~/.grok/config.toml`, or `grok mcp add --transport http carrel <url> --header "Authorization: Bearer <key>"`). To rotate, put the secret again; to revoke, delete the secret or disable the agent in People.
 - **Credit:** an AI session is credited by the client's CIMD name (for example "Claude Code") on every draft, flag and publish.
 - **No role logic in the MCP layer:** tools call the same functions as the buttons, and those refuse. `npm run check:mcp-roles` fails on a role test anywhere in `app/lib/mcp/`.
-- **Reachability:** `carrel-mcp.dustinedwards.info` has a hostname Access application with a Bypass policy, which Cloudflare applies before the Worker-level application; `carrel.dustinedwards.info` stays fully behind Worker-level Access.
+- **Reachability:** `carrel-mcp.dustinedwards.info` has a hostname Access application with a Bypass policy, and `desk.dustinedwards.info` has its own hostname application; `workers/gate.ts` checks the Access token on every Desk request either way.
 
 Every tool is named `carrel_<action>_<resource>` and carries all four annotation hints. `carrel_search_items` returns 50 posts to a page by default (`limit` up to 100), with `has_more` and an opaque `next_cursor` to pass back as `cursor`.
 
@@ -167,6 +167,16 @@ Every tool is named `carrel_<action>_<resource>` and carries all four annotation
 | `carrel_draft_social_post` | the Owner's own sessions | a post for the social queue, by event id or by account, project and item |
 
 A **named agent** is a person row `agent:<name>` that a key resolves to; it is neither Owner nor reviewer, and its role on each project is set in People like anyone's. A **reviewer** is a person row with `is_reviewer = 1` (another company's agent), signed in through the same door with its own email: it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor, and the project's Posts list shows a post that exists only as a draft (yours or an AI's, `test/waiting.test.ts`) and marks a post with AI drafts waiting; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
+
+## Co-editing
+
+Everyone with a role on a project edits a post or a book file at the same time, with no locks (Dustin's ruling of 2026-10-10, build step 10). How it works is [docs/coediting.md](docs/coediting.md); who may do what is under Who may do what.
+
+- **One room per file:** a Durable Object (`workers/doc-room.ts`, y-partyserver over Yjs) holds the working copy. Each person's changes reach the others as they type, and work typed offline is sent when the connection is back.
+- **Carets and presence:** each person's caret, selection and name in their own color, and who else is here above the text. Names come from the room, which knows who Access let in, never from the other browser.
+- **Suggesting:** an Editor or the Owner chooses Editing or Suggesting; a Reader only suggests. A suggestion carries who made it, when, and an optional revision round. The Suggestions panel accepts or rejects one, a round or all; the person who made one withdraws it. A save leaves out every pending suggestion.
+- **Comments:** threads on a passage, anchored so they stay put as the text changes; reply, edit, resolve, reopen and delete.
+- **Saves:** Save, Publish and Schedule send the room's text through site-api's `expectedVersion` check (Git's sha for a book file), and the revision is credited to the saver "with" everyone else who typed since the last save.
 
 ## Voice
 
@@ -237,7 +247,7 @@ Two separate accesses (design decision 6), and no `drive.readonly` anywhere:
 What it gives:
 
 - **Manuscripts** (`/manuscripts`, the Owner's): the shared folder and its subfolders, as metadata (name, type, dates, owners and last editor), refreshed by the cron so files added later appear. Search runs in Drive's own full-text search, so manuscript text never enters Carrel. Open goes to Google.
-- **Send to Docs** copies a post's body into a new Doc. The frontmatter stays in Carrel. **Import** brings the Doc back as a new working draft under that frontmatter, and is refused while a working draft exists.
+- **Send to Docs** copies a post's body into a new Doc. The frontmatter stays in Carrel. **Import** brings the Doc back into the post's room under that frontmatter, and is refused while the post has changes nobody has saved.
 - **Search Console** per page, 28 days of settled data, fetched at most daily, shown in the post's editor.
 - **Health:** the key's age (counted from the first time Carrel saw it; fails past 90 days), whether Google still takes it, and whether the `drive.file` grant still refreshes.
 
@@ -277,7 +287,10 @@ A privacy or terms page is an ordinary page on the site (item `page.privacy` or 
 | Action | Reader | Editor | Author | Owner |
 |---|---|---|---|---|
 | See the list, open a post, preview | yes | yes | yes | yes |
-| Autosave a working draft (private to the person) | | yes | yes | yes |
+| Type in a file's shared room (everyone in it sees the change at once) | | yes | yes | yes |
+| Comment, reply, and make or withdraw your own suggestions | yes | yes | yes | yes |
+| Accept or reject suggestions; resolve anyone's comment thread | | yes | yes | yes |
+| Delete someone else's comment | | | | yes |
 | Save a draft post to the site | | yes | yes | yes |
 | Save changes to a published or scheduled post | | | own posts | yes |
 | Publish, schedule, schedule an update to a live post, cancel it, return to draft, restore a live post's earlier text | | | own posts | yes |

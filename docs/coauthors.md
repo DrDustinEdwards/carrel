@@ -12,7 +12,7 @@ The allow list is every active person with a role on at least one project. It le
 
 Do these in order. Each step says who does it and where.
 
-1. **Dustin: create the rule group.** In the Cloudflare dashboard, go to **Zero Trust** > **Access controls** > **Rule groups** and add a group named exactly `carrel-people`. Give it one **Include** rule with the **Emails** selector and a coauthor's address (a group needs a rule; the first sync replaces it). Use only Emails rules in this group. Capsid refuses to write a group that has any other kind of include rule, because a sync would erase it.
+1. **Dustin: create the rule group.** In the Cloudflare dashboard, go to **Zero Trust** > **Access controls** > **Policies**, select the **Rule groups** tab, then **Add a group**, named exactly `carrel-people`. Give it one **Include** rule with the **Emails** selector and a coauthor's address (a group needs a rule; the first sync replaces it). Use only Emails rules in this group. Capsid refuses to write a group that has any other kind of include rule, because a sync would erase it.
 
 2. **The seat: pin the group in Capsid.** Capsid's migration `0040_access_sync_groups.sql` and the secret `CF_ACCESS_SYNC_TOKEN` must already be in place (capsid `docs/portal.md`, "The Access sync token"). Get the group's id from the List Access groups endpoint, `GET https://api.cloudflare.com/client/v4/accounts/{account_id}/access/groups`, where the group named `carrel-people` carries it as `id`. Then, in the capsid folder:
 
@@ -29,7 +29,7 @@ Do these in order. Each step says who does it and where.
 
    Check with the Capsid Admin tool `capsid_admin_manage_agents`, action `list`. The key already reports to Capsid's inbox, which needs `write` on `carrel` too, so usually only `tools` can be missing. When `tools` is a list without `/ops/access-sync`, call action `update_scopes` with the agent's `name` and `tools` set to the whole current list plus `"/ops/access-sync"`. `update_scopes` replaces each axis it names, so leaving out an entry already there (such as `/ops/inbox/report`) removes it. It is admin only, audit-logged, and needs a recent sign-in from an OAuth session (capsid `docs/auth.md`). A key without the scope gets a 403, which **People** shows as "Waiting for Cloudflare: Capsid answered 403: unauthorized: ...".
 
-4. **Dustin: let the group into Desk.** Desk (desk.dustinedwards.info) is guarded by the Worker-level Access application for the `carrel` Worker. The Worker's own **Access** tab (**Workers & Pages** > carrel > **Access**) offers only Cloudflare account membership, email address and email domain, so a rule group is added in Zero Trust. Go to **Zero Trust** > **Access controls** > **Applications**, find the Worker's application and select **Configure**, open **Policies**, and select **Configure** on its Allow policy. Since 2025-12 the one-click setup makes that a reusable policy, named `carrel - Production` by default, which you can also open from **Zero Trust** > **Access controls** > **Policies**. Add an **Include** rule with the **Rule group** selector and the value `carrel-people`, then **Save**. Keep the existing Include rule that admits you. Include rules are an OR, so the group adds coauthors and takes no one away.
+4. **Dustin: let the group into Desk.** Desk (desk.dustinedwards.info) is guarded by its hostname Access application (docs/coediting.md, "Before it works on Desk"), whose Allow policy is the reusable one the Worker's Access made, `carrel - Production`. Go to **Zero Trust** > **Access controls** > **Policies** and select **Configure** on that policy. Add an **Include** rule with the **Rule group** selector and the value `carrel-people`, then **Save**. Keep the existing Include rule that admits you. Include rules are an OR, so the group adds coauthors and takes no one away.
 
 5. **Dustin, if it is not on yet: one-time PIN.** A coauthor with no Cloudflare account signs in with a code Access emails them. Turn it on at **Zero Trust** > **Integrations** > **Identity providers** > **Add new identity provider** > **One-time PIN**.
 
@@ -42,12 +42,11 @@ Do these in order. Each step says who does it and where.
 
 ## Where the dashboard paths come from
 
-developers.cloudflare.com could not be fetched directly when this was written, so these pages were read through Cloudflare's documentation search on 2026-10-29:
+Read on 2026-10-29:
 
-- developers.cloudflare.com/workers/configuration/cloudflare-access/: "Protect one Worker", dashboard path **Workers & Pages** > your Worker > **Access**; the policy options (Cloudflare account, Email domain); advanced policy editing in Zero Trust after you create the application.
+- developers.cloudflare.com/cloudflare-one/access-controls/policies/groups/: **Zero Trust** > **Access controls** > **Policies**, the **Rule groups** tab, **Add a group**.
+- developers.cloudflare.com/workers/configuration/cloudflare-access/: Worker-level Access refuses WebSockets, so Desk uses a hostname application.
 - developers.cloudflare.com/changelog/post/2025-12-03-reusable-access-policies/: a production Worker gets its own reusable policy named `<worker-name> - Production`.
 - developers.cloudflare.com/cloudflare-one/access-controls/policies/mfa-requirements/ and .../policy-management/: **Zero Trust** > **Access controls** > **Applications** > **Configure** > **Policies**, and **Zero Trust** > **Access controls** > **Policies** > **Configure** > **Save**; an Include rule can admit the members of a rule group.
 - developers.cloudflare.com/cloudflare-one/access-controls/policies/common-policies/: the **Rule group** selector, and the List Access groups endpoint for a group's `id`.
 - developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/: the One-time PIN steps.
-
-Two things are not confirmed from Cloudflare's own text. The search did not return the rule groups page itself (developers.cloudflare.com/cloudflare-one/access-controls/policies/groups/), so the **Rule groups** menu name in step 1 is the one Capsid's migration 0040 uses. The button that adds a group was not confirmed either.

@@ -22,6 +22,7 @@
 @import "capsomer/switch.css";
 @import "capsomer/status.css";
 @import "capsomer/time.css";
+@import "capsomer/avatar.css";
 @import "capsomer/banner.css";
 @import "capsomer/message.css";
 @import "capsomer/empty.css";
@@ -1377,6 +1378,9 @@ img.ProseMirror-separator {
   display: inline-flex;
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--who);
+}
+.app-room-person + .app-room-person {
+  margin-inline-start: -4px;
 }
 
 .app-caret {

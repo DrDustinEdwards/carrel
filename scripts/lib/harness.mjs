@@ -24,7 +24,7 @@ const REFRESH = "how-the-index-refreshes";
 const BOOK = "paluxy-portal";
 
 /**
- * Puts back a post a screen typed into: waits out the autosave, then discards the draft, so the next
+ * Puts back a post a screen typed into: lets the typing reach the file's room, then discards it, so the next
  * size or theme opens the same text and not the draft the last one left.
  */
 async function discardDraft(/** @type {import("playwright").Page} */ page) {
@@ -228,7 +228,7 @@ export const SCREENS = [
   },
   { name: "media-empty-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash`, after: (page) => press(page, "button", /^Empty the trash/, "alertdialog") },
   { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media`, open: "media", after: (page) => press(page, "button", /^Delete/, "alertdialog") },
-  { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Discard my draft/, "alertdialog") },
+  { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Discard unsaved changes/, "alertdialog") },
   { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Schedule/, "dialog") },
   { name: "post-first-publish", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Publish$/, "alertdialog") },
   { name: "post-library", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Insert from library/, "dialog") },
@@ -460,6 +460,8 @@ export async function open(browser, origin, { viewer, theme, width, height }) {
     extraHTTPHeaders: { "x-harness-viewer": VIEWERS[viewer] },
     reducedMotion: "reduce",
   });
+  // A WebSocket (a file's room) carries no extra headers, so the viewer is named in a cookie too.
+  await context.addCookies([{ name: "harness-viewer", value: encodeURIComponent(VIEWERS[viewer]), url: origin }]);
   await context.route("https://site.test/**", (route) => {
     const url = route.request().url();
     return /\/media\//.test(url) ? route.fulfill({ status: 200, contentType: "image/svg+xml", body: picture(url) }) : route.fulfill({ status: 404, body: "" });
