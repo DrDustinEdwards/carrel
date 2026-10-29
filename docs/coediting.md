@@ -2,13 +2,11 @@
 
 Every post and book file has one shared working copy, and everyone with a role on the project edits it at the same time. There are no edit locks. This is build step 10 of Dustin's writing-tools ruling of 2026-10-10 (Capsid `carrel/rulings/writing-tools-2026-10-10.md`, coauthoring stages b and c).
 
-## Before it works on Desk: Access by hostname
+## Desk's Access: by hostname
 
-Cloudflare's Worker-level Access does not pass WebSockets: "WebSocket upgrade requests to a Worker protected by a worker-level Access policy will fail with a `403` error", and a Worker that uses them, Durable Objects included, should use a hostname-based Access application instead (developers.cloudflare.com/workers/configuration/cloudflare-access/, "WebSocket limitation", read 2026-10-29). Desk is behind Worker-level Access today, so the rooms cannot connect until Dustin moves it. Nothing in Carrel's own check changes: `workers/gate.ts` still verifies the Access token on every request, against `ACCESS_AUD`.
+Cloudflare's Worker-level Access does not pass WebSockets: "WebSocket upgrade requests to a Worker protected by a worker-level Access policy will fail with a `403` error", and a Worker that uses them, Durable Objects included, should use a hostname-based Access application instead (developers.cloudflare.com/workers/configuration/cloudflare-access/, "WebSocket limitation", read 2026-10-29). So since 2026-10-29 Desk is behind the self-hosted application `carrel-desk-login` on `desk.dustinedwards.info`, with the policy `carrel-admin`, as each site's `<site>-login` uses `<site>-admin`. The Worker-level application is gone. `ACCESS_AUD` holds the new application's AUD tag, and `workers/gate.ts` checks the Access token on every request against it.
 
-1. **Make the hostname application.** **Zero Trust** > **Access controls** > **Applications** > **Create new application** > **Self-hosted and private** > **Add public hostname**, domain `desk.dustinedwards.info`. Under **Access policies**, add the existing policy the Worker's Access made (named `carrel - Production`, after the Worker's name when Access was turned on), so the same people get in. Keep One-time PIN among its identity providers. Select **Create**.
-2. **Give Carrel its AUD.** Open the new application with **Configure**, copy the **Application Audience (AUD) Tag** from **Additional settings**, then go to **Workers & Pages** > carrel-desk > **Settings** > **Variables and Secrets**, select **Edit** on `ACCESS_AUD`, paste the tag as its value and select **Deploy**.
-3. **Turn off Worker-level Access.** **Workers & Pages** > carrel-desk > **Access**, and turn Access off there. Open Desk, sign in, open a post: the room bar says who is here instead of "Connecting".
+To set it up again: **Zero Trust** > **Access controls** > **Applications** > **Create new application** > **Self-hosted and private**, name `carrel-desk-login`, **Add public hostname** `desk.dustinedwards.info`, policy `carrel-admin`, One-time PIN kept, **Create**. Then copy the **Application Audience (AUD) Tag** from the application's **Additional settings** into **Workers & Pages** > carrel-desk > **Settings** > **Variables and Secrets** > `ACCESS_AUD`, and select **Deploy**.
 
 ## The room
 
