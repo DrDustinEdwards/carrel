@@ -60,7 +60,7 @@ describe("caption, focal point and replace", () => {
     expect(site.requests.filter((r) => r.startsWith("PUT"))).toEqual([]);
     const jpeg = new File([PNG], "new.jpg", { type: "image/jpeg" });
     expect(await post({ intent: "replace", id: file.id, version: file.version, file: jpeg }, "owner@test.invalid")).toMatchObject({ ok: false, message: expect.stringContaining("same type") });
-    expect(await post({ intent: "replace", id: file.id, version: file.version, file: png("new.png") }, "owner@test.invalid")).toMatchObject({ intent: "replace", ok: true, id: file.id });
+    expect(await post({ intent: "replace", id: file.id, version: file.version, file: png("new.png") }, "owner@test.invalid")).toMatchObject({ intent: "replace", ok: true, id: file.id, sizesNeedPurge: true });
     expect(await actions()).toEqual(["media-replace"]);
   });
 });

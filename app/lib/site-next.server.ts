@@ -24,8 +24,10 @@
 // - capabilities.mediaReplace: `PUT /media/:id/file` with the new bytes as the body, their type as
 //   Content-Type, and `filename`, `expectedVersion` and `changeId` as the query. The id and the
 //   address stay, so every post that uses the file shows the new one; alt, caption and tags stay; the
-//   focal point is cleared, since it named a place in the old picture. The site purges its cached
-//   copies (the original and every size) as part of the write. Answers the MediaItem.
+//   focal point is cleared, since it named a place in the old picture. Answers the MediaItem with
+//   `changeId` and `sizesNeedPurge`: true when the site's cache may still serve sizes made from the
+//   old bytes until they are purged or their cache lifetime runs out, false when none can be stale.
+//   Either way, a browser that already holds the old file keeps it until its own cache expires.
 // Each media write answers a MediaWriteResult and moves the file's version, like alt and tags.
 
 import { ContentDoc, ContentList, ErrorBody, MediaDetail, MediaItem, MediaList, MediaWriteResult, Meta, PREFIX, WriteResult } from "@dustinedwards/site-api";
@@ -50,6 +52,9 @@ const Extras = z.object({
     })
     .loose(),
 });
+
+// v0.10.0's replace answer beyond the MediaItem. A site that leaves it out may still serve old sizes.
+const ReplaceFields = z.object({ sizesNeedPurge: z.boolean() });
 
 const MediaFields = z.object({
   focus: z.string().max(20).nullable().optional(),
@@ -192,13 +197,14 @@ export async function replaceFile(
   mediaId: string,
   input: { bytes: Uint8Array<ArrayBuffer>; contentType: string; filename: string; expectedVersion: string; changeId: string },
   fetcher?: typeof fetch,
-): Promise<MediaNext> {
+): Promise<{ item: MediaNext; sizesNeedPurge: boolean }> {
   const raw = await caller(env, id, fetcher)(
     "PUT",
     `/media/${enc(mediaId)}/file${query({ filename: input.filename, expectedVersion: input.expectedVersion, changeId: input.changeId })}`,
     { bytes: input.bytes, contentType: input.contentType },
   );
-  return media(MediaItem.parse(raw), raw);
+  const extra = ReplaceFields.safeParse(raw);
+  return { item: media(MediaItem.parse(raw), raw), sizesNeedPurge: extra.success ? extra.data.sizesNeedPurge : true };
 }
 
 /**

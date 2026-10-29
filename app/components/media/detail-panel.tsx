@@ -4,7 +4,7 @@
 // buttons together at the end. A panel on the page, not a modal dialog, so each edit is a form that
 // posts and works without script.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Form, Link, useNavigate } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -20,6 +20,19 @@ import { CropEditor } from "./crop-editor";
 import { FocusPicker } from "./focus-picker";
 import { CROPPABLE, cropType, dims, size, type MediaUse } from "./format";
 
+/** What a replace says when it worked: the site's resized copies may lag until its cache clears. */
+function replacedWords(sizesNeedPurge: boolean | undefined): string {
+  return `Replaced. Every post that shows this file shows the new one.${sizesNeedPurge ? " Resized copies on the site may show the old picture until the site's cache clears." : ""}`;
+}
+
+/** The day a file was uploaded, in American style ("October 29, 2026"), the UTC day so the server and the browser agree. */
+function UploadedDay({ at }: { at: string }) {
+  const t = Date.parse(at);
+  if (!Number.isFinite(t)) return <>{at.slice(0, 10)}</>;
+  const d = new Date(t);
+  return <time dateTime={d.toISOString()}>{d.toLocaleDateString("en-US", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" })}</time>;
+}
+
 /** The focal point in a few words, beside its section's name while it is folded. */
 function focusWords(focus: string | null): string {
   const m = focus ? /^([\d.]+)x([\d.]+)$/.exec(focus) : null;
@@ -27,7 +40,7 @@ function focusWords(focus: string | null): string {
 }
 
 type Written =
-  | { intent: string; ok: true; id: string; recorded: boolean }
+  | { intent: string; ok: true; id: string; recorded: boolean; sizesNeedPurge?: boolean }
   | { intent: string; ok: false; id: string; message: string; conflict: boolean };
 
 type Props = {
@@ -59,6 +72,10 @@ type Props = {
 
 export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, canReplace, limits, endpoint, onChanged, written, refused, serverAsks, busy, pending, here, onAskDelete }: Props) {
   const navigate = useNavigate();
+  // A crop put in place of the file answers through its own fetcher, not the page's action.
+  const [cropped, setCropped] = useState<Written | null>(null);
+  useEffect(() => setCropped(null), [written]);
+  const shown = cropped ?? written;
   // Where the panel sits above the library (a phone, a narrow window: app.css), a file opened from
   // the grid further down brings its details into view.
   useEffect(() => {
@@ -95,7 +112,7 @@ export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, c
               {size(detail.bytes)}, {dims(detail.width, detail.height)}
             </dd>
             <dt>Uploaded</dt>
-            <dd>{detail.uploadedAt ? detail.uploadedAt.slice(0, 10) : "unknown"}</dd>
+            <dd>{detail.uploadedAt ? <UploadedDay at={detail.uploadedAt} /> : "unknown"}</dd>
             {!(offers.alt && writable && !inTrash) ? (
               <>
                 <dt>Alt text</dt>
@@ -116,21 +133,21 @@ export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, c
             ) : null}
           </dl>
 
-          {written && written.id === detail.id ? (
-            written.ok ? (
+          {shown && shown.id === detail.id ? (
+            shown.ok ? (
               <Banner tone="ok">
-                {written.intent === "trash"
+                {shown.intent === "trash"
                   ? "Moved to the trash."
-                  : written.intent === "restore"
+                  : shown.intent === "restore"
                     ? "Restored to the library."
-                    : written.intent === "replace"
-                      ? "Replaced. Every post that shows this file shows the new one."
+                    : shown.intent === "replace"
+                      ? replacedWords(shown.sizesNeedPurge)
                       : "Saved."}
-                {written.recorded ? "" : " The site has it, but Carrel could not save the authorship record."}
+                {shown.recorded ? "" : " The site has it, but Carrel could not save the authorship record."}
               </Banner>
             ) : (
-              <Alert tone={written.conflict ? "warn" : "crit"} title={written.conflict ? "The file changed" : "Not saved"}>
-                {written.message}
+              <Alert tone={shown.conflict ? "warn" : "crit"} title={shown.conflict ? "The file changed" : "Not saved"}>
+                {shown.message}
               </Alert>
             )
           ) : null}
@@ -208,9 +225,12 @@ export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, c
                         name={name}
                         endpoint={endpoint}
                         canReplace={replaceable}
-                        onSaved={(newId) => {
+                        onSaved={(newId, replaced) => {
                           if (newId) void navigate(here({ id: newId }), { preventScrollReset: true });
-                          else onChanged();
+                          else {
+                            if (replaced) setCropped({ intent: "replace", ok: true, id: detail.id, ...replaced });
+                            onChanged();
+                          }
                         }}
                       />
                       <p className="cap-muted app-note">Cut out part of the picture, as a new file{replaceable ? " or in place of this one" : ""}.</p>
@@ -227,7 +247,7 @@ export function MediaDetailPanel({ detail, site, offers, canUpload, canDelete, c
                         </label>
                         <p className="cap-field-help" id={`replace-help-${detail.id}`}>
                           A new {detail.contentType} file, up to {size(limits.maxBytes)}, under the same address: every post that shows this file shows the new one, and the old one is
-                          gone from the site. Alt text, caption and tags stay.
+                          gone from the site. Alt text, caption and tags stay. Readers who already loaded the old picture may keep seeing it until their browser's cache expires.
                         </p>
                         <input className="cap-input" id={`replace-${detail.id}`} type="file" name="file" accept={cropType(detail.contentType)} required aria-describedby={`replace-help-${detail.id}`} />
                       </div>

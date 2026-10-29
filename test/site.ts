@@ -181,7 +181,7 @@ export function nextSite(offers: { scheduledUpdates?: boolean; media?: boolean }
       if (file[2] === "/file") {
         const changeId = url.searchParams.get("changeId")!;
         media.set(id, { ...fields(id), focus: null });
-        return json({ ...item, bytes: (await request.arrayBuffer()).byteLength, ...fields(id), changeId });
+        return json({ ...item, bytes: (await request.arrayBuffer()).byteLength, ...fields(id), changeId, sizesNeedPurge: true });
       }
       const body = (await request.json()) as { focus?: string | null; caption?: string; changeId: string };
       media.set(id, { ...fields(id), ...(file[2] === "/focus" ? { focus: body.focus ?? null } : { caption: body.caption ?? "" }) });

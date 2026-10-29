@@ -74,8 +74,8 @@ type Props = {
   endpoint: string;
   /** The Owner on a site that replaces files may put the crop in place of the original. */
   canReplace: boolean;
-  /** A crop was saved as a new file (its id) or replaced this one (null). */
-  onSaved: (newId: string | null) => void;
+  /** A crop was saved as a new file (its id) or replaced this one (null, with what the replace answered). */
+  onSaved: (newId: string | null, replaced?: { recorded: boolean; sizesNeedPurge: boolean }) => void;
 };
 
 export function CropEditor({ id, version, name, endpoint, canReplace, onSaved }: Props) {
@@ -88,7 +88,7 @@ export function CropEditor({ id, version, name, endpoint, canReplace, onSaved }:
   const [saving, setSaving] = useState<"copy" | "replace" | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const drag = useRef<{ mode: "draw" | "move"; startX: number; startY: number; from: Rect } | null>(null);
-  const replacer = useFetcher<{ ok: boolean; message?: string }>();
+  const replacer = useFetcher<{ ok: boolean; message?: string; recorded?: boolean; sizesNeedPurge?: boolean }>();
 
   const width = image?.bitmap.width ?? 1;
   const height = image?.bitmap.height ?? 1;
@@ -141,7 +141,7 @@ export function CropEditor({ id, version, name, endpoint, canReplace, onSaved }:
     setSaving(null);
     if (replacer.data.ok) {
       close();
-      onSaved(null);
+      onSaved(null, { recorded: replacer.data.recorded !== false, sizesNeedPurge: replacer.data.sizesNeedPurge === true });
     } else setError(replacer.data.message ?? "The site did not replace the file.");
   }, [replacer.state, replacer.data]);
 

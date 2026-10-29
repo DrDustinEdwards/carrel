@@ -271,7 +271,7 @@ export function setMediaCaption(env: Env, project: SiteProject, actor: MediaActo
   );
 }
 
-export type ReplaceOutcome = { ok: true; item: MediaView; recorded: boolean } | { ok: false; conflict: boolean; message: string };
+export type ReplaceOutcome = { ok: true; item: MediaView; recorded: boolean; sizesNeedPurge: boolean } | { ok: false; conflict: boolean; message: string };
 
 /**
  * Replaces a file's bytes under the same id and address (site-api v0.10.0, `mediaReplace`): every post
@@ -302,8 +302,9 @@ export async function replaceMedia(
   }
   const changeId = crypto.randomUUID();
   let item: MediaNext;
+  let sizesNeedPurge: boolean;
   try {
-    item = await replaceFile(env, project.site, id, { bytes: new Uint8Array(await file.bytes()), contentType: type, filename: cleanName(file.name), expectedVersion, changeId }, fetcher);
+    ({ item, sizesNeedPurge } = await replaceFile(env, project.site, id, { bytes: new Uint8Array(await file.bytes()), contentType: type, filename: cleanName(file.name), expectedVersion, changeId }, fetcher));
   } catch (error) {
     const failed = writeFailure(error);
     return failed.ok ? { ok: false, conflict: false, message: "The site did not replace the file." } : failed;
@@ -315,7 +316,7 @@ export async function replaceMedia(
     recorded = false;
     console.error(JSON.stringify({ record: "failed", mediaId: id, action: "media-replace", changeId, error: String(error) }));
   }
-  return { ok: true, item: view(project, env, item), recorded };
+  return { ok: true, item: view(project, env, item), recorded, sizesNeedPurge };
 }
 
 /**

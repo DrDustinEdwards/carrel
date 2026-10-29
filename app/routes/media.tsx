@@ -147,7 +147,7 @@ type WriteIntent = "set-alt" | "set-tags" | "set-caption" | "set-focus" | "trash
 type Refusal = { id: string; message: string; usedBy: { type: string; id: string; title: string; detail: string }[] };
 
 type ActionResult =
-  | { intent: WriteIntent; ok: true; id: string; recorded: boolean }
+  | { intent: WriteIntent; ok: true; id: string; recorded: boolean; sizesNeedPurge?: boolean }
   | { intent: WriteIntent; ok: false; id: string; message: string; conflict: boolean }
   | { intent: "empty-trash"; needsConfirm: true }
   | { intent: "empty-trash"; ok: true; deleted: string[]; refused: Refusal[]; more: boolean; unrecorded: number }
@@ -190,12 +190,14 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
     const version = String(form.get("version") ?? "");
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0) return { intent, ok: false, id, message: "Choose the new file first.", conflict: false };
+    let sizesNeedPurge = false;
     const outcome = await writeOutcome(async (): Promise<WriteOutcome> => {
       if (!version) return { ok: false, conflict: false, message: "Carrel does not know this file's version, so nothing was sent. Reload the page and try again." };
       const replaced = await replaceMedia(env, project, { viewer }, id, { name: file.name, type: file.type, size: file.size, bytes: () => file.arrayBuffer() }, version);
+      if (replaced.ok) sizesNeedPurge = replaced.sizesNeedPurge;
       return replaced.ok ? { ok: true, version: replaced.item.version ?? "", recorded: replaced.recorded } : replaced;
     });
-    return outcome.ok ? { intent, ok: true, id, recorded: outcome.recorded } : { intent, ok: false, id, message: outcome.message, conflict: outcome.conflict };
+    return outcome.ok ? { intent, ok: true, id, recorded: outcome.recorded, sizesNeedPurge } : { intent, ok: false, id, message: outcome.message, conflict: outcome.conflict };
   }
   if (intent === "delete") {
     const project = await requireSiteProject(env.DB, viewer, params.project, "delete_media");
