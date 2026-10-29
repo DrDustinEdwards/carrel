@@ -27,6 +27,7 @@
 @import "capsomer/empty.css";
 @import "capsomer/panel.css";
 @import "capsomer/table.css";
+@import "capsomer/posts-list.css";
 @import "capsomer/row-list.css";
 @import "capsomer/disclosure.css";
 @import "capsomer/breadcrumb.css";
@@ -100,61 +101,29 @@
   margin-inline-start: var(--space-3);
 }
 
-/* A site's posts (routes/project.tsx): the title takes the spare width and wraps, its path on a quiet
-   line under it, so the status and the date fit beside it with no sideways scroll. On a phone each post
-   is a card (the table's reflow): the box and the title across the top, the rest under the title. */
-.app-posts .cap-table {
-  & .app-posts-title {
-    inline-size: 100%;
-    min-inline-size: 14rem;
-    white-space: normal;
-    overflow-wrap: anywhere;
-
-    & .cap-table-aside {
-      display: block;
-      margin-inline-start: 0;
-      font-weight: 400;
-    }
-  }
-  & .app-posts-status > .cap-pill + .cap-pill {
-    margin-inline-start: var(--space-2);
-  }
+/* A site's posts (routes/project.tsx) are laid out by Capsomer's posts list (its classes on Carrel's
+   table). A row's status can hold more than one pill (an update waiting, AI drafts): they sit apart,
+   each time in its pill's own color, and wrap on a phone's card. */
+.cap-posts-status > .cap-pill + .cap-pill {
+  margin-inline-start: var(--space-2);
 }
-
-.app-posts-kind-inline {
+.cap-posts-status .cap-time {
+  color: inherit;
+}
+/* The kind has its own column, and joins the path only on a phone's card. */
+.cap-posts-meta > .cap-posts-kind {
   display: none;
 }
 
-/* A time in a status pill reads in the pill's own color. */
-.app-posts-status .cap-time {
-  color: inherit;
-}
-
 @container cap-table (max-width: 639px) {
-  .app-posts.cap-table-wrap[data-reflow] > .cap-table > tbody > tr {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--space-2) var(--space-3);
-    padding: var(--space-3) var(--space-4);
-
-    & > .app-posts-check {
-      grid-column: 1;
-      grid-row: 1;
-    }
-    & > .app-posts-title {
-      grid-column: 2 / -1;
-      grid-row: 1;
-      min-inline-size: 0;
-    }
+  .cap-posts-wrap.cap-table-wrap[data-reflow] > .cap-posts-table > tbody > tr {
     & > .app-posts-kind {
       display: none;
     }
-    & .app-posts-kind-inline {
+    & .cap-posts-kind {
       display: inline;
     }
-    & > :is(.app-posts-status, .app-posts-updated) {
-      grid-column: 2 / -1;
-    }
-    & > .app-posts-status {
+    & > .cap-posts-status {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
@@ -163,26 +132,6 @@
         margin-inline-start: 0;
       }
     }
-    & > .app-posts-updated {
-      color: var(--muted);
-      font-size: var(--fs-detail);
-    }
-    /* The status says what it is; the date names itself on its own line. */
-    & > .app-posts-status::before {
-      content: none;
-    }
-    & > .app-posts-updated::before {
-      display: inline;
-      margin: 0 var(--space-2) 0 0;
-      font-size: inherit;
-      letter-spacing: 0;
-      text-transform: none;
-      font-weight: 400;
-    }
-  }
-  /* A reader has no boxes: the title starts the card. */
-  .app-posts.cap-table-wrap[data-reflow] > .cap-table:not(:has(.app-posts-check)) > tbody > tr > * {
-    grid-column: 1 / -1;
   }
 }
 
@@ -1364,12 +1313,6 @@ img.ProseMirror-separator {
 .ProseMirror-focused .ProseMirror-selectednode.app-src-inline {
   outline: var(--ring-width, 3px) solid var(--ring);
   outline-offset: 2px;
-}
-
-/* The upload queue (components/media/upload-queue.tsx). With script the queue lists each file, so the
-   drop zone's own list of what it took would say it twice. */
-.app-upload[data-live] .cap-drop-status {
-  display: none;
 }
 
 .app-uploaded {

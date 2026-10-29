@@ -7,7 +7,7 @@ import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
-import { ExactTime } from "~/components/exact-time";
+import { Time } from "capsomer/react/time";
 
 import { unifiedPatch } from "~/lib/patch";
 
@@ -48,7 +48,7 @@ export function SourcePanel({ view, historyPath, noun, restore }: { view: Extrac
       title={view.message || (noun === "revision" ? "Revision" : "Version")}
       src={
         <>
-          by {view.author}, <ExactTime at={view.at} />
+          by {view.author}, <Time at={view.at} format="exact" />
         </>
       }
       actions={

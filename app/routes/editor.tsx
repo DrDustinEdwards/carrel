@@ -1,7 +1,7 @@
 // The editor for one site item: the copied CodeMirror editor in a prose layout, autosave to D1 as
 // you type, the site's own render in a sandboxed preview, and the writes the viewer's role allows.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -11,8 +11,9 @@ import { Panel } from "capsomer/react/panel";
 import { PublishGate, type GateCheck, type GateSite } from "capsomer/react/publish-gate";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
+import { Time } from "capsomer/react/time";
+import { exact, parse } from "capsomer/behavior/time";
 
-import { ExactTime, useExactTime, useHydrated } from "~/components/exact-time";
 import { FlagsPanel } from "~/components/editor/flags-panel";
 import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
@@ -266,6 +267,12 @@ export default function EditorRoute({ loaderData }: Route.ComponentProps) {
   return <Editor key={`${loaderData.project.slug}/${loaderData.itemId}`} data={loaderData} />;
 }
 
+const noSubscribe = () => () => {};
+/** False on the server and in the render that hydrates, true after: a time in a string prop is in UTC until then, as Capsomer's Time draws one. */
+function useHydrated(): boolean {
+  return useSyncExternalStore(noSubscribe, () => true, () => false);
+}
+
 /** The time of day a draft was saved: in UTC with its zone until the page is live (the server knows no other), then the viewer's. */
 function savedClock(iso: string, hydrated: boolean): string {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: hydrated ? undefined : "UTC", timeZoneName: "short" });
@@ -273,8 +280,8 @@ function savedClock(iso: string, hydrated: boolean): string {
 
 function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [source, setSource] = useState(data.source);
-  const exactTime = useExactTime();
   const hydrated = useHydrated();
+  const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
   const [savedSource, setSavedSource] = useState(data.source);
   const [savedAt, setSavedAt] = useState<string | null>(data.draftAt);
   const [layout, chooseLayout] = useEditorLayout();
@@ -466,7 +473,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         ) : null}
         {data.aiPublished && data.status === "published" ? (
           <Banner tone="info">
-            {data.aiPublished.line} <ExactTime at={data.aiPublished.at} />
+            {data.aiPublished.line} <Time at={data.aiPublished.at} format="exact" />
           </Banner>
         ) : null}
         {data.canEdit && live && !data.canPublish ? (
@@ -477,7 +484,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             tone="info"
             title={
               <>
-                An update is scheduled for <ExactTime at={data.pendingUpdate.publishAt} />
+                An update is scheduled for <Time at={data.pendingUpdate.publishAt} format="exact" />
               </>
             }
             actions={
@@ -537,7 +544,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 </p>
                 {data.pendingUpdate && data.status === "published" ? (
                   <p className="app-note">
-                    An update waits to go live <ExactTime at={data.pendingUpdate.publishAt} />.
+                    An update waits to go live <Time at={data.pendingUpdate.publishAt} format="exact" />.
                   </p>
                 ) : null}
                 {failure ? <Alert tone="crit">{failure.message}</Alert> : null}

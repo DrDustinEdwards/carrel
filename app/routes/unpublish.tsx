@@ -6,7 +6,7 @@ import { Form, Link, useNavigation } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Pill } from "capsomer/react/status";
-import { ExactTime } from "~/components/exact-time";
+import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
 import { RouterLink } from "~/components/frame";
@@ -72,7 +72,7 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
       />
       {publishedBy ? (
         <Banner tone="info">
-          {publishedBy.line} <ExactTime at={publishedBy.at} />
+          {publishedBy.line} <Time at={publishedBy.at} format="exact" />
         </Banner>
       ) : null}
       {actionData ? actionData.ok ? <Banner tone="ok">{actionData.message}</Banner> : <Alert tone="crit">{actionData.message}</Alert> : null}

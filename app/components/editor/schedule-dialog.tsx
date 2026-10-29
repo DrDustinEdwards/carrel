@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "capsomer/react/button";
 import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Field } from "capsomer/react/field";
-import { ExactTime } from "~/components/exact-time";
+import { Time } from "capsomer/react/time";
 
 type Props = {
   open: boolean;
@@ -52,7 +52,7 @@ export function ScheduleDialog({ open, noun, update = false, current = null, ret
         </Field>
         {at && !past && !Number.isNaN(at.getTime()) ? (
           <p className="cap-muted app-note">
-            Goes live <ExactTime at={at.toISOString()} />.
+            Goes live <Time at={at} format="exact" />.
           </p>
         ) : null}
       </DialogBody>

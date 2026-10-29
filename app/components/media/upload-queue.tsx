@@ -117,10 +117,9 @@ export function UploadQueue({ endpoint, accept, maxBytes, hint, pending, onUploa
   const inFlight = shown.length - failed;
 
   return (
-    // With script the queue below lists each file, so the drop zone's own list of what it took is
-    // hidden (data-live, app.css); without script that list is the only one, and stays.
-    <Form method="post" encType="multipart/form-data" className="app-form app-upload" data-live={live ? "" : undefined}>
-      <DropZone name="file" accept={accept} maxBytes={maxBytes} maxFiles={MAX_QUEUE} multiple paste hint={hint} onAccepted={live ? add : undefined} />
+    // The queue below lists each file, so the drop zone does not list what it took a second time.
+    <Form method="post" encType="multipart/form-data" className="app-form app-upload">
+      <DropZone name="file" accept={accept} maxBytes={maxBytes} maxFiles={MAX_QUEUE} multiple paste hint={hint} acceptedList={false} onAccepted={live ? add : undefined} />
       <Field label="Alt text" help="What the image shows, for someone who cannot see it. Used for a single file; with several, describe each one in its details after it uploads.">
         <input className="cap-input" type="text" name="alt" autoComplete="off" value={alt} onChange={(event) => setAlt(event.target.value)} />
       </Field>

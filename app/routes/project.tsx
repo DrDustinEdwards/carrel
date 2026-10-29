@@ -217,15 +217,15 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
             {filtered ? "Nothing on this site fits the search and filters above." : "Refresh from the site to read what it has."}
           </Empty>
         ) : (
-          <div className="cap-table-wrap app-posts" data-reflow="" role="region" aria-labelledby="posts-caption" tabIndex={0}>
-            <table className="cap-table">
+          <div className="cap-table-wrap cap-posts-wrap" data-reflow="" role="region" aria-labelledby="posts-caption" tabIndex={0}>
+            <table className="cap-table cap-posts-table">
               <caption id="posts-caption" className="cap-sr-only">
                 {filters.kind ? kindPlural(filters.kind) : kinds.length > 1 ? "Everything" : "Posts"} on {project.site}
               </caption>
               <thead>
                 <tr>
                   {canEdit ? (
-                    <th scope="col">
+                    <th scope="col" className="cap-posts-check">
                       <span className="cap-sr-only">Select</span>
                     </th>
                   ) : null}
@@ -239,7 +239,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                 {items.map((item) => (
                   <tr key={item.itemId} data-state={selected.includes(item.itemId) ? "selected" : undefined}>
                     {canEdit ? (
-                      <td className="app-posts-check">
+                      <td className="cap-posts-check">
                         <label className="cap-check">
                           <input
                             type="checkbox"
@@ -254,14 +254,14 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                         </label>
                       </td>
                     ) : null}
-                    <th scope="row" className="app-posts-title">
+                    <th scope="row" className="cap-posts-title">
                       <Link className="cap-table-open" to={`e/${encodeURIComponent(item.itemId)}`}>
                         {item.title || item.itemId}
                       </Link>
-                      <span className="cap-table-aside">
-                        {item.path ?? item.itemId}
+                      <span className="cap-posts-meta">
+                        <span className="cap-posts-path">{item.path ?? item.itemId}</span>
                         {/* The kind joins the path on a phone's card, where its column is not drawn. */}
-                        {kinds.length > 1 ? <span className="app-posts-kind-inline"> · {item.kind}</span> : null}
+                        {kinds.length > 1 ? <span className="cap-posts-kind">{item.kind}</span> : null}
                       </span>
                     </th>
                     {kinds.length > 1 ? (
@@ -270,7 +270,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                       </td>
                     ) : null}
                     {/* A time in a row is relative ("in 5 days"), as Capsomer's Time and posts list say it; the editor gives the exact time. */}
-                    <td className="app-posts-status" data-label="Status">
+                    <td className="cap-posts-status" data-label="Status">
                       {item.status === "published" ? (
                         <>
                           <Pill tone="ok">Published</Pill>
@@ -293,7 +293,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
                         </Pill>
                       ) : null}
                     </td>
-                    <td className="app-posts-updated" data-label="Updated">
+                    <td className="cap-posts-updated" data-label="Updated">
                       {item.updatedAt ? <Time at={item.updatedAt} /> : null}
                     </td>
                   </tr>
