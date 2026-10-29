@@ -12,7 +12,6 @@ const PAGE_CSP = buildContentSecurityPolicy({
   sources: { img: ["data:"], connect: ["https://cloudflareinsights.com"] },
   styleAttributesInline: true,
   cloudflareWebAnalytics: true,
-  extraDirectives: ["style-src-elem 'self'"],
   reportUri: REPORT_PATH,
   reportTo: "csp-endpoint",
 }).value;
