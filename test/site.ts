@@ -128,70 +128,15 @@ export async function refusal(promise: Promise<unknown>): Promise<number> {
 }
 
 /**
- * The fake site with what site-api v0.10.0 adds (app/lib/site-next.server.ts holds the contract), over
- * the same reference adapter: a live post's scheduled update, and a file's focal point, caption and
- * replaced bytes. Each capability can be left out, as a site that has not shipped it.
+ * The fake site with what site-api v0.10.0 adds, from its reference adapter: a live post's scheduled
+ * update, and a file's focal point, caption and replaced bytes. Each can be left out, as a site that
+ * has not shipped it (without `media`, a file takes no writes at all). Its replace says sizes may be
+ * stale, as a site with an image cache (dustinedwards.info) does.
  */
-export function nextSite(offers: { scheduledUpdates?: boolean; media?: boolean } = {}): {
-  adapter: SiteAdapter;
-  fetch: typeof globalThis.fetch;
-  requests: string[];
-  scheduled: Map<string, { publishAt: string; changeId: string; source: string }>;
-  media: Map<string, { focus: string | null; caption: string }>;
-} {
-  const base = fakeSite<SiteAdapter>();
-  const scheduled = new Map<string, { publishAt: string; changeId: string; source: string }>();
-  const media = new Map<string, { focus: string | null; caption: string }>();
-  const fields = (id: string) => media.get(id) ?? { focus: null, caption: "" };
-  const json = (body: unknown, status = 200) => Response.json(body, { status });
-  const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const request = new Request(input, init);
-    const url = new URL(request.url);
-    const path = url.pathname.replace("/api/carrel/v1", "");
-    const content = /^\/content\/([^/]+)(\/schedule)?$/.exec(path);
-    const file = /^\/media\/(.+?)(\/focus|\/caption|\/file)?$/.exec(path);
-    if (path === "/meta") {
-      const meta = (await (await base.fetch(request)).json()) as { capabilities: Record<string, unknown> };
-      Object.assign(meta.capabilities, offers.scheduledUpdates ? { scheduledUpdates: true } : {}, offers.media ? { mediaFocus: true, mediaCaption: true, mediaReplace: true } : {});
-      return json(meta);
-    }
-    if (offers.scheduledUpdates && content) {
-      const id = decodeURIComponent(content[1]!);
-      const doc = await base.adapter.content.get(id);
-      if (!content[2] && request.method === "GET") return doc ? json({ ...doc, scheduledUpdate: scheduled.has(id) ? { publishAt: scheduled.get(id)!.publishAt, changeId: scheduled.get(id)!.changeId } : null }) : base.fetch(request);
-      if (content[2] && request.method === "GET") return scheduled.has(id) ? json({ id, ...scheduled.get(id)!, scheduledAt: "2026-10-29T00:00:00.000Z" }) : json({ error: "not-found", message: "Nothing is scheduled." }, 404);
-      if (content[2] && request.method === "DELETE") {
-        if (!scheduled.delete(id)) return json({ error: "refused", message: "Nothing is scheduled." }, 422);
-        return json({ id, version: doc!.version, status: doc!.status, changeId: url.searchParams.get("changeId"), scheduledUpdate: null });
-      }
-    }
-    if (offers.scheduledUpdates && /^\/content\/[^/]+\/schedule$/.test(path) && request.method === "POST") {
-      const id = decodeURIComponent(path.split("/")[2]!);
-      const doc = await base.adapter.content.get(id);
-      if (doc?.status === "published") {
-        const body = (await request.json()) as { publishAt: string; changeId: string; source?: string; expectedVersion: string };
-        scheduled.set(id, { publishAt: body.publishAt, changeId: body.changeId, source: body.source ?? doc.source });
-        return json({ id, version: doc.version, status: "published", changeId: body.changeId, scheduledUpdate: { publishAt: body.publishAt, changeId: body.changeId } });
-      }
-    }
-    if (offers.media && file && request.method === "PUT" && file[2]) {
-      const id = decodeURIComponent(file[1]!);
-      const item = await base.adapter.media!.get(id);
-      if (!item) return json({ error: "not-found", message: "No such file." }, 404);
-      if (file[2] === "/file") {
-        const changeId = url.searchParams.get("changeId")!;
-        media.set(id, { ...fields(id), focus: null });
-        return json({ ...item, bytes: (await request.arrayBuffer()).byteLength, ...fields(id), changeId, sizesNeedPurge: true });
-      }
-      const body = (await request.json()) as { focus?: string | null; caption?: string; changeId: string };
-      media.set(id, { ...fields(id), ...(file[2] === "/focus" ? { focus: body.focus ?? null } : { caption: body.caption ?? "" }) });
-      return json({ id, version: item.version, changeId: body.changeId });
-    }
-    if (offers.media && file && request.method === "GET" && !file[2]) {
-      const detail = (await (await base.fetch(request)).json()) as { id: string };
-      return json({ ...detail, ...fields(decodeURIComponent(file[1]!)) });
-    }
-    return base.fetch(request);
-  }) as typeof globalThis.fetch;
-  return { ...base, fetch, scheduled, media };
+export function nextSite(offers: { scheduledUpdates?: boolean; media?: boolean } = {}): ReturnType<typeof fakeSite<ReturnType<typeof memoryAdapter>>> {
+  const adapter = memoryAdapter({ schedules: offers.scheduledUpdates === true, mediaWrites: offers.media === true });
+  const media = adapter.media!;
+  const replace = media.replace?.bind(media);
+  if (replace) media.replace = async (id, input) => ({ ...(await replace(id, input)), sizesNeedPurge: true });
+  return fakeSite(adapter);
 }

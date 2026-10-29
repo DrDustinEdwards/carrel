@@ -11,10 +11,11 @@
 // The writes (site-api v0.4.0) are each optional per site: the site's meta says which it offers
 // (`mediaAlt`, `mediaTags`, `mediaTrash`), and the screens hide what it does not. A 501 means the same.
 // The focal point, the caption and replacing a file are site-api v0.10.0 (`mediaFocus`, `mediaCaption`,
-// `mediaReplace`), called through site-next.server.ts until the package's client carries them.
+// `mediaReplace`), through the package's client like the rest.
 
 import type { MediaBulkInput, MediaDetail, MediaItem, MediaList, MediaUploadLimits, MediaUse } from "@dustinedwards/site-api";
 import { SiteApiError } from "@dustinedwards/site-api/client";
+import { focusOf } from "@dustinedwards/site-runtime/image";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changes } from "~/db/schema";
@@ -22,15 +23,17 @@ import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, type Action } from "~/lib/roles";
 import { CROPPABLE, cropType } from "~/components/media/format";
-import { focusValue, getMediaNext, listMediaNext, readMeta, replaceFile, setCaption, setFocus, type MediaNext } from "~/lib/site-next.server";
 import { absoluteMediaUrl, siteClient, siteConnection } from "~/lib/sites.server";
 
 function requireCan(project: SiteProject, action: Action) {
   if (!can(project.role, action)) throw new Response("Forbidden", { status: 403 });
 }
 
-/** A file as Carrel's screens show it: the site's item, plus the absolute address a browser loads. */
-export type MediaView = MediaNext & { src: string };
+/**
+ * A file as Carrel's screens show it: the site's item, its focal point and caption (null and "" on a
+ * site that does not keep them), plus the absolute address a browser loads.
+ */
+export type MediaView = MediaItem & { focus: string | null; caption: string; src: string };
 
 /** Who did it: the person, and the AI client when it came through the AI door (credited in the record). */
 export type MediaActor = { viewer: Viewer; client?: string };
@@ -62,10 +65,22 @@ async function record(
   });
 }
 
-function view<T extends MediaItem>(project: SiteProject, env: Env, item: T & Partial<Pick<MediaNext, "focus" | "caption">>): T & MediaView {
+function view<T extends MediaItem>(project: SiteProject, env: Env, item: T): T & MediaView {
   const connection = siteConnection(env, project.site);
   const origin = connection.state === "connected" ? connection.origin : "";
-  return { ...item, focus: item.focus ?? null, caption: item.caption ?? "", src: origin ? absoluteMediaUrl(origin, item.url) : item.url };
+  // A focal point the site's own image route would not take (site-runtime ./image) is shown as none.
+  return { ...item, focus: focusOf(item.focus), caption: item.caption ?? "", src: origin ? absoluteMediaUrl(origin, item.url) : item.url };
+}
+
+/**
+ * A focal point as the site stores it, from a point on the picture (each 0 to 1 from the top left),
+ * clamped and rounded to three decimals, in the form site-runtime's ./image reads (`focusOf`). null
+ * when either is not a number.
+ */
+function focusValue(x: number, y: number): string | null {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const part = (n: number) => String(Math.round(Math.min(1, Math.max(0, n)) * 1000) / 1000);
+  return focusOf(`${part(x)}x${part(y)}`);
 }
 
 /** Which writes the site offers beyond upload and delete (site-api v0.4.0 and v0.10.0); a site lacking one never sees its screen. */
@@ -76,8 +91,7 @@ export const NO_MEDIA_OFFERS: MediaOffers = { alt: false, tags: false, trash: fa
 /** What the site accepts and which writes it offers, from its meta. null when the site offers no media (a v0.1.0 site). */
 export async function mediaMeta(env: Env, project: SiteProject, fetcher?: typeof fetch): Promise<{ limits: MediaUploadLimits; offers: MediaOffers } | null> {
   requireCan(project, "read");
-  const { meta, extras } = await readMeta(env, project.site, fetcher);
-  const { capabilities } = meta;
+  const { capabilities } = await siteClient(env, project.site, fetcher).meta();
   if (!capabilities.media || !capabilities.mediaUpload) return null;
   return {
     limits: capabilities.mediaUpload,
@@ -85,9 +99,9 @@ export async function mediaMeta(env: Env, project: SiteProject, fetcher?: typeof
       alt: capabilities.mediaAlt === true,
       tags: capabilities.mediaTags === true,
       trash: capabilities.mediaTrash === true,
-      focus: extras.mediaFocus,
-      caption: extras.mediaCaption,
-      replace: extras.mediaReplace,
+      focus: capabilities.mediaFocus === true,
+      caption: capabilities.mediaCaption === true,
+      replace: capabilities.mediaReplace === true,
     },
   };
 }
@@ -113,7 +127,7 @@ export async function listMedia(
   fetcher?: typeof fetch,
 ): Promise<{ items: MediaView[]; nextCursor: MediaList["nextCursor"] }> {
   requireCan(project, "read");
-  const list = await listMediaNext(env, project.site, query, fetcher);
+  const list = await siteClient(env, project.site, fetcher).media.list(query);
   return { items: list.items.map((i) => view(project, env, i)), nextCursor: list.nextCursor };
 }
 
@@ -121,7 +135,7 @@ export async function listMedia(
 export async function mediaDetail(env: Env, project: SiteProject, id: string, fetcher?: typeof fetch): Promise<(MediaDetail & MediaView) | null> {
   requireCan(project, "read");
   try {
-    return view(project, env, await getMediaNext(env, project.site, id, fetcher));
+    return view(project, env, await siteClient(env, project.site, fetcher).media.get(id));
   } catch (error) {
     if (error instanceof SiteApiError && (error.status === 404 || error.status === 400)) return null;
     throw error;
@@ -261,13 +275,13 @@ export function restoreMedia(env: Env, project: SiteProject, actor: MediaActor, 
 export function setMediaFocus(env: Env, project: SiteProject, actor: MediaActor, id: string, point: { x: number; y: number } | null, expectedVersion: string, fetcher?: typeof fetch) {
   const focus = point ? focusValue(point.x, point.y) : null;
   if (point && focus === null) return Promise.resolve<WriteOutcome>({ ok: false, conflict: false, message: "That is not a point on the picture." });
-  return writeOne(env, project, actor, "media-focus", id, expectedVersion, (changeId) => setFocus(env, project.site, id, { focus, expectedVersion, changeId }, fetcher));
+  return writeOne(env, project, actor, "media-focus", id, expectedVersion, (changeId) => siteClient(env, project.site, fetcher).media.setFocus(id, { focus, expectedVersion, changeId }));
 }
 
 /** The caption a figure shows under the file, beside its alt text (site-api v0.10.0, `mediaCaption`). */
 export function setMediaCaption(env: Env, project: SiteProject, actor: MediaActor, id: string, caption: string, expectedVersion: string, fetcher?: typeof fetch) {
   return writeOne(env, project, actor, "media-caption", id, expectedVersion, (changeId) =>
-    setCaption(env, project.site, id, { caption: caption.trim().slice(0, 2000), expectedVersion, changeId }, fetcher),
+    siteClient(env, project.site, fetcher).media.setCaption(id, { caption: caption.trim().slice(0, 2000), expectedVersion, changeId }),
   );
 }
 
@@ -301,10 +315,10 @@ export async function replaceMedia(
     return { ok: false, conflict: false, message: `${file.name} is ${type}, and this file is ${current.contentType}. A replacement keeps the file's address, so it must be the same type; upload it as a new file instead.` };
   }
   const changeId = crypto.randomUUID();
-  let item: MediaNext;
+  let item: MediaItem;
   let sizesNeedPurge: boolean;
   try {
-    ({ item, sizesNeedPurge } = await replaceFile(env, project.site, id, { bytes: new Uint8Array(await file.bytes()), contentType: type, filename: cleanName(file.name), expectedVersion, changeId }, fetcher));
+    ({ sizesNeedPurge, ...item } = await siteClient(env, project.site, fetcher).media.replace(id, { bytes: new Uint8Array(await file.bytes()), contentType: type, filename: cleanName(file.name), expectedVersion, changeId }));
   } catch (error) {
     const failed = writeFailure(error);
     return failed.ok ? { ok: false, conflict: false, message: "The site did not replace the file." } : failed;

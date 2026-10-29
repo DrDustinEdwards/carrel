@@ -44,12 +44,14 @@ const png = (name: string) => new File([PNG], name, { type: "image/png" });
 describe("caption, focal point and replace", () => {
   it("saves an Editor's caption and focal point as the site keeps them, and records each", async () => {
     const file = await seedFile();
-    expect(await post({ intent: "set-caption", id: file.id, version: file.version, caption: " The river at dusk " }, "editor@test.invalid")).toMatchObject({ ok: true });
-    expect(await post({ intent: "set-focus", id: file.id, version: file.version, x: "25", y: "50" }, "editor@test.invalid")).toMatchObject({ ok: true });
-    expect(site.media.get(file.id)).toEqual({ caption: "The river at dusk", focus: "0.25x0.5" });
-    expect(await post({ intent: "set-focus", id: file.id, version: file.version, x: "", y: "50" }, "editor@test.invalid")).toMatchObject({ ok: false, message: "That is not a point on the picture." });
-    expect(await post({ intent: "set-focus", id: file.id, version: file.version, clear: "yes" }, "editor@test.invalid")).toMatchObject({ ok: true });
-    expect(site.media.get(file.id)?.focus).toBeNull();
+    // Each write moves the file's version, so each sends the one the site holds now.
+    const held = () => site.adapter.mediaStore.get(file.id)!.item.version!;
+    expect(await post({ intent: "set-caption", id: file.id, version: held(), caption: " The river at dusk " }, "editor@test.invalid")).toMatchObject({ ok: true });
+    expect(await post({ intent: "set-focus", id: file.id, version: held(), x: "25", y: "50" }, "editor@test.invalid")).toMatchObject({ ok: true });
+    expect(site.adapter.mediaStore.get(file.id)?.item).toMatchObject({ caption: "The river at dusk", focus: "0.25x0.5" });
+    expect(await post({ intent: "set-focus", id: file.id, version: held(), x: "", y: "50" }, "editor@test.invalid")).toMatchObject({ ok: false, message: "That is not a point on the picture." });
+    expect(await post({ intent: "set-focus", id: file.id, version: held(), clear: "yes" }, "editor@test.invalid")).toMatchObject({ ok: true });
+    expect(site.adapter.mediaStore.get(file.id)?.item.focus).toBeNull();
     expect(await actions()).toEqual(["media-caption", "media-focus", "media-focus"]);
   });
 

@@ -240,7 +240,7 @@ describe("the page's loader", () => {
         tagInvalid: boolean;
       };
     const library = await load("");
-    expect(library.offers).toEqual({ alt: true, tags: true, trash: true, focus: false, caption: false, replace: false });
+    expect(library.offers).toEqual({ alt: true, tags: true, trash: true, focus: true, caption: true, replace: true });
     expect(library.items.map((i) => i.id)).toEqual([a.id]);
     const trash = await load("?view=trash");
     expect(trash).toMatchObject({ view: "trash", items: [{ id: b.id }], trashFiles: [{ id: b.id }] });

@@ -43,8 +43,7 @@ import { PageHead } from "capsomer/react/page-head";
 import { can } from "~/lib/roles";
 import { seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
-import { getScheduledUpdate, readMeta } from "~/lib/site-next.server";
-import { siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
+import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
 
 import type { Route } from "./+types/editor";
@@ -105,14 +104,17 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   // The text of an update waiting on the live post, so its Author or the Owner can open it again.
   let pendingUpdate: { publishAt: string; source: string } | null = null;
   if (doc?.scheduledUpdate) {
-    const waiting = await getScheduledUpdate(env, project.site, itemId).catch(() => null);
+    // 404 when none waits after all, 501 on a site without the capability: either way no text.
+    const waiting = await Promise.resolve()
+      .then(() => siteClient(env, project.site).scheduledUpdate(itemId))
+      .catch(() => null);
     pendingUpdate = { publishAt: doc.scheduledUpdate.publishAt, source: waiting?.source ?? "" };
   }
   if ((can(project.role, "edit") || canPublish) && !siteError) {
     try {
-      const { meta, extras } = await readMeta(env, project.site);
-      mediaAccept = can(project.role, "edit") && meta.capabilities.media ? (meta.capabilities.mediaUpload?.types.join(",") ?? null) : null;
-      scheduledUpdates = extras.scheduledUpdates;
+      const { capabilities } = await siteClient(env, project.site).meta();
+      mediaAccept = can(project.role, "edit") && capabilities.media ? (capabilities.mediaUpload?.types.join(",") ?? null) : null;
+      scheduledUpdates = capabilities.scheduledUpdates === true;
     } catch {
       mediaAccept = null;
     }

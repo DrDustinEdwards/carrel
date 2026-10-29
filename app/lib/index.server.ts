@@ -6,7 +6,6 @@ import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { siteItems } from "~/db/schema";
-import { listContent } from "~/lib/site-next.server";
 import { siteClient, type SiteId } from "~/lib/sites.server";
 
 /**
@@ -45,10 +44,7 @@ export type IndexedItem = {
 
 type ProjectRef = { id: number; site: SiteId };
 
-/** A summary or a doc, with the update waiting on it where the site reports one (site-next.server.ts). */
-type Summarized = ContentSummary & { scheduledUpdate?: { publishAt: string } | null };
-
-function summaryRow(projectId: number, item: Summarized, syncedAt: string) {
+function summaryRow(projectId: number, item: ContentSummary, syncedAt: string) {
   return {
     projectId,
     itemId: item.id,
@@ -74,7 +70,7 @@ function writeBody(db: D1Database, projectId: number, itemId: string, title: str
 }
 
 /** Indexes one item from a document already in hand, as after a save: no extra request to the site. */
-export async function indexDoc(db: D1Database, projectId: number, doc: ContentDoc & Pick<Summarized, "scheduledUpdate">, now = new Date()): Promise<void> {
+export async function indexDoc(db: D1Database, projectId: number, doc: ContentDoc, now = new Date()): Promise<void> {
   const row = summaryRow(projectId, doc, now.toISOString());
   const d = drizzle(db);
   await d
@@ -109,10 +105,10 @@ export async function refreshIndex(
   now = new Date(),
 ): Promise<RefreshResult> {
   const client = siteClient(env, project.site, fetcher);
-  const items: Summarized[] = [];
+  const items: ContentSummary[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const result = await listContent(env, project.site, { limit: PAGE_SIZE, cursor }, fetcher);
+    const result = await client.list({ limit: PAGE_SIZE, cursor });
     items.push(...result.items);
     if (!result.nextCursor) break;
     cursor = result.nextCursor;

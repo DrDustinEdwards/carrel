@@ -13,7 +13,6 @@ import { checkLegalWrite } from "~/lib/legal.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, mayPublish, type Action, type Role } from "~/lib/roles";
-import { cancelSchedule, getDoc, readMeta, type DocNext } from "~/lib/site-next.server";
 import { siteClient, siteConnection } from "~/lib/sites.server";
 import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
 
@@ -39,12 +38,12 @@ function requireCan(project: { role: Role }, action: Action) {
 
 /**
  * A 404 from the site means the item is not there yet, which is how a new post starts. The doc carries
- * the update waiting to go live on it, on a site that schedules updates (site-next.server.ts).
+ * the update waiting to go live on it, on a site that schedules updates (site-api v0.10.0).
  */
-export async function readDoc(env: Env, project: SiteProject, itemId: string, fetcher?: typeof fetch): Promise<DocNext | null> {
+export async function readDoc(env: Env, project: SiteProject, itemId: string, fetcher?: typeof fetch): Promise<ContentDoc | null> {
   requireCan(project, "read");
   try {
-    return await getDoc(env, project.site, itemId, fetcher);
+    return await siteClient(env, project.site, fetcher).get(itemId);
   } catch (error) {
     if (error instanceof SiteApiError && error.status === 404) return null;
     throw error;
@@ -152,8 +151,8 @@ export async function writeToSite(
   // Scheduling a live post keeps it live only on a site that holds the update apart (v0.10.0). An
   // older site would take the post down until the time came, so Carrel does not ask it.
   if ((request.action === "schedule" || request.action === "unschedule") && current?.status === "published") {
-    const { extras } = await readMeta(env, project.site, fetcher);
-    if (!extras.scheduledUpdates) {
+    const { capabilities } = await client.meta();
+    if (capabilities.scheduledUpdates !== true) {
       return { ok: false, reason: "refused", message: "This site cannot keep a post live while an update waits, so scheduling would take it off the site until then. Save the change now, or schedule it once the site supports scheduled updates." };
     }
   }
@@ -185,7 +184,7 @@ export async function writeToSite(
         });
         break;
       case "unschedule":
-        result = await cancelSchedule(env, project.site, itemId, { expectedVersion: request.expectedVersion, changeId }, fetcher);
+        result = await client.cancelSchedule(itemId, { expectedVersion: request.expectedVersion, changeId });
         break;
       case "unpublish":
         result = await client.unpublish(itemId, { expectedVersion: request.expectedVersion, changeId });
@@ -228,7 +227,7 @@ export async function writeToSite(
 
   // The write landed; a failed re-read only leaves the index to the next refresh.
   try {
-    const doc = await getDoc(env, project.site, itemId, fetcher);
+    const doc = await client.get(itemId);
     await indexDoc(env.DB, project.id, doc);
     // A piece going live is the one event social posts may announce (design decision 5).
     if (request.action === "publish" && doc.status === "published") {
