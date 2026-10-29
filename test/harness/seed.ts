@@ -2,6 +2,7 @@
 // Drive folder and a social queue, all made through the app's own functions against the test fakes.
 // Test-only; nothing here is deployed and nothing reaches the network.
 
+import { runMediaIntent } from "@dustinedwards/site-api/admin";
 import { nearestPassages, profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
@@ -10,7 +11,7 @@ import { autosave, writeToSite } from "~/lib/content.server";
 import { refreshIndex } from "~/lib/index.server";
 import { finishAuth, startAuth } from "~/lib/google/oauth.server";
 import { refreshManuscripts } from "~/lib/google/drive.server";
-import { setMediaTags, trashMedia, uploadMedia } from "~/lib/media.server";
+import { mediaSource } from "~/lib/media.server";
 import { findViewer } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { clearTokenCache, novelsRepo } from "~/lib/novels/repo.server";
@@ -139,6 +140,7 @@ async function build(base: Env): Promise<World> {
   // Media, then posts (one uses a picture), then the index.
   const sitePr = await requireSiteProject(db, owner, SITE_SLUG, "publish");
   const media: string[] = [];
+  const source = mediaSource(env, sitePr, owner);
   const uploaded: Array<{ id: string; version: string; name: string }> = [];
   for (const [name, alt] of [
     ["foxhound-dashboard.png", "The Foxhound dashboard with three sites reporting healthy"],
@@ -148,23 +150,24 @@ async function build(base: Env): Promise<World> {
     ["field-notebook.png", "An open field notebook with a pressed leaf"],
     ["release-banner.png", ""],
   ] as const) {
-    const out = await uploadMedia(env, sitePr, { viewer: owner }, { name, type: "image/png", size: PNG.byteLength, bytes: async () => PNG.slice().buffer }, alt);
-    if (out.ok) {
-      media.push(out.item.url);
-      uploaded.push({ id: out.item.id, version: out.item.version ?? "", name });
+    const out = await runMediaIntent(source, { intent: "upload", file: new File([PNG], name, { type: "image/png" }), alt });
+    const id = out.ok ? out.outcomes?.[0]?.id : undefined;
+    if (id) {
+      const item = await source.client.media.get(id);
+      media.push(item.url);
+      uploaded.push({ id, version: item.version ?? "", name });
     }
   }
   // Tags on two files and one in the trash, so the library, the tag filter and the Trash view all have something to show.
-  const writer = { viewer: owner };
   for (const [name, tags] of [["foxhound-dashboard.png", ["foxhound", "screenshots"]], ["lambda-switch.png", ["phage", "diagrams"]]] as const) {
     const file = uploaded.find((u) => u.name === name);
     if (file) {
-      const tagged = await setMediaTags(env, sitePr, writer, file.id, [...tags], file.version);
-      if (tagged.ok) file.version = tagged.version;
+      const tagged = await runMediaIntent(source, { intent: "tags", ids: [file.id], versions: [file.version], tags: [...tags] });
+      file.version = tagged.outcomes?.[0]?.version ?? file.version;
     }
   }
   const banner = uploaded.find((u) => u.name === "release-banner.png");
-  if (banner) await trashMedia(env, sitePr, writer, banner.id, banner.version);
+  if (banner) await runMediaIntent(source, { intent: "trash", ids: [banner.id], versions: [banner.version] });
 
   const posts: Array<{ slug: string; source: string; publish: boolean }> = [
     {
