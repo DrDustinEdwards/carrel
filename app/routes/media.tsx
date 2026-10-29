@@ -1,7 +1,9 @@
 // The media library for one site: Capsomer's MediaLibrary over the content kit, the same screen and
-// the same intents as each site's own admin. Browse, search, tags and the site's lenses, upload, the
-// inspector (alt text, tags, caption, focal point, crop and replace), Trash with Undo, and delete for
-// good after the kit asks. Every action is a form post, so it all works with no script; with script
+// the same intents as each site's own admin. Browse, search, tags, the site's lenses and filters,
+// upload and import from a web address, the inspector (alt text, tags, caption, credit and license,
+// focal point, crop, turns, shrink, history and replace, and the model's suggestions when the person
+// asks for them), Trash with Undo, delete for good after the kit asks, and, with script, live updates
+// of what others changed. Every action is a form post, so it all works with no script; with script
 // the posts go through the media endpoint and answer in place.
 //
 // Each write is optional per site (the site's meta says which), and the screen shows only what the
@@ -9,7 +11,7 @@
 
 import { Form, useRevalidator, type FormProps } from "react-router";
 import { Banner } from "capsomer/react/banner";
-import { MediaLibrary, type FormComponent } from "capsomer/react/media-library";
+import { MediaLibrary, type FormComponent, type KitMediaChanges } from "capsomer/react/media-library";
 import { mediaDataOfKit, readMediaView } from "capsomer/behavior/media-library";
 import type { MediaRecord } from "capsomer/behavior/media";
 import { PageHead } from "capsomer/react/page-head";
@@ -76,6 +78,13 @@ export default function MediaPage({ loaderData, actionData }: Route.ComponentPro
     const body = (await response.json().catch(() => null)) as { rows?: MediaRecord[] } | null;
     return body?.rows ?? [];
   };
+  // Live updates, where the site offers them: what others changed since the cursor, asked of the
+  // media endpoint. A failed answer throws, and the library asks again later.
+  const changes = async (cursor: string, signal: AbortSignal): Promise<KitMediaChanges | { reload: true }> => {
+    const response = await fetch(`${base}/api?changes=${encodeURIComponent(cursor)}`, { signal, headers: { accept: "application/json" } });
+    if (!response.ok) throw new Error(`The server answered ${response.status}.`);
+    return (await response.json()) as KitMediaChanges | { reload: true };
+  };
   return (
     <div className="app-page">
       <PageHead title={project.name} lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`} />
@@ -83,7 +92,7 @@ export default function MediaPage({ loaderData, actionData }: Route.ComponentPro
       {unavailable || !data ? (
         <Banner tone="warn">{unavailable}</Banner>
       ) : (
-        <MediaLibrary data={data} action={base} Form={LibraryForm} submit={submit} result={actionData ?? null} inspector="form" search={search} bytesHref={(id) => `${base}/api?bytes=${encodeURIComponent(id)}`} />
+        <MediaLibrary data={data} action={base} Form={LibraryForm} submit={submit} result={actionData ?? null} inspector="form" search={search} bytesHref={(id) => `${base}/api?bytes=${encodeURIComponent(id)}`} changes={changes} />
       )}
     </div>
   );

@@ -82,8 +82,9 @@ export const changes = sqliteTable("changes", {
   // content-delete since migration 0009: item_id is the post's id, version_before the version deleted, version_after null.
   // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.
   // unschedule, media-focus, media-caption and media-replace since migration 0021.
+  // media-import, media-credit, media-transform, media-revert and media-resize since migration 0024.
   action: text("action", {
-    enum: ["save", "publish", "schedule", "unschedule", "unpublish", "media-upload", "media-delete", "content-delete", "media-alt", "media-tags", "media-trash", "media-restore", "media-focus", "media-caption", "media-replace"],
+    enum: ["save", "publish", "schedule", "unschedule", "unpublish", "media-upload", "media-delete", "content-delete", "media-alt", "media-tags", "media-trash", "media-restore", "media-focus", "media-caption", "media-replace", "media-import", "media-credit", "media-transform", "media-revert", "media-resize"],
   }).notNull(),
   versionBefore: text("version_before"),
   versionAfter: text("version_after"),
