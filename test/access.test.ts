@@ -83,6 +83,11 @@ describe("gate: refusals (fail closed)", () => {
     await expectRefused(request(await token({ email: "gone@test.invalid" })));
   });
 
+  it("refuses a signed-in POST sent from another site's page", async () => {
+    const req = request(await token());
+    await expectRefused(new Request("https://carrel.test/p/x/bulk", { method: "POST", headers: { ...Object.fromEntries(req.headers), Origin: "https://evil.example.com" } }));
+  });
+
   it("refuses everyone when ACCESS_AUD is not set", async () => {
     await expectRefused(request(await token()), { ...testEnv, ACCESS_AUD: "" });
   });
