@@ -1,0 +1,6 @@
+# Built files: Vite names each one by its content hash, so the URL changes whenever the bytes do and a year is
+# safe. Without this rule Workers Assets serves them with `max-age=0, must-revalidate`, and every page load
+# revalidates every file (dustinedwards-info measured 14 such requests on one load, median 689 ms each).
+# Only the hashed directory: files at stable paths (favicon, logo) keep the default revalidation.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
