@@ -5,7 +5,6 @@
 // forms whose buttons post the move.
 
 import { Form, useFetcher } from "react-router";
-import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
@@ -14,6 +13,7 @@ import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 import { SortableList, moveId } from "capsomer/react/sortable-list";
 import { PageHead } from "capsomer/react/page-head";
+import { Link } from "capsomer/react/link";
 
 import { RouterLink } from "~/components/frame";
 import { StatusLabelPill } from "~/components/writing/status-label";
