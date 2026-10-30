@@ -8,7 +8,8 @@ Since 2026-10-26 Carrel has two faces, as Capsid has its public site and the Por
   Access (a hostname application since co-editing: docs/coediting.md). The AI door stays at carrel-mcp.dustinedwards.info.
 
 `npm run www` builds the page into `www/dist`; CI builds it on every push. `npm run deploy:www` deploys it, as does the
-"Deploy public site" workflow (on a push to main touching `www/`, or by hand).
+"Deploy public site" workflow (on a push to main touching `www/`, or by hand), which then tells IndexNow with Prelum's
+`prelum-indexnow` from the built sitemap (the key is `INDEXNOW_KEY` in `www/build.mjs`, served as `/<key>.txt`).
 
 ## The cutover, once
 

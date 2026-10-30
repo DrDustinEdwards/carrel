@@ -30,3 +30,9 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Prelum's prelum-indexnow with the sitemap just deployed, so search engines hear of the change. A refused ping is
+      # a warning, never a failed deploy.
+      - name: Tell IndexNow
+        run: |
+          key=$(sed -n 's/^const INDEXNOW_KEY = "\(.*\)";$/\1/p' www/build.mjs)
+          npx prelum-indexnow --origin https://carrel.dustinedwards.info --key "$key" --sitemap www/dist/sitemap.xml
