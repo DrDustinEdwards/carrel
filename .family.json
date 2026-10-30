@@ -1,6 +1,7 @@
 {
   "apps": {
-    ".": "private"
+    ".": "private",
+    "www": "static"
   },
   "libraries": {
     "jose": "signs JWTs (RS256): the GitHub App's for the novels repository and the Google service account's; site-runtime's ./access only verifies Access tokens",
