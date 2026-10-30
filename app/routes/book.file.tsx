@@ -4,7 +4,8 @@
 // from. Beside a scene: its flags and the bible entries it names.
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
+import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";

@@ -4,7 +4,8 @@
 // of numbered files in one commit (lib/binder.server.ts). It works with no script: the lists sit in
 // forms whose buttons post the move.
 
-import { Form, Link, useFetcher } from "react-router";
+import { Form, useFetcher } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";

@@ -6,7 +6,8 @@
 // unified patches; the two comparisons that have both sides in Carrel build the patch here.
 // "By word" sets the same two texts against each other sentence by sentence.
 
-import { Form, Link } from "react-router";
+import { Form } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";

@@ -1,7 +1,7 @@
 // The comparisons that need the person's own working draft: against the site's text, and against
 // each AI draft saved beside it. Links to the history page, which does the comparing.
 
-import { Link } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Time } from "capsomer/react/time";
 
 export type AiDraftLink = { id: number; client: string; createdAt: string };

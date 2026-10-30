@@ -4,7 +4,8 @@
 // worked out after the page loads; until then the panel says it is counting.
 
 import { useEffect, useState } from "react";
-import { Form, Link } from "react-router";
+import { Form } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Disclosure } from "capsomer/react/disclosure";

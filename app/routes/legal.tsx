@@ -2,7 +2,8 @@
 // A legal page is an ordinary page on the site, edited in the normal editor; this tab lists them and
 // keeps the text every site says alike. Nothing here is a second editor for a page.
 
-import { Form, Link, useNavigation } from "react-router";
+import { Form, useNavigation } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";

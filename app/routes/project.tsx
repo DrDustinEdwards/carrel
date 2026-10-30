@@ -3,7 +3,8 @@
 
 import { ContentStatus } from "@dustinedwards/site-api";
 import { useState } from "react";
-import { Form, Link, useNavigation, useRevalidator } from "react-router";
+import { Form, useNavigation, useRevalidator } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { BulkBar } from "capsomer/react/bulk-bar";
 import { Button } from "capsomer/react/button";

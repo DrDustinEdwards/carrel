@@ -3,7 +3,8 @@
 // limit), filterable by status. It reads Carrel's index and stores nothing of its own. Below it, the
 // project's status list, which anyone who may write here can edit.
 
-import { Form, Link, useNavigation, useSearchParams } from "react-router";
+import { Form, useNavigation, useSearchParams } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Disclosure } from "capsomer/react/disclosure";

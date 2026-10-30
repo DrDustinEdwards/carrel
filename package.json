@@ -55,7 +55,7 @@
     "@tiptap/starter-kit": "3.31.4",
     "@tiptap/y-tiptap": "3.0.10",
     "agents": "0.32.0",
-    "capsomer": "github:DrDustinEdwards/capsomer#v0.44.1",
+    "capsomer": "github:DrDustinEdwards/capsomer#v0.45.0",
     "diff": "9.0.0",
     "docx": "9.7.2",
     "drizzle-orm": "0.45.2",

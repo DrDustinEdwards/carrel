@@ -2,7 +2,8 @@
 // straight through, as the index last had it from Git.
 
 import type { ReactNode } from "react";
-import { Form, Link, redirect } from "react-router";
+import { Form, redirect } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Field } from "capsomer/react/field";

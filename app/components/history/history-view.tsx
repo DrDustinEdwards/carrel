@@ -2,7 +2,8 @@
 // two-text comparison, the line or word switch, and the panels that show one version or a comparison.
 
 import type { ReactNode } from "react";
-import { Link, useLocation, useNavigate, useNavigation } from "react-router";
+import { useLocation, useNavigate, useNavigation } from "react-router";
+import { Link } from "capsomer/react/link";
 import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
