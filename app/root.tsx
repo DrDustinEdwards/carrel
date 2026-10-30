@@ -1,5 +1,4 @@
 import {
-  isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
@@ -8,7 +7,7 @@ import {
   useRouteLoaderData,
 } from "react-router";
 
-import { Empty } from "capsomer/react/empty";
+import { ErrorPage, errorTitle } from "capsomer/react/error-page";
 import { themeScript } from "capsomer/theme-server";
 
 import { getNonce } from "~/lib/context";
@@ -24,8 +23,8 @@ import "./app.css";
 // one-liner; the nonce is what lets the policy run it.
 const THEME_SCRIPT = themeScript();
 
-export function meta(): Route.MetaDescriptors {
-  return [{ title: "Carrel" }, { name: "robots", content: "noindex, nofollow" }];
+export function meta({ error }: Route.MetaArgs): Route.MetaDescriptors {
+  return [{ title: error ? errorTitle(error, "Carrel") : "Carrel" }, { name: "robots", content: "noindex, nofollow" }];
 }
 
 // Carried through the loader because Layout cannot reach the request context.
@@ -65,14 +64,12 @@ export default function App() {
   return <Outlet />;
 }
 
-// The last resort, for an error the shell's own boundary could not hold (the layout itself failed).
+// The last resort, for an error the shell's own boundary could not hold (the layout itself failed):
+// Capsomer's error page, without the shell, whose header reads the frame's loader data.
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const title = isRouteErrorResponse(error) ? `${error.status} ${error.statusText}` : "Something went wrong";
   return (
-    <main className="app-page">
-      <Empty kind="failed" title={title} action={<a className="cap-btn" href="/">Go to Home</a>}>
-        Nothing you wrote is lost.
-      </Empty>
-    </main>
+    <ErrorPage error={error} home="/" className="app-page" dev={import.meta.env.DEV}>
+      <p>Nothing you wrote is lost.</p>
+    </ErrorPage>
   );
 }

@@ -67,7 +67,8 @@ const SERIF = "@fontsource-variable/source-serif-4/files/source-serif-4-latin-wg
 
 /** @param {string} outDir */
 function writeStyles(outDir) {
-  const capsomer = dirname(dirname(require.resolve("capsomer/tokens.css")));
+  const capsomer = dirname(require.resolve("capsomer/package.json"));
+  const base = join(capsomer, "css/base.css");
   // Capsomer's font files sit beside site.css, so its fonts.css loads them as fonts/.
   cpSync(join(capsomer, "fonts"), join(outDir, "fonts"), { recursive: true });
   const serif = SERIF.split("/").pop() ?? "";
@@ -77,7 +78,7 @@ function writeStyles(outDir) {
     inlineCss(join(capsomer, "css", "fonts.css")).replaceAll('url("../fonts/', 'url("fonts/'),
     `@font-face {\n  font-family: "Source Serif 4";\n  font-style: normal;\n  font-weight: 200 900;\n  font-display: swap;\n  src: url("fonts/${serif}") format("woff2");\n}`,
     inlineCss(join(capsomer, "css", "tokens.css")),
-    inlineCss(join(capsomer, "css", "base.css")),
+    inlineCss(base),
     `@layer cap.tokens {\n${inlineCss(join(capsomer, "tokens", `family-${FAMILY}.css`))}\n}`,
     inlineCss(join(capsomer, "components", "manual", "manual.css")),
     inlineCss(join(capsomer, "components", "family-footer", "family-footer.css")),
