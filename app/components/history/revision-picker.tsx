@@ -2,7 +2,7 @@
 // compared. A plain GET form, so it works as delivered: the picks travel as `v` in the address and
 // the history page orders them. Read-only: nothing here changes the site.
 
-import { Link } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Button } from "capsomer/react/button";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";

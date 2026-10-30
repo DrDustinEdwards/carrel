@@ -1,6 +1,6 @@
 // The sections of a site project, as Capsomer's link tabs: each is a page of its own, so each is a link.
 
-import { Link } from "react-router";
+import { Link } from "capsomer/react/link";
 import { TabsNav } from "capsomer/react/tabs";
 
 const SECTIONS = [

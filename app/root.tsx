@@ -14,6 +14,7 @@ import { themeScript } from "capsomer/theme-server";
 import { getNonce } from "~/lib/context";
 
 import type { Route } from "./+types/root";
+import { LinkPrefetch } from "capsomer/react/link";
 import "capsomer/fonts.css";
 import "@fontsource-variable/source-serif-4/index.css";
 import "@fontsource-variable/source-serif-4/wght-italic.css";
@@ -32,6 +33,12 @@ export function loader({ context }: Route.LoaderArgs) {
   return { nonce: getNonce(context) };
 }
 
+// Paths that act on a GET, so a hovered link never prefetches them (a prefetch runs the loader),
+// beyond the family's NEVER_PREFETCH that capsomer/react/link already skips: opening a post or a
+// book file seeds its room and moves the person's draft into it (openRoom), and an export
+// refreshes the book from Git before it builds the file.
+const NO_PREFETCH = ["/p/:project/e/:item", "/b/:project/f", "/b/:project/export"];
+
 export function Layout({ children }: { children: React.ReactNode }) {
   // Layout also renders the error boundary, where the loader may not have run. No fallback: a
   // made-up nonce would satisfy the markup while matching nothing in the header.
@@ -46,7 +53,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {nonce ? <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} /> : null}
       </head>
       <body>
-        {children}
+        <LinkPrefetch exclude={NO_PREFETCH}>{children}</LinkPrefetch>
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />
       </body>

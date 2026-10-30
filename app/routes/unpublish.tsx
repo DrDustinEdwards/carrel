@@ -2,7 +2,8 @@
 // returns it to draft. The link opens this page rather than unpublishing on its own, because a GET
 // that changed the site could be set off by anything that fetches links (a mail client's preview).
 
-import { Form, Link, useNavigation } from "react-router";
+import { Form, useNavigation } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Pill } from "capsomer/react/status";

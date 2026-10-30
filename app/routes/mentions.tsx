@@ -4,7 +4,8 @@
 // stranger sent is drawn as text: the source address is never a link.
 
 import { useRef, useState } from "react";
-import { Form, Link, useRevalidator } from "react-router";
+import { Form, useRevalidator } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { BulkBar } from "capsomer/react/bulk-bar";
 import { Button } from "capsomer/react/button";

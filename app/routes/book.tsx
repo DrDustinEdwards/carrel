@@ -3,7 +3,8 @@
 // of the book's folder in Git; Refresh reads Git again.
 
 import type { ReactNode } from "react";
-import { Form, Link, redirect, useNavigation } from "react-router";
+import { Form, redirect, useNavigation } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button, ButtonGroup } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";

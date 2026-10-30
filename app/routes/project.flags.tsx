@@ -4,7 +4,8 @@
 // through the same function as the editor's Dismiss, so a dismissal is recorded the same way.
 
 import { useState, type ReactNode } from "react";
-import { Form, Link, useFetcher } from "react-router";
+import { Form, useFetcher } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";

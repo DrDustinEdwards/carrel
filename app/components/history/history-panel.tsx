@@ -1,7 +1,7 @@
 // The editor's History panel (routes/editor.tsx): the newest revisions on the site, and links to compare
 // the drafts kept in Carrel. The history page lists every revision.
 
-import { Link } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Panel } from "capsomer/react/panel";
 

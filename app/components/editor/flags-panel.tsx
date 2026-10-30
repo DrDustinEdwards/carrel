@@ -1,7 +1,7 @@
 // The editor's flags and the AI drafts kept beside the writer's own (routes/editor.tsx). Checks and
 // reviewers flag; they never decide, so a flag only asks to be read, and the Owner may dismiss it.
 
-import { Link } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Button } from "capsomer/react/button";
 import { Panel } from "capsomer/react/panel";
 import { Pill, Status } from "capsomer/react/status";

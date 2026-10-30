@@ -4,7 +4,8 @@
 // button (Capsomer 0.9.0).
 
 import { useMemo, type ReactNode } from "react";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
+import { Link } from "capsomer/react/link";
 import { MessageProvider } from "capsomer/react/message";
 import { AdminShell, type AdminEntry, type LinkProps } from "capsomer/react/admin-shell";
 

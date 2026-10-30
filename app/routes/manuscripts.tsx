@@ -2,7 +2,8 @@
 // the service account, listed from Carrel's metadata index and searched through Drive's own full-text
 // search. Open goes to Google Docs; Carrel never edits a manuscript and never holds its text.
 
-import { Form, Link, useNavigation } from "react-router";
+import { Form, useNavigation } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";

@@ -4,7 +4,7 @@
 // draft saved beside it. Read-only, and it works for a Reader. The compare components and the patch
 // are the site page's.
 
-import { Link } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
