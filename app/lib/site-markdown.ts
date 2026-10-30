@@ -2,6 +2,7 @@
 // browser (the editor runs in both). One place per site, so the editor writes what the site renders.
 
 import type { Scaffold } from "capsomer/react/markdown-editor";
+import { escapeHtml } from "@dustinedwards/site-runtime/html";
 
 /** How the site places an image with its alt text and, when it has one, its caption (stage 3), in the site's own dialect. */
 const FIGURES: Record<string, (url: string, alt: string, caption: string) => string> = {
@@ -11,16 +12,12 @@ const FIGURES: Record<string, (url: string, alt: string, caption: string) => str
     [`:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ...(caption ? [oneLine(caption)] : []), ":::"].join("\n"),
   // germomics stores the article body as HTML, and its sanitizer keeps figure, img and figcaption.
   germomics: (url, alt, caption) =>
-    `<figure><img src="${attr(url)}" alt="${attr(alt.trim())}">${caption ? `<figcaption>${attr(oneLine(caption))}</figcaption>` : ""}</figure>`,
+    `<figure><img src="${escapeHtml(url)}" alt="${escapeHtml(alt.trim())}">${caption ? `<figcaption>${escapeHtml(oneLine(caption))}</figcaption>` : ""}</figure>`,
 };
 
 /** A caption on one line: a line break would end the figure's body early. */
 function oneLine(text: string): string {
   return text.trim().replace(/\s*\n\s*/g, " ");
-}
-
-function attr(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /** The URL with the characters that would end a directive attribute or a Markdown link percent-encoded: a quote, a

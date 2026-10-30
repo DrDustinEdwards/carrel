@@ -4,6 +4,7 @@
 
 import { and, eq, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
+import { fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
 
 import { googleOauthStates, googleTokens } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
@@ -52,24 +53,14 @@ async function configured(env: Env) {
   return { clientId: c.clientId, clientSecret: c.clientSecret, key: c.key };
 }
 
-function b64(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s);
-}
-
-function unb64(s: string): Uint8Array<ArrayBuffer> {
-  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-}
-
 async function encryptToken(key: CryptoKey, token: string): Promise<{ data: string; iv: string }> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(token)));
-  return { data: b64(data), iv: b64(iv) };
+  return { data: toBase64(data), iv: toBase64(iv) };
 }
 
 export async function decryptToken(key: CryptoKey, data: string, iv: string): Promise<string> {
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(iv) }, key, unb64(data));
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromBase64(iv) }, key, fromBase64(data));
   return new TextDecoder().decode(plain);
 }
 
@@ -86,7 +77,7 @@ function redirectUri(origin: string): string {
 export async function startAuth(env: Env, viewer: Viewer, origin: string, now = new Date()): Promise<string> {
   requireOwner(viewer);
   const { clientId } = await configured(env);
-  const state = b64(crypto.getRandomValues(new Uint8Array(24))).replace(/[+/=]/g, "");
+  const state = toBase64(crypto.getRandomValues(new Uint8Array(24))).replace(/[+/=]/g, "");
   const d = drizzle(env.DB);
   await d.delete(googleOauthStates).where(lt(googleOauthStates.createdAt, new Date(now.getTime() - STATE_TTL_MS).toISOString()));
   await d.insert(googleOauthStates).values({ state, personId: viewer.id, createdAt: now.toISOString() });

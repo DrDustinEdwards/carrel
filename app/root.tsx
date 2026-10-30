@@ -9,6 +9,7 @@ import {
 } from "react-router";
 
 import { Empty } from "capsomer/react/empty";
+import { themeScript } from "capsomer/theme-server";
 
 import { getNonce } from "~/lib/context";
 
@@ -19,9 +20,9 @@ import "@fontsource-variable/source-serif-4/index.css";
 import "@fontsource-variable/source-serif-4/wght-italic.css";
 import "./app.css";
 
-// Run before first paint, so a remembered theme never flashes the other one. It is Capsomer's own
-// one-liner (theme-switch.md); the nonce is what lets the policy run it.
-const THEME_SCRIPT = 'try{var t=localStorage.getItem("cap-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}';
+// Run before first paint, so a remembered theme never flashes the other one: Capsomer's own
+// one-liner; the nonce is what lets the policy run it.
+const THEME_SCRIPT = themeScript();
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Carrel" }, { name: "robots", content: "noindex, nofollow" }];

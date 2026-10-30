@@ -9,6 +9,7 @@
 // instead of Recova's twitter-api-v2 package.
 
 import { timedFetch } from "~/lib/timed-fetch.server";
+import { toBase64, toHex } from "@dustinedwards/site-runtime/encoding";
 
 type Fetch = typeof fetch;
 
@@ -124,17 +125,14 @@ export async function oauthSignature(
     .join("&");
   const base = [method.toUpperCase(), percentEncode(url), percentEncode(normalized)].join("&");
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(`${percentEncode(consumerSecret)}&${percentEncode(tokenSecret)}`), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
-  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(base)));
-  let binary = "";
-  for (const b of sig) binary += String.fromCharCode(b);
-  return btoa(binary);
+  return toBase64(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(base)));
 }
 
 async function postToX(creds: Extract<Credentials, { platform: "x" }>, text: string, fetcher: Fetch, now: number): Promise<string> {
   const nonceBytes = crypto.getRandomValues(new Uint8Array(16));
   const oauth: Record<string, string> = {
     oauth_consumer_key: creds.apiKey,
-    oauth_nonce: [...nonceBytes].map((b) => b.toString(16).padStart(2, "0")).join(""),
+    oauth_nonce: toHex(nonceBytes),
     oauth_signature_method: "HMAC-SHA1",
     oauth_timestamp: String(Math.floor(now / 1000)),
     oauth_token: creds.accessToken,
