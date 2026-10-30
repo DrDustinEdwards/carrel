@@ -14,6 +14,7 @@ import {
   type SceneHeader,
 } from "./layout";
 import { slopScan } from "@dustinedwards/site-runtime/prose";
+import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 
 type CheckName = "header" | "continuity" | "timeline" | "world-rules" | "voice";
 
@@ -258,8 +259,7 @@ export async function fingerprints(found: Finding[]): Promise<string[]> {
       const base = JSON.stringify([f.check, f.message, f.excerpt]);
       const n = seen.get(base) ?? 0;
       seen.set(base, n + 1);
-      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${base}#${n}`));
-      return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+      return sha256Hex(`${base}#${n}`);
     }),
   );
 }

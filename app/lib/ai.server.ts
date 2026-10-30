@@ -12,6 +12,7 @@
 
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
+import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 
 import { aiDrafts, aiPublications, findings, siteItems } from "~/db/schema";
 import { readDoc, writeToSite, type ProjectRole, type WriteOutcome } from "~/lib/content.server";
@@ -63,9 +64,8 @@ export async function itemFindings(db: D1Database, project: ProjectRole, itemId:
     .all();
 }
 
-async function fingerprint(parts: (string | null)[]): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(parts)));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+function fingerprint(parts: (string | null)[]): Promise<string> {
+  return sha256Hex(JSON.stringify(parts));
 }
 
 /**

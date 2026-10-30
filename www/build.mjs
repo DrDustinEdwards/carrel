@@ -12,8 +12,11 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { headHtml, headTags } from "@drdustinedwards/site-helpers/head";
-import { robotsDocument } from "@drdustinedwards/site-helpers/robots";
+import { llmsDocument } from "@drdustinedwards/site-helpers/llms";
+import { aiTxt, robotsDocument } from "@drdustinedwards/site-helpers/robots";
+import { graph, jsonLd, thing, website } from "@drdustinedwards/site-helpers/schema";
 import { sitemapDocument } from "@drdustinedwards/site-helpers/sitemap";
+import { escapeHtml as esc } from "@dustinedwards/site-runtime/html";
 import { securityTxt } from "@dustinedwards/site-runtime/security-txt";
 import { familyFooterHtml } from "capsomer/behavior/family-footer";
 import { patchSvg } from "capsomer/behavior/manual";
@@ -33,8 +36,10 @@ const FAMILY = "olive";
 /** When security.txt lapses (RFC 9116 asks for under a year); renew it before then. */
 const SECURITY_TXT_EXPIRES = "2027-10-26T00:00:00Z";
 
-/** @param {string} s */
-const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
+const CONTACT = "security@dustinedwards.info";
+const TITLE = "Carrel: one desk for everything you write";
+const DESCRIPTION =
+  "Carrel is an open-source writing app on Cloudflare: publish posts to several websites from one place, keep books in Git, and work with AI that drafts beside you.";
 
 /**
  * Capsomer's stylesheets import their parts; the site serves one file, so each import is read in place, wrapped in its
@@ -222,13 +227,47 @@ const HEADER = letterheadHtml({
   current: "Home",
 });
 
+/** The home page's structured data: the site, and Carrel itself as an open-source application. */
+const AUTHOR = { "@type": "Person", name: "Dustin Edwards", url: "https://dustinedwards.info" };
+const SCHEMA = graph([
+  website({ origin: ORIGIN, name: "Carrel", description: DESCRIPTION, publisher: AUTHOR }),
+  thing("SoftwareApplication", {
+    "@id": `${ORIGIN}/#app`,
+    name: "Carrel",
+    url: `${ORIGIN}/`,
+    description: DESCRIPTION,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Cloudflare Workers",
+    license: "https://opensource.org/licenses/MIT",
+    sameAs: [REPO],
+    author: AUTHOR,
+  }),
+]);
+
+/** llms.txt (llmstxt.org): what Carrel is and where its source and docs are. */
+const LLMS = llmsDocument({
+  title: "Carrel",
+  summary: DESCRIPTION,
+  intro: ["This page is the public front of Dustin Edwards's own instance. Desk, the signed-in app, is behind Cloudflare Access and is not for crawlers."],
+  sections: [
+    {
+      heading: "Carrel",
+      links: [
+        { title: "Home", url: `${ORIGIN}/`, description: "What Carrel does, how a post goes from draft to live, and how its AI tools work" },
+        { title: "Source code", url: REPO, description: "MIT licensed, with the steps to run your own" },
+        { title: "site-api", url: "https://github.com/DrDustinEdwards/site-api", description: "the shared API each site uses to connect to Carrel" },
+      ],
+    },
+  ],
+});
+
 /** @param {{ title: string, description: string, body: string, index?: boolean }} p */
 const documentHtml = ({ title, description, body, index = true }) => `<!doctype html>
 <html lang="en" data-family="${FAMILY}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${headHtml(headTags({ origin: ORIGIN, path: "/", title, description, image: CARD, siteName: "Carrel", locale: "en_US", noindex: !index }))}
+${headHtml([...headTags({ origin: ORIGIN, path: "/", title, description, image: CARD, siteName: "Carrel", locale: "en_US", noindex: !index }), ...(index ? [jsonLd(SCHEMA)] : [])])}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/site.css">
 <script src="/theme.js"></script>
@@ -287,8 +326,8 @@ export async function buildSite(outDir) {
   writeFileSync(
     join(outDir, "index.html"),
     documentHtml({
-      title: "Carrel: one desk for everything you write",
-      description: "Carrel is an open-source writing app on Cloudflare: publish posts to several websites from one place, keep books in Git, and work with AI that drafts beside you.",
+      title: TITLE,
+      description: DESCRIPTION,
       body: page(),
     }),
   );
@@ -303,9 +342,11 @@ export async function buildSite(outDir) {
   );
 
   mkdirSync(join(outDir, ".well-known"), { recursive: true });
-  writeFileSync(join(outDir, ".well-known", "security.txt"), securityTxt({ origin: ORIGIN, contact: "security@dustinedwards.info", expires: SECURITY_TXT_EXPIRES }));
+  writeFileSync(join(outDir, ".well-known", "security.txt"), securityTxt({ origin: ORIGIN, contact: CONTACT, expires: SECURITY_TXT_EXPIRES }));
   writeFileSync(join(outDir, "sitemap.xml"), sitemapDocument([{ loc: `${ORIGIN}/` }]));
-  writeFileSync(join(outDir, "robots.txt"), robotsDocument({ origin: ORIGIN }));
+  writeFileSync(join(outDir, "robots.txt"), robotsDocument({ origin: ORIGIN, notes: [`llms.txt: ${ORIGIN}/llms.txt`] }));
+  writeFileSync(join(outDir, "ai.txt"), aiTxt({ origin: ORIGIN, name: "Carrel", contact: CONTACT }));
+  writeFileSync(join(outDir, "llms.txt"), LLMS);
 
   /** @type {string[]} */
   const files = [];

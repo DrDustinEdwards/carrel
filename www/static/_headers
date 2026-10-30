@@ -1,4 +1,4 @@
-# www/build.mjs writes the headers below from www/headers.mjs: site-runtime's standard set and the page policy.
+# www/build.mjs writes the headers below from www/headers.mjs: site-runtime's standard set, Prelum's TDMRep header and the page policy.
 /*
 {{SITE_HEADERS}}
   Cache-Control: public, max-age=300, must-revalidate
