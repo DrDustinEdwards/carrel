@@ -37,12 +37,6 @@ describe("germomics", () => {
     expect(siteOrigins(germomicsEnv())).toContain(SITE_ORIGIN);
   });
 
-  it("places an image as HTML the site's sanitizer keeps, with the alt text escaped", () => {
-    expect(figureMarkup("germomics", "https://images.germomics.com/carrel/a.png", ' A "quoted" <alt> & more ')).toBe(
-      '<figure><img src="https://images.germomics.com/carrel/a.png" alt="A &quot;quoted&quot; &lt;alt&gt; &amp; more"></figure>',
-    );
-  });
-
   it("PLANT: a URL cannot end the figure's src attribute or the Markdown link", () => {
     const url = 'https://media.example.com/a b"(c)<d>.png';
     expect(figureMarkup("dustinedwards", url, "A figure")).toBe(

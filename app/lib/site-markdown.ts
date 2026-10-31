@@ -2,17 +2,17 @@
 // browser (the editor runs in both). One place per site, so the editor writes what the site renders.
 
 import type { Scaffold } from "capsomer/react/markdown-editor";
-import { escapeHtml } from "@dustinedwards/site-runtime/html";
+
+/** Prelum's figure directive: the caption is the directive's body, as the Figure block writes it (dustinedwards-info@f84b978,
+ *  app/components/admin/use-image-upload.ts). */
+const prelumFigure = (url: string, alt: string, caption: string) =>
+  [`:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ...(caption ? [oneLine(caption)] : []), ":::"].join("\n");
 
 /** How the site places an image with its alt text and, when it has one, its caption (stage 3), in the site's own dialect. */
 const FIGURES: Record<string, (url: string, alt: string, caption: string) => string> = {
-  // The site's figure directive, as its own editor inserts it (dustinedwards-info@f84b978,
-  // app/components/admin/use-image-upload.ts); the caption is the directive's body, as the Figure block writes it.
-  dustinedwards: (url, alt, caption) =>
-    [`:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ...(caption ? [oneLine(caption)] : []), ":::"].join("\n"),
-  // germomics stores the article body as HTML, and its sanitizer keeps figure, img and figcaption.
-  germomics: (url, alt, caption) =>
-    `<figure><img src="${escapeHtml(url)}" alt="${escapeHtml(alt.trim())}">${caption ? `<figcaption>${escapeHtml(oneLine(caption))}</figcaption>` : ""}</figure>`,
+  dustinedwards: prelumFigure,
+  // germomics renders its Markdown with Prelum too, since germomics#186.
+  germomics: prelumFigure,
 };
 
 /** A caption on one line: a line break would end the figure's body early. */
