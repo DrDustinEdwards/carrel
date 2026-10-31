@@ -11,7 +11,7 @@ import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { headHtml, headTags } from "@drdustinedwards/site-helpers/head";
+import { defineHead, headHtml } from "@drdustinedwards/site-helpers/head";
 import { llmsDocument } from "@drdustinedwards/site-helpers/llms";
 import { aiTxt, robotsDocument } from "@drdustinedwards/site-helpers/robots";
 import { graph, jsonLd, thing, website } from "@drdustinedwards/site-helpers/schema";
@@ -269,13 +269,15 @@ const LLMS = llmsDocument({
   ],
 });
 
+const head = defineHead({ origin: ORIGIN, siteName: "Carrel", image: CARD, locale: "en_US" });
+
 /** @param {{ title: string, description: string, body: string, index?: boolean }} p */
 const documentHtml = ({ title, description, body, index = true }) => `<!doctype html>
 <html lang="en" data-family="${FAMILY}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${headHtml([...headTags({ origin: ORIGIN, path: "/", title, description, image: CARD, siteName: "Carrel", locale: "en_US", noindex: !index }), ...(index ? [jsonLd(SCHEMA)] : [])])}
+${headHtml([...head({ path: "/", title, fullTitle: true, description, noindex: !index }), ...(index ? [jsonLd(SCHEMA)] : [])])}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/site.css">
 <script src="/theme.js"></script>

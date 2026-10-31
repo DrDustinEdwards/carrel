@@ -29,6 +29,7 @@ import { can } from "~/lib/roles";
 import { reorderBook } from "~/lib/binder.server";
 import { parseOrder } from "~/lib/writing/binder";
 import { progressEntries, readGoal, saveGoal, statusList } from "~/lib/writing.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book";
 
@@ -114,7 +115,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "read");
-  const form = await request.formData();
+  const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
 
   if (intent === "goal") {

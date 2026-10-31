@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           # The version in package.json's engines field.
@@ -55,6 +57,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: package.json
@@ -72,6 +76,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: package.json
@@ -85,15 +91,17 @@ jobs:
   # the D1 migrations, confirm none is pending; any failure stops the run before the deploy), then
   # deploys the build with DEPLOY_SHA set to this commit. Its `live gate` job polls the AI door's /health,
   # the one Carrel host outside Access, until it names this commit, runs scripts/verify-live.mjs, and on a
-  # refusal runs "Roll back the deploy this run shipped". A rollback swaps code and bindings only and
+  # refusal runs "Roll back the deploy this run shipped". With `d1-database`, the job first reads D1's Time Travel bookmark
+  # and writes it, with the restore command, to its summary, so a bad migration is one restore to undo. A rollback swaps code and bindings only and
   # never undoes a D1 migration (devkit's README, "The shared deploy"). It never runs on a pull request or
   # on a branch other than main.
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@f55d2caadaa7a18a73397fb8defffb2e3123967b # v0.20.3
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@a0fbcb5c7f65e4183a97989511f9d352950ad90b # v0.20.7
     with:
       worker-name: carrel-desk
+      d1-database: carrel
       health-url: https://carrel-mcp.dustinedwards.info/health
       verify-command: node scripts/verify-live.mjs
       # The version in package.json's engines field.

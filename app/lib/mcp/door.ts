@@ -21,16 +21,22 @@
 //   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
-//   /health                       liveness, and the deployed commit for the deploy's live gate
+//   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
+//   /reports/conformance.json     each site's latest conformance, public, for devkit's scoreboard
 //   anything else                 404
 
 import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { recordAudit } from "@dustinedwards/site-runtime/audit-log";
+import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
 import { audienceRefusal, checkRateLimit, mcpOriginRefusal } from "@dustinedwards/site-runtime/mcp-server";
 
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+
+import { reports } from "~/db/schema";
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
-import { deployedSha } from "~/lib/deployed";
+import { healthAnswer } from "~/lib/health.server";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
@@ -67,17 +73,6 @@ function text(body: string, status: number): Response {
 }
 
 /**
- * Liveness on the AI door, the one Carrel host outside Access, so CI can read it before anyone signs in.
- * The live gate polls it until `sha` is the commit it deployed. It says nothing else: no backup age, no
- * table, no error text (the backup health stays on the browser host's /health, behind Access).
- */
-function liveness(env: Env): Response {
-  const out = new Headers({ "Content-Type": "application/json; charset=utf-8" });
-  for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.set(name, value);
-  return new Response(JSON.stringify({ ok: true, sha: deployedSha(env) }), { status: 200, headers: out });
-}
-
-/**
  * The door's limit, per person (an agent is a person row too), on site-runtime's limiter: it fails
  * closed, and a refused request is a row in the call log.
  */
@@ -99,11 +94,12 @@ async function rateLimited(env: Env, personId: number, caller: string): Promise<
  * the latest when the MCP specification removes registration (after summer 2027).
  */
 const REGISTER_PATH = "/register";
+const REPORT_PATH = "/reports/conformance.json";
 const registrationAllowlist = (env: Env) => [...DCR_CALLBACKS, (env as { DCR_REDIRECT_URIS?: string }).DCR_REDIRECT_URIS ?? ""].join(",");
 
 /**
- * Everything on this host the provider does not own: /health, the consent page (shown for every
- * authorization of every client, nothing remembers an approval) and the Access /callback.
+ * Everything else on this host the provider does not own: the consent page (shown for every authorization
+ * of every client, nothing remembers an approval) and the Access /callback.
  */
 const login = loginHandler<DoorEnv>({
   name: "Carrel",
@@ -119,7 +115,6 @@ const login = loginHandler<DoorEnv>({
   },
   // A client that names no Carrel scope, or the legacy one, is offered writing too (scopes.ts).
   wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),
-  health: liveness,
 });
 
 /**
@@ -134,10 +129,13 @@ export const apiHandler = {
     // provider, so a provider set up for a second resource could never hand Carrel a token for it.
     // Nothing passes the token on: the site and the novels repository take Carrel's own keys.
     const foreign = audienceRefusal(auth, `${mcpOrigin(env)}${MCP_ROUTE}`, [SCOPE_READ]);
-    if (foreign) return foreign;
+    if (foreign) {
+      logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "audience", audience: auth?.audience ?? null }, { level: "warn" });
+      return foreign;
+    }
     const viewer = props?.email ? await findViewer(env.DB, props.email) : null;
     if (!viewer || viewer.id !== props?.personId) {
-      console.warn(JSON.stringify({ door: "refused", reason: viewer ? "person-changed" : "unknown-person" }));
+      logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: viewer ? "person-changed" : "unknown-person" }, { level: "warn" });
       return text("Forbidden. This grant does not belong to an active person in Carrel.", 403);
     }
     const throttled = await rateLimited(env, viewer.id, `access:${viewer.email}`);
@@ -160,10 +158,10 @@ export const apiHandler = {
 async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, name: string): Promise<Response> {
   const viewer = await findAgentViewer(env.DB, name);
   if (!viewer) {
-    console.warn(JSON.stringify({ door: "refused", reason: "agent-not-in-carrel", agent: name }));
+    logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "agent-not-in-carrel", agent: name }, { level: "warn" });
     return text("Forbidden. This agent key does not belong to an active agent in Carrel.", 403);
   }
-  console.log(JSON.stringify({ door: "agent-key-accepted", agent: name }));
+  logEvent("agent_key_accepted", { agent: name });
   const throttled = await rateLimited(env, viewer.id, `agent:${name}`);
   if (throttled) return throttled;
   const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES }, { carrelOrigin: carrelOrigin(env) });
@@ -214,9 +212,18 @@ function providerFor(env: Env): OAuthProvider<Env> {
   return provider;
 }
 
+/** The health run's latest conformance report (health.server.ts), as stored. Before the first run there is none. */
+async function conformanceReport(env: Env): Promise<Response> {
+  const row = await drizzle(env.DB).select({ body: reports.body }).from(reports).where(eq(reports.name, "conformance")).get();
+  if (!row) return text("No report yet.", 404);
+  return new Response(row.body, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", ...PRIVATE_HEADERS } });
+}
+
 /** Serves one request that arrived on the AI door's hostname. */
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
+  if (pathname === "/health") return healthAnswer(env);
+  if (pathname === REPORT_PATH && request.method === "GET") return conformanceReport(env);
   if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
     // Before any token is read, so a page on another origin gets 403, never a 401 to retry with a token.
     const foreign = mcpOriginRefusal(request, [], PRIVATE_HEADERS);

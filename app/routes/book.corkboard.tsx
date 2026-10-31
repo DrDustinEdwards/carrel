@@ -26,6 +26,7 @@ import { titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 import { currentOrder, firstSentence, withChapterOrder, type ChapterOrder } from "~/lib/writing/binder";
 import { statusList } from "~/lib/writing.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.corkboard";
 
@@ -83,7 +84,7 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireBookProject(env.DB, viewer, params.project, "edit");
-  const form = await request.formData();
+  const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   const paths = (await listFiles(env.DB, project)).map((f) => f.path);
   const now = currentOrder(paths);

@@ -22,6 +22,7 @@ import { visibleProjects } from "~/lib/people.server";
 import { routineConfig } from "~/lib/social/routine.server";
 import { createAccount, decidePost, setSwitches, socialOverview } from "~/lib/social/queue.server";
 import { xCostMills } from "~/lib/social/platforms.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/social";
 
@@ -47,7 +48,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 export async function action({ request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const form = await request.formData();
+  const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   const id = Number(form.get("id"));
   switch (intent) {

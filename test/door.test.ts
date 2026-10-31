@@ -255,17 +255,18 @@ describe("the AI door's OAuth surface", () => {
     expect(meta.scopes_supported).toEqual(["carrel:read", "carrel:write"]);
   });
 
-  // The deploy's live gate (devkit's worker-deploy.yml) polls this until it names the commit it shipped,
-  // and scripts/verify-live.mjs reads the metadata's issuer and the 404 below from outside.
-  it("/health names the deployed commit from DEPLOY_SHA, and nothing else", async () => {
+  // The deploy's live gate (devkit's worker-deploy.yml) polls this until it names the commit it shipped. It is
+  // outside Access, so a failing check's detail (an item id, a post's text) must never reach it, only its name.
+  it("/health is the shared answer with the deployed commit, naming a failing check but never its detail", async () => {
     const sha = "4df127439ed3aa19aef8e350ab6311957b8f8611";
+    await testEnv.DB.prepare("INSERT INTO health_state (check_name, ok, detail, changed_at) VALUES ('social-templates', 0, 'private post text', '2026-10-31T00:00:00Z')").run();
     const live = await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: sha } as Env);
     expect(live.status).toBe(200);
-    expect(live.headers.get("Cache-Control")).toBe("no-store");
-    expect(await live.json()).toEqual({ ok: true, sha });
+    const text = await live.text();
+    expect(text).not.toContain("private post text");
+    expect(JSON.parse(text)).toMatchObject({ db: "up", sha, checks: expect.arrayContaining([{ name: "alerts", status: "warn", detail: "Failing: social-templates." }]) });
     // A manual deploy sets no DEPLOY_SHA, and a value that is not a sha is never echoed.
-    expect(await (await door(new Request(`${DOOR}/health`))).json()).toEqual({ ok: true, sha: "unknown" });
-    expect(await (await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: "<script>" } as Env)).json()).toEqual({ ok: true, sha: "unknown" });
+    expect(await (await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: "<script>" } as Env)).json()).toMatchObject({ sha: "unknown" });
   });
 
   it("names itself as the issuer in its OAuth metadata", async () => {
