@@ -22,13 +22,14 @@ if (args[0] === "d1" && args[1] === "list") {
   console.log(JSON.stringify([{ uuid: e.STUB_D1_ID, name: "carrel" }, { uuid: "x", name: "other" }]));
 } else if (args[0] === "kv") {
   console.log(JSON.stringify([{ id: e.STUB_KV_ID, title: "carrel-oauth" }, { id: "y", title: "OAUTH_KV" }]));
-} else if (args[1] === "migrations" && args[2] === "apply") {
-  if (e.STUB_FAIL === "migrate") { console.error("migration 0009 failed"); process.exit(1); }
-} else if (args[1] === "migrations" && args[2] === "list") {
-  console.log(e.STUB_PENDING === "1" ? "1 migration pending" : "No migrations to apply!");
 } else if (args[0] === "deploy") {
   if (e.STUB_FAIL === "deploy") process.exit(1);
 }
+`;
+// devkit-migrations --apply: it exits nonzero when it refuses a migration, an apply fails or one is still pending.
+const migrationsStub = `
+require("node:fs").appendFileSync(process.env.STUB_LOG, "migrations " + process.argv.slice(2).join(" ") + "\\n");
+if (process.env.STUB_FAIL === "migrate") { console.error("refused 0009_drop.sql"); process.exit(1); }
 `;
 const buildStub = `
 require("node:fs").appendFileSync(process.env.STUB_LOG, "build\\n");
@@ -38,6 +39,7 @@ if (process.env.STUB_FAIL === "build") process.exit(1);
 const dir = mkdtempSync(join(tmpdir(), "carrel-deploy-"));
 writeFileSync(join(dir, "wrangler-stub.cjs"), wranglerStub);
 writeFileSync(join(dir, "build-stub.cjs"), buildStub);
+writeFileSync(join(dir, "migrations-stub.cjs"), migrationsStub);
 
 /**
  * Runs deploy.mjs in a fresh scratch project. Returns the exit code, the calls made and the config.
@@ -55,6 +57,7 @@ function attempt(env, { realConfig = false, args = [] } = {}) {
       CARREL_ROOT: proj,
       WRANGLER_ENTRY: join(dir, "wrangler-stub.cjs"),
       BUILD_ENTRY: join(dir, "build-stub.cjs"),
+      MIGRATIONS_ENTRY: join(dir, "migrations-stub.cjs"),
       STUB_LOG: log,
       STUB_D1_ID: D1,
       STUB_KV_ID: KV,
@@ -81,7 +84,7 @@ const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
 
 {
   const r = attempt(GOOD);
-  const m = idx(r, "wrangler d1 migrations apply DB --remote");
+  const m = idx(r, "migrations drizzle --apply carrel");
   const d = idx(r, "wrangler deploy");
   expect("success: exits 0", r.code === 0, `exit ${r.code}: ${r.stderr}`);
   expect("success: migrations apply runs, then deploy", m >= 0 && d > m, JSON.stringify(r.calls));
@@ -104,28 +107,20 @@ const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
 {
   // CI's pre-deploy guard: every step, then stop. devkit's workflow deploys the build it leaves.
   const r = attempt(GOOD, { args: ["--prepare"] });
-  const m = idx(r, "wrangler d1 migrations list DB --remote");
-  expect("--prepare: exits 0 after the migrations check, and never deploys", r.code === 0 && m >= 0 && !deployed(r), `exit ${r.code} ${JSON.stringify(r.calls)}`);
-  expect("--prepare: builds and applies migrations first", idx(r, "build") >= 0 && idx(r, "wrangler d1 migrations apply DB --remote") > idx(r, "build"), JSON.stringify(r.calls));
-}
-{
-  const r = attempt({ ...GOOD, STUB_PENDING: "1" }, { args: ["--prepare"] });
-  expect("--prepare with a migration still pending: exit nonzero", r.code !== 0 && !deployed(r), JSON.stringify(r.calls));
+  const m = idx(r, "migrations drizzle --apply carrel");
+  expect("--prepare: exits 0 after the migrations, and never deploys", r.code === 0 && m >= 0 && !deployed(r), `exit ${r.code} ${JSON.stringify(r.calls)}`);
+  expect("--prepare: builds and applies migrations first", idx(r, "build") >= 0 && idx(r, "migrations drizzle --apply carrel") > idx(r, "build"), JSON.stringify(r.calls));
 }
 {
   const r = attempt({ ...GOOD, STUB_FAIL: "migrate" });
-  expect("failed migration: exit is nonzero", r.code !== 0, `exit ${r.code}`);
-  expect("failed migration: deploy never runs", !deployed(r), JSON.stringify(r.calls));
-}
-{
-  const r = attempt({ ...GOOD, STUB_PENDING: "1" });
-  expect("migrations still pending: exit nonzero and deploy never runs", r.code !== 0 && !deployed(r), JSON.stringify(r.calls));
+  expect("refused or failed migration: exit is nonzero", r.code !== 0, `exit ${r.code}`);
+  expect("refused or failed migration: deploy never runs", !deployed(r), JSON.stringify(r.calls));
 }
 {
   const r = attempt({ ...GOOD, STUB_FAIL: "build" });
   expect(
     "failed build: no migration applied, no deploy",
-    r.code !== 0 && !deployed(r) && idx(r, "wrangler d1 migrations apply") < 0,
+    r.code !== 0 && !deployed(r) && idx(r, "migrations ") < 0,
     JSON.stringify(r.calls),
   );
 }
@@ -148,7 +143,7 @@ for (const [label, env] of refusals) {
   const r = attempt({ ...GOOD, STUB_D1_ID: "99999999-2222-4333-8444-555555555555" });
   expect(
     "D1 id that is not the one named carrel: refuses, no migration, no deploy",
-    r.code !== 0 && idx(r, "wrangler d1 migrations") < 0 && !deployed(r),
+    r.code !== 0 && idx(r, "migrations ") < 0 && !deployed(r),
     JSON.stringify(r.calls),
   );
 }

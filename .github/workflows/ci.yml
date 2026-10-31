@@ -92,7 +92,8 @@ jobs:
   # THE DEPLOY, VERIFIED LIVE AND ROLLED BACK ON A REFUSAL: devkit's shared workflow (worker-deploy.yml),
   # pinned to the full sha of its tag. Its `deploy` job runs Carrel's own guard first,
   # `scripts/deploy.mjs --prepare` (render the config, check the ids against the account, build, apply
-  # the D1 migrations, confirm none is pending; any failure stops the run before the deploy), then
+  # the pending D1 migrations that only add with devkit-migrations --apply, which refuses a drop, rename or
+  # row delete for a hand run and confirms none is pending; any failure stops the run before the deploy), then
   # deploys the build with DEPLOY_SHA set to this commit. Its `live gate` job polls the AI door's /health,
   # the one Carrel host outside Access, until it names this commit, runs scripts/verify-live.mjs, and on a
   # refusal runs "Roll back the deploy this run shipped". With `d1-database`, the job first reads D1's Time Travel bookmark
