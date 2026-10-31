@@ -1,5 +1,6 @@
 // The public site's Worker: site-runtime's staticSite, the one front door the family's static sites share. One hop to
-// the canonical address (https, no trailing slash); Content-Security-Policy violation reports at /csp-report with
+// the canonical address (https, no trailing slash); /health with the deployed commit, which ci.yml's deploy-www live gate
+// waits for; Content-Security-Policy violation reports at /csp-report with
 // site-runtime's shared receiver (logged to Workers Logs, nothing stored, limited by CSP_REPORT_RATE_LIMIT); the
 // prefetch rules at /speculation-rules.json; and every page from www/dist with the Speculation-Rules, Server-Timing and
 // preload Link headers (Early Hints) and the security set from the site's registry entry (site-runtime ./sites, carrel)
