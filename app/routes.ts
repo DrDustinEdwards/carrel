@@ -1,8 +1,8 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
-  // Every page sits in the shell; the resource routes (the preview, the media API, the exports, the
-  // Google redirects) render nothing of their own and stay outside it.
+  // Every page sits in the shell; the resource routes (the preview, the media, posts and mentions APIs,
+  // the exports, the Google redirects) render nothing of their own and stay outside it.
   layout("routes/frame.tsx", [
     index("routes/home.tsx"),
     route("p/:project", "routes/project.tsx"),
@@ -28,7 +28,7 @@ export default [
     route("social", "routes/social.tsx"),
   ]),
   route("p/:project/media/api", "routes/media.api.ts"),
-  route("p/:project/bulk", "routes/project.bulk.ts"),
+  route("p/:project/posts/api", "routes/posts.api.ts"),
   route("p/:project/mentions/api", "routes/mentions.api.ts"),
   route("p/:project/e/:item/preview", "routes/preview.ts"),
   route("p/:project/e/:item/ai/:id/preview", "routes/ai-draft.preview.ts"),

@@ -1,5 +1,5 @@
 // Work waiting on a person that the site does not know yet: an AI draft for a new slug is listed in
-// the project's Posts, opens in the editor and previews as the AI draft; an indexed post carries a
+// the project's Posts, opens in the editor and previews as the AI draft; a post on the site carries a
 // count of AI drafts waiting. All of it private to the person the drafts belong to.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -40,9 +40,10 @@ async function aiDraft(email: string, item: string, source: string) {
   await saveAiDraft(env, project, { viewer, client: "Claude" }, item, { source });
 }
 
+/** What the posts page lists that the site does not have yet. */
 async function list(email: string, query = "") {
   const request = new Request(`https://carrel.test/p/${SLUG}${query}`);
-  return (await projectLoader({ request, params: { project: SLUG }, context: await context(email) } as never)).items;
+  return (await projectLoader({ request, params: { project: SLUG }, context: await context(email) } as never)).fresh;
 }
 
 const NEW_POST = "---\ntitle: A desk apart\n---\nWords for a new post.\n";
@@ -52,7 +53,7 @@ describe("the project's Posts list", () => {
     await aiDraft("owner@test.invalid", "a-desk-apart", NEW_POST);
     const items = await list("owner@test.invalid");
     expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ itemId: "a-desk-apart", title: "A desk apart", status: "draft", isNew: true, aiDrafts: 1 });
+    expect(items[0]).toMatchObject({ itemId: "a-desk-apart", title: "A desk apart", aiDrafts: 1 });
 
     const page = await editorLoader({ params: { project: SLUG, item: "a-desk-apart" }, context: await context("owner@test.invalid") } as never);
     expect(page.source).toBe("");
@@ -73,18 +74,18 @@ describe("the project's Posts list", () => {
     const project = await requireSiteProject(env.DB, owner, SLUG, "edit");
     await autosave(env.DB, project, owner, "mine", { source: "---\ntitle: Mine\n---\nx\n", baseVersion: null });
     const items = await list("owner@test.invalid");
-    expect(items[0]).toMatchObject({ itemId: "mine", title: "Mine", isNew: true, ownDraft: true, aiDrafts: 0 });
+    expect(items[0]).toMatchObject({ itemId: "mine", title: "Mine", ownDraft: true, aiDrafts: 0 });
   });
 
-  it("marks an indexed post that has AI drafts waiting, with the count", async () => {
-    const saved = await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Post one\n---\nOn the site.\n", expectedVersion: null, changeId: "s" });
-    expect(saved.version).toBeTruthy();
+  it("marks a post on the site that has AI drafts waiting, with the count", async () => {
+    await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Post one\n---\nOn the site.\n", expectedVersion: null, changeId: "s" });
     await refreshIndex(env, { id: projectId, site: "dustinedwards" });
     await aiDraft("owner@test.invalid", "post-one", "A better take.");
     await aiDraft("owner@test.invalid", "post-one", "Another take.");
-    const items = await list("owner@test.invalid");
-    expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ itemId: "post-one", isNew: false, aiDrafts: 2 });
+    expect(await list("owner@test.invalid")).toHaveLength(0);
+    const request = new Request(`https://carrel.test/p/${SLUG}`);
+    const { data } = await projectLoader({ request, params: { project: SLUG }, context: await context("owner@test.invalid") } as never);
+    expect(data?.rows.find((r) => r.id === "post-one")?.notes).toEqual([{ text: "2 AI drafts waiting", tone: "info" }]);
   });
 
   it("PLANT: shows nobody else's AI drafts, and the editor of one still answers 404", async () => {

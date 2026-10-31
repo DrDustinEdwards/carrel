@@ -94,22 +94,10 @@ export const SCREENS = [
   { name: "media-trash-editor", viewer: "editor", path: `/p/${SITE}/media?view=trash` },
   { name: "media-tag", viewer: "owner", path: `/p/${SITE}/media?tag=foxhound` },
   { name: "mentions", viewer: "owner", path: `/p/${SITE}/mentions` },
-  { name: "mentions-failed", viewer: "owner", path: `/p/${SITE}/mentions?status=failed` },
-  { name: "mentions-all", viewer: "owner", path: `/p/${SITE}/mentions?status=all` },
+  { name: "mentions-failed", viewer: "owner", path: `/p/${SITE}/mentions?view=failed` },
+  { name: "mentions-all", viewer: "owner", path: `/p/${SITE}/mentions?view=all` },
   { name: "mentions-select", viewer: "owner", path: `/p/${SITE}/mentions`, after: (page) => selectMentions(page, 2) },
-  // The site refuses to decide a failed mention, so this shows the per mention result without changing anything.
-  {
-    name: "mentions-result",
-    viewer: "owner",
-    path: `/p/${SITE}/mentions?status=failed`,
-    after: async (page) => {
-      await selectMentions(page, 2);
-      await page.getByRole("region", { name: "Bulk actions" }).getByRole("button", { name: /^Approve/ }).click();
-      await page.locator("#mention-result").waitFor();
-      await page.waitForTimeout(600);
-    },
-  },
-  { name: "mentions-delete", viewer: "owner", path: `/p/${SITE}/mentions?status=failed`, after: async (page) => {
+  { name: "mentions-delete", viewer: "owner", path: `/p/${SITE}/mentions?view=failed`, after: async (page) => {
       await selectMentions(page, 1);
       await press(page, "button", /^Delete$/, "alertdialog");
     } },
@@ -180,21 +168,22 @@ export const SCREENS = [
   {
     name: "site-bulk-delete",
     viewer: "owner",
-    path: `/p/${SITE}`,
+    path: `/p/${SITE}?trashed=1`,
     after: async (page) => {
-      await selectPosts(page, ["Counting what the build skips", "What a carrel is for"]);
-      await press(page, "button", /^Delete$/, "alertdialog");
+      await selectPosts(page, ["An outline that did not hold"]);
+      await press(page, "button", /^Delete for good/, "alertdialog");
     },
   },
+  { name: "site-trash", viewer: "owner", path: `/p/${SITE}?trashed=1` },
   {
     name: "site-bulk-result",
     viewer: "editor",
     path: `/p/${SITE}`,
     after: async (page) => {
       await selectPosts(page, ["Counting what the build skips", "Why Foxhound waits before it pages you", "A primer on bacterial genetics"]);
-      await page.getByLabel("Tag").fill("colophon");
+      await page.getByRole("region", { name: /^Bulk actions/ }).getByLabel("Tag").fill("colophon");
       await page.getByRole("button", { name: /^Add tag$/ }).click();
-      await page.locator("#bulk-result").waitFor();
+      await page.locator(".cap-bulk-results").waitFor();
       await page.waitForTimeout(600);
     },
   },

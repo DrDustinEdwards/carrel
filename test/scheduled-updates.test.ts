@@ -52,8 +52,8 @@ describe("a scheduled update to a live post", () => {
       pendingUpdate: { publishAt: string; source: string } | null;
     };
     expect(opened).toMatchObject({ scheduledUpdates: true, pendingUpdate: { publishAt: AT, source: "# Live, updated\n" } });
-    const list = (await projectLoader({ request: new Request(`https://carrel.test/p/${SLUG}`), params: { project: SLUG }, context } as never)) as { items: { itemId: string; updateAt: string | null }[] };
-    expect(list.items.find((i) => i.itemId === "post")?.updateAt).toBe(AT);
+    const list = await projectLoader({ request: new Request(`https://carrel.test/p/${SLUG}`), params: { project: SLUG }, context } as never);
+    expect(list.data?.rows.find((r) => r.id === "post")?.scheduledUpdate?.publishAt).toBe(AT);
 
     const canceled = await writeToSite(env, project, viewer, "post", { action: "unschedule", expectedVersion: scheduled.ok ? scheduled.version : "" });
     expect(canceled).toMatchObject({ ok: true, action: "unschedule", status: "published" });

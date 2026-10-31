@@ -50,8 +50,10 @@ async function migrate(db: D1Database) {
   }
 }
 
-function post(title: string, slug: string, description: string, date: string, tags: string[], body: string, draft = true) {
-  return ["---", `title: "${title}"`, `slug: ${slug}`, `description: "${description}"`, `date: ${date}`, `tags: [${tags.join(", ")}]`, `draft: ${draft}`, "---", "", body, ""].join("\n");
+/** A post as dustinedwards.info writes one, with site-api v0.17.0's post fields (the excerpt and the authors, as JSON) where it has them. */
+function post(title: string, slug: string, description: string, date: string, tags: string[], body: string, draft = true, authors = ["Dustin Edwards"]) {
+  const fields = [...(description ? [`excerpt: ${JSON.stringify(description)}`] : []), `authors: ${JSON.stringify(authors)}`];
+  return ["---", `title: "${title}"`, `slug: ${slug}`, `description: "${description}"`, `date: ${date}`, `tags: [${tags.join(", ")}]`, `draft: ${draft}`, ...fields, "---", "", body, ""].join("\n");
 }
 
 const HEADER = (pov: string, date: string, place: string, present: string[], goal: string, conflict: string, outcome: string) =>
@@ -183,7 +185,7 @@ async function build(base: Env): Promise<World> {
     {
       slug: "autumn-release-notes",
       publish: true,
-      source: post("Notes on the autumn release", "autumn-release-notes", "What changed in September, and what did not.", "2026-09-25", ["release"], "The release is small on purpose. Most of the work was deleting things that no longer earned their place."),
+      source: post("Notes on the autumn release", "autumn-release-notes", "What changed in September, and what did not.", "2026-09-25", ["release"], "The release is small on purpose. Most of the work was deleting things that no longer earned their place.", true, ["Dustin Edwards", "Rosa Park"]),
     },
     {
       slug: "counting-what-the-build-skips",
@@ -200,6 +202,13 @@ async function build(base: Env): Promise<World> {
     const saved = await site.adapter.content.saveDraft(p.slug, { source: p.source, expectedVersion: null, changeId: `seed-${p.slug}` });
     if (p.publish) await writeToSite(env, sitePr, owner, p.slug, { action: "publish", expectedVersion: saved.version }, site.fetch);
   }
+  // One post in the Trash, so the posts list's Trash tab has something to show.
+  const binned = await site.adapter.content.saveDraft("an-abandoned-outline", {
+    source: post("An outline that did not hold", "an-abandoned-outline", "Three headings and a paragraph, kept for a week.", "2026-09-12", ["drafts"], "A first pass at the release notes, before they were small."),
+    expectedVersion: null,
+    changeId: "seed-an-abandoned-outline",
+  });
+  await site.adapter.content.trash!(binned.id, { expectedVersion: binned.version, changeId: "seed-trash" });
   // One item of each other kind the real site reports, published, so the walk covers every kind.
   for (const [id, source] of [
     ["publication.10-1128-mra-00123-23", '---\ntitle: "Genome sequence of Gordonia phage Acorn15"\njournal: Microbiology Resource Announcements\nyear: 2023\n---\n'],
