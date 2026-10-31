@@ -5,7 +5,11 @@
 import { buildPolicy } from "@dustinedwards/site-runtime/csp";
 import { UPLOAD_HEADERS } from "@dustinedwards/site-runtime/headers";
 
-/** The policy for a preview document. `sandbox` in the header holds even if the iframe attribute is lost. */
+/**
+ * The policy for a preview document. `sandbox` in the header holds even if the iframe attribute is lost. Its
+ * frame-ancestors 'self' is what lets Desk frame it: a browser ignores X-Frame-Options (the set's deny) when the
+ * policy names frame-ancestors (HTML, "check a navigation response's adherence to X-Frame-Options").
+ */
 export function previewPolicy(siteOrigin: string): string {
   return buildPolicy([
     "sandbox",
@@ -44,7 +48,6 @@ export function previewResponse(html: string, siteOrigin: string): Response {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy": previewPolicy(siteOrigin),
-      "X-Frame-Options": "SAMEORIGIN",
     },
   });
 }
@@ -57,9 +60,9 @@ export function previewFailure(message: string): Response {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        // Inert, as an uploaded file is; the frame's SAMEORIGIN is what lets Carrel show it.
+        // Inert, as an uploaded file is, and framed by Carrel alone (previewPolicy's frame-ancestors).
         ...UPLOAD_HEADERS,
-        "X-Frame-Options": "SAMEORIGIN",
+        "Content-Security-Policy": buildPolicy([UPLOAD_HEADERS["Content-Security-Policy"] ?? "", "frame-ancestors 'self'"]),
       },
     },
   );

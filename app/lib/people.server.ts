@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, not, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { people, projectMembers, projects } from "~/db/schema";
@@ -35,6 +35,20 @@ export async function findViewer(db: D1Database, email: string): Promise<Viewer 
     .where(and(eq(people.email, email.trim()), isNull(people.disabledAt)))
     .get();
   return row ?? null;
+}
+
+/**
+ * Everyone the Desk lets in: the active people who are neither a reviewer nor an agent (an agent's row carries
+ * `agent:<name>`, which Access can never present). This is the list `carrel-desk-login`'s policies must match, the
+ * Owner's `carrel-admin` and the co-authors' `carrel-people` together, which the Access drift check reads hashed.
+ */
+export async function deskPeopleEmails(db: D1Database): Promise<string[]> {
+  const rows = await drizzle(db)
+    .select({ email: people.email })
+    .from(people)
+    .where(and(isNull(people.disabledAt), eq(people.isReviewer, false), not(like(people.email, `${agentEmail("")}%`))))
+    .all();
+  return rows.map((row) => row.email);
 }
 
 /**

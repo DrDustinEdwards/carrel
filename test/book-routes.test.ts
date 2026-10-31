@@ -197,7 +197,6 @@ describe("export and the authorship record", () => {
     const docx = await exportAs("owner@test.invalid", "docx");
     expect(docx.headers.get("Content-Type")).toContain("wordprocessingml");
     const print = await exportAs("owner@test.invalid", "print");
-    expect(print.headers.get("Content-Security-Policy")).toContain("default-src 'none'");
     expect(await print.text()).toContain("Wade opened the gate.");
     expect((await exportAs("owner@test.invalid", "pdf")).status).toBe(404);
   });

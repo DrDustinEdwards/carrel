@@ -10,9 +10,13 @@ import { createExecutionContext } from "cloudflare:test";
 import { stubAccess } from "@dustinedwards/devkit/access";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
+import { carrelDesk } from "@dustinedwards/site-runtime/sites";
 
-import { gate } from "../workers/gate";
+import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
+import { runSignedInCrawl, type DeskAs } from "~/lib/signed-in-crawl.server";
+
+import { admit, gate } from "../workers/gate";
+import { newNonce, withSecurityHeaders } from "../workers/security-headers";
 import { addPerson, addProject, localKeys, resetDb, share, testEnv } from "./env";
 import { MCP_HOST, modernRequest, readMessage, type ToolCallResult } from "./mcp-client";
 import { connectedEnv, fakeSite } from "./site";
@@ -609,5 +613,54 @@ describe("the token's audience", () => {
     expect(result!.isError).toBeFalsy();
     expect(sent.length).toBeGreaterThan(0);
     for (const line of sent) expect(line).not.toContain(token);
+  });
+});
+
+// The signed-in crawl (app/lib/signed-in-crawl.server.ts): Desk grades its own pages behind Access, in-process, as the
+// Owner, and the AI door serves the report devkit's scoreboard reads. It must never pass with no one signed in, never
+// send anything but a GET, and go through the door's own admission and headers.
+
+type CrawlReport = { check: string; ref: string; sites: Record<string, { status: string; findings: { check: string; detail: string }[] }> };
+
+async function crawlReport(): Promise<CrawlReport> {
+  const response = await aiDoor(new Request("https://carrel-mcp.test/reports/signed-in-security.json"), testEnv, createExecutionContext());
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  return (await response.json()) as CrawlReport;
+}
+
+describe("the signed-in crawl", () => {
+  it("PLANT: with no Owner it reports error, never a pass; with one it GETs Desk's pages as the Owner through the door", async () => {
+    const seen: string[] = [];
+    const deskAs: DeskAs = async (request, viewer) => {
+      const nonce = newNonce();
+      const page = await admit(request, viewer, async (req, who) => {
+        seen.push(`${req.method} ${new URL(req.url).pathname} ${who.email}`);
+        const missing = new URL(req.url).pathname === "/signed-in-crawl-404";
+        return new Response(`<!doctype html><title>Desk</title><script nonce="${nonce}" src="/assets/app.js"></script>`, {
+          status: missing ? 404 : 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      });
+      return withSecurityHeaders(page, nonce, { imageOrigins: [], reportOrigin: "https://carrel-mcp.test" });
+    };
+
+    const owners = (disabledAt: string | null) => testEnv.DB.prepare("UPDATE people SET disabled_at = ? WHERE is_owner = 1").bind(disabledAt).run();
+    await owners("2026-01-01T00:00:00Z");
+    await runSignedInCrawl(testEnv, deskAs);
+    const none = (await crawlReport()).sites[carrelDesk.origin];
+    expect(none?.status).toBe("error");
+    expect(none?.findings[0]?.detail).toMatch(/no active Owner/);
+
+    await owners(null);
+    await addProject("de-info", "dustinedwards");
+    await runSignedInCrawl(testEnv, deskAs);
+    const body = await crawlReport();
+    expect(body.check).toBe("signed-in-security");
+    expect(body.sites[carrelDesk.origin]?.status).not.toBe("error");
+    expect(seen.every((line) => line.startsWith("GET ") && line.endsWith(" owner@test.invalid"))).toBe(true);
+    expect(seen.map((line) => line.split(" ")[1])).toEqual(expect.arrayContaining(["/", "/p/de-info", "/signed-in-crawl-404", "/assets/app.js"]));
+    // Findings only: no page body or cookie in the report.
+    expect(JSON.stringify(body)).not.toMatch(/<title>|owner@test\.invalid/);
   });
 });

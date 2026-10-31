@@ -23,6 +23,7 @@
 //   /token, /.well-known/*        served by the provider
 //   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
 //   /reports/conformance.json     each site's latest conformance, public, for devkit's scoreboard
+//   /reports/signed-in-security.json  Desk's signed-in pages graded in-process (signed-in-crawl.server.ts), public
 //   anything else                 404
 
 import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
@@ -30,6 +31,7 @@ import { recordAudit } from "@dustinedwards/site-runtime/audit-log";
 import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
 import { audienceRefusal, checkRateLimit, mcpOriginRefusal } from "@dustinedwards/site-runtime/mcp-server";
+import { SIGNED_IN_REPORT_PATH } from "@dustinedwards/site-runtime/signed-in-crawl";
 
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -38,6 +40,7 @@ import { reports } from "~/db/schema";
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
 import { healthAnswer } from "~/lib/health.server";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
+import { SIGNED_IN_REPORT_NAME } from "~/lib/signed-in-crawl.server";
 
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
 import { carrelOrigin, handleMcp, MCP_ROUTE, MCP_SERVER } from "./server";
@@ -215,9 +218,10 @@ function providerFor(env: Env): OAuthProvider<Env> {
   return provider;
 }
 
-/** The health run's latest conformance report (health.server.ts), as stored. Before the first run there is none. */
-async function conformanceReport(env: Env): Promise<Response> {
-  const row = await drizzle(env.DB).select({ body: reports.body }).from(reports).where(eq(reports.name, "conformance")).get();
+/** A stored public report, as stored: the health run's conformance report (health.server.ts) or the signed-in crawl's
+ *  (signed-in-crawl.server.ts). Before the first run there is none. */
+async function storedReport(env: Env, name: string): Promise<Response> {
+  const row = await drizzle(env.DB).select({ body: reports.body }).from(reports).where(eq(reports.name, name)).get();
   if (!row) return text("No report yet.", 404);
   return new Response(row.body, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", ...PRIVATE_HEADERS } });
 }
@@ -226,7 +230,8 @@ async function conformanceReport(env: Env): Promise<Response> {
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
   if (pathname === "/health") return healthAnswer(env);
-  if (pathname === REPORT_PATH && request.method === "GET") return conformanceReport(env);
+  if (pathname === REPORT_PATH && request.method === "GET") return storedReport(env, "conformance");
+  if (pathname === SIGNED_IN_REPORT_PATH && request.method === "GET") return storedReport(env, SIGNED_IN_REPORT_NAME);
   if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
     // Before any token is read, so a page on another origin gets 403, never a 401 to retry with a token.
     const foreign = mcpOriginRefusal(request, [], PRIVATE_HEADERS);

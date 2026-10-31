@@ -103,7 +103,7 @@ jobs:
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@8a4e871eebe89744d8fecc6cbaaf4ab5bedd263e # v0.20.17
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@e7ecda8f69c8bbde738edcd1cf510710e547bcf3 # v0.20.22
     with:
       worker-name: carrel-desk
       d1-database: carrel
@@ -122,3 +122,48 @@ jobs:
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # THE PUBLIC SITE (www/, the carrel Worker at https://carrel.dustinedwards.info), through the same shared workflow: once
+  # the checks pass it builds www/dist, deploys with DEPLOY_SHA set to this commit, waits for www's /health
+  # (site-runtime's staticSite) to report it, checks the home page answers, and rolls the deploy back if it does not.
+  # It runs in www/, so wrangler reads www/wrangler.jsonc; the install and the build run from the repository root.
+  deploy-www:
+    needs: [check, gates]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@e7ecda8f69c8bbde738edcd1cf510710e547bcf3 # v0.20.22
+    with:
+      worker-name: carrel
+      health-url: https://carrel.dustinedwards.info/health
+      verify-command: >-
+        code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://carrel.dustinedwards.info/ || true);
+        echo "home page answered $code";
+        if [ "$code" = 200 ]; then exit 0; elif [ "$code" = 000 ]; then exit 3; else exit 1; fi
+      node-version-file: package.json
+      working-directory: www
+      install: cd .. && npm ci
+      pre-deploy: cd .. && npm run www
+      sha-var: DEPLOY_SHA
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # Prelum's prelum-indexnow with the live sitemap and the key in www/build.mjs, once the public site's live gate passes.
+  # A refused ping is a warning, never a failed deploy.
+  indexnow:
+    needs: deploy-www
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: package.json
+          cache: npm
+      - run: npm ci
+      - name: Tell IndexNow
+        run: |
+          key=$(sed -n 's/^const INDEXNOW_KEY = "\(.*\)";$/\1/p' www/build.mjs)
+          curl -sf https://carrel.dustinedwards.info/sitemap.xml -o "$RUNNER_TEMP/sitemap.xml"
+          npx prelum-indexnow --origin https://carrel.dustinedwards.info --key "$key" --sitemap "$RUNNER_TEMP/sitemap.xml"
