@@ -7,7 +7,18 @@
 // path but the fonts. The writing app (Desk) is a separate Worker behind Cloudflare Access; this one holds no binding
 // to it.
 
+// Every request writes one `request` line (site-runtime withRequestLog: cf-ray, method, path without the query, status
+// and ms; 5xx at error, 4xx at warn), as on Desk (area 8, L3). The site has no deploy sha to report.
+
+import { withRequestLog } from "@dustinedwards/site-runtime/log";
 import { staticSite } from "@dustinedwards/site-runtime/static-site";
 import { PAGE_PRELOADS, REPORT_PATH, SITE_HEADERS } from "./headers.mjs";
 
-export default staticSite({ headers: SITE_HEADERS, preload: PAGE_PRELOADS.header, reportPath: REPORT_PATH });
+const site = staticSite({ headers: SITE_HEADERS, preload: PAGE_PRELOADS.header, reportPath: REPORT_PATH });
+
+export default {
+  fetch: withRequestLog(
+    /** @param {Request} request @param {import("@dustinedwards/site-runtime/static-site").StaticSiteEnv} env */
+    (request, env) => site.fetch(request, env),
+  ),
+};
