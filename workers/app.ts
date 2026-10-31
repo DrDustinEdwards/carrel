@@ -1,3 +1,4 @@
+import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
@@ -31,7 +32,7 @@ const requestHandler = createRequestHandler(
   import.meta.env.MODE,
 );
 
-export default {
+const site = {
   async fetch(request, env, ctx) {
     // Two doors, told apart by the hostname alone. The AI door (carrel-mcp.dustinedwards.info) speaks
     // OAuth and MCP and nothing else, plus the CSP report sink and the public conformance report; the
@@ -73,4 +74,10 @@ export default {
       { name: "social", everyMinutes: 15, run: () => processSocial(env) },
     ]);
   },
+} satisfies ExportedHandler<Env>;
+
+// An admin idle for an hour is signed out of Access (site-runtime ./access).
+export default {
+  ...site,
+  fetch: (request, env, ctx) => withAdminIdle(request, () => site.fetch(request, env, ctx), { prefixes: ["/"] }),
 } satisfies ExportedHandler<Env>;
