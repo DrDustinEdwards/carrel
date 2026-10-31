@@ -44,8 +44,8 @@ const SITES: Record<SiteId, SiteEntry> = {
     key: (env) => env.SITE_GERMOMICS_KEY,
     keyName: "SITE_GERMOMICS_KEY",
     keepPublic: [],
-    // The shape of germomics's app/lib/carrel/source.ts: JSON front matter, then the article body as
-    // the site's own HTML. The id is the slug, and an item the site has not seen is created a draft.
+    // The shape of germomics's app/lib/carrel/source.ts: JSON front matter, then the body in Markdown,
+    // rendered by Prelum. The id is the slug, and an item the site has not seen is created a draft.
     newSource: () => ["---", 'title: ""', 'excerpt: ""', "tags: []", "---", ""].join("\n"),
     searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_GERMOMICS?: string }).SEARCH_CONSOLE_PROPERTY_GERMOMICS?.trim() || "sc-domain:germomics.com",
   },
