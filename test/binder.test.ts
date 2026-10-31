@@ -176,6 +176,7 @@ beforeEach(async () => {
     [`${SLUG}/${B2}`]: scene("Wade", "The bank gave way."),
     [`${SLUG}/outline/plan.md`]: "# Plan\n",
   });
+  await gh.ready;
   vi.stubGlobal("fetch", gh.fetch);
   env = { ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key };
 });
