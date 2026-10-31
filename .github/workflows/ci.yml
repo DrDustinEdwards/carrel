@@ -85,15 +85,17 @@ jobs:
   # the D1 migrations, confirm none is pending; any failure stops the run before the deploy), then
   # deploys the build with DEPLOY_SHA set to this commit. Its `live gate` job polls the AI door's /health,
   # the one Carrel host outside Access, until it names this commit, runs scripts/verify-live.mjs, and on a
-  # refusal runs "Roll back the deploy this run shipped". A rollback swaps code and bindings only and
+  # refusal runs "Roll back the deploy this run shipped". With `d1-database`, the job first reads D1's Time Travel bookmark
+  # and writes it, with the restore command, to its summary, so a bad migration is one restore to undo. A rollback swaps code and bindings only and
   # never undoes a D1 migration (devkit's README, "The shared deploy"). It never runs on a pull request or
   # on a branch other than main.
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@64997ae3facf4360eb676c57b7a5b5e8ec3350de # v0.18.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@e99e4651b943f83b6591309b2151e7332786e64a # v0.20.2
     with:
       worker-name: carrel-desk
+      d1-database: carrel
       health-url: https://carrel-mcp.dustinedwards.info/health
       verify-command: node scripts/verify-live.mjs
       # The version in package.json's engines field.

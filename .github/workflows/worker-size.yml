@@ -1,10 +1,9 @@
 name: worker-size
 
-# The Worker bundle size budgets, checked by devkit's shared worker-size.yml against `wrangler deploy --dry-run`:
-# Desk's in .worker-size.json, of the build (the build leaves .wrangler/deploy/config.json pointing the dry
-# run at build/server/wrangler.json), and the public site's in www/.worker-size.json, of www/wrangler.jsonc
-# once `npm run www` has written the assets. No secret: the install copies wrangler.jsonc.example and a dry
-# run never talks to the account.
+# The Worker bundle size budget in .worker-size.json, checked by devkit's shared worker-size.yml against
+# `wrangler deploy --dry-run` of the build (the build leaves .wrangler/deploy/config.json pointing the dry
+# run at build/server/wrangler.json). No secret: the install copies wrangler.jsonc.example and a dry run
+# never talks to the account.
 
 on:
   pull_request:
@@ -20,14 +19,8 @@ concurrency:
 
 jobs:
   worker-size:
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-size.yml@64997ae3facf4360eb676c57b7a5b5e8ec3350de # v0.18.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-size.yml@e99e4651b943f83b6591309b2151e7332786e64a # v0.20.2
     with:
       # The version in package.json's engines field, as ci.yml reads it.
       node-version-file: package.json
       prepare: npm run build
-  www:
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-size.yml@64997ae3facf4360eb676c57b7a5b5e8ec3350de # v0.18.0
-    with:
-      node-version-file: package.json
-      prepare: npm run www
-      config: www/.worker-size.json

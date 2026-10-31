@@ -1,0 +1,26 @@
+# The weekly restore drill (devkit's restore-drill.yml): the newest complete nightly dump in carrel-backups is restored into
+# a scratch SQLite file and checked. The token reads the backups bucket only (R2: Read), so the drill changes nothing.
+name: restore-drill
+
+on:
+  schedule:
+    - cron: "23 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restore-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@e99e4651b943f83b6591309b2151e7332786e64a # v0.20.2
+    with:
+      bucket: carrel-backups
+      # d1-dump 0.7.0, untagged until Dustin tags it; move to v0.7.0 then.
+      d1-dump-ref: 32bd35a2a045140afcda7afe6f00fbefc8b25253
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
