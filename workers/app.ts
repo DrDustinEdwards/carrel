@@ -30,7 +30,8 @@ const requestHandler = createRequestHandler(
 export default {
   async fetch(request, env, ctx) {
     // Two doors, told apart by the hostname alone. The AI door (carrel-mcp.dustinedwards.info) speaks
-    // OAuth and MCP and nothing else, plus the CSP report sink; the pages are never served there.
+    // OAuth and MCP and nothing else, plus the CSP report sink and the public conformance report; the
+    // pages are never served there.
     // Everything else is the browser door, behind Access. Every response on either carries the
     // security headers (workers/security-headers.ts), refusals and redirects included.
     if (isMcpHost(request, env)) {
