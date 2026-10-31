@@ -516,8 +516,9 @@ describe("least scope", () => {
     expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
   });
 
-  it("a client that asked to write, and was allowed, can write", async () => {
-    const { final } = await signIn();
+  // A client still sending the legacy scope carrel is asked for both, as its first consent was.
+  it.each(["carrel.read carrel.write", "carrel"])("a client that asked to write (%s), and was allowed, can write", async (scope) => {
+    const { final } = await signIn(undefined, { scope });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
     expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
@@ -551,13 +552,6 @@ describe("least scope", () => {
     expect((await readMessage(await call(["carrel"]))).result).toMatchObject({ structuredContent: { flagged: true } });
     expect((await readMessage(await call(["carrel:read", "carrel:write"]))).result).toMatchObject({ structuredContent: { flagged: true } });
     expect((await call(["carrel:read"])).status).toBe(403);
-  });
-
-  it("a client still sending the legacy scope carrel is asked for both, as its first consent was", async () => {
-    const { final } = await signIn(undefined, { scope: "carrel" });
-    const token = await tokenFor(final.searchParams.get("code")!);
-    const env = await seeded();
-    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
   });
 });
 
