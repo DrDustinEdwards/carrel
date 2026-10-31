@@ -35,7 +35,7 @@ const DESK = "https://desk.dustinedwards.info";
 const REPO = "https://github.com/DrDustinEdwards/carrel";
 const FAMILY = "olive";
 
-/** When security.txt lapses (RFC 9116 asks for under a year); renew it before then. */
+/** When security.txt lapses (RFC 9116 asks for under a year); renew it before then, with the AI door's (app/lib/mcp/door.ts). */
 const SECURITY_TXT_EXPIRES = "2027-10-26T00:00:00Z";
 
 const CONTACT = "security@dustinedwards.info";

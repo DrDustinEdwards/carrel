@@ -21,6 +21,7 @@
 //   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
+//   /.well-known/security.txt     the family's security contact (RFC 9116), as on carrel.dustinedwards.info
 //   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
 //   /reports/conformance.json     each site's latest conformance, public, for devkit's scoreboard
 //   anything else                 404
@@ -30,6 +31,7 @@ import { recordAudit } from "@dustinedwards/site-runtime/audit-log";
 import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
 import { audienceRefusal, checkRateLimit, mcpOriginRefusal } from "@dustinedwards/site-runtime/mcp-server";
+import { securityTxtResponse } from "@dustinedwards/site-runtime/security-txt";
 
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -219,10 +221,14 @@ async function conformanceReport(env: Env): Promise<Response> {
   return new Response(row.body, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", ...PRIVATE_HEADERS } });
 }
 
+/** The same contact and expiry as the public page's (www/build.mjs); renew both together. */
+const SECURITY_TXT = { contact: "security@dustinedwards.info", expires: "2027-10-26T00:00:00Z" } as const;
+
 /** Serves one request that arrived on the AI door's hostname. */
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
   if (pathname === "/health") return healthAnswer(env);
+  if (pathname === "/.well-known/security.txt") return securityTxtResponse({ origin: mcpOrigin(env), ...SECURITY_TXT });
   if (pathname === REPORT_PATH && request.method === "GET") return conformanceReport(env);
   if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
     // Before any token is read, so a page on another origin gets 403, never a 401 to retry with a token.
