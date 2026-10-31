@@ -85,7 +85,7 @@
     "@axe-core/playwright": "4.13.0",
     "@cloudflare/vite-plugin": "1.64.0",
     "@cloudflare/vitest-plugin": "1.4.7",
-    "@dustinedwards/devkit": "github:DrDustinEdwards/devkit#dd3d7dc3b0a50433c29a5b0af8148a8f2dd16989",
+    "@dustinedwards/devkit": "github:DrDustinEdwards/devkit#v0.20.1",
     "@modelcontextprotocol/conformance": "0.2.0-alpha.11",
     "@react-router/dev": "8.5.1",
     "@types/node": "22.20.0",

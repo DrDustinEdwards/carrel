@@ -16,10 +16,11 @@ concurrency:
 
 jobs:
   drill:
-    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@dd3d7dc3b0a50433c29a5b0af8148a8f2dd16989 # v0.20.0
+    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@dfdb60397d24f15c80b9468059d7d601b2caa6bf # v0.20.1
     with:
       bucket: carrel-backups
-      d1-dump-ref: v0.7.0
+      # d1-dump 0.7.0, untagged until Dustin tags it; move to v0.7.0 then.
+      d1-dump-ref: 32bd35a2a045140afcda7afe6f00fbefc8b25253
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
