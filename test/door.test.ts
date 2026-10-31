@@ -165,7 +165,7 @@ async function door(request: Request, env: Env = doorEnv()) {
  */
 async function signIn(
   claims: (nonce: string) => IdClaims = () => ({}),
-  opts: { decision?: "approve" | "deny" | "read-only"; accessError?: boolean; scope?: string; resource?: string } = {},
+  opts: { decision?: "approve" | "deny" | "read-only" | "tick-write"; accessError?: boolean; scope?: string; resource?: string } = {},
 ) {
   const access = fakeAccess(claims);
   vi.stubGlobal("fetch", access.fetch);
@@ -193,9 +193,9 @@ async function signIn(
   expect(html).toContain("Allow Claude Code to use Carrel?");
   expect(html).toContain("client.test");
   const handle = /name="handle" value="([^"]+)"/.exec(html)![1]!;
-  // As a browser would send it: the write box as the page set it, unticked for "read-only".
+  // As a browser would send it: the write box as the page set it, unticked for "read-only", ticked for "tick-write".
   const form = new URLSearchParams({ handle, decision: opts.decision === "deny" ? "deny" : "approve" });
-  if (opts.decision !== "read-only" && /name="allow_write" value="1" checked/.test(html)) form.set("allow_write", "1");
+  if (opts.decision === "tick-write" || (opts.decision !== "read-only" && /name="allow_write" value="1" checked/.test(html))) form.set("allow_write", "1");
 
   const approve = await door(
     new Request(`${DOOR}/authorize`, {
@@ -523,15 +523,15 @@ describe("least scope", () => {
     expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
   });
 
-  it("PLANT: a client that asks for no scope gets read and write, and the consent page still offers reading only", async () => {
+  it("PLANT: a client that asks for no scope gets reading only unless the person ticks write on the consent page", async () => {
     const { final } = await signIn(undefined, { scope: "" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
-    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
-    // The same request, narrowed by the person, is reading only.
-    const narrowed = await signIn(undefined, { scope: "", decision: "read-only" });
-    const readOnly = await tokenFor(narrowed.final.searchParams.get("code")!);
-    expect((await callTool(readOnly, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).status).toBe(403);
+    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).status).toBe(403);
+    // The same request, with the box ticked by the person, can write.
+    const ticked = await signIn(undefined, { scope: "", decision: "tick-write" });
+    const writer = await tokenFor(ticked.final.searchParams.get("code")!);
+    expect((await callTool(writer, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
   });
 
   it("PLANT: a token from a grant with an earlier scope name (carrel, carrel:write) can still write; carrel:read cannot", async () => {
