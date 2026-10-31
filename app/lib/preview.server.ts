@@ -3,6 +3,7 @@
 // but the site's own styles and images, and an opaque origin that cannot reach Carrel.
 
 import { buildPolicy } from "@dustinedwards/site-runtime/csp";
+import { UPLOAD_HEADERS } from "@dustinedwards/site-runtime/headers";
 
 /** The policy for a preview document. `sandbox` in the header holds even if the iframe attribute is lost. */
 export function previewPolicy(siteOrigin: string): string {
@@ -56,7 +57,8 @@ export function previewFailure(message: string): Response {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Content-Security-Policy": buildPolicy(["sandbox", "default-src 'none'", "frame-ancestors 'self'"]),
+        // Inert, as an uploaded file is; the frame's SAMEORIGIN is what lets Carrel show it.
+        ...UPLOAD_HEADERS,
         "X-Frame-Options": "SAMEORIGIN",
       },
     },

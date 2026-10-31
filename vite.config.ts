@@ -21,12 +21,11 @@ function staticHeaders(): Plugin {
     "revalidates every file. Files at stable paths (favicon, logo) keep the default revalidation.",
   ];
   const IMMUTABLE = { "Cache-Control": "public, max-age=31536000, immutable" };
-  const subresources = Object.fromEntries(["css", "js", "mjs", "woff2"].map((ext) => [`/*.${ext}`, { "Cross-Origin-Resource-Policy": "cross-origin" }]));
   return {
     name: "carrel-static-headers",
     apply: "build",
     buildStart() {
-      if (this.environment.name === "client") writeFileSync("public/_headers", headersFile(securityHeaders, { comment, charset: true, paths: { ...subresources, "/assets/*": IMMUTABLE } }));
+      if (this.environment.name === "client") writeFileSync("public/_headers", headersFile(securityHeaders, { comment, charset: true, paths: { "/assets/*": IMMUTABLE } }));
     },
   };
 }

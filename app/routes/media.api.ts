@@ -10,6 +10,7 @@
 // image, answered with the site's address for it. A Reader may read; the kit refuses a write the role
 // does not allow before the site hears anything.
 
+import { UPLOAD_HEADERS } from "@dustinedwards/site-runtime/headers";
 import { loadMedia, loadMediaChanges, readMediaQuery, runMediaIntent } from "@dustinedwards/site-api/admin";
 import { mediaDataOfKit, readMediaView } from "capsomer/behavior/media-library";
 
@@ -32,7 +33,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     if (bytesOf) {
       const file = await mediaBytes(source, bytesOf);
       if (!file) return Response.json({ error: "The site has no image by that id that Carrel can open." }, { status: 404 });
-      return new Response(file.bytes, { headers: { "content-type": file.type, "cache-control": "private, no-store", "x-content-type-options": "nosniff", "content-disposition": "attachment" } });
+      return new Response(file.bytes, { headers: { ...UPLOAD_HEADERS, "content-type": file.type, "cache-control": "private, no-store", "content-disposition": "attachment" } });
     }
     const since = search.get("changes");
     if (since !== null) return Response.json(await loadMediaChanges(source, since.slice(0, 500)), { headers: { "cache-control": "private, no-store" } });

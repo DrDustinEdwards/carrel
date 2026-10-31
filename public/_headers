@@ -16,13 +16,19 @@
   Content-Type: text/html; charset=utf-8
 
 /*.css
+  ! Cross-Origin-Resource-Policy
   Content-Type: text/css; charset=utf-8
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.js
+  ! Cross-Origin-Resource-Policy
   Content-Type: text/javascript; charset=utf-8
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.mjs
+  ! Cross-Origin-Resource-Policy
   Content-Type: text/javascript; charset=utf-8
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.txt
   Content-Type: text/plain; charset=utf-8
@@ -31,29 +37,19 @@
   Content-Type: application/xml; charset=utf-8
 
 /*.svg
+  ! Cross-Origin-Resource-Policy
   Content-Type: image/svg+xml; charset=utf-8
+  Cross-Origin-Resource-Policy: cross-origin
+
+/*.woff2
+  ! Cross-Origin-Resource-Policy
+  Cross-Origin-Resource-Policy: cross-origin
 
 /
   Content-Type: text/html; charset=utf-8
 
 /*/
   Content-Type: text/html; charset=utf-8
-
-/*.css
-  ! Cross-Origin-Resource-Policy
-  Cross-Origin-Resource-Policy: cross-origin
-
-/*.js
-  ! Cross-Origin-Resource-Policy
-  Cross-Origin-Resource-Policy: cross-origin
-
-/*.mjs
-  ! Cross-Origin-Resource-Policy
-  Cross-Origin-Resource-Policy: cross-origin
-
-/*.woff2
-  ! Cross-Origin-Resource-Policy
-  Cross-Origin-Resource-Policy: cross-origin
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
