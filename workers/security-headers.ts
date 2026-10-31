@@ -6,14 +6,7 @@
 // sets a security header, except a route that chooses its own policy on purpose (the preview, the
 // print export), which is kept.
 
-import {
-  buildContentSecurityPolicy,
-  buildStagedPolicy,
-  CSP_REPORT_GROUP,
-  generateNonce,
-  reportingEndpoints,
-  type SitePolicy,
-} from "@dustinedwards/site-runtime/csp";
+import { CSP_REPORT_GROUP, buildContentSecurityPolicy, buildStagedPolicy, generateNonce, reportingEndpoints } from "@dustinedwards/site-runtime/csp";
 import { applyHeaderSet, buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
 import { carrelDesk, carrelMcp } from "@dustinedwards/site-runtime/sites";
 
@@ -41,20 +34,7 @@ const isHttpsOrigin = (origin: string) => /^https:\/\/[^\s;,'"]+$/.test(origin);
  * from the site that serves it, and nothing else may load an image. `reportOrigin` is the AI door's
  * origin, whose /csp-report is reachable without an Access session.
  */
-export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
-  return buildContentSecurityPolicy(appSitePolicy(nonce, imageOrigins, reportOrigin)).value;
-}
-
-/**
- * The Report-Only companion Desk's registry entry stages (site-runtime ./sites, carrelDesk): the same policy with
- * Trusted Types and default-src 'none' added, so the reports name each sink and each unlisted kind a page reaches
- * before either is enforced.
- */
-function stagedPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
-  return buildStagedPolicy(appSitePolicy(nonce, imageOrigins, reportOrigin), { trustedTypes: true, denyUnlisted: true }).value;
-}
-
-function appSitePolicy(nonce: string, imageOrigins: string[], reportOrigin: string): SitePolicy {
+function appOptions(nonce: string, imageOrigins: string[], reportOrigin: string): Parameters<typeof buildContentSecurityPolicy>[0] {
   return {
     nonce,
     // 'strict-dynamic': the nonced entry scripts load the route chunks.
@@ -72,6 +52,22 @@ function appSitePolicy(nonce: string, imageOrigins: string[], reportOrigin: stri
     reportUri: `${reportOrigin}${CSP_REPORT_PATH}`,
     reportTo: CSP_REPORT_GROUP,
   };
+}
+
+export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
+  return buildContentSecurityPolicy(appOptions(nonce, imageOrigins, reportOrigin)).value;
+}
+
+/**
+ * The Report-Only companion: the app policy with what Desk's registry entry stages ("report-only" denyUnlisted and
+ * trustedTypes, ./sites), so the reports name what the stricter policy would block before it blocks anything.
+ */
+function stagedAppPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
+  const options = appOptions(nonce, imageOrigins, reportOrigin);
+  // default-src 'none' no longer covers the editor's preview iframe, so frame-src names it ('self' plus Desk's origin;
+  // site-runtime always writes 'self' first and has no way to write it alone).
+  const sources = { ...options.sources, frame: [carrelDesk.origin] };
+  return buildStagedPolicy({ ...options, sources }, { denyUnlisted: true, trustedTypes: true }).value;
 }
 
 /** `set` stamped on the response, or on a copy when its headers cannot be changed (Response.redirect's cannot). */
@@ -108,5 +104,5 @@ export function withSecurityHeaders(
   nonce: string,
   { imageOrigins = [], reportOrigin = "" }: { imageOrigins?: string[]; reportOrigin?: string } = {},
 ): Response {
-  return apply(response, securityHeaders, appPolicy(nonce, imageOrigins, reportOrigin), stagedPolicy(nonce, imageOrigins, reportOrigin), reportOrigin);
+  return apply(response, securityHeaders, appPolicy(nonce, imageOrigins, reportOrigin), stagedAppPolicy(nonce, imageOrigins, reportOrigin), reportOrigin);
 }
