@@ -46,6 +46,7 @@ import { can } from "~/lib/roles";
 import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.file";
 
@@ -168,7 +169,7 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   const project = await requireBookProject(env.DB, viewer, params.project, "read");
   const path = params["*"] ?? "";
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
-  const form = await request.formData();
+  const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   const source = String(form.get("source") ?? "").replace(/\r\n/g, "\n");
 

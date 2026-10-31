@@ -17,6 +17,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { mediaBytes, mediaSource, runIntent, unreachable, useHref } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { absoluteMediaUrl } from "~/lib/sites.server";
+import { readForm, UPLOAD_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/media.api";
 
@@ -49,7 +50,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   if (request.method !== "POST") return Response.json({ error: "Method not allowed." }, { status: 405 });
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const form = await request.formData();
+  const form = await readForm(request, UPLOAD_MAX_BYTES);
   if (form.get("intent")) return Response.json(await runIntent(env, viewer, params.project, form));
   // The editor's upload: refused on the role before the site is asked anything.
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");

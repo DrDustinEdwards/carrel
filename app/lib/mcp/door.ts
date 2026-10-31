@@ -20,12 +20,17 @@
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
 //   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
+//   /reports/conformance.json     each site's latest conformance, public, for devkit's scoreboard
 //   anything else                 404
 
 import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
 
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+
+import { reports } from "~/db/schema";
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
 import { healthAnswer } from "~/lib/health.server";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
@@ -72,6 +77,7 @@ function text(body: string, status: number): Response {
  * the latest when the MCP specification removes registration (after summer 2027).
  */
 const REGISTER_PATH = "/register";
+const REPORT_PATH = "/reports/conformance.json";
 const registrationAllowlist = (env: Env) => [...DCR_CALLBACKS, (env as { DCR_REDIRECT_URIS?: string }).DCR_REDIRECT_URIS ?? ""].join(",");
 
 /**
@@ -184,10 +190,18 @@ function providerFor(env: Env): OAuthProvider<Env> {
   return provider;
 }
 
+/** The health run's latest conformance report (health.server.ts), as stored. Before the first run there is none. */
+async function conformanceReport(env: Env): Promise<Response> {
+  const row = await drizzle(env.DB).select({ body: reports.body }).from(reports).where(eq(reports.name, "conformance")).get();
+  if (!row) return text("No report yet.", 404);
+  return new Response(row.body, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", ...PRIVATE_HEADERS } });
+}
+
 /** Serves one request that arrived on the AI door's hostname. */
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
   if (pathname === "/health") return healthAnswer(env);
+  if (pathname === REPORT_PATH && request.method === "GET") return conformanceReport(env);
   if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
     // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
     const agent = await agentPrincipal(env, request.headers.get("Authorization"));

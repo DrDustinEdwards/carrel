@@ -1,10 +1,12 @@
 // Planted problems for the health check: one email per change of state, never one per run, and an
 // alert that fails to send is retried rather than lost.
 
+import { createExecutionContext } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { runBackup } from "~/lib/backup.server";
 import { runHealth } from "~/lib/health.server";
+import { aiDoor } from "~/lib/mcp/door";
 import { clearTokenCache } from "~/lib/novels/repo.server";
 import { addPerson, resetDb, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
@@ -131,6 +133,24 @@ describe("site health", () => {
     await runHealth(env, through(site, true));
     expect(box.sent).toHaveLength(1);
     expect(box.sent[0]!.text).toMatch(/FAIL site-dustinedwards: dustinedwards\.info does not conform\. meta: answers with this contract's schema hash: schema hash ffffffffffff/);
+  });
+
+  it("PLANT: the public report names a drifted site's failed check, and nothing the site said", async () => {
+    const site = fakeSite();
+    const env = { ...connectedEnv(), EMAIL: mailbox().EMAIL };
+    const report = async () => {
+      const response = await aiDoor(new Request("https://carrel-mcp.test/reports/conformance.json"), env, createExecutionContext());
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+      return (await response.json()) as { check: string; sites: Record<string, { status: string; findings: { detail: string }[] }> };
+    };
+    await runHealth(env, through(site));
+    expect((await report()).sites[SITE_ORIGIN]).toEqual({ status: "pass", findings: [] });
+    await runHealth(env, through(site, true));
+    const body = await report();
+    expect(body.check).toBe("carrel-conformance");
+    expect(body.sites[SITE_ORIGIN]!.status).toBe("fail");
+    expect(body.sites[SITE_ORIGIN]!.findings[0]!.detail).toMatch(new RegExp(`^${SITE_ORIGIN}/api/carrel/v1 meta`));
+    expect(JSON.stringify(body)).not.toContain("ffffffffffff");
   });
 
   it("PLANT: flags a site that holds a different key", async () => {

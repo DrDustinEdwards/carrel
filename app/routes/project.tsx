@@ -29,6 +29,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteConnection, siteEntry } from "~/lib/sites.server";
 import { waitingWork, withWaitingWork } from "~/lib/waiting.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project";
 
@@ -76,7 +77,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read");
-  const form = await request.formData();
+  const form = await readForm(request);
   if (form.get("intent") === "share") return { refreshed: null, error: null, share: await shareFromForm(env, getViewer(context), project.id, form) };
   if (form.get("intent") !== "refresh") throw new Response("Bad request", { status: 400 });
   try {

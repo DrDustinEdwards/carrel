@@ -23,6 +23,7 @@ import { mediaSource, runIntent, unreachable, useHref } from "~/lib/media.server
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
+import { readForm, UPLOAD_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/media";
 
@@ -50,7 +51,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 }
 
 export async function action({ params, request, context }: Route.ActionArgs): Promise<IntentResult> {
-  return runIntent(getEnv(context), getViewer(context), params.project, await request.formData());
+  return runIntent(getEnv(context), getViewer(context), params.project, await readForm(request, UPLOAD_MAX_BYTES));
 }
 
 // Moving between views (search, a tag, a file to open) is the router's GET, so it stays in the app;
