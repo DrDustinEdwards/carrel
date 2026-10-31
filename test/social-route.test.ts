@@ -12,7 +12,7 @@ beforeEach(async () => {
   await resetDb();
   await addPerson("owner@test.invalid", { owner: true });
   await addPerson("editor@test.invalid");
-  await addProject("germomics", "dustinedwards");
+  await addProject("field-notes", "dustinedwards");
 });
 
 const context = (email: string) => routeContext(testEnv, email);
@@ -24,10 +24,10 @@ describe("the social page", () => {
 
   it("adds an account that starts off, in approval mode, and says the routine is not set up", async () => {
     const body = new FormData();
-    for (const [k, v] of Object.entries({ intent: "add-account", key: "germomics-bluesky", name: "Germomics", platform: "bluesky", kind: "brand", handle: "@germomics.bsky.social" })) body.set(k, v);
+    for (const [k, v] of Object.entries({ intent: "add-account", key: "example-bluesky", name: "Example Co", platform: "bluesky", kind: "brand", handle: "@example.bsky.social" })) body.set(k, v);
     expect(await socialAction({ request: new Request("https://carrel.test/social", { method: "POST", body }), params: {}, context: await context("owner@test.invalid") } as never)).toEqual({ ok: true });
     const data = (await socialLoader({ request: new Request("https://carrel.test/social"), params: {}, context: await context("owner@test.invalid") } as never)) as Awaited<ReturnType<typeof socialLoader>>;
-    expect(data.accounts).toMatchObject([{ key: "germomics-bluesky", handle: "germomics.bsky.social", enabled: false, mode: "approval" }]);
+    expect(data.accounts).toMatchObject([{ key: "example-bluesky", handle: "example.bsky.social", enabled: false, mode: "approval" }]);
     expect(data.routine).toBe("SOCIAL_ROUTINE_URL and SOCIAL_ROUTINE_TOKEN are not both set.");
   });
 });

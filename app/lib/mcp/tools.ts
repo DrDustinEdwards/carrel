@@ -559,7 +559,7 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         event_id: { type: "integer", description: "The event id from the routine's list of waiting items." },
-        account: { type: "string", description: "The account key, such as germomics-bluesky, when there is no event id." },
+        account: { type: "string", description: "The account key, such as example-bluesky, when there is no event id." },
         project: PROJECT,
         item: { type: "string", description: "The piece's id in that project." },
         text: { type: "string", description: "The post, in the account's voice, announcing the piece and linking it." },

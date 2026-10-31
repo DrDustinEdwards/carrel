@@ -56,7 +56,7 @@ export type AccountInput = { key: string; name: string; platform: "bluesky" | "x
 
 export async function createAccount(db: D1Database, viewer: Viewer, input: AccountInput) {
   requireOwner(viewer);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.key)) return { ok: false as const, error: "The key is lower-case letters, digits and hyphens, such as germomics-bluesky." };
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.key)) return { ok: false as const, error: "The key is lower-case letters, digits and hyphens, such as example-bluesky." };
   if (!input.name.trim() || !input.handle.trim()) return { ok: false as const, error: "Give the account a name and its handle." };
   try {
     // Every account starts off, in approval mode.

@@ -32,7 +32,7 @@ export type SectionChoice = { key: string; title: string };
 
 /**
  * `kind` is the site's kind for the item. A post (or an item with no kind) gets the post's fields and a
- * legal page the legal fields; any other kind keeps its content in keys of its own (a phage's host, a
+ * legal page the legal fields; any other kind keeps its content in keys of its own (a recipe's servings, a
  * cohort's researchers), so it gets its whole frontmatter as written, for the site to check on save.
  */
 export function FrontmatterFields({
