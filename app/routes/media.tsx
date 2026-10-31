@@ -9,14 +9,14 @@
 // Each write is optional per site (the site's meta says which), and the screen shows only what the
 // site offers and the person's role allows (lib/media.server.ts).
 
-import { Form, useRevalidator, type FormProps } from "react-router";
 import { Banner } from "capsomer/react/banner";
-import { MediaLibrary, type FormComponent, type KitMediaChanges } from "capsomer/react/media-library";
+import { MediaLibrary, type KitMediaChanges } from "capsomer/react/media-library";
 import { mediaDataOfKit, readMediaView } from "capsomer/behavior/media-library";
 import type { MediaRecord } from "capsomer/behavior/media";
 import { PageHead } from "capsomer/react/page-head";
 import { loadMedia, readMediaQuery, type IntentResult } from "@dustinedwards/site-api/admin";
 
+import { KitForm, useKitSubmit } from "~/components/kit-form";
 import { ProjectTabs } from "~/components/project-tabs";
 import { getEnv, getViewer } from "~/lib/context";
 import { mediaSource, runIntent, unreachable, useHref } from "~/lib/media.server";
@@ -54,26 +54,11 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   return runIntent(getEnv(context), getViewer(context), params.project, await readForm(request, UPLOAD_MAX_BYTES));
 }
 
-// Moving between views (search, a tag, a file to open) is the router's GET, so it stays in the app;
-// a post is a plain form, which the library sends through `submit` with script and the browser sends
-// to this route's action without.
-const LibraryForm: FormComponent = ({ method, action, ...props }) =>
-  (method ?? "get").toLowerCase() === "get" ? <Form {...(props as Omit<FormProps, "method" | "action">)} action={typeof action === "string" ? action : undefined} method="get" /> : <form {...props} action={action} method={method} />;
 
 export default function MediaPage({ loaderData, actionData }: Route.ComponentProps) {
   const { project, data, unavailable } = loaderData;
-  const revalidator = useRevalidator();
   const base = `/p/${encodeURIComponent(project.slug)}/media`;
-  // With script each intent posts to the media endpoint, and the page reads the files again after it.
-  const submit = async (form: FormData): Promise<IntentResult> => {
-    const response = await fetch(`${base}/api`, { method: "POST", body: form, headers: { accept: "application/json" } });
-    const body = (await response.json().catch(() => null)) as IntentResult | { error?: string } | null;
-    if (body && "ok" in body) {
-      if (!body.confirm) void revalidator.revalidate();
-      return body;
-    }
-    return { ok: false, message: (body && "error" in body && body.error) || `The server answered ${response.status}.` };
-  };
+  const submit = useKitSubmit(`${base}/api`);
   const search = async (q: string, signal: AbortSignal): Promise<MediaRecord[]> => {
     const response = await fetch(`${base}/api?q=${encodeURIComponent(q)}`, { signal, headers: { accept: "application/json" } });
     const body = (await response.json().catch(() => null)) as { rows?: MediaRecord[] } | null;
@@ -93,7 +78,7 @@ export default function MediaPage({ loaderData, actionData }: Route.ComponentPro
       {unavailable || !data ? (
         <Banner tone="warn">{unavailable}</Banner>
       ) : (
-        <MediaLibrary data={data} action={base} Form={LibraryForm} submit={submit} result={actionData ?? null} inspector="form" search={search} bytesHref={(id) => `${base}/api?bytes=${encodeURIComponent(id)}`} changes={changes} />
+        <MediaLibrary data={data} action={base} Form={KitForm} submit={submit} result={actionData ?? null} inspector="form" search={search} bytesHref={(id) => `${base}/api?bytes=${encodeURIComponent(id)}`} changes={changes} />
       )}
     </div>
   );

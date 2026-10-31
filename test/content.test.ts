@@ -176,3 +176,26 @@ describe("the Owner's writes", () => {
     ).rejects.toThrow(/No SITE_DUSTINEDWARDS_KEY set/);
   });
 });
+
+describe("missing alt text blocks a publish (Dustin approved, 2026-10-31)", () => {
+  it("refuses a publish naming each image with no alt text, before the site is asked, and publishes once they have it", async () => {
+    const site = fakeSite();
+    const env = connectedEnv();
+    const { viewer, project } = await as("owner@test.invalid");
+    const bare = '---\ntitle: Figures\n---\n\n![](/media/gel.png)\n\n![A plaque assay](/media/plaques.png)\n\n:::figure{src="/media/tem.png" alt=""}\n:::\n';
+    const saved = await writeToSite(env, project, viewer, "post-one", { action: "save", source: bare, expectedVersion: null }, site.fetch);
+    if (!saved.ok) throw new Error(saved.message);
+    const before = writesTo(site).length;
+
+    const refused = await writeToSite(env, project, viewer, "post-one", { action: "publish", expectedVersion: saved.version }, site.fetch);
+    expect(refused).toMatchObject({ ok: false, reason: "refused" });
+    expect(!refused.ok && refused.message).toContain("/media/gel.png (line 5)");
+    expect(!refused.ok && refused.message).toContain("/media/tem.png (line 9)");
+    expect(!refused.ok && refused.message).not.toContain("plaques");
+    expect(writesTo(site).length).toBe(before);
+    expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
+
+    const fixed = bare.replace("![](", "![An agarose gel](").replace('alt=""', 'alt="A phage under the microscope"');
+    expect(await writeToSite(env, project, viewer, "post-one", { action: "publish", expectedVersion: saved.version, source: fixed }, site.fetch)).toMatchObject({ ok: true, status: "published" });
+  });
+});

@@ -20,9 +20,9 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { changes } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
+import { answer, kitBase } from "~/lib/kit.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
-import { can } from "~/lib/roles";
-import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
+import { siteClient, siteUnreachable } from "~/lib/sites.server";
 
 /** The authorship record's action for each kind the kit records (migration 0007 and later; site-api v0.13's in 0024). */
 const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
@@ -55,17 +55,9 @@ export function useHref(slug: string, use: { type: string; id: string }): string
  * two histories join; a refused action writes nothing.
  */
 export function mediaSource(env: Env, project: SiteProject, viewer: Viewer, fetcher?: typeof fetch): ContentSource {
-  const connection = siteConnection(env, project.site);
   return {
-    site: { id: project.site, name: siteEntry(project.site).name, origin: connection.state === "connected" ? connection.origin : "" },
+    ...kitBase(env, project),
     client: siteClient(env, project.site, fetcher),
-    can: {
-      edit: can(project.role, "edit"),
-      publish: can(project.role, "publish"),
-      deleteContent: can(project.role, "delete_content"),
-      deleteMedia: can(project.role, "delete_media"),
-      decideMentions: can(project.role, "decide_mention"),
-    },
     editorHref: (id) => useHref(project.slug, { type: "post", id }),
     async record({ kind, ids, changeId }) {
       const action = ACTIONS[kind];
@@ -96,22 +88,12 @@ export async function mediaBytes(source: ContentSource, id: string, fetcher: typ
 
 /** A site that is not connected or cannot be reached, said plainly instead of a crash. null for anything else. */
 export function unreachable(error: unknown): string | null {
-  if (error instanceof SiteNotConnected) return `This site is not connected yet: ${error.detail}`;
-  if (error instanceof SiteApiError) {
-    if (error.status === 501) return "This site has no media library yet.";
-    return error.body ? `The site refused: ${error.body.message}` : `The site answered ${error.status}.`;
-  }
-  return null;
+  if (error instanceof SiteApiError && error.status === 501) return "This site has no media library yet.";
+  return siteUnreachable(error);
 }
 
 /** One posted intent, as the kit runs it. The same for this page's forms with no script and the media endpoint's. */
 export async function runIntent(env: Env, viewer: Viewer, slug: string | undefined, form: FormData): Promise<IntentResult> {
   const project = await requireSiteProject(env.DB, viewer, slug, "read");
-  try {
-    return await runMediaIntent(mediaSource(env, project, viewer), form);
-  } catch (error) {
-    const message = unreachable(error);
-    if (message === null) throw error;
-    return { ok: false, message };
-  }
+  return answer(() => runMediaIntent(mediaSource(env, project, viewer), form), unreachable);
 }

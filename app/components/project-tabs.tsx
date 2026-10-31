@@ -10,6 +10,7 @@ const SECTIONS = [
   { id: "mentions", label: "Mentions", path: "/mentions" },
   { id: "flags", label: "Flags", path: "/flags" },
   { id: "voice", label: "Voice", path: "/voice" },
+  { id: "not-found", label: "404s", path: "/not-found" },
 ] as const;
 
 /** `mentions` says whether this person may see the Mentions tab: the queue is the Owner's alone (roles.ts). */

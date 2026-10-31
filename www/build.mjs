@@ -97,17 +97,17 @@ const SITES = ["dustinedwards.info", "Germomics", "Foxhound", "Foxing", "Texas B
 /** The tools Carrel's MCP server gives an AI client (app/lib/mcp/tools.ts). */
 const TOOL_COUNT = 16;
 
-/** @param {{ name: string, href: string, kind: string, note: string }} item */
+/** A feature with no section of its own on the page has no href and shows its name unlinked. @param {{ name: string, href?: string, kind: string, note: string }} item */
 const checklistItem = ({ name, href, kind, note }) =>
-  `<li class="cap-checklist-item"><div class="cap-checklist-line"><a href="${href}">${esc(name)}</a><span class="cap-checklist-dots" aria-hidden="true"></span><span class="cap-checklist-kind">${esc(kind)}</span></div><p class="cap-checklist-note">${esc(note)}</p></li>`;
+  `<li class="cap-checklist-item"><div class="cap-checklist-line">${href ? `<a href="${href}">${esc(name)}</a>` : `<strong>${esc(name)}</strong>`}<span class="cap-checklist-dots" aria-hidden="true"></span><span class="cap-checklist-kind">${esc(kind)}</span></div><p class="cap-checklist-note">${esc(note)}</p></li>`;
 
 const FEATURES = [
   { name: "Every post on every site", href: "#path", kind: "Sites", note: "Each site's posts in one list, with search and filters. Write in a prose editor that saves as you type, and preview in the site's own design." },
-  { name: "Books in Git", href: "#books", kind: "Books", note: "Chapters, scenes, outlines and the story bible in a private Git repository. Export to ePub and Word, or print to PDF." },
+  { name: "Books in Git", kind: "Books", note: "Chapters, scenes, outlines and the story bible in a private Git repository. Export to ePub and Word, or print to PDF." },
   { name: "Checks that flag", href: "#checks", kind: "Checks", note: "Search and sharing checks on every post; continuity, timeline and voice checks on every scene. They flag. You decide." },
   { name: "AI drafts beside yours", href: "#ai", kind: "AI", note: `${TOOL_COUNT} tools for Claude and other MCP clients: read, search, preview, draft and flag. An AI draft never replaces your text.` },
   { name: "Who wrote what", href: "#ai", kind: "Record", note: "Every change is recorded as yours or an AI's, and a book's record exports as a report." },
-  { name: "Manuscripts in Google Drive", href: "#books", kind: "Drive", note: "An index and search of your manuscripts, read-only, with Send to Docs and Import." },
+  { name: "Manuscripts in Google Drive", kind: "Drive", note: "An index and search of your manuscripts, read-only, with Send to Docs and Import." },
 ];
 
 /** A post's way from draft to live, as the Apollo flight plan's time line. */

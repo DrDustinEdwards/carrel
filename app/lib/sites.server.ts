@@ -1,7 +1,7 @@
 // The sites Carrel reaches through site-api, and the client for one. A site's origin is config and
 // its key is a secret; Carrel holds nothing else about a site and never reads its repository.
 
-import { createSiteClient, type SiteClient } from "@dustinedwards/site-api/client";
+import { createSiteClient, SiteApiError, type SiteClient } from "@dustinedwards/site-api/client";
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
@@ -165,4 +165,11 @@ export function siteClient(env: Env, id: SiteId, fetcher?: typeof fetch): SiteCl
   const connection = siteConnection(env, id);
   if (connection.state !== "connected") throw new SiteNotConnected(connection.detail);
   return createSiteClient({ baseUrl: connection.origin, key: connection.key, fetch: fetcher ?? timedFetch });
+}
+
+/** A site that is not connected or cannot be reached, said plainly instead of a crash. null for anything else. */
+export function siteUnreachable(error: unknown): string | null {
+  if (error instanceof SiteNotConnected) return `This site is not connected yet: ${error.detail}`;
+  if (error instanceof SiteApiError) return error.body ? `The site refused: ${error.body.message}` : `The site answered ${error.status}.`;
+  return null;
 }
