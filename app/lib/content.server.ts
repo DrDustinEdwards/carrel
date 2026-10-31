@@ -10,7 +10,8 @@ import { drizzle } from "drizzle-orm/d1";
 import { changes, drafts, rooms } from "~/db/schema";
 import { indexDoc } from "~/lib/index.server";
 import { checkLegalWrite } from "~/lib/legal.server";
-import { missingAltRefusal } from "~/lib/seo-checks";
+import { missingAltRefusal, searchFieldRefusal } from "~/lib/seo-checks";
+import { listedSearchFields } from "~/lib/seo.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, mayPublish, type Action, type Role } from "~/lib/roles";
@@ -196,10 +197,11 @@ export async function writeToSite(
   if ("source" in request && request.source !== undefined) request = { ...request, source: legal.source };
 
   // An image with no alt text blocks the text going out (Dustin approved, 2026-10-31): a publish, a
-  // schedule, or a save to a post the public already sees. The refusal names each image.
+  // schedule, or a save to a post the public already sees. The refusal names each image. So do the two
+  // broken search fields: a share image with no alt text, a canonical that is not a full https address.
   if (request.action === "publish" || request.action === "schedule" || (request.action === "save" && isPublic(request.action, current))) {
     const outgoing = "source" in request && request.source !== undefined ? request.source : (current?.source ?? "");
-    const refusal = missingAltRefusal(outgoing);
+    const refusal = missingAltRefusal(outgoing) ?? searchFieldRefusal(outgoing, await listedSearchFields(env, project, outgoing, fetcher));
     if (refusal) return { ok: false, reason: "refused", message: refusal };
   }
 

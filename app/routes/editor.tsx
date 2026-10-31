@@ -20,6 +20,7 @@ import { FlagsPanel } from "~/components/editor/flags-panel";
 import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { SearchFields } from "~/components/editor/search-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { useSaveShortcut } from "~/components/editor/save-keys";
@@ -33,7 +34,7 @@ import { roomNames } from "~/lib/comments.server";
 import { discardDraft, mayPublishItem, readDoc, readDraft, readOwnDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions } from "~/lib/history.server";
-import { joinSource, splitSource } from "@dustinedwards/site-api/frontmatter";
+import { joinSource, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
 import { listSections } from "~/lib/legal.server";
 import { kindNoun, kindWord } from "~/lib/kind-words";
 import { siteState } from "~/lib/save-state";
@@ -48,7 +49,7 @@ import { PageHead } from "capsomer/react/page-head";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { can } from "~/lib/roles";
 import { openRoom, rebaseRoom, replaceRoom, roomPath, roomVersion, saveRoom, siteCoauthors, withOthers } from "~/lib/rooms.server";
-import { imagesWithoutAlt, seoCheck } from "~/lib/seo-checks";
+import { imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
@@ -116,6 +117,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   // leaves the editor without them rather than failing the page.
   let mediaAccept: string | null = null;
   let scheduledUpdates = false;
+  // The search fields the site renders (site-api v0.17.0), one box each in the editor.
+  let searchFields: SearchField[] = [];
   // The text of an update waiting on the live post, so its Author or the Owner can open it again.
   let pendingUpdate: { publishAt: string; source: string } | null = null;
   if (doc?.scheduledUpdate) {
@@ -130,6 +133,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       const { capabilities } = await siteClient(env, project.site).meta();
       mediaAccept = can(project.role, "edit") && capabilities.media ? (capabilities.mediaUpload?.types.join(",") ?? null) : null;
       scheduledUpdates = capabilities.scheduledUpdates === true;
+      searchFields = capabilities.searchFields ?? [];
     } catch {
       mediaAccept = null;
     }
@@ -151,6 +155,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     // Dismissing a flag clears it for publish on any post, so it stays the Owner's.
     canDismiss: can(project.role, "publish"),
     scheduledUpdates,
+    searchFields,
     pendingUpdate,
     title: doc?.title ?? "",
     kind: doc?.kind ?? null,
@@ -426,7 +431,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     hold: data.status === "scheduled" && data.publishAt ? { reason: "scheduled", untilLabel: exactTime(data.publishAt), text: `Scheduled for ${exactTime(data.publishAt)}` } : null,
   };
   // The search and sharing checks, on the text as it is typed (none for a legal page or another kind).
-  const seo = useMemo(() => seoCheck(data.project.siteId, source, { kind: data.kind, origin: data.origin, path: data.address }), [source, data.kind, data.project.siteId, data.origin, data.address]);
+  const seo = useMemo(
+    () => seoCheck(data.project.siteId, source, { kind: data.kind, origin: data.origin, path: data.address, searchFields: data.searchFields }),
+    [source, data.kind, data.project.siteId, data.origin, data.address, data.searchFields],
+  );
   // Open flags never stop a publish here (checks and reviewers flag, they do not decide), so each is advisory.
   const gateChecks: GateCheck[] = data.flags.map((f) => ({
     id: `flag-${f.id}`,
@@ -442,9 +450,13 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   for (const [i, image] of imagesWithoutAlt(source).entries()) {
     gateChecks.push({ id: `alt-${i}`, name: "Alt text", required: true, ok: false, cause: `${image.src || image.excerpt} has no alt text (line ${image.line})`, pass: "Every image has alt text", href: "#seo", fix: "Describe what the image shows, in a sentence." });
   }
+  // A share image with no alt text and a canonical that is not a full https address block it too (writeToSite refuses them).
+  for (const fault of seo ? searchFieldFaults(splitSource(source).front, data.searchFields) : []) {
+    gateChecks.push({ id: `search-${fault.field}`, name: fault.field === "imageAlt" ? "Share image alt text" : "Canonical address", required: true, ok: false, cause: fault.message, pass: "Sound", href: "#search-fields", fix: fault.field === "imageAlt" ? "Describe the share image, or remove it." : "Enter the original's full https:// address, or clear the box." });
+  }
   // The other search and sharing checks are advisory: the gate names each and points to the panel.
   for (const [i, f] of (seo?.findings ?? []).entries()) {
-    if (f.check === "image-alt") continue;
+    if (f.check === "image-alt" || f.check === "imageAlt" || f.check === "canonical") continue;
     gateChecks.push({ id: `seo-${i}`, name: "Search and sharing", required: false, ok: false, cause: f.message, pass: "Fits", href: "#seo", fix: "Change the post's details or the image." });
   }
 
@@ -540,7 +552,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               <section className="app-editor-pane" aria-label="Write">
                 {data.room ? editing.bar : null}
                 {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
-                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} sections={data.sections} kind={data.kind} />
+                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} sections={data.sections} kind={data.kind} searchFields={seo ? data.searchFields : []} />
+                {seo && data.searchFields.length > 0 ? (
+                  <SearchFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} listed={data.searchFields} site={data.project.siteId} origin={data.origin} media={data.media} />
+                ) : null}
                 <WritingSurface
                   label={kindWord(data.kind)}
                   value={splitSource(source).body}

@@ -2,7 +2,8 @@
 // dialog holds Capsomer's MediaLibrary in picker mode, the same grid, search and tags as the media
 // page, over the project's media endpoint: its links and its search load the next view into the
 // dialog instead of leaving the editor. The picker's alt step starts from the file's own alt text; the
-// figure takes the file's own caption, which the post can change like any other text.
+// figure takes the file's own caption, which the post can change like any other text. The search and
+// sharing fields use the same picker for the share image, with their own words and their own onPick.
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { Button } from "capsomer/react/button";
@@ -10,9 +11,25 @@ import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, Dialo
 import { Empty } from "capsomer/react/empty";
 import { MediaLibrary, type FormComponent, type MediaData } from "capsomer/react/media-library";
 
-import type { EditorMedia } from "./upload";
+type LibraryPick = { url: string; alt: string; caption: string };
 
-export function LibraryInsert({ media, insert: put }: { media: EditorMedia; insert: (markdown: string) => void }) {
+const INSERT = {
+  label: "Insert from library",
+  title: "Insert an image from the library",
+  lead: "Pick an image already on the site, then describe it. It is not in the post until it has alt text.",
+};
+
+export function LibraryInsert({
+  media,
+  onPick,
+  words = INSERT,
+  variant = "quiet",
+}: {
+  media: { endpoint: string };
+  onPick: (pick: LibraryPick) => void;
+  words?: typeof INSERT;
+  variant?: "quiet" | "default";
+}) {
   const [open, setOpen] = useState(false);
   const [opener, setOpener] = useState<HTMLElement | null>(null);
   const [data, setData] = useState<MediaData | null>(null);
@@ -78,19 +95,19 @@ export function LibraryInsert({ media, insert: put }: { media: EditorMedia; inse
   return (
     <>
       <Button
-        variant="quiet"
+        variant={variant}
         size="sm"
         onClick={(event) => {
           setOpener(event.currentTarget);
           setOpen(true);
         }}
       >
-        Insert from library
+        {words.label}
       </Button>
       <Dialog open={open} onOpenChange={(o) => !o && close()} placement="center" size="lg" returnTo={opener} aria-labelledby="library-title">
         <DialogHeader divider>
-          <DialogTitle id="library-title">Insert an image from the library</DialogTitle>
-          <DialogDescription>Pick an image already on the site, then describe it. It is not in the post until it has alt text.</DialogDescription>
+          <DialogTitle id="library-title">{words.title}</DialogTitle>
+          <DialogDescription>{words.lead}</DialogDescription>
         </DialogHeader>
         <DialogBody>
           <div onClickCapture={follow}>
@@ -106,7 +123,7 @@ export function LibraryInsert({ media, insert: put }: { media: EditorMedia; inse
                 mode="picker"
                 onPick={({ id, url, alt }) => {
                   const caption = data.rows.find((r) => r.key === id)?.caption ?? "";
-                  put(media.figure(url, alt, caption));
+                  onPick({ url, alt, caption });
                   close();
                 }}
               />

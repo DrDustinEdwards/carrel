@@ -115,7 +115,16 @@ export function WritingSurface({
             { value: "markdown", label: "Markdown" },
           ]}
         />
-        {images ? <LibraryInsert media={images} insert={(md) => (mode === "formatted" ? rich.current?.insertMarkdown(md) : insertIntoMarkdown(root.current, md))} /> : null}
+        {images ? (
+          <LibraryInsert
+            media={images}
+            onPick={({ url, alt, caption }) => {
+              const md = images.figure(url, alt, caption);
+              if (mode === "formatted") rich.current?.insertMarkdown(md);
+              else insertIntoMarkdown(root.current, md);
+            }}
+          />
+        ) : null}
       </div>
       {mode === "formatted" && room && !room.rich ? (
         // The room's copy has not arrived yet: the text as the server read it, not yet editable.

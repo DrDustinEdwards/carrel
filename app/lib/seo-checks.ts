@@ -9,10 +9,15 @@
 // floor for a description; DESCRIPTION_MIN is Carrel's.
 //
 // Each site names these fields differently, so SOCIAL_FIELDS holds one entry per site, as FIGURES in
-// site-markdown.ts does: shared by the server and the browser.
+// site-markdown.ts does: shared by the server and the browser. A site on site-api v0.17.0 lists the shared
+// search fields it renders (capabilities.searchFields), and a listed one comes before the site's own key.
+//
+// Two faults in those fields block a publish, like alt text in the body (searchFieldRefusal): a share
+// image with no alt text, and a canonical address that is not a full https one. Both are broken output,
+// not judgment; a title or description too wide for a result only warns.
 
 import { SERP_DESCRIPTION_LIMIT, SERP_TITLE_LIMIT, truncateForSerp } from "@drdustinedwards/site-helpers/head";
-import { readKey, splitSource } from "@dustinedwards/site-api/frontmatter";
+import { readKey, searchFieldsOf, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
 
 import { legalTypeOf } from "~/lib/legal";
 
@@ -54,7 +59,7 @@ const SOCIAL_FIELDS: Record<string, SocialFields> = {
 const DEFAULT_FIELDS: SocialFields = { title: ["title"], description: ["description", "excerpt"], image: null };
 
 type SeoFinding = {
-  check: "title" | "description" | "image-alt" | "card-image";
+  check: "title" | "description" | "image-alt" | "card-image" | "noindex" | SearchFault["field"];
   message: string;
   /** The words concerned, when there are any to quote. */
   excerpt: string | null;
@@ -99,6 +104,21 @@ function first(front: string | null, keys: readonly string[]): string {
   return "";
 }
 
+/** The site's keys with the listed shared search fields put first. */
+function withSearchFields(fields: SocialFields, listed: readonly SearchField[]): SocialFields {
+  const before = (key: SearchField, keys: readonly string[]) => (listed.includes(key) ? [key, ...keys.filter((k) => k !== key)] : keys);
+  return {
+    ...fields,
+    title: before("searchTitle", fields.title),
+    cardTitle: fields.cardTitle ?? fields.title,
+    description: before("description", fields.description),
+    cardDescription: before("description", fields.cardDescription ?? fields.description),
+  };
+}
+
+/** What the site adds after the title in a search result, for a width measured as the result shows it. */
+export const titleSuffixOf = (site: string): string => SOCIAL_FIELDS[site]?.titleSuffix ?? "";
+
 const plural = (n: number) => `${n} character${n === 1 ? "" : "s"}`;
 
 /** Each image in a body with no alt text, or an empty one: Markdown, HTML and a `:::figure` directive. Code is skipped. */
@@ -132,6 +152,38 @@ export function imagesWithoutAlt(source: string): { excerpt: string; src: string
   return found;
 }
 
+type SearchFault = { field: "imageAlt" | "canonical"; message: string };
+
+/** A full https address with a host: what a canonical link must be for a search engine to follow it. */
+function isAbsoluteHttps(value: string): boolean {
+  if (/\s/.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname !== "";
+  } catch {
+    return false;
+  }
+}
+
+/** The search fields' faults that block a publish, for the fields the site lists. */
+export function searchFieldFaults(front: string | null, listed: readonly SearchField[]): SearchFault[] {
+  const values = searchFieldsOf(front);
+  const faults: SearchFault[] = [];
+  if (listed.includes("image") && values.image && !values.imageAlt) {
+    faults.push({ field: "imageAlt", message: "The share image has no alt text" });
+  }
+  if (listed.includes("canonical") && values.canonical && !isAbsoluteHttps(values.canonical)) {
+    faults.push({ field: "canonical", message: `The canonical address is not a full https:// address: ${values.canonical}` });
+  }
+  return faults;
+}
+
+/** Why a publish is refused for the search fields, or null when they are sound. */
+export function searchFieldRefusal(source: string, listed: readonly SearchField[]): string | null {
+  const faults = searchFieldFaults(splitSource(source.replace(/\r\n/g, "\n")).front, listed);
+  return faults.length ? `Fix the search and sharing fields before the post goes out. ${faults.map((f) => `${f.message}.`).join(" ")}` : null;
+}
+
 /** Why a publish is refused for alt text, naming each image by its address and line; null when every image has alt text. */
 export function missingAltRefusal(source: string): string | null {
   const images = imagesWithoutAlt(source);
@@ -144,9 +196,15 @@ export function missingAltRefusal(source: string): string | null {
  * The checks and the preview for a post's whole source on `site`, or null for anything that is not a post
  * (a legal page, another kind such as a phage, a source with no frontmatter). A null `kind` is a post.
  * `origin` makes a site path absolute; `path` is the post's public path, which the site gives once it is published.
+ * `searchFields` is what the site's capabilities list.
  */
-export function seoCheck(site: string, source: string, page: { kind: string | null; origin: string | null; path: string | null }): SeoCheck | null {
-  const fields = SOCIAL_FIELDS[site] ?? DEFAULT_FIELDS;
+export function seoCheck(
+  site: string,
+  source: string,
+  page: { kind: string | null; origin: string | null; path: string | null; searchFields?: readonly SearchField[] },
+): SeoCheck | null {
+  const listed = page.searchFields ?? [];
+  const fields = withSearchFields(SOCIAL_FIELDS[site] ?? DEFAULT_FIELDS, listed);
   const { front } = splitSource(source.replace(/\r\n/g, "\n"));
   if (front === null || (page.kind ?? "post") !== "post" || legalTypeOf(source) !== null) return null;
   const findings: SeoFinding[] = [];
@@ -178,10 +236,16 @@ export function seoCheck(site: string, source: string, page: { kind: string | nu
     findings.push({ check: "image-alt", message: "An image with no alt text: a screen reader and a search engine get nothing from it.", excerpt: image.excerpt, line: image.line });
   }
 
-  const image = fields.image ? value(front, fields.image) : "";
-  if (fields.image && !image) {
+  const image = (listed.includes("image") ? value(front, "image") : "") || (fields.image ? value(front, fields.image) : "");
+  if ((fields.image || listed.includes("image")) && !image) {
     findings.push({ check: "card-image", message: "No card image: a shared link shows the site's default image, or none.", excerpt: null, line: null });
   }
+
+  for (const fault of searchFieldFaults(front, listed)) findings.push({ check: fault.field, message: fault.message, excerpt: null, line: null });
+  if (listed.includes("noindex") && searchFieldsOf(front).noindex) {
+    findings.push({ check: "noindex", message: "Hidden from search: the post asks search engines to leave it out of their results.", excerpt: null, line: null });
+  }
+  const canonical = listed.includes("canonical") ? value(front, "canonical") : "";
 
   const absolute = (url: string) => (url.startsWith("/") && page.origin ? `${page.origin.replace(/\/+$/, "")}${url}` : url);
   return {
@@ -194,7 +258,8 @@ export function seoCheck(site: string, source: string, page: { kind: string | nu
         image: image ? absolute(image) : null,
       },
       host: page.origin ? new URL(page.origin).host : null,
-      url: page.path && page.origin ? absolute(page.path) : null,
+      // A canonical of the post's own is the address a search result shows.
+      url: canonical || (page.path && page.origin ? absolute(page.path) : null),
     },
   };
 }
