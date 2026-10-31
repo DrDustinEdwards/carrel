@@ -243,6 +243,12 @@ async function callTool(token: string, name: string, args: Record<string, unknow
   return { status: 200, result: (await readMessage(response)).result as unknown as ToolCallResult };
 }
 
+/** A write tool a read grant is not listed (T7): the call is an unknown tool, so nothing runs and no step-up is offered. */
+function expectNotRun(answer: { status: number; result?: ToolCallResult }): void {
+  expect(answer.status).toBe(200);
+  expect(answer.result?.structuredContent).toBeUndefined();
+}
+
 describe("the AI door's OAuth surface", () => {
   it("answers /mcp without a token with a Bearer challenge that points at its metadata", async () => {
     const response = await door(modernRequest(1, "tools/list"));
@@ -500,15 +506,16 @@ describe("least scope", () => {
     return connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
   }
 
-  it("PLANT: a client that asks only to read gets read: reads work, a write gets the step-up challenge naming both scopes", async () => {
+  it("PLANT: a client that asks only to read gets read: reads work, the write tools are not listed, and a write runs nothing (T7)", async () => {
     const { final } = await signIn(undefined, { scope: "carrel.read" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
     expect((await callTool(token, "carrel_list_projects", {}, env)).result).toMatchObject({ structuredContent: { projects: [{ slug: "de-info" }] } });
-    const refused = await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env);
-    expect(refused.status).toBe(403);
-    expect(refused.challenge).toContain('error="insufficient_scope"');
-    expect(refused.challenge).toContain('scope="carrel.read carrel.write"');
+    const listed = await door(modernRequest(8, "tools/list", {}, { Authorization: `Bearer ${token}` }), env);
+    const names = ((await readMessage(listed)).result as unknown as { tools: { name: string }[] }).tools.map((t) => t.name);
+    expect(names).toContain("carrel_read_item");
+    expect(names).not.toContain("carrel_add_finding");
+    expectNotRun(await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env));
     expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
   });
 
@@ -516,7 +523,7 @@ describe("least scope", () => {
     const { final } = await signIn(undefined, { decision: "read-only" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
-    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).status).toBe(403);
+    expectNotRun(await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env));
     expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
   });
 
@@ -535,7 +542,7 @@ describe("least scope", () => {
     // The same request, narrowed by the person, is reading only.
     const narrowed = await signIn(undefined, { scope: "", decision: "read-only" });
     const readOnly = await tokenFor(narrowed.final.searchParams.get("code")!);
-    expect((await callTool(readOnly, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).status).toBe(403);
+    expectNotRun(await callTool(readOnly, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env));
   });
 
   it("PLANT: a token from a grant with an earlier scope name (carrel, carrel:write) can still write; carrel:read cannot", async () => {
@@ -554,7 +561,8 @@ describe("least scope", () => {
     };
     expect((await readMessage(await call(["carrel"]))).result).toMatchObject({ structuredContent: { flagged: true } });
     expect((await readMessage(await call(["carrel:read", "carrel:write"]))).result).toMatchObject({ structuredContent: { flagged: true } });
-    expect((await call(["carrel:read"])).status).toBe(403);
+    const readOnly = await readMessage(await call(["carrel:read"]));
+    expect(readOnly.error ?? (readOnly.result as { isError?: boolean } | undefined)?.isError).toBeTruthy();
   });
 
   it("a client still sending the legacy scope carrel is asked for both, as its first consent was", async () => {

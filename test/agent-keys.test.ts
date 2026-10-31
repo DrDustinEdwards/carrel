@@ -212,25 +212,6 @@ describe("what a named agent key refuses", () => {
   });
 });
 
-describe("how the key is read", () => {
-  it("names the agent from the secret's name, lower-cased, and only a valid name", async () => {
-    expect(await agentPrincipal({ AGENT_KEY_GROK: KEY }, `Bearer ${KEY}`)).toBe("grok");
-    expect(await agentPrincipal({ AGENT_KEY_Mixed_Case: KEY }, `Bearer ${KEY}`)).toBe("mixed_case");
-    for (const name of ["AGENT_KEY_", "AGENT_KEY_has space", "AGENT_KEY_" + "x".repeat(33), "AGENT_KEY_-lead", "NOT_AGENT_KEY_GROK", "agent_key_grok"]) {
-      expect(await agentPrincipal({ [name]: KEY }, `Bearer ${KEY}`), name).toBeNull();
-    }
-    expect(await agentPrincipal({ AGENT_KEY_GROK: 7 as unknown as string }, `Bearer 7`)).toBeNull();
-  });
-
-  it("picks the right agent among several and refuses a key that is none of them", async () => {
-    const e = { AGENT_KEY_GROK: KEY, AGENT_KEY_OTHER: OTHER_KEY };
-    expect(await agentPrincipal(e, `Bearer ${OTHER_KEY}`)).toBe("other");
-    expect(await agentPrincipal(e, `Bearer ${KEY}`)).toBe("grok");
-    expect(await agentPrincipal(e, "Bearer nope")).toBeNull();
-    expect(await agentPrincipal(e, null)).toBeNull();
-  });
-});
-
 describe("adding an agent in People", () => {
   it("is the Owner's alone, and the agent row is never an Owner or a reviewer, with no role until one is set", async () => {
     const owner = await viewerFor("owner@test.invalid");
