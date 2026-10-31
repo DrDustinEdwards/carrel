@@ -79,6 +79,7 @@ function text(body: string, status: number): Response {
 async function rateLimited(env: Env, personId: number, caller: string): Promise<Response | null> {
   const { allowed, retryAfter } = await checkRateLimit(env.MCP_RATE_LIMIT, `person:${personId}`);
   if (allowed) return null;
+  logEvent(OWASP_EVENTS.rateLimitExceeded, { door: "ai", personId, retryAfter }, { level: "warn" });
   await recordAudit(env, { callId: crypto.randomUUID(), phase: "rate-limited", caller, server: { name: MCP_SERVER.name, version: MCP_SERVER.version } });
   const out = text(`Too many requests. Try again in ${retryAfter} seconds.`, 429);
   out.headers.set("Retry-After", String(retryAfter));
@@ -163,7 +164,7 @@ async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, n
     logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "agent-not-in-carrel", agent: name }, { level: "warn" });
     return text("Forbidden. This agent key does not belong to an active agent in Carrel.", 403);
   }
-  logEvent("agent_key_accepted", { agent: name });
+  logEvent(OWASP_EVENTS.signInSuccess, { door: "ai", method: "agent-key", agent: name });
   const throttled = await rateLimited(env, viewer.id, `agent:${name}`);
   if (throttled) return throttled;
   const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES }, { carrelOrigin: carrelOrigin(env) });

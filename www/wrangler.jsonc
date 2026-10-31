@@ -16,7 +16,8 @@
   "routes": [{ "pattern": "carrel.dustinedwards.info", "custom_domain": true }],
   // At most 60 violation reports a minute from one address reach the log; the rest still get 204.
   "ratelimits": [{ "name": "CSP_REPORT_RATE_LIMIT", "namespace_id": "7702", "simple": { "limit": 60, "period": 60 } }],
-  "observability": { "logs": { "enabled": true, "invocation_logs": false } },
+  // Every request's log is kept (rate 1): a one-page site's volume is small, and a sampled-away error is the cost that matters.
+  "observability": { "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": false } },
   "workers_dev": false,
   "preview_urls": false
 }

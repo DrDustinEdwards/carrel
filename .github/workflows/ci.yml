@@ -47,6 +47,10 @@ jobs:
       - run: npm run check:roundtrip -- .roundtrip/dustinedwards-info/content
       - run: npm run check:roundtrip -- test/fixtures/markdown --plain
       - run: npm run check:postinstall
+      # Raw console.* calls in server code may not rise above .console.json's baseline (devkit-console), and every D1
+      # migration is recorded in drizzle/manifest.json and, after it, expand only (devkit-migrations).
+      - run: npm run check:console
+      - run: npm run check:migrations
       - run: npm run check:mcp-roles
       - name: Install Chromium for the accessibility scan
         run: npx playwright install --with-deps chromium
@@ -98,7 +102,7 @@ jobs:
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@71f342e07f91d3be216f2dfd8e9815a0f9f7299c # v0.20.13
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@65782d2c45431055672a315f0d126b62d0dd3aff # v0.20.14
     with:
       worker-name: carrel-desk
       d1-database: carrel

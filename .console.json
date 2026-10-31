@@ -1,0 +1,32 @@
+{
+  "files": [
+    "app/**/*.{ts,tsx}",
+    "workers/**/*.ts",
+    "www/worker.mjs",
+    "www/headers.mjs"
+  ],
+  "baseline": {
+    "measured_at": "319d9ca",
+    "calls": 22,
+    "files": {
+      "app/entry.server.tsx": 1,
+      "app/lib/access-sync.server.ts": 2,
+      "app/lib/ai.server.ts": 1,
+      "app/lib/binder.server.ts": 1,
+      "app/lib/books.server.ts": 1,
+      "app/lib/content.server.ts": 2,
+      "app/lib/google/refresh.server.ts": 1,
+      "app/lib/health.server.ts": 3,
+      "app/lib/inbox-report.server.ts": 1,
+      "app/lib/mcp/tools.ts": 1,
+      "app/lib/posts.server.ts": 1,
+      "app/lib/refresh.server.ts": 1,
+      "app/lib/voice.server.ts": 1,
+      "app/routes/ai-draft.preview.ts": 1,
+      "app/routes/mentions.tsx": 1,
+      "app/routes/preview.ts": 1,
+      "app/routes/project.not-found.tsx": 1,
+      "workers/doc-room.ts": 1
+    }
+  }
+}
