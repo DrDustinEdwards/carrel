@@ -12,6 +12,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { defineHead, headHtml } from "@drdustinedwards/site-helpers/head";
+import { iconLinks, webManifest } from "@drdustinedwards/site-helpers/icons";
 import { llmsDocument } from "@drdustinedwards/site-helpers/llms";
 import { aiTxt, robotsDocument } from "@drdustinedwards/site-helpers/robots";
 import { graph, jsonLd, thing, website } from "@drdustinedwards/site-helpers/schema";
@@ -224,7 +225,7 @@ const CARD = { url: "/og-card.png", width: 1200, height: 630, alt: "Carrel: one 
 /** The family letterhead (capsomer/site-header) with its theme button, wired by /site.js. */
 const HEADER = letterheadHtml({
   name: "Carrel",
-  mark: '<img src="/favicon.svg" alt="" width="32" height="32">',
+  mark: '<img src="/icon.svg" alt="" width="32" height="32">',
   links: [
     ["/", "Home"],
     ["/#what", "What it does"],
@@ -269,6 +270,10 @@ const LLMS = llmsDocument({
   ],
 });
 
+const ICON_LINKS = iconLinks()
+  .map((link) => `<link ${Object.entries(link).map(([name, value]) => `${name}="${value}"`).join(" ")}>`)
+  .join("\n");
+
 const head = defineHead({ origin: ORIGIN, siteName: "Carrel", image: CARD, locale: "en_US" });
 
 /** @param {{ title: string, description: string, body: string, index?: boolean }} p */
@@ -278,7 +283,7 @@ const documentHtml = ({ title, description, body, index = true }) => `<!doctype 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${headHtml([...head({ path: "/", title, fullTitle: true, description, noindex: !index }), ...(index ? [jsonLd(SCHEMA)] : [])])}
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+${ICON_LINKS}
 <link rel="stylesheet" href="/site.css">
 <script src="/theme.js"></script>
 </head>
@@ -374,6 +379,7 @@ export async function buildSite(outDir) {
   writeFileSync(join(outDir, "robots.txt"), robotsDocument({ origin: ORIGIN, notes: [`llms.txt: ${ORIGIN}/llms.txt`] }));
   writeFileSync(join(outDir, "ai.txt"), aiTxt({ origin: ORIGIN, name: "Carrel", contact: CONTACT }));
   writeFileSync(join(outDir, "llms.txt"), LLMS);
+  writeFileSync(join(outDir, "site.webmanifest"), JSON.stringify(webManifest({ name: "Carrel", description: DESCRIPTION, themeColor: "#687603", backgroundColor: "#687603", lang: "en" })));
   writeFileSync(join(outDir, `${INDEXNOW_KEY}.txt`), INDEXNOW_KEY);
 
   /** @type {string[]} */
