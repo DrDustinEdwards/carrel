@@ -1,6 +1,6 @@
 import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
-import { logEvent, withRequestLog } from "@dustinedwards/site-runtime/log";
+import { logEvent, OWASP_EVENTS, requestFields, withRequestLog } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
 import { carrelMcp } from "@dustinedwards/site-runtime/sites";
@@ -25,6 +25,7 @@ import { connectRoom } from "~/lib/rooms.server";
 
 import { cspReport, isCspReport } from "./csp-report";
 import { gate } from "./gate";
+import { routeOf } from "./route";
 import { newNonce, withSecurityHeaders } from "./security-headers";
 
 export { DocRoom } from "./doc-room";
@@ -86,6 +87,12 @@ async function fetchCounted(request: Request, env: Env, ctx: ExecutionContext): 
   // Carrel's own 404s, on both doors, per path, referring host and day (site-runtime's ./not-found; kept 90 days by the
   // nightly prune). Only a GET's 404 counts, written in waitUntil, so it never holds or fails the response.
   countNotFound(env.DB, request, response, ctx);
+  // Every refused input on either door (a form intent, an id or a body the route will not take) answers 400 or 422, so
+  // the one place that sees every answer logs it as OWASP's input_validation_fail (area 8, L4), with the route.
+  if (response.status === 400 || response.status === 422) {
+    const mcp = isMcpHost(request, env);
+    logEvent(OWASP_EVENTS.inputValidationFailure, { door: mcp ? "ai" : "browser", route: routeOf(request) ?? null, ...requestFields(request, { status: response.status }) }, { level: "warn" });
+  }
   return response;
 }
 
@@ -119,6 +126,7 @@ async function scheduled(controller: ScheduledController, env: Env): Promise<voi
 export default {
   fetch: withRequestLog((request: Request, env: Env, ctx: ExecutionContext) => withAdminIdle(request, () => fetchCounted(request, env, ctx), { prefixes: ["/"] }), {
     sha: (env) => deployedSha(env),
+    route: routeOf,
   }),
   scheduled,
 } satisfies ExportedHandler<Env>;

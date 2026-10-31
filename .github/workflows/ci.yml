@@ -119,6 +119,13 @@ jobs:
         CARREL_ALERT_EMAIL='${{ vars.CARREL_ALERT_EMAIL }}'
         node scripts/deploy.mjs --prepare
       sha-var: DEPLOY_SHA
+      # A gradual rollout (area 8, D4): the new version takes 10 percent of real traffic beside the live one for five
+      # minutes, the live gate checks it through a version override, and only then does it take all traffic. Not for a
+      # deploy that applies a Durable Object migration (a new or renamed class in wrangler.jsonc): set this to 0 for that
+      # one run. No per-pull-request preview (D6): Cloudflare gives a Worker with a Durable Object no preview URL, and
+      # Desk keeps workers_dev and preview_urls off so nothing reaches it around Access.
+      gradual-percent: 10
+      gradual-minutes: 5
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

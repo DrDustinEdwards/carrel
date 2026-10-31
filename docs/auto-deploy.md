@@ -21,9 +21,9 @@ The `deploy` job in `.github/workflows/ci.yml` calls devkit's shared workflow, `
 4. Build.
 5. `devkit-migrations drizzle --apply carrel` (devkit's shared step): it applies the pending migrations that only add, after reading the D1 Time Travel bookmark, and then the database must have none pending. A drop, rename, row delete or `-- contract:` migration is refused with the command to run it by hand, so it waits for Dustin.
 
-Then devkit's workflow runs `wrangler deploy --name carrel-desk --var DEPLOY_SHA:<commit>` on the build step 4 left, with its own pinned wrangler.
+Then devkit's workflow uploads the build step 4 left as a new version with `DEPLOY_SHA` set to the commit, with its own pinned wrangler, and rolls it out gradually (`gradual-percent: 10`, `gradual-minutes: 5` in `ci.yml`): the new version takes 10 percent of traffic beside the live one, and takes all of it only once the live gate passes. A deploy that applies a Durable Object migration (a new or renamed class) must run with `gradual-percent: 0`, because Cloudflare applies those only with `wrangler deploy`. There is no preview per pull request: Cloudflare gives a Worker with a Durable Object no preview URL, and `workers_dev` and `preview_urls` stay off so nothing reaches Desk around Access.
 
-`live gate`. It polls `https://carrel-mcp.dustinedwards.info/health`, the same `/health` the browser host serves behind Access, until its `sha` is the commit just deployed. Then it runs `scripts/verify-live.mjs`, which needs no secret and no install:
+`live gate`. It polls `https://carrel-mcp.dustinedwards.info/health`, the same shared `/health` the browser host serves at `desk.dustinedwards.info/health` (the one Desk path outside Access, by its own Bypass application, `workers/gate.ts`), through the new version's override header, until its `sha` is the commit just deployed. Then it runs `scripts/verify-live.mjs`, which needs no secret and no install and sends the same override (`WORKERS_VERSION_OVERRIDE`):
 
 - the AI door's `/health` names the commit;
 - its OAuth metadata is served with Carrel's issuer;

@@ -33,9 +33,14 @@ const unanswered = [];
  * @param {string} url @param {RequestInit} [init]
  */
 async function ask(url, init = {}) {
+  // In a gradual rollout the deploy names the new version in WORKERS_VERSION_OVERRIDE (devkit's worker-deploy.yml), and
+  // every check reads that version through Cloudflare's override header rather than whichever side of the split answers.
+  const override = process.env.WORKERS_VERSION_OVERRIDE?.trim();
+  const headers = new Headers(init.headers);
+  if (override) headers.set("Cloudflare-Workers-Version-Overrides", override);
   for (let i = 1; i <= TRIES; i++) {
     try {
-      return await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10_000), ...init });
+      return await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10_000), ...init, headers });
     } catch {
       if (i < TRIES) await new Promise((resolve) => setTimeout(resolve, RETRY_MS));
     }

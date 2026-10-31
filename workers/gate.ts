@@ -2,6 +2,10 @@
 // carries belongs to an active person in Carrel. Kept apart from app.ts so tests can drive it without
 // the React Router build.
 //
+// One path is public: /health, the shared health with the deployed commit, which Capsid's watcher and
+// the deploy's checks read with no sign-in (area 8, H1). It names checks, never a person or a page.
+// Cloudflare Access lets it through by its own Bypass application for desk.dustinedwards.info/health.
+//
 // This is the only door on desk.dustinedwards.info. The AI door is a different hostname,
 // carrel-mcp.dustinedwards.info, served by app/lib/mcp/door.ts and chosen in app.ts by the host
 // alone (design decision 7, corrected 2026-09-27). So a browser session is never treated as AI, and
@@ -13,6 +17,7 @@ import { logEvent, OWASP_EVENTS, requestFields } from "@dustinedwards/site-runti
 import { isolationVerdict, refuseCrossSite } from "@dustinedwards/site-runtime/origin";
 
 import { verifyAccess } from "~/lib/access.server";
+import { healthAnswer } from "~/lib/health.server";
 import { findViewer, type Viewer } from "~/lib/people.server";
 
 export type Render = (request: Request, viewer: Viewer) => Promise<Response>;
@@ -45,6 +50,11 @@ export async function gate(
   render: Render,
   keys?: KeySource,
 ): Promise<Response> {
+  if (new URL(request.url).pathname === "/health" && (request.method === "GET" || request.method === "HEAD")) {
+    const health = withPrivateHeaders(await healthAnswer(env));
+    health.headers.set("X-Robots-Tag", "noindex");
+    return health;
+  }
   let viewer: Viewer | null;
   try {
     const access = await verifyAccess(request, { teamDomain: env.ACCESS_TEAM_DOMAIN, audience: env.ACCESS_AUD }, keys);
