@@ -178,7 +178,7 @@ async function signIn(
     state: "client-state",
     code_challenge: await s256(VERIFIER),
     code_challenge_method: "S256",
-    scope: opts.scope ?? "carrel:read carrel:write",
+    scope: opts.scope ?? "carrel.read carrel.write",
     resource: opts.resource ?? RESOURCE,
   });
   // An empty scope means the client sent none at all.
@@ -252,7 +252,7 @@ describe("the AI door's OAuth surface", () => {
     const meta = (await (await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))).json()) as Record<string, unknown>;
     expect(meta.client_id_metadata_document_supported).toBe(true);
     expect(meta.registration_endpoint).toBe(`${DOOR}/register`);
-    expect(meta.scopes_supported).toEqual(["carrel:read", "carrel:write"]);
+    expect(meta.scopes_supported).toEqual(["carrel.read", "carrel.write"]);
   });
 
   // The deploy's live gate (devkit's worker-deploy.yml) polls this until it names the commit it shipped. It is
@@ -497,14 +497,14 @@ describe("least scope", () => {
   }
 
   it("PLANT: a client that asks only to read gets read: reads work, a write gets the step-up challenge naming both scopes", async () => {
-    const { final } = await signIn(undefined, { scope: "carrel:read" });
+    const { final } = await signIn(undefined, { scope: "carrel.read" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
     expect((await callTool(token, "carrel_list_projects", {}, env)).result).toMatchObject({ structuredContent: { projects: [{ slug: "de-info" }] } });
     const refused = await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env);
     expect(refused.status).toBe(403);
     expect(refused.challenge).toContain('error="insufficient_scope"');
-    expect(refused.challenge).toContain('scope="carrel:read carrel:write"');
+    expect(refused.challenge).toContain('scope="carrel.read carrel.write"');
     expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
   });
 
@@ -534,7 +534,7 @@ describe("least scope", () => {
     expect((await callTool(readOnly, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).status).toBe(403);
   });
 
-  it("PLANT: a token from a grant made before 2026-10-10 (scope carrel) can still write; a read-only one cannot", async () => {
+  it("PLANT: a token from a grant with an earlier scope name (carrel, carrel:write) can still write; carrel:read cannot", async () => {
     // The provider hands the handler the grant's own scope, and a refresh keeps it (it only narrows a
     // requested scope to the grant's), so an old connection arrives with ["carrel"] until it signs in again.
     await seeded();
@@ -549,6 +549,7 @@ describe("least scope", () => {
       return apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_add_finding", arguments: { project: "de-info", item: "post-one", message: `As ${scope.join(" ")}.` } }), env, ctx);
     };
     expect((await readMessage(await call(["carrel"]))).result).toMatchObject({ structuredContent: { flagged: true } });
+    expect((await readMessage(await call(["carrel:read", "carrel:write"]))).result).toMatchObject({ structuredContent: { flagged: true } });
     expect((await call(["carrel:read"])).status).toBe(403);
   });
 
@@ -588,7 +589,7 @@ describe("the token's audience", () => {
     const call = (audience: string) => {
       const ctx = Object.assign(createExecutionContext(), {
         props: { personId: owner!.id, email: "owner@test.invalid", client: "Claude", clientId: CLIENT_ID },
-        auth: { audience, scope: ["carrel:read"] },
+        auth: { audience, scope: ["carrel.read"] },
       });
       return apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_list_projects", arguments: {} }), doorEnv(), ctx);
     };

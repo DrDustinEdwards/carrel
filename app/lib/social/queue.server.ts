@@ -280,7 +280,7 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
   // 2. Published pieces with no draft: one routine run for all of them, after the batch delay, or
   // at the nightly sweep.
   const nightly = now.getUTCHours() === NIGHTLY_HOUR_UTC;
-  const waiting = (
+  let waiting = (
     await d
       .select()
       .from(socialEvents)
@@ -294,35 +294,52 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
     if ("missing" in config) templateAll = config.missing;
     else if (runsToday.length >= ROUTINE_DAILY_CAP) templateAll = `the routine's daily cap of ${ROUTINE_DAILY_CAP} runs is reached`;
     else {
-      const prompt = routinePrompt(
-        waiting.map((e) => {
-          const a = accounts.get(e.accountId)!;
-          return { eventId: e.id, account: `${a.name} (${a.key})`, platform: a.platform, voiceGuide: a.voiceGuide, title: e.title, url: e.url, summary: e.summary };
-        }),
-      );
-      const fired = await fireRoutine(config, prompt, fetcher);
-      // A fire with no answer may have started a session: treat it as fired, never fire it again.
-      const started = fired.ok || fired.outcome === "unknown";
+      // The guard against a second fire (R2): a run row is written first, as fired, and the waiting events are
+      // claimed for it in one conditional UPDATE. Only the events this tick claimed are sent to the routine, so two
+      // overlapping ticks can never both fire for the same piece, and a tick that dies mid-fire leaves its events
+      // claimed by a run that counts as fired: the template takes them after ROUTINE_WAIT_MS, never a blind re-fire.
       const [run] = await d
         .insert(socialRoutineRuns)
-        .values({
-          kind: nightly ? "nightly" : "batch",
-          requestedAt: now.toISOString(),
-          events: JSON.stringify(waiting.map((e) => e.id)),
-          status: started ? "fired" : "failed",
-          sessionUrl: fired.ok ? fired.sessionUrl : null,
-          error: fired.ok ? null : fired.error,
-        })
+        .values({ kind: nightly ? "nightly" : "batch", requestedAt: now.toISOString(), events: "[]", status: "fired" })
         .returning({ id: socialRoutineRuns.id });
-      if (started) {
-        await d.update(socialEvents).set({ state: "routine", routineRunId: run!.id }).where(inArray(socialEvents.id, waiting.map((e) => e.id)));
-        result.routineFired++;
-        if (!fired.ok) result.errors.push(`routine: ${fired.error}`);
-      } else if (!fired.retry) {
-        templateAll = `the routine refused the run (${fired.error})`;
+      const claimedIds = new Set(
+        (
+          await d
+            .update(socialEvents)
+            .set({ state: "routine", routineRunId: run!.id })
+            .where(and(inArray(socialEvents.id, waiting.map((e) => e.id)), eq(socialEvents.state, "waiting")))
+            .returning({ id: socialEvents.id })
+        ).map((e) => e.id),
+      );
+      const claimed = waiting.filter((e) => claimedIds.has(e.id));
+      waiting = claimed;
+      if (claimed.length === 0) {
+        // Another tick claimed them all first: nothing was fired here.
+        await d.delete(socialRoutineRuns).where(eq(socialRoutineRuns.id, run!.id));
       } else {
-        // The hourly limit or a brief outage: the next tick tries again; the items keep waiting.
-        result.errors.push(`routine: ${fired.error}`);
+        const prompt = routinePrompt(
+          claimed.map((e) => {
+            const a = accounts.get(e.accountId)!;
+            return { eventId: e.id, account: `${a.name} (${a.key})`, platform: a.platform, voiceGuide: a.voiceGuide, title: e.title, url: e.url, summary: e.summary };
+          }),
+        );
+        const fired = await fireRoutine(config, prompt, fetcher);
+        // A fire with no answer may have started a session: treat it as fired, never fire it again.
+        const started = fired.ok || fired.outcome === "unknown";
+        await d
+          .update(socialRoutineRuns)
+          .set({ events: JSON.stringify(claimed.map((e) => e.id)), status: started ? "fired" : "failed", sessionUrl: fired.ok ? fired.sessionUrl : null, error: fired.ok ? null : fired.error })
+          .where(eq(socialRoutineRuns.id, run!.id));
+        if (started) {
+          result.routineFired++;
+          if (!fired.ok) result.errors.push(`routine: ${fired.error}`);
+        } else {
+          // It certainly started nothing: the claim is released, for the template now or the next tick.
+          await d.update(socialEvents).set({ state: "waiting", routineRunId: null }).where(and(eq(socialEvents.routineRunId, run!.id), eq(socialEvents.state, "routine")));
+          if (!fired.retry) templateAll = `the routine refused the run (${fired.error})`;
+          // The hourly limit or a brief outage: the next tick tries again; the items keep waiting.
+          else result.errors.push(`routine: ${fired.error}`);
+        }
       }
     }
     if (templateAll) {
