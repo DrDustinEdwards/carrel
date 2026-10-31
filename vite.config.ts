@@ -10,7 +10,9 @@ import { securityHeaders } from "./workers/security-headers.ts";
 
 /**
  * Static files never run the Worker, so every build rewrites public/_headers (committed, so the family check reads its
- * cache rule) with site-runtime's headersFile: Desk's set on every file, and a year's cache for Vite's hashed /assets/.
+ * cache rule) with site-runtime's headersFile: Desk's set on every file, charset=utf-8 on the text files, cross-origin CORP
+ * on stylesheets, scripts and fonts (the sandboxed preview frame's origin is opaque, site-runtime corpFor), and a year's
+ * cache for Vite's hashed /assets/.
  */
 function staticHeaders(): Plugin {
   const comment = [
@@ -19,11 +21,12 @@ function staticHeaders(): Plugin {
     "revalidates every file. Files at stable paths (favicon, logo) keep the default revalidation.",
   ];
   const IMMUTABLE = { "Cache-Control": "public, max-age=31536000, immutable" };
+  const subresources = Object.fromEntries(["css", "js", "mjs", "woff2"].map((ext) => [`/*.${ext}`, { "Cross-Origin-Resource-Policy": "cross-origin" }]));
   return {
     name: "carrel-static-headers",
     apply: "build",
     buildStart() {
-      if (this.environment.name === "client") writeFileSync("public/_headers", headersFile(securityHeaders, { comment, paths: { "/assets/*": IMMUTABLE } }));
+      if (this.environment.name === "client") writeFileSync("public/_headers", headersFile(securityHeaders, { comment, charset: true, paths: { ...subresources, "/assets/*": IMMUTABLE } }));
     },
   };
 }
