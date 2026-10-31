@@ -258,13 +258,13 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
           <Form method="post" className="app-form">
             <div className="app-fields">
               <Field label="Key" required>
-                <input className="cap-input" name="key" required placeholder="germomics-bluesky" autoComplete="off" />
+                <input className="cap-input" name="key" required placeholder="example-bluesky" autoComplete="off" />
               </Field>
               <Field label="Name" required>
-                <input className="cap-input" name="name" required placeholder="Germomics" autoComplete="off" />
+                <input className="cap-input" name="name" required placeholder="Example Co" autoComplete="off" />
               </Field>
               <Field label="Handle" required>
-                <input className="cap-input" name="handle" required placeholder="germomics.bsky.social" autoComplete="off" />
+                <input className="cap-input" name="handle" required placeholder="example.bsky.social" autoComplete="off" />
               </Field>
               <Field label="Platform">
                 <Select

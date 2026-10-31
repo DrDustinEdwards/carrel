@@ -86,8 +86,8 @@ export function harness(base: Env): Promise<World> {
 
 /** The site's 404 report, for the 404s screen. */
 const NOT_FOUND = [
-  { path: "/blog/old-phage-post", kind: "page" as const, hits: 14, referrers: [{ host: "example.com", hits: 9 }, { host: "", hits: 5 }] },
-  { path: "/research/protocols/plaque-assay-v1", kind: "page" as const, hits: 3, referrers: [{ host: "", hits: 3 }] },
+  { path: "/blog/old-spring-post", kind: "page" as const, hits: 14, referrers: [{ host: "example.com", hits: 9 }, { host: "", hits: 5 }] },
+  { path: "/research/protocols/old-method-v1", kind: "page" as const, hits: 3, referrers: [{ host: "", hits: 3 }] },
 ];
 
 async function build(base: Env): Promise<World> {
@@ -102,7 +102,7 @@ async function build(base: Env): Promise<World> {
     publicJwk: saKey.publicJwk,
     files: [
       { id: "folderRoot1", name: "Manuscripts", mimeType: "application/vnd.google-apps.folder", parent: "root" },
-      { id: "m1", name: "Germomics, the book: working draft", mimeType: "application/vnd.google-apps.document", parent: "folderRoot1", content: "Phage lambda and the lysis decision.", modifiedTime: "2026-09-28T14:02:00Z" },
+      { id: "m1", name: "Field notes, the book: working draft", mimeType: "application/vnd.google-apps.document", parent: "folderRoot1", content: "The north plots and the first flood.", modifiedTime: "2026-09-28T14:02:00Z" },
       { id: "m2", name: "Paluxy Portal, chapters 1 to 4", mimeType: "application/vnd.google-apps.document", parent: "folderRoot1", content: "The truck quit a mile past the crossing.", modifiedTime: "2026-09-21T09:30:00Z" },
       { id: "m3", name: "Grant narrative, 2027 cycle", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", parent: "folderRoot1", content: "Aims and approach.", modifiedTime: "2026-08-30T17:45:00Z" },
       { id: "m4", name: "Reviewer response, round two", mimeType: "application/pdf", parent: "folderRoot1", content: "Dear reviewers.", modifiedTime: "2026-07-14T11:10:00Z" },
@@ -156,8 +156,8 @@ async function build(base: Env): Promise<World> {
   const source = mediaSource(env, sitePr, owner);
   const uploaded: Array<{ id: string; version: string; name: string }> = [];
   for (const [name, alt] of [
-    ["foxhound-dashboard.png", "The Foxhound dashboard with three sites reporting healthy"],
-    ["lambda-switch.png", "A diagram of the CI and Cro switch in phage lambda"],
+    ["status-dashboard.png", "The status dashboard with three services reporting healthy"],
+    ["survey-map.png", "A map of the survey plots, with the north half shaded"],
     ["harlan-gate.png", ""],
     ["river-up.png", "The river at the low-water crossing, in flood"],
     ["field-notebook.png", "An open field notebook with a pressed leaf"],
@@ -172,7 +172,7 @@ async function build(base: Env): Promise<World> {
     }
   }
   // Tags on two files and one in the trash, so the library, the tag filter and the Trash view all have something to show.
-  for (const [name, tags] of [["foxhound-dashboard.png", ["foxhound", "screenshots"]], ["lambda-switch.png", ["phage", "diagrams"]]] as const) {
+  for (const [name, tags] of [["status-dashboard.png", ["monitoring", "screenshots"]], ["survey-map.png", ["survey", "diagrams"]]] as const) {
     const file = uploaded.find((u) => u.name === name);
     if (file) {
       const tagged = await runMediaIntent(source, { intent: "tags", ids: [file.id], versions: [file.version], tags: [...tags] });
@@ -184,14 +184,14 @@ async function build(base: Env): Promise<World> {
 
   const posts: Array<{ slug: string; source: string; publish: boolean }> = [
     {
-      slug: "foxhound-waits",
+      slug: "alerts-wait",
       publish: true,
-      source: post("Why Foxhound waits before it pages you", "foxhound-waits", "A watcher that pages on the first failed check is a watcher you stop trusting.", "2026-09-18", ["foxhound", "monitoring"], "Three failed checks in a row is a pattern; one is weather. Foxhound waits for the pattern.\n\nThe cost of a false page is not the minute it takes to dismiss. It is the next real page you half ignore."),
+      source: post("Why the monitor waits before it pages you", "alerts-wait", "A watcher that pages on the first failed check is a watcher you stop trusting.", "2026-09-18", ["monitoring", "alerts"], "Three failed checks in a row is a pattern; one is weather. The monitor waits for the pattern.\n\nThe cost of a false page is not the minute it takes to dismiss. It is the next real page you half ignore."),
     },
     {
-      slug: "phage-lambda-switch",
+      slug: "field-notes-spring",
       publish: true,
-      source: post("How a temperate phage decides", "phage-lambda-switch", "CI, Cro and the switch that chooses between killing a cell and sleeping in it.", "2026-09-02", ["phage", "genetics"], `A temperate phage such as lambda does not always kill the cell it enters.\n\n:::figure{src="${media[1] ?? "/media/lambda-switch.png"}" alt="A diagram of the CI and Cro switch in phage lambda"}\n:::\n\nIn *Escherichia coli* the outcome turns on two proteins, each of which shuts off the gene for the other.`),
+      source: post("Field notes from the spring survey", "field-notes-spring", "What the first week of the survey found, and what it missed.", "2026-09-02", ["field-notes", "survey"], `The first week of the survey covered the north plots.\n\n:::figure{src="${media[1] ?? "/media/survey-map.png"}" alt="A map of the survey plots, with the north half shaded"}\n:::\n\nTwo plots flooded, so the counts there start a week late.`),
     },
     {
       slug: "autumn-release-notes",
@@ -233,24 +233,24 @@ async function build(base: Env): Promise<World> {
     const saved = await site.adapter.content.saveDraft(id, { source, expectedVersion: null, changeId: `seed-${id}` });
     await site.adapter.content.publish(id, { expectedVersion: saved.version, changeId: `seed-pub-${id}` });
   }
-  const sched = await site.adapter.content.saveDraft("bacterial-genetics-primer", {
-    source: post("A primer on bacterial genetics", "bacterial-genetics-primer", "Plasmids, transposons and the vocabulary a reader needs first.", "2026-10-09", ["genetics", "primer"], "Before phage, a few words about what a bacterium carries."),
+  const sched = await site.adapter.content.saveDraft("getting-started", {
+    source: post("Getting started", "getting-started", "The setup, the vocabulary and the first steps a reader needs.", "2026-10-09", ["guides", "primer"], "Before the details, a few words about what the tools do."),
     expectedVersion: null,
     changeId: "seed-primer",
   });
-  await writeToSite(env, sitePr, owner, "bacterial-genetics-primer", { action: "schedule", expectedVersion: saved(sched), publishAt: "2026-10-09T13:00:00.000Z" }, site.fetch);
+  await writeToSite(env, sitePr, owner, "getting-started", { action: "schedule", expectedVersion: saved(sched), publishAt: "2026-10-09T13:00:00.000Z" }, site.fetch);
   // The webmention queue: a mix of states, with fake senders on the reserved .example domains. Two are
   // past the site's retention windows, so the Retention panel has something to offer to sweep.
   const day = 24 * 60 * 60 * 1000;
   const ago = (days: number) => new Date(Date.parse("2026-10-06T12:00:00Z") - days * day);
   for (const m of [
-    { sourceUrl: "https://fieldnotes.example/2026/10/lysis-and-lysogeny", targetId: "foxhound-waits", authorName: "Rosa Okafor", authorUrl: "https://fieldnotes.example", excerpt: "A clear account of why a page should wait before it wakes anyone, and what the wait costs.", receivedAt: ago(1) },
-    { sourceUrl: "https://microbial-reading-group.example/notes/week-14", targetId: "how-the-index-refreshes", authorName: "Tomas Brandt", authorUrl: null, excerpt: "We read this in the group: the refresh order is the part that finally made the cron make sense.", receivedAt: ago(2) },
-    { sourceUrl: "https://slowweb.example/links", targetId: "foxhound-waits", authorName: null, excerpt: "Links from this week: the Foxhound piece, a long read on plasmids, a short one on fonts.", receivedAt: ago(3) },
+    { sourceUrl: "https://fieldnotes.example/2026/10/waiting-to-page", targetId: "alerts-wait", authorName: "Rosa Okafor", authorUrl: "https://fieldnotes.example", excerpt: "A clear account of why a page should wait before it wakes anyone, and what the wait costs.", receivedAt: ago(1) },
+    { sourceUrl: "https://reading-group.example/notes/week-14", targetId: "how-the-index-refreshes", authorName: "Tomas Brandt", authorUrl: null, excerpt: "We read this in the group: the refresh order is the part that finally made the cron make sense.", receivedAt: ago(2) },
+    { sourceUrl: "https://slowweb.example/links", targetId: "alerts-wait", authorName: null, excerpt: "Links from this week: the monitoring piece, a long read on survey methods, a short one on fonts.", receivedAt: ago(3) },
     { sourceUrl: "https://quiet-desk.example/carrels", targetId: "what-a-carrel-is-for", authorName: "Mina Hale", authorUrl: "https://quiet-desk.example", excerpt: "Agreeing with the part about the habit a small desk builds.", status: "approved" as const, receivedAt: ago(9) },
-    { sourceUrl: "https://seo-links.example/best-casino", targetId: "foxhound-waits", authorName: "Top Picks Daily", excerpt: null, status: "rejected" as const, receivedAt: ago(20) },
+    { sourceUrl: "https://seo-links.example/best-casino", targetId: "alerts-wait", authorName: "Top Picks Daily", excerpt: null, status: "rejected" as const, receivedAt: ago(20) },
     { sourceUrl: "https://seo-links.example/older", targetId: "how-the-index-refreshes", authorName: "Top Picks Daily", excerpt: null, status: "rejected" as const, receivedAt: ago(120) },
-    { sourceUrl: "https://gone.example/post-that-vanished", targetId: "foxhound-waits", authorName: null, excerpt: null, status: "failed" as const, failureReason: "source-unreachable", receivedAt: ago(4) },
+    { sourceUrl: "https://gone.example/post-that-vanished", targetId: "alerts-wait", authorName: null, excerpt: null, status: "failed" as const, failureReason: "source-unreachable", receivedAt: ago(4) },
     { sourceUrl: "https://gone.example/a-second-vanished-post", targetId: "how-the-index-refreshes", authorName: null, excerpt: null, status: "failed" as const, failureReason: "no-link-to-target", receivedAt: ago(45) },
     { sourceUrl: "https://newsletter.example/issue-31", targetId: "what-a-carrel-is-for", status: "unverified" as const, receivedAt: ago(0) },
   ]) {
@@ -316,7 +316,7 @@ async function build(base: Env): Promise<World> {
   const claude = { viewer: owner, client: "Claude Code" };
   await addFinding(db, sitePr, claude, "counting-what-the-build-skips", { message: "The second paragraph claims the build skips nothing, which the first paragraph contradicts", excerpt: "A build that skips silently is a build you cannot reason about." });
   await addFinding(db, sitePr, claude, "counting-what-the-build-skips", { message: "No source for the skipped-count figure", excerpt: null });
-  await addFinding(db, sitePr, { viewer: owner, client: "Grok Build" }, "foxhound-waits", { message: "Three in a row is not defined before it is used", excerpt: "Three failed checks in a row is a pattern" });
+  await addFinding(db, sitePr, { viewer: owner, client: "Grok Build" }, "alerts-wait", { message: "Three in a row is not defined before it is used", excerpt: "Three failed checks in a row is a pattern" });
   await saveAiDraft(env, sitePr, claude, "counting-what-the-build-skips", { source: post("Counting what the build skips", "counting-what-the-build-skips", "", "2026-10-01", ["build"], "An alternative opening, written beside yours \u2014 a seamless way in.\n\nThe build logs every skip with a reason, and the count is the first line of the summary."), note: "A tighter opening, for you to take or leave." }, site.fetch);
   void rosaV;
 
@@ -404,20 +404,20 @@ async function build(base: Env): Promise<World> {
   const start = new URL(await startAuth(env, owner, "https://carrel.test"));
   await finishAuth(env, owner, new URLSearchParams({ code: CODE, state: start.searchParams.get("state") ?? "" }), "https://carrel.test", google.fetch);
 
-  await createAccount(db, owner, { key: "germomics-bluesky", name: "Germomics", platform: "bluesky", kind: "brand", handle: "germomics.bsky.social", projectId: siteId });
+  await createAccount(db, owner, { key: "example-bluesky", name: "Example Co", platform: "bluesky", kind: "brand", handle: "example.bsky.social", projectId: siteId });
   await createAccount(db, owner, { key: "dustin-bluesky", name: "Dustin Edwards", platform: "bluesky", kind: "personal", handle: "dustinedwards.bsky.social", projectId: siteId });
   const accounts = await db.prepare("SELECT id, key FROM social_accounts").all<{ id: number; key: string }>();
   for (const a of accounts.results) await setSwitches(db, owner, a.id, { enabled: true, dailyCap: 2 });
-  for (const slug of ["foxhound-waits", "autumn-release-notes"]) {
-    await recordPublication(db, siteId, { id: slug, title: slug === "foxhound-waits" ? "Why Foxhound waits before it pages you" : "Notes on the autumn release", url: `${SITE_ORIGIN}/blog/${slug}`, summary: "" });
+  for (const slug of ["alerts-wait", "autumn-release-notes"]) {
+    await recordPublication(db, siteId, { id: slug, title: slug === "alerts-wait" ? "Why the monitor waits before it pages you" : "Notes on the autumn release", url: `${SITE_ORIGIN}/blog/${slug}`, summary: "" });
   }
-  await draftSocialPost(db, { accountKey: "germomics-bluesky", projectId: siteId, itemId: "foxhound-waits", text: "New on dustinedwards.info: why a watcher should wait for a pattern before it pages you. https://dustinedwards.info/blog/foxhound-waits", createdBy: "Claude Code" });
+  await draftSocialPost(db, { accountKey: "example-bluesky", projectId: siteId, itemId: "alerts-wait", text: "New on dustinedwards.info: why a watcher should wait for a pattern before it pages you. https://dustinedwards.info/blog/alerts-wait", createdBy: "Claude Code" });
   await db.prepare("UPDATE social_posts SET status = 'awaiting' WHERE status = 'drafted'").run();
   const event = await db.prepare("SELECT id, account_id FROM social_events ORDER BY id LIMIT 1").first<{ id: number; account_id: number }>();
   if (event) {
     await db
       .prepare("INSERT INTO social_posts (account_id, event_id, text, source, status, lint, created_by) VALUES (?, ?, ?, 'routine', 'held', ?, 'Claude Code')")
-      .bind(event.account_id, event.id, "Foxhound waits. Here is why, in three sentences and one chart that will change how you think about alerts.", JSON.stringify(["Uses an AI habit: \"chart that will change\"", "Over 120 characters before the link"]))
+      .bind(event.account_id, event.id, "The monitor waits. Here is why, in three sentences and one chart that will change how you think about alerts.", JSON.stringify(["Uses an AI habit: \"chart that will change\"", "Over 120 characters before the link"]))
       .run();
   }
   return { env };

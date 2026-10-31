@@ -33,7 +33,7 @@ const CALLS: Record<string, Record<string, unknown>> = {
   carrel_check_book_text: { project: BOOK, path: SCENE, source: "x" },
   carrel_save_book_draft: { project: BOOK, path: SCENE, source: "x" },
   carrel_add_book_finding: { project: BOOK, path: SCENE, message: "m" },
-  carrel_draft_social_post: { account: "germomics-bluesky", project: SITE, item: "post-one", text: "x" },
+  carrel_draft_social_post: { account: "example-bluesky", project: SITE, item: "post-one", text: "x" },
 };
 
 let site: ReturnType<typeof fakeSite>;
@@ -53,7 +53,7 @@ beforeEach(async () => {
   await share(other, elsewhere, "editor");
   site = fakeSite();
   await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Post one\n---\nWords.\n", expectedVersion: null, changeId: "seed" });
-  const account = await testEnv.DB.prepare("INSERT INTO social_accounts (key, name, platform, kind, handle, project_id) VALUES ('germomics-bluesky', 'Germomics', 'bluesky', 'brand', 'x', ?) RETURNING id")
+  const account = await testEnv.DB.prepare("INSERT INTO social_accounts (key, name, platform, kind, handle, project_id) VALUES ('example-bluesky', 'Example Co', 'bluesky', 'brand', 'x', ?) RETURNING id")
     .bind(siteId)
     .first<{ id: number }>();
   const event = await testEnv.DB.prepare("INSERT INTO social_events (account_id, project_id, item_id) VALUES (?, ?, 'post-one') RETURNING id").bind(account!.id, siteId).first<{ id: number }>();

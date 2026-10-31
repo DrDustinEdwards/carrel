@@ -194,7 +194,7 @@ export function missingAltRefusal(source: string): string | null {
 
 /**
  * The checks and the preview for a post's whole source on `site`, or null for anything that is not a post
- * (a legal page, another kind such as a phage, a source with no frontmatter). A null `kind` is a post.
+ * (a legal page, another kind such as a recipe, a source with no frontmatter). A null `kind` is a post.
  * `origin` makes a site path absolute; `path` is the post's public path, which the site gives once it is published.
  * `searchFields` is what the site's capabilities list.
  */

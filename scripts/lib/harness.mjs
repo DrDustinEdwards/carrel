@@ -93,7 +93,7 @@ export const SCREENS = [
   { name: "media-detail-editor", viewer: "editor", path: `/p/${SITE}/media`, open: "media" },
   { name: "media-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash` },
   { name: "media-trash-editor", viewer: "editor", path: `/p/${SITE}/media?view=trash` },
-  { name: "media-tag", viewer: "owner", path: `/p/${SITE}/media?tag=foxhound` },
+  { name: "media-tag", viewer: "owner", path: `/p/${SITE}/media?tag=monitoring` },
   { name: "mentions", viewer: "owner", path: `/p/${SITE}/mentions` },
   { name: "mentions-failed", viewer: "owner", path: `/p/${SITE}/mentions?view=failed` },
   { name: "mentions-all", viewer: "owner", path: `/p/${SITE}/mentions?view=all` },
@@ -138,12 +138,12 @@ export const SCREENS = [
   { name: "book-scene-flagged", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".app-rich-surface" },
   { name: "book-bible", viewer: "owner", path: `/b/${BOOK}/f/bible/characters/nell.md`, wait: ".app-rich-surface" },
   { name: "book-scene-editor", viewer: "editor", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".app-rich-surface" },
-  { name: "post-live", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface" },
+  { name: "post-live", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface" },
   { name: "post-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface" },
   { name: "post-working-copy", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface" },
-  { name: "post-scheduled", viewer: "owner", path: `/p/${SITE}/e/bacterial-genetics-primer`, wait: ".app-rich-surface" },
-  { name: "post-editor-live", viewer: "editor", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface" },
-  { name: "post-reader", viewer: "reader", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface" },
+  { name: "post-scheduled", viewer: "owner", path: `/p/${SITE}/e/getting-started`, wait: ".app-rich-surface" },
+  { name: "post-editor-live", viewer: "editor", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface" },
+  { name: "post-reader", viewer: "reader", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface" },
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
   { name: "post-history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}`, wait: ".app-rich-surface" },
   { name: "history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history` },
@@ -165,7 +165,7 @@ export const SCREENS = [
   { name: "history-ai-compare", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history?compare=ai&ai=2`, wait: ".cap-patch" },
   { name: "history-problem", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history?v=nope` },
   { name: "site-select", viewer: "owner", path: `/p/${SITE}`, after: (page) => selectPosts(page, ["Counting what the build skips", "What a carrel is for", "How the index refreshes"]) },
-  { name: "site-select-editor", viewer: "editor", path: `/p/${SITE}`, after: (page) => selectPosts(page, ["Counting what the build skips", "Why Foxhound waits before it pages you"]) },
+  { name: "site-select-editor", viewer: "editor", path: `/p/${SITE}`, after: (page) => selectPosts(page, ["Counting what the build skips", "Why the monitor waits before it pages you"]) },
   {
     name: "site-bulk-delete",
     viewer: "owner",
@@ -181,14 +181,14 @@ export const SCREENS = [
     viewer: "editor",
     path: `/p/${SITE}`,
     after: async (page) => {
-      await selectPosts(page, ["Counting what the build skips", "Why Foxhound waits before it pages you", "A primer on bacterial genetics"]);
+      await selectPosts(page, ["Counting what the build skips", "Why the monitor waits before it pages you", "Getting started"]);
       await page.getByRole("region", { name: /^Bulk actions/ }).getByLabel("Tag").fill("colophon");
       await page.getByRole("button", { name: /^Add tag$/ }).click();
       await page.locator(".cap-bulk-results").waitFor();
       await page.waitForTimeout(600);
     },
   },
-  { name: "unpublish", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits/unpublish` },
+  { name: "unpublish", viewer: "owner", path: `/p/${SITE}/e/alerts-wait/unpublish` },
   { name: "not-found", viewer: "owner", path: "/p/nowhere" },
 
   // The states a person reaches by acting: dialogs, menus and the publish controls.
@@ -221,11 +221,11 @@ export const SCREENS = [
   { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Discard unsaved changes/, "alertdialog") },
   { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Schedule/, "dialog") },
   { name: "post-first-publish", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Publish$/, "alertdialog") },
-  { name: "post-library", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Insert from library/, "dialog") },
+  { name: "post-library", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Insert from library/, "dialog") },
   {
     name: "post-link-palette",
     viewer: "owner",
-    path: `/p/${SITE}/e/foxhound-waits`,
+    path: `/p/${SITE}/e/alerts-wait`,
     wait: ".app-rich-surface",
     after: async (page) => {
       await page.locator(".app-rich-surface").click();
@@ -248,13 +248,13 @@ export const SCREENS = [
     },
     restore: discardDraft,
   },
-  { name: "post-markdown-mode", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface", after: (page) => page.getByRole("radio", { name: "Markdown" }).check({ force: true }).then(() => page.locator(".cm-editor").waitFor()), restore: (page) => page.evaluate(() => localStorage.removeItem("carrel:editor-mode")) },
+  { name: "post-markdown-mode", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface", after: (page) => page.getByRole("radio", { name: "Markdown" }).check({ force: true }).then(() => page.locator(".cm-editor").waitFor()), restore: (page) => page.evaluate(() => localStorage.removeItem("carrel:editor-mode")) },
   { name: "post-source-block", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: async (page) => {
       await endOfText(page);
       await page.getByRole("button", { name: "Figure", exact: true }).click();
       await page.locator(".app-src-text").last().waitFor();
     }, restore: discardDraft },
-  { name: "post-split", viewer: "owner", path: `/p/${SITE}/e/foxhound-waits`, wait: ".app-rich-surface", after: (page) => page.getByRole("radio", { name: "Split" }).check({ force: true }).then(() => page.waitForTimeout(800)) },
+  { name: "post-split", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface", after: (page) => page.getByRole("radio", { name: "Split" }).check({ force: true }).then(() => page.waitForTimeout(800)) },
   { name: "social-reject", viewer: "owner", path: "/social", after: (page) => press(page, "button", /^Reject/, "alertdialog") },
   { name: "book-dismiss", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
   {

@@ -1,7 +1,7 @@
-// The words for a kind the site reports, so a phage is called a phage and not a post. Carrel has no
+// The words for a kind the site reports, so a recipe is called a recipe and not a post. Carrel has no
 // list of kinds: these are made from the site's own kind name, whatever it is.
 
-/** The kind as a heading word: "phage" is "Phage". An item with no kind is a post. */
+/** The kind as a heading word: "recipe" is "Recipe". An item with no kind is a post. */
 export function kindWord(kind: string | null | undefined): string {
   const k = kind || "post";
   return `${k.charAt(0).toUpperCase()}${k.slice(1)}`;
@@ -15,5 +15,5 @@ export function kindPlural(kind: string | null | undefined): string {
   return `${word}s`;
 }
 
-/** The kind inside a sentence: "this phage". */
+/** The kind inside a sentence: "this recipe". */
 export const kindNoun = (kind: string | null | undefined) => (kind || "post").toLowerCase();

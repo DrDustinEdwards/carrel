@@ -115,6 +115,8 @@ const login = loginHandler<DoorEnv>({
   },
   // A client that names no Carrel scope, or the legacy one, is offered writing too (scopes.ts).
   wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),
+  // Every sign-in, admitted or refused, is a `sign-in` row in the call log beside the tool calls.
+  audit: { name: MCP_SERVER.name, version: MCP_SERVER.version },
 });
 
 /**

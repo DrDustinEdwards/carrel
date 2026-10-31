@@ -138,12 +138,12 @@ describe("the binder's tree", () => {
     const tree = siteBinderTree(
       [
         { itemId: "about", kind: "page", title: "About", status: "published" },
-        { itemId: "foxhound", kind: "post", title: "Foxhound", status: "draft" },
+        { itemId: "spring-update", kind: "post", title: "Spring update", status: "draft" },
       ],
       "/p/site",
     );
     expect(tree.map((k) => [k.label, k.children!.map((c) => [c.label, c.meta, c.href])])).toEqual([
-      ["Posts", [["Foxhound", "Draft", "/p/site/e/foxhound"]]],
+      ["Posts", [["Spring update", "Draft", "/p/site/e/spring-update"]]],
       ["Pages", [["About", "Published", "/p/site/e/about"]]],
     ]);
   });
