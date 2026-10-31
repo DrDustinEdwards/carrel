@@ -4,7 +4,9 @@ import { stubAccess } from "@dustinedwards/devkit/access";
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import routes from "../app/routes";
 import { gate } from "../workers/gate";
+import { DESK_PATTERNS, routeOf } from "../workers/route";
 import { addPerson, localKeys, resetDb, testEnv } from "./env";
 
 const ISSUER = "https://test-team.cloudflareaccess.com";
@@ -123,4 +125,22 @@ describe("gate: admission", () => {
     expect(response.status).toBe(200);
   });
 
+});
+
+// Desk's one public path (area 8, H1), and the log's route names (workers/route.ts, L3) kept in step with app/routes.ts.
+describe("gate: /health and route names", () => {
+  it("answers the shared health with the deployed commit, with no Access token and without rendering", async () => {
+    const { response, rendered } = await run(new Request("https://carrel.test/health"), { ...testEnv, DEPLOY_SHA: "abcdef1" } as Env);
+    expect(rendered).toBe(false);
+    expect(response.headers.get("x-robots-tag")).toBe("noindex");
+    expect(await response.json()).toMatchObject({ sha: "abcdef1" });
+  });
+
+  it("names every route app/routes.ts declares, and a path no route has stays unnamed", () => {
+    type Entry = { path?: string; index?: boolean; children?: Entry[] };
+    const paths = (list: Entry[]): string[] => list.flatMap((r) => [...(r.index ? ["/"] : r.path ? [`/${r.path}`] : []), ...paths(r.children ?? [])]);
+    expect([...DESK_PATTERNS].sort()).toEqual(paths(routes as Entry[]).sort());
+    expect(routeOf(new Request("https://carrel.test/p/sample/e/42"))).toBe("/p/:project/e/:item");
+    expect(routeOf(new Request("https://carrel.test/wp-login.php"))).toBeUndefined();
+  });
 });

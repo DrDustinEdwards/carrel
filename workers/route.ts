@@ -1,7 +1,7 @@
 // The route a request's log line names (site-runtime withRequestLog's `route`, area 8, L3): Desk's matched pattern, so
 // /p/:project/e/:item groups every post's hits, and the AI door's few fixed paths. A path that matches nothing (a
 // scanner's guess, a 404) names no route, so the field never carries a visitor's raw path. Kept in step with
-// app/routes.ts by test/route.test.ts.
+// app/routes.ts by test/access.test.ts.
 
 import { matchPath } from "react-router";
 
