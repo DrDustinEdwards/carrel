@@ -10,6 +10,7 @@ import { aiDrafts, drafts } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 import type { ProjectRole } from "~/lib/content.server";
 import { can } from "~/lib/roles";
+import { readKey, splitSource } from "@dustinedwards/site-api/frontmatter";
 
 export type Waiting = {
   itemId: string;
@@ -23,9 +24,7 @@ export type Waiting = {
 
 /** The title from a source's frontmatter, or "" when it has none. */
 export function titleOf(source: string): string {
-  const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source);
-  const line = front?.[1]?.match(/^title:\s*(.+)$/m)?.[1]?.trim() ?? "";
-  return line.replace(/^(["'])(.*)\1$/, "$2");
+  return readKey(splitSource(source).front, "title").trim();
 }
 
 /** Every item the person has an AI draft or a draft of their own for, with what is waiting. */

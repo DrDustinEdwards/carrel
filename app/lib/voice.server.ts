@@ -22,6 +22,7 @@ import type { ProjectRole } from "~/lib/content.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteClient } from "~/lib/sites.server";
+import { splitSource } from "@dustinedwards/site-api/frontmatter";
 
 /** The newest published posts a pack is built from: enough to show a range, few enough for one request's subrequests. */
 export const PACK_POSTS = 40;
@@ -68,9 +69,8 @@ function strings(json: string): string[] {
  * excerpt of the raw source would show a model brackets and markup as the author's style.
  */
 function proseOf(source: string): string {
-  return source
-    .replace(/\r\n/g, "\n")
-    .replace(/^---\n[\s\S]*?\n---\n?/, "")
+  return splitSource(source.replace(/\r\n/g, "\n"))
+    .body
     .replace(/```[\s\S]*?```/g, "")
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
@@ -201,10 +201,11 @@ function scanAgainst(excerpts: string[], body: string, firstLine = 1, sources?: 
  */
 export function checkAgainstPack(pack: VoicePack, source: string, sources?: string[]): DraftCheck {
   const text = source.replace(/\r\n/g, "\n");
-  const front = /^---\n[\s\S]*?\n---\n?/.exec(text);
-  const firstLine = front ? front[0].split("\n").length - (front[0].endsWith("\n") ? 1 : 0) + 1 : 1;
+  const { front, open, close, body } = splitSource(text);
+  const fence = front === null ? "" : `${open}${front}${close}`;
+  const firstLine = fence ? fence.split("\n").length - (fence.endsWith("\n") ? 1 : 0) + 1 : 1;
   const reference = pack.from === "own" ? piecesOf(pack.own) : pack.excerpts;
-  return scanAgainst(reference, front ? text.slice(front[0].length) : text, firstLine, sources);
+  return scanAgainst(reference, body, firstLine, sources);
 }
 
 export type VoiceBrief = {

@@ -23,6 +23,7 @@ import { lintPost } from "./lint";
 import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
 import { fireRoutine, routineConfig, routinePrompt } from "./routine.server";
 import { timedFetch } from "~/lib/timed-fetch.server";
+import { readKey, splitSource } from "@dustinedwards/site-api/frontmatter";
 
 type Fetch = typeof fetch;
 
@@ -88,8 +89,7 @@ export async function setSwitches(db: D1Database, viewer: Viewer, id: number, in
 
 /** The description line in a post's frontmatter: Dustin's one-line summary, for templates and the routine. */
 export function summaryFrom(source: string): string {
-  const fm = /^---\n([\s\S]*?)\n---/.exec(source.replace(/\r\n/g, "\n"))?.[1] ?? "";
-  return /^description:\s*"?(.*?)"?\s*$/m.exec(fm)?.[1]?.trim() ?? "";
+  return readKey(splitSource(source).front, "description").trim();
 }
 
 /**
