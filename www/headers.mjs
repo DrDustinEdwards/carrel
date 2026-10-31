@@ -26,11 +26,12 @@ const PAGE_CSP = buildContentSecurityPolicy({
 const REPORTING_ENDPOINTS = reportingEndpoints("csp-endpoint", new URL(REPORT_PATH, "https://carrel.dustinedwards.info"));
 
 /**
- * Every header the site sends: site-runtime's standard security set with the page policy and its report endpoint, and
+ * Every header the site sends: site-runtime's standard security set with COEP credentialless (the pages embed no frame and
+ * load nothing from another origin but the beacon, which needs no cookie), the page policy and its report endpoint, and
  * Prelum's TDMRep header reserving text and data mining rights (robots.txt and /ai.txt carry the rest of the policy).
  */
 export const SITE_HEADERS = Object.freeze({
-  ...buildSecurityHeaders(),
+  ...buildSecurityHeaders({ coep: { value: "credentialless" } }),
   ...TDM_RESERVATION_HEADERS,
   "Content-Security-Policy": PAGE_CSP,
   "Reporting-Endpoints": REPORTING_ENDPOINTS,

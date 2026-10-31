@@ -10,7 +10,7 @@
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { logEvent, OWASP_EVENTS, requestFields } from "@dustinedwards/site-runtime/log";
-import { refuseCrossSite } from "@dustinedwards/site-runtime/origin";
+import { isolationVerdict, refuseCrossSite } from "@dustinedwards/site-runtime/origin";
 
 import { verifyAccess } from "~/lib/access.server";
 import { findViewer, type Viewer } from "~/lib/people.server";
@@ -60,6 +60,10 @@ export async function gate(
   // (media, bulk, mentions), so the door checks every request once: Sec-Fetch-Site, else Origin. A request with
   // neither (curl, a server) passes.
   if (refuseCrossSite(request)) return refuse(request, "cross-origin");
+  // Resource isolation (R2): every page here is signed in, so another site may link to one (a top-level GET navigation)
+  // and nothing more. A cross-site image, script, frame, fetch or socket is refused, so no page elsewhere can load a
+  // signed-in response with the viewer's Access cookie.
+  if (!isolationVerdict(request).ok) return refuse(request, "cross-site-resource");
   const response = await render(request, viewer);
   // A live editor's WebSocket (101) is the socket itself: copying it would drop the socket.
   return response.status === 101 ? response : withPrivateHeaders(response);
