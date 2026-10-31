@@ -7,8 +7,12 @@
 // Google (the service account key's age and whether Google still takes it, and Dustin's drive.file
 // grant), and any template social post that went out, which Dustin should know about (design
 // decision 5, third step).
+//
+// Each run also rewrites the public conformance report (conformanceReport below), which devkit's
+// shared scoreboard reads; it carries check names and the site's API address, never a key or site text.
 
 import { backupHealth } from "@dustinedwards/d1-dump";
+import { PACKAGE_VERSION } from "@dustinedwards/site-api";
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
@@ -16,7 +20,7 @@ import { healthResponse, kvCheck } from "@dustinedwards/site-runtime/health";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiPublications, googleKeysSeen, googleTokens, healthState, people } from "~/db/schema";
+import { aiPublications, googleKeysSeen, googleTokens, healthState, people, reports } from "~/db/schema";
 import { deployedSha } from "~/lib/deployed";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
 import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
@@ -25,7 +29,13 @@ import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.se
 import { unseenTemplates } from "~/lib/social/queue.server";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
-export type CheckResult = { name: string; ok: boolean; detail: string };
+/** A site's line in the conformance report, in the scoreboard's format (devkit live/README). */
+type SiteConformance = {
+  status: "pass" | "fail" | "error";
+  findings: { severity: "error"; check: "M1"; detail: string }[];
+};
+
+export type CheckResult = { name: string; ok: boolean; detail: string; conformance?: { origin: string } & SiteConformance };
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -82,6 +92,12 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
   const connection = siteConnection(env, id);
   if (connection.state === "not-connected") return { name, ok: true, detail: `Not connected: ${connection.detail}` };
   if (connection.state === "misconfigured") return { name, ok: false, detail: connection.detail };
+  const api = `${connection.origin}/api/carrel/v1`;
+  const error = (detail: string): CheckResult["conformance"] => ({
+    origin: connection.origin,
+    status: "error",
+    findings: [{ severity: "error", check: "M1", detail: `${api} ${detail}` }],
+  });
   try {
     const report = await runConformance({
       baseUrl: connection.origin,
@@ -90,11 +106,19 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
       fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
         fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch,
     });
-    if (report.ok) return { name, ok: true, detail: `${site} conforms (${report.checks[0]?.detail ?? "meta ok"}).` };
-    const failed = report.checks.filter((c) => !c.ok).map((c) => `${c.name}: ${c.detail}`);
-    return { name, ok: false, detail: `${site} does not conform. ${failed.join(" | ")}` };
-  } catch (error) {
-    return { name, ok: false, detail: `${site} could not be checked: ${message(error)}` };
+    if (report.ok) {
+      return { name, ok: true, detail: `${site} conforms (${report.checks[0]?.detail ?? "meta ok"}).`, conformance: { origin: connection.origin, status: "pass", findings: [] } };
+    }
+    const failed = report.checks.filter((c) => !c.ok);
+    return {
+      name,
+      ok: false,
+      detail: `${site} does not conform. ${failed.map((c) => `${c.name}: ${c.detail}`).join(" | ")}`,
+      // The check's name only: its detail can quote the site's answer, which stays in Dustin's email.
+      conformance: { origin: connection.origin, status: "fail", findings: failed.map((c) => ({ severity: "error", check: "M1", detail: `${api} ${c.name} failed` })) },
+    };
+  } catch (thrown) {
+    return { name, ok: false, detail: `${site} could not be checked: ${message(thrown)}`, conformance: error("could not be checked") };
   }
 }
 
@@ -232,7 +256,17 @@ export async function runChecks(
 }
 
 /**
- * Runs the checks, emails when any check changed state, and only then records the new states. If
+ * The scoreboard's report: every connected site's conformance, keyed by its origin. A site not
+ * connected yet is left out, so the scoreboard, not this report, decides whether that is expected.
+ */
+function conformanceReport(results: CheckResult[], at: string) {
+  const sites: Record<string, SiteConformance> = {};
+  for (const r of results) if (r.conformance) sites[r.conformance.origin] = { status: r.conformance.status, findings: r.conformance.findings };
+  return { check: "carrel-conformance", at, ref: `site-api v${PACKAGE_VERSION}`, sites };
+}
+
+/**
+ * Runs the checks, rewrites the conformance report, emails when any check changed state, and only then records the new states. If
  * the email fails, nothing is recorded, so the next run tries again rather than losing the alert.
  * A check seen for the first time counts as a change only when it fails.
  */
@@ -243,6 +277,13 @@ export async function runHealth(
 ): Promise<{ results: CheckResult[]; emailed: boolean }> {
   const results = await runChecks(env, fetcher, now());
   const db = drizzle(env.DB);
+  try {
+    const at = now().toISOString();
+    const body = JSON.stringify(conformanceReport(results, at));
+    await db.insert(reports).values({ name: "conformance", body, at }).onConflictDoUpdate({ target: reports.name, set: { body, at } });
+  } catch (error) {
+    console.error(JSON.stringify({ health: "report-failed", error: message(error) }));
+  }
 
   let previous: Map<string, boolean>;
   try {
