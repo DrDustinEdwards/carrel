@@ -3,6 +3,7 @@
 // Test-only; nothing here is deployed and nothing reaches the network.
 
 import { runMediaIntent } from "@dustinedwards/site-api/admin";
+import { SEARCH_FIELDS } from "@dustinedwards/site-api/frontmatter";
 import { nearestPassages, profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
@@ -86,7 +87,10 @@ async function build(base: Env): Promise<World> {
   const db = base.DB;
   await migrate(db);
 
-  const [site, gh, saKey, appKey] = [fakeSite(kindedAdapter()), fakeNovels(), await serviceAccountKey(), await githubStyleKey()];
+  // The site renders all six search fields (site-api v0.17.0), so the editor shows every box.
+  const adapter = kindedAdapter();
+  adapter.content = { ...adapter.content, searchFields: SEARCH_FIELDS };
+  const [site, gh, saKey, appKey] = [fakeSite(adapter), fakeNovels(), await serviceAccountKey(), await githubStyleKey()];
   const google = fakeGoogle({
     publicJwk: saKey.publicJwk,
     files: [

@@ -4,7 +4,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { seoCheck } from "~/lib/seo-checks";
+import { SEARCH_FIELDS } from "@dustinedwards/site-api/frontmatter";
+
+import { searchFieldRefusal, seoCheck } from "~/lib/seo-checks";
 
 const PAGE = { kind: "post", origin: "https://site.test", path: "/writing/pump" };
 const DESCRIPTION = "How a map of one London street traced a cholera outbreak to a single water pump in 1854.";
@@ -70,5 +72,15 @@ describe("the search and sharing checks", () => {
     expect(seoCheck("foxhound", `---\ntitle: "A title"\nexcerpt: ${JSON.stringify(DESCRIPTION)}\n---\n`, PAGE)!.findings).toEqual([]);
     expect(seoCheck("dustinedwards", "---\ntitle: x\n---\n", { ...PAGE, kind: "phage" })).toBeNull();
     expect(seoCheck("dustinedwards", "---\nlegal_type: privacy\ntitle: x\n---\n", PAGE)).toBeNull();
+  });
+
+  it("PLANT: refuses a share image with no alt text and a canonical that is not a full https address, on a site that lists them", () => {
+    const front = (lines: string[]) => ["---", 'title: "The Broad Street pump"', ...lines, "---", ""].join("\n");
+    const broken = front(['image: "/media/pump.webp"', 'canonical: "http://elsewhere.example.com/pump"']);
+    expect(searchFieldRefusal(broken, SEARCH_FIELDS)).toMatch(/share image has no alt text.*not a full https:\/\/ address/);
+    expect(searchFieldRefusal(front(['canonical: "/writing/pump"']), SEARCH_FIELDS)).not.toBeNull();
+    // TWIN: sound fields, and the same faults on a site that does not render the fields.
+    expect(searchFieldRefusal(front(['image: "/media/pump.webp"', 'imageAlt: "The pump"', 'canonical: "https://elsewhere.example.com/pump"']), SEARCH_FIELDS)).toBeNull();
+    expect(searchFieldRefusal(broken, [])).toBeNull();
   });
 });

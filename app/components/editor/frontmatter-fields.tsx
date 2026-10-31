@@ -35,7 +35,22 @@ export type SectionChoice = { key: string; title: string };
  * legal page the legal fields; any other kind keeps its content in keys of its own (a phage's host, a
  * cohort's researchers), so it gets its whole frontmatter as written, for the site to check on save.
  */
-export function FrontmatterFields({ source, onChange, readOnly, sections = [], kind = null }: { source: string; onChange?: (next: string) => void; readOnly?: boolean; sections?: SectionChoice[]; kind?: string | null }) {
+export function FrontmatterFields({
+  source,
+  onChange,
+  readOnly,
+  sections = [],
+  kind = null,
+  searchFields = [],
+}: {
+  source: string;
+  onChange?: (next: string) => void;
+  readOnly?: boolean;
+  sections?: SectionChoice[];
+  kind?: string | null;
+  /** The search fields the site lists: the description is then one box in Search and sharing, not here too. */
+  searchFields?: readonly string[];
+}) {
   const parts = splitSource(source);
   const { front, body } = parts;
   if (front === null) return null;
@@ -60,7 +75,8 @@ export function FrontmatterFields({ source, onChange, readOnly, sections = [], k
       </fieldset>
     );
   }
-  const shown = FIELDS.filter((f) => (f.on === "all" || f.on === (legal ? "legal" : "post")) && (!readOnly || values[f.key] !== ""));
+  const inSearch = (key: FieldKey) => !legal && searchFields.includes(key);
+  const shown = FIELDS.filter((f) => (f.on === "all" || f.on === (legal ? "legal" : "post")) && (!readOnly || values[f.key] !== "") && !inSearch(f.key));
   if (shown.length === 0) return null;
   const used = sectionsUsed(body);
   const unused = sections.filter((s) => !used.includes(s.key));

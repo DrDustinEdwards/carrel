@@ -233,7 +233,7 @@ export const TOOLS: Tool[] = [
       const sources = sourcesOf(args);
       const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source, note: str(args, "note", { optional: true, max: MAX.note }), sources }, ctx.deps.fetcher);
       const checks = checkAgainstPack(await packFor(ctx, p), source, sources);
-      const seo = await seoOf(ctx.env, p, source, { id: str(args, "item") });
+      const seo = await seoOf(ctx.env, p, source, { id: str(args, "item") }, ctx.deps.fetcher);
       return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts.", checks, seo };
     },
   },
@@ -272,7 +272,7 @@ export const TOOLS: Tool[] = [
       const p = await project(ctx, args, "read");
       const source = str(args, "source", { max: MAX.source });
       const scan = checkAgainstPack(await packFor(ctx, p), source, sourcesOf(args));
-      return { ...scan, seo: await seoOf(ctx.env, p, source, { id: str(args, "item", { optional: true, max: MAX.path }) || null }) };
+      return { ...scan, seo: await seoOf(ctx.env, p, source, { id: str(args, "item", { optional: true, max: MAX.path }) || null }, ctx.deps.fetcher) };
     },
   },
   {
@@ -317,7 +317,7 @@ export const TOOLS: Tool[] = [
         throw error;
       });
       const source = draft?.source ?? doc?.source;
-      const seo = source ? await seoOf(ctx.env, p, source, { id: item, ...(doc ? { kind: doc.kind, path: doc.path } : {}) }) : null;
+      const seo = source ? await seoOf(ctx.env, p, source, { id: item, ...(doc ? { kind: doc.kind, path: doc.path } : {}) }, ctx.deps.fetcher) : null;
       return { open: flags.filter((f) => f.status === "open").length, flags, seo };
     },
   },
