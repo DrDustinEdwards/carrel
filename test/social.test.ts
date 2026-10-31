@@ -40,7 +40,7 @@ function fakeWorld(routineStatus: number | (() => number) = 200) {
       fires.push({ text: String(body.text ?? ""), headers: Object.fromEntries(request.headers) });
       const status = typeof routineStatus === "function" ? routineStatus() : routineStatus;
       if (status !== 200) return Response.json({ type: "error", error: { type: status === 429 ? "rate_limit_error" : "authentication_error", message: "no" } }, { status });
-      return Response.json({ type: "routine_fire", claude_code_session_id: "session_01", claude_code_session_url: "https://claude.ai/code/session_01" });
+      return Response.json({ type: "routine_fire", claude_code_session_id: "session_01SAMPLE", claude_code_session_url: "https://claude.ai/code/session_01SAMPLE" });
     }
     sent.push({ url: request.url, body, auth: request.headers.get("Authorization") });
     if (request.url.endsWith("createSession")) return Response.json({ accessJwt: "jwt", did: "did:plc:test" });

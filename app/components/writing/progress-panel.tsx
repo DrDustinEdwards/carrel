@@ -1,7 +1,7 @@
 // Today's writing on the book page (ruling 6): the words typed today against today's target, the
 // streak, the pace a deadline asks for, the last seven days, and the person's own goal. A day is the
-// local calendar day in this device's time zone, which only the browser knows, so the numbers are
-// worked out after the page loads; until then the panel says it is counting.
+// local calendar day in this device's time zone, which only the browser knows: the server counts in
+// UTC and says so, and the panel counts again in the device's zone once the page loads.
 
 import { useEffect, useState } from "react";
 import { barChart } from "enarratio/lite/bar";
@@ -95,58 +95,55 @@ export function ProgressPanel({
   error: string | null;
   saved: boolean;
 }) {
-  // The device's zone, read once the page is in the browser. The server's render has none.
+  // The device's zone, read once the page is in the browser. The server's render counts in UTC.
   const [zone, setZone] = useState<string | null>(null);
   const [mode, setMode] = useState(goal.mode);
   useEffect(() => setZone(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), []);
   useEffect(() => setMode(goal.mode), [goal.mode]);
 
-  let body;
-  if (!zone) {
-    body = (
-      <p className="cap-muted" role="status">
-        Counting today's words in this device's time zone.
-      </p>
-    );
-  } else {
-    const today = dayKey(new Date(), zone);
-    const totals = dayTotals(entries, zone, goal.allowNegative);
-    const wordsToday = totals.get(today) ?? 0;
-    const paced = pace({ projectTarget, deadline, wordsNow, wordsToday, today, writingDays: goal.writingDays });
-    const target = targetFor(goal, today, paced);
-    const dayOff = !goal.writingDays.includes(new Date(`${today}T12:00:00Z`).getUTCDay());
-    const run = streak(totals, today, target, goal.writingDays);
-    const met = target !== null && wordsToday >= target;
-    const days = recentDays(totals, today, 7, goal.writingDays);
+  const counted = zone ?? "UTC";
+  const today = dayKey(new Date(), counted);
+  const totals = dayTotals(entries, counted, goal.allowNegative);
+  const wordsToday = totals.get(today) ?? 0;
+  const paced = pace({ projectTarget, deadline, wordsNow, wordsToday, today, writingDays: goal.writingDays });
+  const target = targetFor(goal, today, paced);
+  const dayOff = !goal.writingDays.includes(new Date(`${today}T12:00:00Z`).getUTCDay());
+  const run = streak(totals, today, target, goal.writingDays);
+  const met = target !== null && wordsToday >= target;
+  const days = recentDays(totals, today, 7, goal.writingDays);
 
-    body = (
-      <div className="app-stack" data-tight>
-        {target !== null ? (
-          <Meter
-            label="Typed today"
-            value={Math.max(0, wordsToday)}
-            max={target}
-            display={`${n(wordsToday)} of ${n(target)}`}
-            valueText={`${n(wordsToday)} of ${n(target)} words typed today.${met ? " Target met." : ""}`}
-            tone={met ? "ok" : undefined}
-            note={met ? "Today's target is met." : `${n(target - wordsToday)} to go today.`}
-          />
-        ) : (
-          <p>
-            <strong>{n(wordsToday)}</strong> word{wordsToday === 1 ? "" : "s"} typed today.{" "}
-            <span className="cap-muted">{dayOff ? "A day off: no target today." : goal.mode === "deadline" ? "No pace to work out yet." : "No daily target set."}</span>
-          </p>
-        )}
-        {met ? <Status tone="ok">Target met</Status> : null}
-        <p>
-          Streak: <strong>{run}</strong> day{run === 1 ? "" : "s"} in a row at the target.
-          {target === null ? <span className="cap-muted"> A streak needs a target.</span> : null}
+  const body = (
+    <div className="app-stack" data-tight>
+      {zone ? null : (
+        <p className="cap-muted" role="status">
+          Counted in UTC until this page loads, then in this device's time zone.
         </p>
-        {goal.mode === "deadline" || deadline || projectTarget ? <p className="cap-muted">{paceLine(paced, deadline)}</p> : null}
-        <ChartFrame draw={weekChart(days, target)} width={360} />
-      </div>
-    );
-  }
+      )}
+      {target !== null ? (
+        <Meter
+          label="Typed today"
+          value={Math.max(0, wordsToday)}
+          max={target}
+          display={`${n(wordsToday)} of ${n(target)}`}
+          valueText={`${n(wordsToday)} of ${n(target)} words typed today.${met ? " Target met." : ""}`}
+          tone={met ? "ok" : undefined}
+          note={met ? "Today's target is met." : `${n(target - wordsToday)} to go today.`}
+        />
+      ) : (
+        <p>
+          <strong>{n(wordsToday)}</strong> word{wordsToday === 1 ? "" : "s"} typed today.{" "}
+          <span className="cap-muted">{dayOff ? "A day off: no target today." : goal.mode === "deadline" ? "No pace to work out yet." : "No daily target set."}</span>
+        </p>
+      )}
+      {met ? <Status tone="ok">Target met</Status> : null}
+      <p>
+        Streak: <strong>{run}</strong> day{run === 1 ? "" : "s"} in a row at the target.
+        {target === null ? <span className="cap-muted"> A streak needs a target.</span> : null}
+      </p>
+      {goal.mode === "deadline" || deadline || projectTarget ? <p className="cap-muted">{paceLine(paced, deadline)}</p> : null}
+      <ChartFrame draw={weekChart(days, target)} width={360} />
+    </div>
+  );
 
   return (
     <Panel title="Today's writing" src="Typed words only">
