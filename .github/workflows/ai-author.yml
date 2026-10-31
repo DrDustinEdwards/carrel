@@ -19,4 +19,4 @@ concurrency:
 
 jobs:
   ai-author:
-    uses: DrDustinEdwards/devkit/.github/workflows/ai-author.yml@d9d5a3448a50f183c3c8b4a5f293717728717245 # v0.20.8
+    uses: DrDustinEdwards/devkit/.github/workflows/ai-author.yml@71f342e07f91d3be216f2dfd8e9815a0f9f7299c # v0.20.13
