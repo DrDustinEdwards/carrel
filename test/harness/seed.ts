@@ -3,6 +3,7 @@
 // Test-only; nothing here is deployed and nothing reaches the network.
 
 import { runMediaIntent } from "@dustinedwards/site-api/admin";
+import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { nearestPassages, profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
@@ -80,11 +81,17 @@ export function harness(base: Env): Promise<World> {
   return ready;
 }
 
+/** The site's 404 report, for the 404s screen. */
+const NOT_FOUND = [
+  { path: "/blog/old-phage-post", kind: "page" as const, hits: 14, referrers: [{ host: "example.com", hits: 9 }, { host: "", hits: 5 }] },
+  { path: "/research/protocols/plaque-assay-v1", kind: "page" as const, hits: 3, referrers: [{ host: "", hits: 3 }] },
+];
+
 async function build(base: Env): Promise<World> {
   const db = base.DB;
   await migrate(db);
 
-  const [site, gh, saKey, appKey] = [fakeSite(kindedAdapter()), fakeNovels(), await serviceAccountKey(), await githubStyleKey()];
+  const [site, gh, saKey, appKey] = [fakeSite(kindedAdapter(memoryAdapter({ notFound: NOT_FOUND }))), fakeNovels(), await serviceAccountKey(), await githubStyleKey()];
   const google = fakeGoogle({
     publicJwk: saKey.publicJwk,
     files: [

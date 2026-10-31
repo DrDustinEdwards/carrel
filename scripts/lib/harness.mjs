@@ -80,6 +80,7 @@ export const SCREENS = [
   { name: "flags-reader", viewer: "reader", path: `/p/${SITE}/flags` },
   { name: "voice", viewer: "owner", path: `/p/${SITE}/voice` },
   { name: "voice-reader", viewer: "reader", path: `/p/${SITE}/voice` },
+  { name: "not-found", viewer: "owner", path: `/p/${SITE}/not-found` },
   { name: "legal", viewer: "owner", path: `/p/${SITE}/legal` },
   { name: "legal-editor", viewer: "editor", path: `/p/${SITE}/legal` },
   { name: "legal-page", viewer: "owner", path: `/p/${SITE}/e/page.privacy`, wait: ".app-rich-surface" },
