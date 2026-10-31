@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           # The version in package.json's engines field.
@@ -55,6 +57,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: package.json
@@ -72,6 +76,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: package.json
@@ -92,7 +98,7 @@ jobs:
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@dfdb60397d24f15c80b9468059d7d601b2caa6bf # v0.20.1
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@e99e4651b943f83b6591309b2151e7332786e64a # v0.20.2
     with:
       worker-name: carrel-desk
       d1-database: carrel
