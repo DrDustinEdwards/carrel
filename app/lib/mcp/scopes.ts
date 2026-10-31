@@ -1,7 +1,8 @@
 // Scopes (ruling capsid/rulings/mcp-2026-10-10.md, rule 12.3). The names are the family's one scheme, site-runtime's
-// mcpScopes("carrel"): carrel.read and carrel.write. A client that asks for carrel.read alone gets read alone. A client
-// that asks for carrel.write, or names no Carrel scope at all, gets read and write (Dustin, 2026-10-10: a client that
-// names no scope must not lose drafts and flags), and the person can always narrow it to reading on the consent page.
+// mcpScopes("carrel"): carrel.read and carrel.write. Least scope first (checklist A11): every grant holds
+// read, and write only when the person ticks it on the consent page. The box starts ticked only when the client asked
+// for carrel.write; a client that asks for carrel.read, or names no Carrel scope at all, starts unticked, and the person
+// can tick it. (This replaces the 2026-10-10 default, where naming no scope started the box ticked.)
 // What a session may do is still decided by the person's role below this layer: a scope can only narrow that, never
 // widen it.
 //
@@ -33,18 +34,14 @@ function current(scopes: readonly string[]): Set<string> {
 }
 
 /**
- * What a new grant carries. Reading only, when the person chose it on the consent page or the client
- * asked for carrel.read and nothing more. Otherwise read and write: the client asked for write (by
- * today's name or an earlier one, which a client that connected before may still send), or it named no
- * Carrel scope at all, which defaults to both.
+ * What the consent page offers. Read and write when the client asked for write (by today's name or an
+ * earlier one, which a client that connected before may still send); otherwise, a request for read or
+ * for no Carrel scope at all, reading only. The person's tick decides the grant.
  */
 export function grantScopes(requested: readonly string[], opts: { readOnly?: boolean } = {}): string[] {
   if (opts.readOnly) return [SCOPE_READ];
   const asked = current(requested);
-  if (asked.has(SCOPE_WRITE)) return [SCOPE_READ, SCOPE_WRITE];
-  // Naming no Carrel scope at all defaults to both.
-  if (!asked.has(SCOPE_READ)) return [SCOPE_READ, SCOPE_WRITE];
-  return [SCOPE_READ];
+  return asked.has(SCOPE_WRITE) ? [SCOPE_READ, SCOPE_WRITE] : [SCOPE_READ];
 }
 
 /** The scopes a token's grant carries, with every earlier name read as today's. */
