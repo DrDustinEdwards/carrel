@@ -87,11 +87,11 @@ describe("GET /health", () => {
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env: testEnv, ctx: { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext });
     const response = await healthLoader({ context, request: new Request("https://carrel.test/health"), params: {} } as never);
-    return { status: response.status, ...((await response.json()) as { db: string; backup: { last_ok: string | null } }) };
+    return { ...((await response.json()) as { db: string; backup: { last_ok: string | null } }), http: response.status };
   }
 
   // healthResponse itself is tested in site-runtime; this checks Carrel wires D1 and the dump into it.
   it("says D1 is up and reports the dump", async () => {
-    expect(await body()).toMatchObject({ status: 200, db: "up", backup: { last_ok: null } });
+    expect(await body()).toMatchObject({ http: 200, db: "up", backup: { last_ok: null } });
   });
 });
