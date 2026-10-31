@@ -6,7 +6,8 @@
 // placeholder:
 //
 //   CARREL_D1_DATABASE_ID   id of the D1 database named `carrel`
-//   CARREL_KV_OAUTH_ID      id of the KV namespace titled `carrel-oauth` (bound as OAUTH_KV)
+//   CARREL_KV_OAUTH_ID      id of the KV namespace titled `carrel-desk-oauth` (bound as OAUTH_KV); during the
+//                           rename its old title `carrel-oauth` is accepted too
 //   CARREL_ALERT_EMAIL      the address health alerts go to
 //   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   read by wrangler itself
 //
@@ -39,7 +40,9 @@ const migrations = process.env.MIGRATIONS_ENTRY ?? join(root, "node_modules", "@
 const ZERO_D1 = "00000000-0000-0000-0000-000000000000";
 const ZERO_KV = "00000000000000000000000000000000";
 const D1_NAME = "carrel";
-const KV_TITLE = "carrel-oauth";
+// The `<worker>-oauth` rule names it carrel-desk-oauth. Until Dustin renames it in place (same id), the old title
+// counts too. Exactly one namespace may carry either title. REMOVAL CONDITION: drop "carrel-oauth" once renamed.
+const KV_TITLES = ["carrel-desk-oauth", "carrel-oauth"];
 
 /** @param {string} message @returns {never} */
 function fail(message) {
@@ -124,7 +127,7 @@ step("rendering wrangler.jsonc from the example");
 writeFileSync(configPath, rendered);
 
 // 3. The ids must be the ones the names resolve to in this account.
-step(`checking database "${D1_NAME}" and namespace "${KV_TITLE}" against the account`);
+step(`checking database "${D1_NAME}" and namespace "${KV_TITLES[0]}" against the account`);
 const d1List = must("wrangler d1 list", wrangler, ["d1", "list", "--json"], { quiet: true });
 /** @type {{ name: string, uuid: string }[]} */
 let databases;
@@ -145,9 +148,9 @@ try {
 } catch {
   fail("wrangler kv namespace list did not return JSON.");
 }
-const kvMatch = namespaces.filter((n) => n.title === KV_TITLE);
+const kvMatch = namespaces.filter((n) => KV_TITLES.includes(n.title));
 if (kvMatch.length !== 1 || kvMatch[0].id !== kvId) {
-  fail(`the KV namespace titled "${KV_TITLE}" does not have the id in CARREL_KV_OAUTH_ID. Refusing to deploy.`);
+  fail(`the one KV namespace titled "${KV_TITLES.join('" or "')}" does not have the id in CARREL_KV_OAUTH_ID. Refusing to deploy.`);
 }
 
 // 4. Build, so a broken build stops the run before any migration is applied.
