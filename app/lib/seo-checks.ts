@@ -1,7 +1,8 @@
 // The search and sharing checks on a post's text, and the link card it will make: the title a search
 // result shows, the description under it, images in the body with no alt text, and a post with no card
-// image. They flag; the writer decides, and nothing here holds a save or a publish. Pure, so the editor
-// runs them as Dustin types and the MCP tools run the same code on a draft.
+// image. They flag; the writer decides. The one exception is alt text: an image without it blocks a
+// publish (Dustin approved, 2026-10-31), so writeToSite refuses one and the editor's gate shows why.
+// Pure, so the editor runs them as Dustin types and the MCP tools run the same code on a draft.
 //
 // The limits are Prelum's (@drdustinedwards/site-helpers/head), the numbers the sites' own head tags and
 // site audit use, so a draft is held to what the published page is measured against. Prelum sets no
@@ -101,11 +102,12 @@ function first(front: string | null, keys: readonly string[]): string {
 const plural = (n: number) => `${n} character${n === 1 ? "" : "s"}`;
 
 /** Each image in a body with no alt text, or an empty one: Markdown, HTML and a `:::figure` directive. Code is skipped. */
-function imagesWithoutAlt(source: string): { excerpt: string; line: number }[] {
+export function imagesWithoutAlt(source: string): { excerpt: string; src: string; line: number }[] {
   const text = source.replace(/\r\n/g, "\n");
   const { body } = splitSource(text);
   const startLine = text.slice(0, text.length - body.length).split("\n").length;
-  const found: { excerpt: string; line: number }[] = [];
+  const found: { excerpt: string; src: string; line: number }[] = [];
+  const srcOf = (attrs: string) => /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>}]+))/i.exec(attrs)?.slice(1).find((v) => v !== undefined) ?? "";
   let fence: string | null = null;
   body.split("\n").forEach((raw, i) => {
     const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(raw)?.[1];
@@ -116,18 +118,26 @@ function imagesWithoutAlt(source: string): { excerpt: string; line: number }[] {
     if (fence !== null) return;
     const line = raw.replace(/`[^`]*`/g, "");
     for (const m of line.matchAll(/!\[([^\]]*)\](\([^)]*\)|\[[^\]]*\])/g)) {
-      if (!m[1]!.trim()) found.push({ excerpt: m[0], line: startLine + i });
+      if (!m[1]!.trim()) found.push({ excerpt: m[0], src: m[2]!.slice(1, -1).trim().split(/\s+/)[0] ?? "", line: startLine + i });
     }
     for (const m of line.matchAll(/<img\b[^>]*>/gi)) {
       const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(m[0]);
-      if (!alt || !(alt[1] ?? alt[2] ?? alt[3] ?? "").trim()) found.push({ excerpt: m[0], line: startLine + i });
+      if (!alt || !(alt[1] ?? alt[2] ?? alt[3] ?? "").trim()) found.push({ excerpt: m[0], src: srcOf(m[0]), line: startLine + i });
     }
     for (const m of line.matchAll(/^\s*:{2,}figure\{([^}]*)\}/g)) {
       const alt = /\balt\s*=\s*"([^"]*)"/.exec(m[1]!);
-      if (!alt || !alt[1]!.trim()) found.push({ excerpt: m[0].trim(), line: startLine + i });
+      if (!alt || !alt[1]!.trim()) found.push({ excerpt: m[0].trim(), src: srcOf(m[1]!), line: startLine + i });
     }
   });
   return found;
+}
+
+/** Why a publish is refused for alt text, naming each image by its address and line; null when every image has alt text. */
+export function missingAltRefusal(source: string): string | null {
+  const images = imagesWithoutAlt(source);
+  if (images.length === 0) return null;
+  const named = images.map((image) => `${image.src || image.excerpt} (line ${image.line})`).join("; ");
+  return `Every image needs alt text before the post goes out. Describe what each of these shows: ${named}.`;
 }
 
 /**

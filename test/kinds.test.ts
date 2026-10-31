@@ -101,8 +101,8 @@ describe("every kind the site reports", () => {
     await env.DB.prepare("INSERT INTO site_items (project_id, item_id, kind, title, status, synced_at) VALUES (?, 'equipment.heat-block', 'equipment', 'Heat block', 'published', '2026-10-10T00:00:00Z')").bind(projectId).run();
     const context = await contextFor(env);
     const listed = (await projectLoader({ request: new Request(`https://carrel.test/p/${SLUG}`), params: { project: SLUG }, context } as never)) as Awaited<ReturnType<typeof projectLoader>>;
-    expect(listed.kinds).not.toContain("equipment");
-    expect(listed.items.map((i) => i.itemId)).not.toContain("equipment.heat-block");
+    expect(listed.data?.kinds).not.toContain("equipment");
+    expect(listed.data?.rows.map((r) => r.id)).not.toContain("equipment.heat-block");
 
     const params = { project: SLUG, item: "equipment.heat-block" };
     // The site does not hold the entry, so its room starts from this text, as a new file's would.
