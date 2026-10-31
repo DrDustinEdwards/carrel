@@ -48,7 +48,7 @@ import { PageHead } from "capsomer/react/page-head";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { can } from "~/lib/roles";
 import { openRoom, rebaseRoom, replaceRoom, roomPath, roomVersion, saveRoom, siteCoauthors, withOthers } from "~/lib/rooms.server";
-import { seoCheck } from "~/lib/seo-checks";
+import { imagesWithoutAlt, seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
@@ -438,8 +438,13 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     href: "#flags",
     fix: "Change the text, or dismiss the flag.",
   }));
-  // The search and sharing checks are advisory too: the gate names each and points to the panel.
+  // An image with no alt text blocks the publish (writeToSite refuses it too), one required check per image.
+  for (const [i, image] of imagesWithoutAlt(source).entries()) {
+    gateChecks.push({ id: `alt-${i}`, name: "Alt text", required: true, ok: false, cause: `${image.src || image.excerpt} has no alt text (line ${image.line})`, pass: "Every image has alt text", href: "#seo", fix: "Describe what the image shows, in a sentence." });
+  }
+  // The other search and sharing checks are advisory: the gate names each and points to the panel.
   for (const [i, f] of (seo?.findings ?? []).entries()) {
+    if (f.check === "image-alt") continue;
     gateChecks.push({ id: `seo-${i}`, name: "Search and sharing", required: false, ok: false, cause: f.message, pass: "Fits", href: "#seo", fix: "Change the post's details or the image." });
   }
 

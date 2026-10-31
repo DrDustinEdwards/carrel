@@ -187,7 +187,7 @@ export function ftsQuery(q: string): string | null {
     .join(" ");
 }
 
-export type Filters = { q?: string; status?: ContentStatus; kind?: string };
+type Filters = { q?: string; status?: ContentStatus; kind?: string };
 
 /**
  * The kinds Carrel presents as writing, read from the site's own metadata rather than named here:

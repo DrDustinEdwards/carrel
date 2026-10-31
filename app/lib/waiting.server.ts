@@ -7,7 +7,6 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { aiDrafts, drafts } from "~/db/schema";
-import type { Filters, IndexedItem } from "~/lib/index.server";
 import type { Viewer } from "~/lib/people.server";
 import type { ProjectRole } from "~/lib/content.server";
 import { can } from "~/lib/roles";
@@ -21,8 +20,6 @@ export type Waiting = {
   text: string;
   at: string;
 };
-
-export type ListedItem = IndexedItem & { aiDrafts: number; isNew: boolean; ownDraft: boolean };
 
 /** The title from a source's frontmatter, or "" when it has none. */
 export function titleOf(source: string): string {
@@ -71,38 +68,14 @@ export async function waitingWork(db: D1Database, project: ProjectRole, viewer: 
 }
 
 /**
- * The index's items with the waiting work laid over them: an indexed item gets its count of AI
- * drafts, and an item the index does not have is listed as a new draft. A new item has no kind the
- * site knows, so a kind filter leaves it out; the status filter and the search apply to it as to
- * the rest.
+ * The waiting work on posts the site does not have yet (not in the index, not on the page): each is a
+ * new draft, listed with its title and what waits. The search applies to it as to the site's posts,
+ * every word in the title, id or text.
  */
-export function withWaitingWork(items: IndexedItem[], waiting: Waiting[], filters: Filters): ListedItem[] {
-  const byId = new Map(waiting.map((w) => [w.itemId, w]));
-  const listed: ListedItem[] = items.map((item) => ({
-    ...item,
-    aiDrafts: byId.get(item.itemId)?.aiDrafts ?? 0,
-    isNew: false,
-    ownDraft: byId.get(item.itemId)?.ownDraft ?? false,
-  }));
-  if (filters.kind || (filters.status && filters.status !== "draft")) return listed;
-  const words = filters.q?.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
-  if (filters.q && words.length === 0) return listed;
-  const indexed = new Set(items.map((i) => i.itemId));
-  const fresh: ListedItem[] = waiting
-    .filter((w) => !indexed.has(w.itemId) && words.every((word) => w.text.includes(word)))
-    .map((w) => ({
-      itemId: w.itemId,
-      kind: "",
-      title: w.title || w.itemId,
-      status: "draft" as const,
-      path: null,
-      publishAt: null,
-      updateAt: null,
-      publishedAt: null,
-      updatedAt: w.at,
-      aiDrafts: w.aiDrafts,
-      isNew: true,
-      ownDraft: w.ownDraft,
-    }));
-  return [...fresh, ...listed];
+export function onlyInCarrel(waiting: Waiting[], known: ReadonlySet<string>, q?: string): Array<Pick<Waiting, "itemId" | "title" | "aiDrafts" | "ownDraft">> {
+  const words = q?.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  if (q && words.length === 0) return [];
+  return waiting
+    .filter((w) => !known.has(w.itemId) && words.every((word) => w.text.includes(word)))
+    .map(({ itemId, title, aiDrafts, ownDraft }) => ({ itemId, title: title || itemId, aiDrafts, ownDraft }));
 }

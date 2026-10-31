@@ -57,6 +57,9 @@
 @import "capsomer/shortcuts.css";
 @import "capsomer/content.css";
 @import "capsomer/media-library.css";
+@import "capsomer/menu.css";
+@import "capsomer/moderation-queue.css";
+@import "capsomer/mentions-list.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */
@@ -108,40 +111,6 @@
 
 .cap-table th .cap-status {
   margin-inline-start: var(--space-3);
-}
-
-/* A site's posts (routes/project.tsx) are laid out by Capsomer's posts list (its classes on Carrel's
-   table). A row's status can hold more than one pill (an update waiting, AI drafts): they sit apart,
-   each time in its pill's own color, and wrap on a phone's card. */
-.cap-posts-status > .cap-pill + .cap-pill {
-  margin-inline-start: var(--space-2);
-}
-.cap-posts-status .cap-time {
-  color: inherit;
-}
-/* The kind has its own column, and joins the path only on a phone's card. */
-.cap-posts-meta > .cap-posts-kind {
-  display: none;
-}
-
-@container cap-table (max-width: 639px) {
-  .cap-posts-wrap.cap-table-wrap[data-reflow] > .cap-posts-table > tbody > tr {
-    & > .app-posts-kind {
-      display: none;
-    }
-    & .cap-posts-kind {
-      display: inline;
-    }
-    & > .cap-posts-status {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
-
-      & > .cap-pill + .cap-pill {
-        margin-inline-start: 0;
-      }
-    }
-  }
 }
 
 /* A search and its filters on one row, the button last; they wrap on a phone. */
