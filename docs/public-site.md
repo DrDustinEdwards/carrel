@@ -7,9 +7,10 @@ Since 2026-10-26 Carrel has two faces, as Capsid has its public site and the Por
 - **Desk**, https://desk.dustinedwards.info: the signed-in writing app (the `carrel-desk` Worker, named `carrel` until 2026-10-27), behind Cloudflare
   Access (a hostname application since co-editing: docs/coediting.md). The AI door stays at carrel-mcp.dustinedwards.info.
 
-`npm run www` builds the page into `www/dist`; CI builds it on every push. `npm run deploy:www` deploys it, as does the
-"Deploy public site" workflow (on a push to main touching `www/`, or by hand), which then tells IndexNow with Prelum's
-`prelum-indexnow` from the built sitemap (the key is `INDEXNOW_KEY` in `www/build.mjs`, served as `/<key>.txt`).
+`npm run www` builds the page into `www/dist`; CI builds it on every push. `npm run deploy:www` deploys it by hand. A push to main
+deploys it once the checks pass, through ci.yml's `deploy-www` job: devkit's shared deploy, which waits for `/health` to
+report the commit, checks the home page and rolls back on a refusal. The `indexnow` job then tells IndexNow with Prelum's
+`prelum-indexnow` from the live sitemap (the key is `INDEXNOW_KEY` in `www/build.mjs`, served as `/<key>.txt`).
 
 ## The cutover, once
 

@@ -41,7 +41,7 @@ const SECURITY_TXT_EXPIRES = "2027-10-26T00:00:00Z";
 const CONTACT = "security@dustinedwards.info";
 
 /**
- * The IndexNow key, served as /<key>.txt; www.yml reads it from this line for prelum-indexnow after each deploy. A key
+ * The IndexNow key, served as /<key>.txt; ci.yml's indexnow job reads it from this line for prelum-indexnow after each deploy. A key
  * is public by design: it only proves the pinging site owns the origin.
  */
 const INDEXNOW_KEY = "00d4cd444d72b3dbef372abe5f4cc447";
