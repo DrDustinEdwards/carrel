@@ -23,6 +23,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.flags";
 
@@ -45,7 +46,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const viewer = getViewer(context);
   // The Owner's alone, as in the editor: a dismissed flag no longer holds publish.
   const project = await requireSiteProject(env.DB, viewer, params.project, "publish");
-  const form = await request.formData();
+  const form = await readForm(request);
   if (form.get("intent") !== "dismiss") throw new Response("Bad request", { status: 400 });
   const id = Number(form.get("flag"));
   const item = String(form.get("item") ?? "");

@@ -1,6 +1,16 @@
-# Built files: Vite names each one by its content hash, so the URL changes whenever the bytes do and a year is
-# safe. Without this rule Workers Assets serves them with `max-age=0, must-revalidate`, and every page load
-# revalidates every file (dustinedwards-info measured 14 such requests on one load, median 689 ms each).
-# Only the hashed directory: files at stable paths (favicon, logo) keep the default revalidation.
+# Written by vite.config.ts on every build from workers/security-headers.ts; do not edit.
+# Vite names each built file by its content hash, so a year is safe for /assets/; without the rule every page load
+# revalidates every file. Files at stable paths (favicon, logo) keep the default revalidation.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(self), usb=(), web-share=(), xr-spatial-tracking=(), clipboard-read=(), clipboard-write=(), gamepad=(), hid=(), idle-detection=(), interest-cohort=(), serial=(), unload=()
+  Referrer-Policy: no-referrer
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-DNS-Prefetch-Control: off
+  X-Frame-Options: deny
+  X-Permitted-Cross-Domain-Policies: none
+
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

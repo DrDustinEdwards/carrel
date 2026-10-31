@@ -27,6 +27,7 @@ import { accessState, syncAccess, type AccessState, type SyncOutcome } from "~/l
 import { getEnv, getViewer } from "~/lib/context";
 import { addAgent, addPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
 import { isMemberRole } from "~/lib/roles";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/people";
 
@@ -46,7 +47,7 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
   const env = getEnv(context);
   const db = env.DB;
   const viewer = getViewer(context);
-  const form = await request.formData();
+  const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   const personId = Number(form.get("person"));
   try {

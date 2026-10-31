@@ -5,6 +5,7 @@
 import { getEnv, getViewer } from "~/lib/context";
 import { decideMentions, sweepMentions, type MentionOp } from "~/lib/mentions.server";
 import { requireSiteProject } from "~/lib/projects.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/mentions.api";
 
@@ -17,7 +18,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   try {
     // Refused on the role before the body is read: a request from anyone but the Owner never reaches the site.
     const project = await requireSiteProject(env.DB, viewer, params.project, "decide_mention");
-    const form = await request.formData();
+    const form = await readForm(request);
     const op = String(form.get("op") ?? "");
     if (op === "sweep") return Response.json({ sweep: await sweepMentions(env, project, { viewer }) });
     if (!(OPS as readonly string[]).includes(op)) return Response.json({ error: "That is not a mention action." }, { status: 400 });

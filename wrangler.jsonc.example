@@ -110,6 +110,11 @@
 			"new_sqlite_classes": ["DocRoom"]
 		}
 	],
+	// The AI door's CSP report sink (workers/csp-report.ts): at most 60 report requests a minute from one
+	// address reach the log. namespace_id is this Worker's own: sites sharing one share counters.
+	"ratelimits": [
+		{ "name": "CSP_REPORT_RATE_LIMIT", "namespace_id": "7703", "simple": { "limit": 60, "period": 60 } }
+	],
 	"send_email": [
 		{
 			"name": "EMAIL"

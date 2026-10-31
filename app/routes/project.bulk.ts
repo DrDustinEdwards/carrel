@@ -6,6 +6,7 @@
 import { bulkApply, type BulkRequest } from "~/lib/bulk.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.bulk";
 
@@ -28,7 +29,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
-  const form = await request.formData();
+  const form = await readForm(request);
   const bulk = parse(form);
   if (!bulk) return Response.json({ error: "That is not a bulk action." }, { status: 400 });
   try {

@@ -52,6 +52,7 @@ import { seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/editor";
 
@@ -202,7 +203,7 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
   const itemId = params.item;
-  const form = await request.formData();
+  const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   // Every write sends the room's text at that moment, checked against the room's version.
   const fromRoom = (write: (source: string, expectedVersion: string | null) => Promise<WriteOutcome>) => saveRoom(env, project, viewer, itemId, write);

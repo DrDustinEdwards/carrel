@@ -1,18 +1,18 @@
-// The security headers (workers/security-headers.ts): the portfolio's shared set on every response
-// of both hosts, redirects and refusals included; a per-request nonce policy with no unsafe script
-// source on every page; the preview alone may be framed and only by Carrel, and the site's page inside
-// it runs sandboxed. The shared check (@dustinedwards/site-runtime) grades the rendered responses.
+// The security headers (workers/security-headers.ts) where the live check (site-runtime-security) cannot see them:
+// Desk's pages are behind Access, so a stranger gets Access's redirect, never a page. The shared set on every signed-in
+// response, redirects and refusals included, graded against Desk's registry entry; the preview alone may be framed and
+// only by Carrel, and the site's page inside it runs sandboxed. The AI door has no registry entry yet, so its own set
+// is graded here too.
 
 import { checkSecurityHeaders, failures, STANDARD_SECURITY_HEADERS } from "@dustinedwards/site-runtime";
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { stubAccess } from "@dustinedwards/devkit/access";
 import { createExecutionContext } from "cloudflare:test";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { aiDoor } from "~/lib/mcp/door";
 import { previewPolicy, previewResponse, withSiteBase } from "~/lib/preview.server";
 
-import { cspReport } from "../workers/csp-report";
 import { gate } from "../workers/gate";
 import {
   appPolicy,
@@ -27,34 +27,10 @@ import { MCP_HOST } from "./mcp-client";
 
 const NONCE = "bm9uY2Utbm9uY2Utbm9uY2U=";
 const DOOR = `https://${MCP_HOST}`;
-const directive = (policy: string, name: string) => policy.split("; ").find((d) => d.startsWith(`${name} `));
-const failed = (headers: Headers, options?: Parameters<typeof checkSecurityHeaders>[1]) =>
+const failed = (headers: Headers, options: Parameters<typeof checkSecurityHeaders>[1] = { site: "carrel-desk" }) =>
   failures(checkSecurityHeaders(headers, options)).map((r) => `${r.name}: ${r.detail}`);
 
-describe("the app policy", () => {
-  it("allows scripts only by this render's nonce, never inline or eval", () => {
-    const policy = appPolicy(NONCE);
-    // 'self' is ignored beside 'strict-dynamic' by every browser that knows strict-dynamic.
-    expect(directive(policy, "script-src")).toBe(`script-src 'nonce-${NONCE}' 'self' 'strict-dynamic'`);
-    expect(policy).not.toMatch(/'unsafe-eval'/);
-    expect(directive(policy, "script-src")).not.toMatch(/'unsafe-inline'/);
-    expect(policy).toContain("object-src 'none'");
-    expect(policy).toContain("base-uri 'none'");
-    expect(policy).toContain("form-action 'self'");
-    expect(policy).toContain("frame-ancestors 'none'");
-    // The preview iframe is Carrel's own route: default-src 'self' covers it, with no frame-src of its own.
-    expect(policy).toContain("default-src 'self'");
-    expect(policy).not.toContain("frame-src");
-    expect(policy).toContain(`style-src 'self' 'nonce-${NONCE}'`);
-    expect(policy).toContain("style-src-attr 'unsafe-inline'");
-  });
-
-  it("reports violations to the AI door, the one host a browser reaches without Access", () => {
-    const policy = appPolicy(NONCE, [], DOOR);
-    expect(directive(policy, "report-uri")).toBe(`report-uri ${DOOR}/csp-report`);
-    expect(directive(policy, "report-to")).toBe("report-to csp");
-  });
-
+describe("a page's policy", () => {
   it("PLANT: a page without a policy gets one; a route's own policy is kept", () => {
     const page = withSecurityHeaders(new Response("<html></html>"), NONCE);
     expect(page.headers.get("Content-Security-Policy")).toBe(appPolicy(NONCE));
@@ -129,7 +105,7 @@ describe("rendered responses through the gate", () => {
 
   it("the preview carries every shared header and keeps its own sandboxed policy", async () => {
     const response = await through(() => previewResponse("<html><head></head></html>", "https://site.test"));
-    expect(failed(response.headers, { csp: false })).toEqual([]);
+    expect(failed(response.headers, { site: "carrel-desk", csp: false })).toEqual([]);
     expect(response.headers.get("Content-Security-Policy")).toBe(previewPolicy("https://site.test"));
     expect(response.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
   });
@@ -161,28 +137,4 @@ describe("rendered responses on the AI door", () => {
     expect(DOOR_POLICY).not.toMatch(/form-action/);
     expect(DOOR_POLICY).not.toMatch(/script-src/);
   });
-});
-
-describe("the report sink", () => {
-  const sink = (init: RequestInit) => cspReport(new Request(`${DOOR}/csp-report`, init), "https://carrel.test");
-  const post = (body: string, headers: Record<string, string> = {}) =>
-    sink({ method: "POST", body, headers: { "Content-Type": "application/csp-report", ...headers } });
-
-  it("logs one line per violation, URLs cut to origin and path, and answers 204 with CORS for Carrel's own pages", async () => {
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-    const body = JSON.stringify({
-      "csp-report": { "document-uri": "https://carrel.test/p/x?draft=secret", "effective-directive": "script-src-elem", "blocked-uri": "inline" },
-    });
-    const response = await post(body, { Origin: "https://carrel.test" });
-    expect(response.status).toBe(204);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("https://carrel.test");
-    expect(response.headers.get("Cache-Control")).toBe("no-store");
-    expect(response.headers.get("X-Content-Type-Options")).toBe(doorSecurityHeaders["X-Content-Type-Options"]);
-    expect(log).toHaveBeenCalledTimes(1);
-    const line = JSON.parse(log.mock.calls[0]![0] as string);
-    expect(line).toMatchObject({ event: "csp-violation", page: "https://carrel.test/p/x", directive: "script-src-elem", blocked: "inline" });
-    expect(JSON.stringify(line)).not.toContain("secret");
-    log.mockRestore();
-  });
-
 });

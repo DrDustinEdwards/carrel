@@ -18,6 +18,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
 import { briefOf, buildVoicePack, PACK_POSTS, readVoicePack, saveVoiceGuide } from "~/lib/voice.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.voice";
 
@@ -41,7 +42,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const form = await request.formData();
+  const form = await readForm(request);
   const intent = form.get("intent");
   if (intent === "rebuild") {
     const project = await requireSiteProject(env.DB, viewer, params.project, "read");

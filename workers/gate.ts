@@ -9,7 +9,7 @@
 // Access like every other.
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
-import { refuseCrossOrigin } from "@dustinedwards/site-runtime/origin";
+import { refuseCrossSite } from "@dustinedwards/site-runtime/origin";
 
 import { verifyAccess } from "~/lib/access.server";
 import { findViewer, type Viewer } from "~/lib/people.server";
@@ -56,8 +56,9 @@ export async function gate(
   // A reviewer is an AI agent, not a person: it has no business at the browser door.
   if (viewer.isReviewer) return refuse("reviewer-at-browser-door");
   // A change sent from another site's page. React Router checks Origin on a page's action, but not on a resource route's
-  // (media, bulk, mentions), so the door checks every request once. A request with no Origin (curl, a server) passes.
-  if (refuseCrossOrigin(request)) return refuse("cross-origin");
+  // (media, bulk, mentions), so the door checks every request once: Sec-Fetch-Site, else Origin. A request with
+  // neither (curl, a server) passes.
+  if (refuseCrossSite(request)) return refuse("cross-origin");
   const response = await render(request, viewer);
   // A live editor's WebSocket (101) is the socket itself: copying it would drop the socket.
   return response.status === 101 ? response : withPrivateHeaders(response);
