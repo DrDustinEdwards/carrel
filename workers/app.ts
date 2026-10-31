@@ -1,5 +1,7 @@
 import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
+import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
+import { carrelMcp } from "@dustinedwards/site-runtime/sites";
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
@@ -20,7 +22,7 @@ import { connectRoom } from "~/lib/rooms.server";
 
 import { cspReport, isCspReport } from "./csp-report";
 import { gate } from "./gate";
-import { newNonce, withDoorSecurityHeaders, withSecurityHeaders } from "./security-headers";
+import { newNonce, withSecurityHeaders } from "./security-headers";
 
 export { DocRoom } from "./doc-room";
 // The AI door's rate limiter and tool-call log, site-runtime's (app/lib/mcp/door.ts, server.ts).
@@ -32,6 +34,17 @@ const requestHandler = createRequestHandler(
   import.meta.env.MODE,
 );
 
+/*
+ * The AI door's headers, all from site-runtime: its registry entry's set, noindex and no-store, the consent page's
+ * hashed-style policy, a load-nothing policy for everything else, both report sinks, and security.txt (the same contact
+ * and expiry as the public page's, www/build.mjs; renew both together). Its CSP sink is cspReport, which answers CORS for
+ * Desk's pages, so the wrapper's own is never reached.
+ */
+const door = withMcpHeaders<Env>((request, env, ctx) => aiDoor(request, env, ctx as ExecutionContext), {
+  site: carrelMcp,
+  securityTxt: { contact: "security@dustinedwards.info", expires: "2027-10-26T00:00:00Z" },
+});
+
 const site = {
   async fetch(request, env, ctx) {
     // Two doors, told apart by the hostname alone. The AI door (carrel-mcp.dustinedwards.info) speaks
@@ -39,10 +52,7 @@ const site = {
     // pages are never served there.
     // Everything else is the browser door, behind Access. Every response on either carries the
     // security headers (workers/security-headers.ts), refusals and redirects included.
-    if (isMcpHost(request, env)) {
-      const response = isCspReport(request) ? await cspReport(request, env, carrelOrigin(env)) : await aiDoor(request, env, ctx);
-      return withDoorSecurityHeaders(response, mcpOrigin(env));
-    }
+    if (isMcpHost(request, env)) return isCspReport(request) ? cspReport(request, env, carrelOrigin(env)) : door(request, env, ctx);
     const nonce = newNonce();
     const response = await gate(request, env, async (req, viewer) => {
       // A live editor's WebSocket into its file's room (rooms.server.ts): the same sign-in and role as the page.

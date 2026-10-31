@@ -1,11 +1,12 @@
 // Every security header Carrel sends, in one place: the portfolio's shared set from
 // @dustinedwards/site-runtime (the OWASP Secure Headers Project's own values), Carrel's few
 // deviations beside the reason for each, and the Content-Security-Policy built from the short list of
-// what Carrel loads. workers/app.ts applies it to every response on both hosts, redirects and the
-// gate's refusals included. Nothing else in the repo sets a security header, except a route that
-// chooses its own policy on purpose (the preview, the print export), which is kept.
+// what Carrel loads. workers/app.ts applies it to every response on the browser host, redirects and
+// the gate's refusals included; the AI door's come from site-runtime's withMcpHeaders. Nothing else
+// sets a security header, except a route that chooses its own policy on purpose (the preview, the
+// print export), which is kept.
 
-import { buildContentSecurityPolicy, buildPolicy, generateNonce, reportingEndpoints } from "@dustinedwards/site-runtime/csp";
+import { buildContentSecurityPolicy, generateNonce, reportingEndpoints } from "@dustinedwards/site-runtime/csp";
 import { applyHeaderSet, buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
 import { carrelDesk, carrelMcp } from "@dustinedwards/site-runtime/sites";
 
@@ -17,10 +18,7 @@ const CSP_REPORT_GROUP = "csp";
 /** The browser host's set: Desk's entry in site-runtime's registry (./sites), the shared standard exactly. */
 export const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: carrelDesk }));
 
-/**
- * The AI door's set: its registry entry, the standard less COOP, because AI clients (claude.ai among them) open
- * /authorize in a popup and wait for it through window.opener, which same-origin would sever.
- */
+/** The AI door's set, for its CSP sink (csp-report.ts); withMcpHeaders (workers/app.ts) sets everything else there. */
 export const doorSecurityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: carrelMcp }));
 
 /** A nonce from the platform's randomness; a derived or fixed value would pass every test and protect nothing. */
@@ -58,22 +56,6 @@ export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrig
   }).value;
 }
 
-/**
- * The AI door's policy. Its only page is the consent form, which has one inline <style> and no
- * script. form-action is left out on purpose: approving submits into a redirect chain (POST
- * /authorize, the Access sign-in, /callback, then the client's own redirect_uri), a browser checks
- * form-action on every hop, and the last hop is whatever any client names, so no list can be right
- * (capsid shipped form-action 'self' on its consent page and broke sign-in for 26 days).
- */
-export const DOOR_POLICY = buildPolicy([
-  "default-src 'none'",
-  "style-src 'unsafe-inline'",
-  "base-uri 'none'",
-  "frame-ancestors 'none'",
-  `report-uri ${CSP_REPORT_PATH}`,
-  `report-to ${CSP_REPORT_GROUP}`,
-]);
-
 /** `set` stamped on the response, or on a copy when its headers cannot be changed (Response.redirect's cannot). */
 function stamped(response: Response, set: Readonly<Record<string, string>>): Response {
   try {
@@ -106,9 +88,4 @@ export function withSecurityHeaders(
   { imageOrigins = [], reportOrigin = "" }: { imageOrigins?: string[]; reportOrigin?: string } = {},
 ): Response {
   return apply(response, securityHeaders, appPolicy(nonce, imageOrigins, reportOrigin), reportOrigin);
-}
-
-/** Every response on the AI door: its set and its policy. */
-export function withDoorSecurityHeaders(response: Response, doorOrigin: string): Response {
-  return apply(response, doorSecurityHeaders, DOOR_POLICY, doorOrigin);
 }

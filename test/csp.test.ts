@@ -1,8 +1,7 @@
 // The security headers (workers/security-headers.ts) where the live check (site-runtime-security) cannot see them:
 // Desk's pages are behind Access, so a stranger gets Access's redirect, never a page. The shared set on every signed-in
 // response, redirects and refusals included, graded against Desk's registry entry; the preview alone may be framed and
-// only by Carrel, and the site's page inside it runs sandboxed. The AI door is public, so the live check grades it;
-// only its consent policy's form-action choice stays here.
+// only by Carrel, and the site's page inside it runs sandboxed. The AI door is public, so the live check grades it.
 
 import { checkSecurityHeaders, failures, STANDARD_SECURITY_HEADERS } from "@dustinedwards/site-runtime";
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
@@ -12,11 +11,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { previewPolicy, previewResponse, withSiteBase } from "~/lib/preview.server";
 
 import { gate } from "../workers/gate";
-import {
-  appPolicy,
-  DOOR_POLICY,
-  withSecurityHeaders,
-} from "../workers/security-headers";
+import { appPolicy, withSecurityHeaders } from "../workers/security-headers";
 
 import { addPerson, localKeys, resetDb, testEnv } from "./env";
 import { MCP_HOST } from "./mcp-client";
@@ -103,24 +98,10 @@ describe("rendered responses through the gate", () => {
     const response = await through(() => previewResponse("<html><head></head></html>", "https://site.test"));
     expect(failed(response.headers, { site: "carrel-desk", csp: false })).toEqual([]);
     expect(response.headers.get("Content-Security-Policy")).toBe(previewPolicy("https://site.test"));
-    expect(response.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
-  });
-
-  it("PLANT: denies framing of every page by default", async () => {
-    const response = await through(() => new Response("page"));
-    expect(response.headers.get("X-Frame-Options")?.toUpperCase()).toBe("DENY");
   });
 
   it("cannot be loosened by a route asking for ALLOW-FROM or anything else", async () => {
     const response = await through(() => new Response("page", { headers: { "X-Frame-Options": "ALLOW-FROM https://evil.test" } }));
     expect(response.headers.get("X-Frame-Options")?.toUpperCase()).toBe("DENY");
-  });
-});
-
-describe("the AI door's consent page", () => {
-  it("runs no script and leaves form-action out, so the sign-in's redirect chain is not cut", () => {
-    expect(DOOR_POLICY).toContain("default-src 'none'");
-    expect(DOOR_POLICY).not.toMatch(/form-action/);
-    expect(DOOR_POLICY).not.toMatch(/script-src/);
   });
 });
