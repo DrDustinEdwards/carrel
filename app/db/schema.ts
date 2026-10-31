@@ -90,13 +90,16 @@ export const changes = sqliteTable("changes", {
   // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.
   // unschedule, media-focus, media-caption and media-replace since migration 0021.
   // media-import, media-credit, media-transform, media-revert and media-resize since migration 0024.
+  // content-trash, content-restore and content-rename since migration 0027; a rename's row is under the new id.
   action: text("action", {
-    enum: ["save", "publish", "schedule", "unschedule", "unpublish", "media-upload", "media-delete", "content-delete", "media-alt", "media-tags", "media-trash", "media-restore", "media-focus", "media-caption", "media-replace", "media-import", "media-credit", "media-transform", "media-revert", "media-resize"],
+    enum: ["save", "publish", "schedule", "unschedule", "unpublish", "media-upload", "media-delete", "content-delete", "media-alt", "media-tags", "media-trash", "media-restore", "media-focus", "media-caption", "media-replace", "media-import", "media-credit", "media-transform", "media-revert", "media-resize", "content-trash", "content-restore", "content-rename"],
   }).notNull(),
   versionBefore: text("version_before"),
   versionAfter: text("version_after"),
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   client: text("client"),
+  /** The id a rename moved the post from (migration 0027); null for every other action. */
+  renamedFrom: text("renamed_from"),
 });
 
 // Webmention decisions since migration 0011 (a table of its own: the changes table holds posts and
@@ -108,7 +111,8 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   mentionId: text("mention_id"),
   personId: integer("person_id").notNull().references(() => people.id),
-  action: text("action", { enum: ["approve", "reject", "delete", "sweep"] }).notNull(),
+  // reset (a decision taken back to waiting) since migration 0027.
+  action: text("action", { enum: ["approve", "reject", "reset", "delete", "sweep"] }).notNull(),
   statusBefore: text("status_before", { enum: MENTION_STATUS }),
   statusAfter: text("status_after", { enum: MENTION_STATUS }),
   changeId: text("change_id").notNull().unique(),
