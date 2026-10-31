@@ -3,6 +3,8 @@
 
 import { describe, expect, it } from "vitest";
 
+import { chartBlock } from "~/lib/chart-block";
+import { checkCharts, suggestFinding } from "~/lib/chart-check";
 import {
   checkContinuity,
   checkFile,
@@ -177,4 +179,23 @@ describe("the header and checkFile", () => {
     expect(found.map((f) => f.message)).toEqual(["The header has no location.", "The beats have no outcome yet."]);
   });
 
+});
+
+// The chart check (E4) and the drafted finding (E5) run Prelum's own chart code on the blocks Carrel
+// finds and writes; these hold Carrel's side of it.
+const CSV = 'year,Visits,Readers\n2024,1204,300\n2025,1530,410\n2026,987,350';
+
+describe("the chart check", () => {
+  it("PLANT: flags a chart with no title at its line, and its titled twin is clean", () => {
+    const fields = { type: "bar", x: "year", y: ["Visits"], alt: 'Visits peaked in 2025 at 1,530 "all told".', caption: "", csv: CSV } as const;
+    const body = ["Intro.", "", "```md", ":::chart{type=bar}", "```", "", chartBlock({ ...fields, title: "" })].join("\n");
+    const findings = checkCharts(body);
+    expect(findings.filter((f) => f.strict)).toEqual([{ line: 7, message: expect.stringMatching(/no title/), strict: true }]);
+    expect(checkCharts(chartBlock({ ...fields, title: "Visits per year" })).filter((f) => f.strict)).toEqual([]);
+  });
+
+  it("drafts a finding from the data for Dustin to take or leave", () => {
+    const block = chartBlock({ type: "line", x: "year", y: ["Visits", "Readers"], title: "Visits and readers", alt: "A chart.", caption: "", csv: CSV });
+    expect(suggestFinding(block)).toMatch(/^Visits .*2024.*2026.*\.$/);
+  });
 });
