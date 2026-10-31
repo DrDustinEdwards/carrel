@@ -140,7 +140,7 @@ export const apiHandler = {
       console.warn(JSON.stringify({ door: "refused", reason: viewer ? "person-changed" : "unknown-person" }));
       return text("Forbidden. This grant does not belong to an active person in Carrel.", 403);
     }
-    const throttled = await rateLimited(env, viewer.id, `person:${viewer.email}`);
+    const throttled = await rateLimited(env, viewer.id, `access:${viewer.email}`);
     if (throttled) return throttled;
     const session = { viewer, client: props.client || "an unnamed AI client", clientId: props.clientId, scopes: effectiveScopes(auth?.scope ?? []) };
     const response = await handleMcp(request, env, ctx, session, { carrelOrigin: carrelOrigin(env) });
