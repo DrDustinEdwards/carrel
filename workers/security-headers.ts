@@ -70,32 +70,22 @@ function stagedAppPolicy(nonce: string, imageOrigins: string[] = [], reportOrigi
   return buildStagedPolicy({ ...options, sources }, { denyUnlisted: true, trustedTypes: true }).value;
 }
 
-/** `set` stamped on the response, or on a copy when its headers cannot be changed (Response.redirect's cannot). */
-function stamped(response: Response, set: Readonly<Record<string, string>>): Response {
-  try {
-    applyHeaderSet(response.headers, set);
-    return response;
-  } catch {
-    const copy = new Response(response.body, { status: response.status, statusText: response.statusText, headers: new Headers(response.headers) });
-    applyHeaderSet(copy.headers, set);
-    return copy;
-  }
-}
-
+/**
+ * The set stamped on a response, with the page policies unless the route set its own (the sandboxed preview, the print
+ * export, which keep it), and the report group. applyHeaderSet rebuilds a response whose headers cannot be changed
+ * (Response.redirect's) and hands a live editor's WebSocket (101) back as it is.
+ */
 function apply(response: Response, set: Readonly<Record<string, string>>, policy: string, staged: string, reportOrigin: string): Response {
   // The preview alone may be framed, and only by Carrel itself: its route says SAMEORIGIN, and nothing
   // a route says can loosen framing further than that.
   const framedByCarrel = response.headers.get("X-Frame-Options")?.trim().toUpperCase() === "SAMEORIGIN";
-  // A route that set its own policy (the sandboxed preview, the print export) keeps it.
   const ownPolicy = response.headers.has("Content-Security-Policy");
-  const out = stamped(response, set);
-  if (framedByCarrel) out.headers.set("X-Frame-Options", "SAMEORIGIN");
-  if (!ownPolicy) {
-    out.headers.set("Content-Security-Policy", policy);
-    out.headers.set("Content-Security-Policy-Report-Only", staged);
-  }
-  if (reportOrigin) out.headers.set("Reporting-Endpoints", reportingEndpoints(CSP_REPORT_GROUP, new URL(CSP_REPORT_PATH, reportOrigin)));
-  return out;
+  return applyHeaderSet(response, {
+    ...set,
+    ...(framedByCarrel ? { "X-Frame-Options": "SAMEORIGIN" } : {}),
+    ...(ownPolicy ? {} : { "Content-Security-Policy": policy, "Content-Security-Policy-Report-Only": staged }),
+    ...(reportOrigin ? { "Reporting-Endpoints": reportingEndpoints(CSP_REPORT_GROUP, new URL(CSP_REPORT_PATH, reportOrigin)) } : {}),
+  });
 }
 
 /** Every response on the browser host: the shared set and the app policy for this request's nonce. */
