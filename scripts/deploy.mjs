@@ -34,6 +34,7 @@ const root = process.env.CARREL_ROOT ?? join(dirname(fileURLToPath(import.meta.u
 const wrangler = process.env.WRANGLER_ENTRY ?? join(root, "node_modules", "wrangler", "bin", "wrangler.js");
 const build = process.env.BUILD_ENTRY ?? join(root, "node_modules", "@react-router", "dev", "bin.cjs");
 const buildArgs = process.env.BUILD_ENTRY ? [] : ["build"];
+const migrations = process.env.MIGRATIONS_ENTRY ?? join(root, "node_modules", "@dustinedwards", "devkit", "bin", "migrations.mjs");
 
 const ZERO_D1 = "00000000-0000-0000-0000-000000000000";
 const ZERO_KV = "00000000000000000000000000000000";
@@ -153,12 +154,12 @@ if (kvMatch.length !== 1 || kvMatch[0].id !== kvId) {
 step("building");
 must("the build", build, buildArgs);
 
-// 5. Migrations, then proof that none is pending. A failure here ends the run before the deploy.
-step("applying remote D1 migrations");
-must("the D1 migrations", wrangler, ["d1", "migrations", "apply", "DB", "--remote"]);
-step("checking that no migration is pending");
-const pending = must("wrangler d1 migrations list", wrangler, ["d1", "migrations", "list", "DB", "--remote"]);
-if (!/No migrations to apply/i.test(pending.stdout)) fail("migrations are still pending after the apply. Refusing to deploy.");
+// 5. Migrations, through devkit's shared step (devkit-migrations --apply): pending migrations that only add
+// are applied after the D1 Time Travel bookmark is read, and the database must then have none pending. A drop,
+// rename, row delete or `-- contract:` migration is refused with the hand-run command. Any refusal or failure
+// ends the run before the deploy.
+step("applying the pending D1 migrations that only add");
+must("the D1 migrations", migrations, ["drizzle", "--apply", "carrel"]);
 
 // 6. The new code goes live, unless the caller deploys it.
 if (process.argv.includes("--prepare")) {

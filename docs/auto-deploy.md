@@ -19,8 +19,7 @@ The `deploy` job in `.github/workflows/ci.yml` calls devkit's shared workflow, `
 2. Render `wrangler.jsonc` from `wrangler.jsonc.example` (real ids and email, both custom-domain routes on). It refuses to overwrite a `wrangler.jsonc` that is not the placeholder copy.
 3. Check the ids against the account: the D1 database named `carrel` and the KV namespace titled `carrel-oauth` must have exactly those ids.
 4. Build.
-5. `wrangler d1 migrations apply DB --remote`.
-6. `wrangler d1 migrations list DB --remote` must report `No migrations to apply`.
+5. `devkit-migrations drizzle --apply carrel` (devkit's shared step): it applies the pending migrations that only add, after reading the D1 Time Travel bookmark, and then the database must have none pending. A drop, rename, row delete or `-- contract:` migration is refused with the command to run it by hand, so it waits for Dustin.
 
 Then devkit's workflow runs `wrangler deploy --name carrel-desk --var DEPLOY_SHA:<commit>` on the build step 4 left, with its own pinned wrangler.
 
