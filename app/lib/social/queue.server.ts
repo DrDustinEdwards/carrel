@@ -301,20 +301,23 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
         }),
       );
       const fired = await fireRoutine(config, prompt, fetcher);
+      // A fire with no answer may have started a session: treat it as fired, never fire it again.
+      const started = fired.ok || fired.outcome === "unknown";
       const [run] = await d
         .insert(socialRoutineRuns)
         .values({
           kind: nightly ? "nightly" : "batch",
           requestedAt: now.toISOString(),
           events: JSON.stringify(waiting.map((e) => e.id)),
-          status: fired.ok ? "fired" : "failed",
+          status: started ? "fired" : "failed",
           sessionUrl: fired.ok ? fired.sessionUrl : null,
           error: fired.ok ? null : fired.error,
         })
         .returning({ id: socialRoutineRuns.id });
-      if (fired.ok) {
+      if (started) {
         await d.update(socialEvents).set({ state: "routine", routineRunId: run!.id }).where(inArray(socialEvents.id, waiting.map((e) => e.id)));
         result.routineFired++;
+        if (!fired.ok) result.errors.push(`routine: ${fired.error}`);
       } else if (!fired.retry) {
         templateAll = `the routine refused the run (${fired.error})`;
       } else {

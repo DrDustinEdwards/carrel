@@ -6,8 +6,9 @@
 //
 // The ruling of 2026-10-10 (capsid/rulings/mcp-2026-10-10.md) sets the shape around them: names
 // prefixed carrel_, all four annotation hints on every tool, a cursor on the one list that can run
-// long, a write scope a grant must carry for any tool that writes, a notice on every answer that
-// carries text from outside Carrel, and one row in the call log (call-log.ts) for every call.
+// long, a declared scope on every tool (a write needs carrel:write), a notice on every answer that
+// carries text from outside Carrel, and the call log's rows for every call (server.ts, site-runtime's
+// invokeTool).
 //
 // NO ROLE LOGIC HERE. A tool names the project and the action it needs and calls down; the function
 // it calls decides whether this person may, and refuses. Asking "is this the Owner, a reviewer, an
@@ -28,17 +29,14 @@ import { seoOf } from "~/lib/seo.server";
 import type { Action } from "~/lib/roles";
 import { siteClient, SiteNotConnected } from "~/lib/sites.server";
 
-import { logCall } from "./call-log";
-import { SCOPE_WRITE } from "./scopes";
-
 export type ToolDeps = { fetcher?: typeof fetch; carrelOrigin: string };
 
-/** The session as the door found it, with the scopes its grant carries (scopes.ts). */
-export type McpSession = AiSession & { scopes: readonly string[] };
+/** The session as the door found it, with the scopes its grant carries (scopes.ts) and its OAuth client id. */
+export type McpSession = AiSession & { scopes: readonly string[]; clientId?: string };
 
 type ToolContext = { env: Env; session: McpSession; deps: ToolDeps };
 
-type JsonSchema = { type: "object"; properties: Record<string, unknown>; required?: string[]; additionalProperties: false };
+type JsonSchema = { type: "object"; properties: Record<string, unknown>; required?: string[]; additionalProperties?: false };
 
 export type ToolResult = { content: { type: "text"; text: string }[]; structuredContent?: Record<string, unknown>; isError?: boolean };
 
@@ -47,6 +45,10 @@ type Tool = {
   title: string;
   description: string;
   inputSchema: JsonSchema;
+  /** The structured answer's shape: the fields a client can rely on (the notice is added for outside text). */
+  outputSchema: JsonSchema;
+  /** The scope a call needs, declared here and never read from an annotation (site-runtime's toolScope). */
+  scope: "read" | "write";
   /** All four, set honestly, so a client can confirm before acting (rule 6). */
   annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: boolean };
   /**
@@ -74,6 +76,23 @@ const MAX = { source: 500_000, message: 2000, excerpt: 1000, note: 500, path: 20
 
 /** Read-only, and nothing outside Carrel changes. */
 const READ = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+
+/** An answer's shape: the fields always present, then those that may be null or absent. */
+function shape(always: Record<string, unknown>, sometimes: Record<string, unknown> = {}): JsonSchema {
+  return { type: "object", properties: { ...always, ...sometimes }, required: Object.keys(always) };
+}
+const ANY = {};
+const LIST = { type: "array" };
+const YES = { type: "boolean" };
+const ID = { type: "integer" };
+const TEXT = { type: "string" };
+const FLAGGED = shape({ flagged: YES, findingId: ID, alreadyFlagged: YES });
+
+/** The outputSchema a client sees: an answer carrying outside text also carries the notice. */
+export function outputSchemaOf(tool: Tool): JsonSchema {
+  const { properties, required = [] } = tool.outputSchema;
+  return tool.outside ? { type: "object", properties: { notice: TEXT, ...properties }, required: ["notice", ...required] } : tool.outputSchema;
+}
 
 const PROJECT = { type: "string", description: "The project's slug, from carrel_list_projects." };
 const ITEM = { type: "string", description: "The post's id (its slug on the site), from carrel_search_items." };
@@ -143,15 +162,18 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_list_projects",
     title: "List projects",
+    scope: "read",
     description: `The projects this person can see, with their role on each. ${RULE}`,
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: READ,
+    outputSchema: shape({ projects: LIST }),
     outside: false,
     run: async (_args, ctx) => ({ projects: await visibleProjects(ctx.env.DB, ctx.session.viewer) }),
   },
   {
     name: "carrel_search_items",
     title: "Search posts",
+    scope: "read",
     description: `Lists a site's posts from Carrel's index, newest change first, optionally searched by words in the title or text and filtered by status or kind. ${PAGE_DEFAULT} to a page by default; when has_more is true, pass next_cursor as cursor for the next page. ${RULE}`,
     inputSchema: {
       type: "object",
@@ -167,6 +189,7 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     annotations: READ,
+    outputSchema: shape({ items: LIST, has_more: YES, next_cursor: { type: ["string", "null"] } }),
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -192,9 +215,11 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_read_item",
     title: "Read a post",
+    scope: "read",
     description: `Reads a post as the site holds it (its Markdown source and version), with Dustin's own working draft if he has one, the AI drafts saved beside it, and its flags. ${RULE}`,
     inputSchema: { type: "object", properties: { project: PROJECT, item: ITEM }, required: ["project", "item"], additionalProperties: false },
     annotations: READ,
+    outputSchema: shape({ aiDrafts: LIST, flags: LIST }, { site: ANY, dustinsDraft: ANY }),
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -212,6 +237,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_save_draft",
     title: "Save an AI draft",
+    scope: "write",
     description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text by being saved. It goes live only through carrel_publish_item with its ai_draft_id, when Dustin asked for the change to be live; otherwise he reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. Pass the same sources here: they are saved with the draft for Dustin to check, and the answer carries the same scan on what was saved, with the search and sharing checks. ${RULE} Save a draft only when he asked for one.`,
     inputSchema: {
       type: "object",
@@ -226,6 +252,7 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    outputSchema: shape({ saved: YES, aiDraftId: ID, where: TEXT, checks: { type: "object" } }, { basedOnVersion: ANY, seo: ANY }),
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -240,10 +267,12 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_voice_brief",
     title: "Read the voice brief",
+    scope: "read",
     description: `What to read before drafting a post for this project, so the draft reads like Dustin and not like a model: a few writing rules, Dustin's own guide, and excerpts of his own writing (what he pasted in Carrel, or his published posts while there is none; from says which), among them one of his long sentences and one of his short ones. Read the guide and the excerpts and write from them. After drafting, run carrel_check_post_text and fix only the spans it names. Built the first time it is asked for. ${RULE}`,
     inputSchema: { type: "object", properties: { project: PROJECT }, required: ["project"], additionalProperties: false },
     // Reads the site's published posts the first time; it stores what it measured, which changes nothing anyone wrote.
     annotations: READ,
+    outputSchema: shape({ rules: TEXT, guide: TEXT, excerpts: LIST }, { from: ANY, pieces: ANY, builtAt: ANY }),
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -253,6 +282,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_check_post_text",
     title: "Check a post's text",
+    scope: "read",
     description: `Scans the given post text against Dustin's own excerpts, without saving anything: a sentence well past his long ones, a run of sentences all the same length, a model's filler, a model's word his writing never uses, a joiner dash, a paragraph with nothing specific in it, a definition as the opening, a wrap-up as the ending, a stinger, a "So"/"And"/"But" opener, a bold lead-in, "X, not Y" or a question to the reader he doesn't write, a question to the reader at the end, the passive voice, a run copied from his writing, and any name or number found in neither the sources nor his writing. Each finding names its line and words, and the instruction says how to fix them: edit only those spans in place and leave every other sentence as it is. Beside the scan, seo holds the search and sharing checks (a search title over about 60 characters or empty, a description missing, over about 155 or under 50, an image with no alt text, no card image) and preview, how the post will show as a search result and a link card (title, description, image URL, canonical URL). The scan flags; Dustin decides. ${RULE}`,
     inputSchema: {
       type: "object",
@@ -267,6 +297,7 @@ export const TOOLS: Tool[] = [
     },
     // Checks the text given, and saves or records nothing.
     annotations: READ,
+    outputSchema: shape({ findings: LIST }, { instruction: ANY, seo: ANY }),
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -278,6 +309,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_preview_item",
     title: "Preview a post",
+    scope: "read",
     description: `The site's own rendering of a post, as HTML: the given source, or else Dustin's working draft, or else the site's text. ${RULE}`,
     inputSchema: {
       type: "object",
@@ -287,6 +319,7 @@ export const TOOLS: Tool[] = [
     },
     // The site renders it and keeps nothing: read-only, though the call reaches the site.
     annotations: READ,
+    outputSchema: shape({ html: TEXT }),
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -303,9 +336,11 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_get_checks",
     title: "Get a post's flags",
+    scope: "read",
     description: `The flags on a post from checks and reviewers, open and dismissed, and seo: the search and sharing checks on Dustin's working draft (or the site's text) with a preview of the post as a search result and a link card. An open flag holds publish until Dustin fixes the text or dismisses it; the search and sharing checks only flag. ${RULE}`,
     inputSchema: { type: "object", properties: { project: PROJECT, item: ITEM }, required: ["project", "item"], additionalProperties: false },
     annotations: READ,
+    outputSchema: shape({ open: ID, flags: LIST }, { seo: ANY }),
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -324,6 +359,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_add_finding",
     title: "Flag a problem",
+    scope: "write",
     description: `Flags a problem in a post for Dustin: a factual claim with no source, a continuity slip, a sentence that says something other than it means. A flag is a question for him, never a decision; quote the words it concerns. Reviewers flag, they never write text. ${RULE}`,
     inputSchema: {
       type: "object",
@@ -338,6 +374,7 @@ export const TOOLS: Tool[] = [
     },
     // The same flag twice is one flag (alreadyFlagged).
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    outputSchema: FLAGGED,
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -351,6 +388,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_publish_item",
     title: "Publish a post (Owner only)",
+    scope: "write",
     description: `Publishes a post on Dustin's instruction in this conversation: asking for a change on the live site is that instruction. Without ai_draft_id it publishes the post as it stands on the site at expected_version. With ai_draft_id it publishes that AI draft's text, which must be one your own sessions saved with carrel_save_draft from expected_version; Dustin's own working draft in Carrel is left as it is. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. The site keeps every earlier version. Carrel records "published by <this client> on Dustin's instruction" and emails him links to unpublish and to restore an earlier version. ${RULE}`,
     inputSchema: {
       type: "object",
@@ -367,6 +405,7 @@ export const TOOLS: Tool[] = [
     // Destructive: the live page is replaced for every reader of the site, so a client should confirm
     // first. Idempotent: the same version published twice is one publish. Open world: the public site.
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    outputSchema: shape({ published: YES }, { version: ANY, changeId: ANY, dustinEmailed: ANY }),
     outside: false,
     run: async (args, ctx) => {
       // Refused on the role before anything else is read, as the button is.
@@ -389,9 +428,11 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_list_book_files",
     title: "List a book's files",
+    scope: "read",
     description: `A book's chapters, scenes, bible and outline files from Carrel's index of the writing repository, with each scene's header and open flags. ${RULE}`,
     inputSchema: { type: "object", properties: { project: BOOK }, required: ["project"], additionalProperties: false },
     annotations: READ,
+    outputSchema: shape({ files: LIST }),
     outside: true,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
@@ -410,9 +451,11 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_read_book_file",
     title: "Read a book file",
+    scope: "read",
     description: `A scene, bible entry or outline file as the index last had it from Git, with its version, its flags, the AI drafts saved beside it, and excerpts of Dustin's own writing (his shared/voice/ passages and this book's finished scenes, among them a long sentence of his and a short one). Before drafting a scene, read the excerpts and write from them; then run carrel_check_book_text and fix only the spans its voice findings name. ${RULE}`,
     inputSchema: { type: "object", properties: { project: BOOK, path: BOOK_PATH }, required: ["project", "path"], additionalProperties: false },
     annotations: READ,
+    outputSchema: shape({ path: TEXT, source: TEXT, flags: LIST, aiDrafts: LIST }, { version: ANY, voice: ANY }),
     outside: true,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
@@ -429,6 +472,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_check_book_text",
     title: "Run the checks on text",
+    scope: "read",
     description: `Runs the checks on save (header, continuity, timeline, world rules, and the voice scan against Dustin's own excerpts) on the given text for a book file, without saving or recording anything. The checks flag; Dustin decides. ${RULE}`,
     inputSchema: {
       type: "object",
@@ -438,6 +482,7 @@ export const TOOLS: Tool[] = [
     },
     // Runs the checks on the text given, and saves or records nothing.
     annotations: READ,
+    outputSchema: shape({ findings: LIST }),
     outside: false,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
@@ -447,6 +492,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_save_book_draft",
     title: "Save an AI draft of a book file",
+    scope: "write",
     description: `Saves your version of a book file as a new AI draft beside Dustin's own. It never replaces his draft and is never committed to Git; he reads it in Carrel's editor and decides. ${RULE} Save one only when he asked for it.`,
     inputSchema: {
       type: "object",
@@ -460,6 +506,7 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    outputSchema: shape({ saved: YES, aiDraftId: ID, where: TEXT }, { basedOnVersion: ANY }),
     outside: false,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
@@ -473,6 +520,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_add_book_finding",
     title: "Flag a problem in a book file",
+    scope: "write",
     description: `Flags a problem in a book file for Dustin: a continuity slip, a timeline error, a sentence that says something other than it means. A flag is a question, never a decision; quote the words. It holds export until Dustin fixes the text or dismisses it. ${RULE}`,
     inputSchema: {
       type: "object",
@@ -486,6 +534,7 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    outputSchema: FLAGGED,
     outside: false,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
@@ -504,6 +553,7 @@ export const TOOLS: Tool[] = [
   {
     name: "carrel_draft_social_post",
     title: "Draft a social post (Owner only)",
+    scope: "write",
     description: `Stores a drafted social post for one account and one piece, for Carrel to lint and send when the piece is live (or now, if it already is). Name the event id Carrel gave you, or the account key, project and item. It never posts anything itself, and there is no reply. Only Dustin's own sessions may draft posts. ${RULE}`,
     inputSchema: {
       type: "object",
@@ -520,6 +570,7 @@ export const TOOLS: Tool[] = [
     // A newer draft for the same piece replaces the waiting one, and nothing is sent from here: Carrel's
     // queue sends it later, under the account's own switch.
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    outputSchema: shape({ stored: YES, postId: ID, next: TEXT }),
     outside: false,
     run: async (args, ctx) => {
       const text = str(args, "text", { max: 2000 });
@@ -538,22 +589,11 @@ export const TOOLS: Tool[] = [
 ];
 
 /**
- * Runs a tool. Every refusal comes back as a tool error the client can read, never as a protocol
- * failure, and every call, refused or not, is one row in the call log.
+ * Runs a tool, once site-runtime's invokeTool (server.ts) has checked its scope and logged the start.
+ * Every refusal comes back as a tool error the client can read, never as a protocol failure.
  */
-export async function callTool(name: string, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
-  const tool = TOOLS.find((t) => t.name === name)!;
-  const result = await runTool(tool, args, ctx);
-  await logCall(ctx.env.DB, ctx.session, { tool: name, args, ok: !result.isError, result: result.content[0]?.text ?? "" });
-  return result;
-}
-
-async function runTool(tool: Tool, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+export async function runTool(tool: Tool, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
   try {
-    // Least scope (rule 12.3): a tool that writes needs a grant that carries carrel:write.
-    if (!tool.annotations.readOnlyHint && !ctx.session.scopes.includes(SCOPE_WRITE)) {
-      throw new AiRefusal(`This connection was granted reading only (no ${SCOPE_WRITE}), and ${tool.name} writes. Reconnect Carrel and allow writing on the consent page to use it.`);
-    }
     const value = (await tool.run(args, ctx)) as Record<string, unknown>;
     // Outside content is data (rule 12.5): the notice leads the text and travels in the structured answer.
     const body = tool.outside ? { notice: OUTSIDE_NOTICE, ...value } : value;

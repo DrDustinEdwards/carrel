@@ -12,7 +12,7 @@ export function localKeys(...keys: Jwk[]): KeySource {
 
 /** Clears every table, so each test states the people and projects it relies on. The tables are read from the
  * schema by devkit, so one a migration adds is cleared without being listed here. mcp_calls is kept: it is
- * append-only by a trigger that refuses DELETE (drizzle/0012_mcp_calls.sql), which a test asserts. */
+ * append-only by a trigger that refuses DELETE (drizzle/0012_mcp_calls.sql). */
 export async function resetDb(): Promise<void> {
   await resetTables(testEnv.DB, { keep: ["mcp_calls"] });
 }

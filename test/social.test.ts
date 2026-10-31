@@ -198,7 +198,7 @@ describe("the routine, and the template only after it fails", () => {
     expect(world.fires[0]!.headers).toMatchObject({ authorization: "Bearer sk-ant-oat01-test", "anthropic-version": "2023-06-01" });
     expect(world.fires[0]!.text).toContain("germomics-bluesky");
     expect(world.fires[0]!.text).toContain("foxing-bluesky");
-    expect(world.fires[0]!.text).toContain("Dustin's summary: What the river keeps.");
+    expect(world.fires[0]!.text).toContain('Dustin\'s summary: <data label="summary">What the river keeps.</data>');
     expect(world.fires[0]!.text).toContain("do not reply to anyone");
   });
 

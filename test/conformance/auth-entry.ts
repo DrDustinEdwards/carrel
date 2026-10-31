@@ -5,6 +5,9 @@
 
 import { aiDoor } from "~/lib/mcp/door";
 
+export { ToolCallLog } from "@dustinedwards/site-runtime/audit-log";
+export { RateLimiter } from "@dustinedwards/site-runtime/rate-limit/durable-object";
+
 export default {
   fetch(request, env, ctx) {
     return aiDoor(request, env, ctx);

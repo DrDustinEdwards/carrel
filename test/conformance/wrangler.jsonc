@@ -19,6 +19,14 @@
 		}
 	],
 	"kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+	// The door's limiter and the tool-call log, as wrangler.jsonc.example; each entry exports both classes.
+	"durable_objects": {
+		"bindings": [
+			{ "name": "MCP_RATE_LIMIT", "class_name": "RateLimiter" },
+			{ "name": "TOOL_CALL_LOG", "class_name": "ToolCallLog" }
+		]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimiter", "ToolCallLog"] }],
 	"vars": {
 		"ACCESS_TEAM_DOMAIN": "https://conformance.cloudflareaccess.com",
 		"ALERT_EMAIL": "owner@conformance.invalid",

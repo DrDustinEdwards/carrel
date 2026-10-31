@@ -21,8 +21,13 @@ export default defineConfig({
         d1Databases: ["DB"],
         kvNamespaces: ["OAUTH_KV"],
         r2Buckets: ["BACKUPS"],
-        // As wrangler.jsonc: a file's live room, exported by test/entry.ts as the real entry exports it.
-        durableObjects: { DOC_ROOM: { className: "DocRoom", useSQLite: true } },
+        // As wrangler.jsonc: a file's live room and the AI door's limiter and call log, exported by
+        // test/entry.ts as the real entry exports them.
+        durableObjects: {
+          DOC_ROOM: { className: "DocRoom", useSQLite: true },
+          MCP_RATE_LIMIT: { className: "RateLimiter", useSQLite: true },
+          TOOL_CALL_LOG: { className: "ToolCallLog", useSQLite: true },
+        },
         bindings: {
           ACCESS_TEAM_DOMAIN: "https://test-team.cloudflareaccess.com",
           ACCESS_AUD: "test-audience-tag",
