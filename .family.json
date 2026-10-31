@@ -19,7 +19,7 @@
     "app/lib/editor/markdown.mjs": "kindOf here names a Markdown source block's label (front matter, code, table), not site-api's media kind",
     "app/lib/novels/layout.ts": "kindOf here names a book file's kind from its path (scene, character, outline), not site-api's media kind",
     "app/lib/people.server.ts": "kindOf here names a project's kind (site or book), not site-api's media kind",
-    "app/lib/sites.server.ts": "siteEntry here returns Carrel's own connection entry for a site (origin and key read from env, keyName, keepPublic, the Search Console property), not site-runtime's public site registry entry"
+    "app/lib/sites.server.ts": "siteEntry here is Carrel's connection entry for a site (its origin and key from the Worker's secrets, the Search Console property), not site-runtime's public registry entry"
   },
   "spelling": {
     "skip": [
