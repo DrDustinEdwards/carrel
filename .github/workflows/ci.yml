@@ -69,7 +69,7 @@ jobs:
       - run: npm run check:plants
 
   # Knip and jscpd against .no-bloat.json (devkit-no-bloat): a count above its baseline fails. Then the weight per
-  # route against .route-weight.json (devkit-route-weight), which only warns. It runs beside check and gates, so it
+  # route against .route-weight.json (devkit-route-weight), which fails over budget_bytes (area 7, D5). It runs beside check and gates, so it
   # adds no wall-clock time to a pull request.
   bloat:
     runs-on: ubuntu-latest
