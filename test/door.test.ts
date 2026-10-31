@@ -506,6 +506,12 @@ describe("least scope", () => {
     return connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
   }
 
+  /** A flag from a read-only grant: the tool is unknown to it, nothing runs and no finding is stored. */
+  async function expectFlagRefused(token: string, env: Env) {
+    expectNotRun(await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env));
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+  }
+
   it("PLANT: a client that asks only to read gets read: reads work, the write tools are not listed, and a write runs nothing (T7)", async () => {
     const { final } = await signIn(undefined, { scope: "carrel.read" });
     const token = await tokenFor(final.searchParams.get("code")!);
@@ -515,16 +521,14 @@ describe("least scope", () => {
     const names = ((await readMessage(listed)).result as unknown as { tools: { name: string }[] }).tools.map((t) => t.name);
     expect(names).toContain("carrel_read_item");
     expect(names).not.toContain("carrel_add_finding");
-    expectNotRun(await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env));
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+    await expectFlagRefused(token, env);
   });
 
   it("PLANT: the person narrows a client's write request to reading only on the consent page", async () => {
     const { final } = await signIn(undefined, { decision: "read-only" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
-    expectNotRun(await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env));
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+    await expectFlagRefused(token, env);
   });
 
   it("a client that asked to write, and was allowed, can write", async () => {
