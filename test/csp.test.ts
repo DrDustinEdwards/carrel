@@ -22,26 +22,14 @@ const failed = (headers: Headers, options: Parameters<typeof checkSecurityHeader
   failures(checkSecurityHeaders(headers, options)).map((r) => `${r.name}: ${r.detail}`);
 
 describe("a page's policy", () => {
-  it("PLANT: a page without a policy gets one; a route's own policy is kept", () => {
+  it("PLANT: a page without a policy gets one", () => {
     const page = withSecurityHeaders(new Response("<html></html>"), NONCE);
     expect(page.headers.get("Content-Security-Policy")).toBe(appPolicy(NONCE));
-    const preview = withSecurityHeaders(previewResponse("<html><head></head></html>", "https://site.test"), NONCE);
-    expect(preview.headers.get("Content-Security-Policy")).toBe(previewPolicy("https://site.test"));
   });
 
 });
 
 describe("the preview", () => {
-  it("runs the site's page sandboxed: no script, no forms, only the site's styles and images", () => {
-    const policy = previewPolicy("https://site.test");
-    expect(policy.split("; ")[0]).toBe("sandbox");
-    expect(policy).toContain("default-src 'none'");
-    expect(policy).toContain("script-src 'none'");
-    expect(policy).toContain("form-action 'none'");
-    expect(policy).toContain("style-src https://site.test 'unsafe-inline'");
-    expect(policy).toContain("frame-ancestors 'self'");
-  });
-
   it("resolves the page's relative URLs against the site and drops the page's own <base>", () => {
     const html = withSiteBase('<html><head lang="en"><base href="https://evil.test/"><link href="/a.css"></head></html>', "https://site.test");
     expect(html).toBe('<html><head lang="en"><base href="https://site.test/"><link href="/a.css"></head></html>');

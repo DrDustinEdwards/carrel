@@ -9,6 +9,7 @@
 // Access like every other.
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
+import { applyHeaderSet } from "@dustinedwards/site-runtime/headers";
 import { logEvent, OWASP_EVENTS, requestFields } from "@dustinedwards/site-runtime/log";
 import { isolationVerdict, refuseCrossSite } from "@dustinedwards/site-runtime/origin";
 
@@ -22,13 +23,12 @@ export type Render = (request: Request, viewer: Viewer) => Promise<Response>;
 const PRIVATE_CACHE = "private, no-store";
 
 function withPrivateHeaders(response: Response): Response {
-  const out = new Response(response.body, response);
   // An HTML page is left as it is: Cloudflare does not touch a response that says no-transform, which
   // keeps the Web Analytics beacon out of private pages (a dashboard exclusion needs the Pro plan).
-  // Scripts, styles and fonts stay compressible. One Cache-Control header, never two.
-  const html = out.headers.get("Content-Type")?.toLowerCase().startsWith("text/html");
-  out.headers.set("Cache-Control", html ? `${PRIVATE_CACHE}, no-transform` : PRIVATE_CACHE);
-  return out;
+  // Scripts, styles and fonts stay compressible. One Cache-Control header, never two. applyHeaderSet hands a live
+  // editor's WebSocket (101) back as it is.
+  const html = response.headers.get("Content-Type")?.toLowerCase().startsWith("text/html");
+  return applyHeaderSet(response, { "Cache-Control": html ? `${PRIVATE_CACHE}, no-transform` : PRIVATE_CACHE });
 }
 
 /** The same bare 403 for every refusal, so a caller learns nothing about why. The reason is logged. */
@@ -65,6 +65,5 @@ export async function gate(
   // signed-in response with the viewer's Access cookie.
   if (!isolationVerdict(request).ok) return refuse(request, "cross-site-resource");
   const response = await render(request, viewer);
-  // A live editor's WebSocket (101) is the socket itself: copying it would drop the socket.
-  return response.status === 101 ? response : withPrivateHeaders(response);
+  return withPrivateHeaders(response);
 }

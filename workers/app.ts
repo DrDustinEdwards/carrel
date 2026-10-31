@@ -86,7 +86,6 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
     context.set(nonceContext, nonce);
     return requestHandler(req, context);
   });
-  if (response.status === 101) return response;
   return withSecurityHeaders(response, nonce, { imageOrigins: siteOrigins(env), reportOrigin: mcpOrigin(env) });
 }
 

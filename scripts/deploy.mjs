@@ -35,6 +35,7 @@ const root = process.env.CARREL_ROOT ?? join(dirname(fileURLToPath(import.meta.u
 const wrangler = process.env.WRANGLER_ENTRY ?? join(root, "node_modules", "wrangler", "bin", "wrangler.js");
 const build = process.env.BUILD_ENTRY ?? join(root, "node_modules", "@react-router", "dev", "bin.cjs");
 const buildArgs = process.env.BUILD_ENTRY ? [] : ["build"];
+const headers = process.env.HEADERS_ENTRY ?? join(root, "node_modules", "@dustinedwards", "site-runtime", "bin", "site-runtime-headers.mjs");
 const migrations = process.env.MIGRATIONS_ENTRY ?? join(root, "node_modules", "@dustinedwards", "devkit", "bin", "migrations.mjs");
 
 const ZERO_D1 = "00000000-0000-0000-0000-000000000000";
@@ -155,6 +156,8 @@ if (kvMatch.length !== 1 || kvMatch[0].id !== kvId) {
 
 // 4. Build, so a broken build stops the run before any migration is applied.
 step("building");
+// The static files' _headers, from Desk's registry entry (npm run headers), then the build that copies it.
+must("the static headers", headers, ["--site", "carrel-desk", "--out", join(root, "public", "_headers")]);
 must("the build", build, buildArgs);
 
 // 5. Migrations, through devkit's shared step (devkit-migrations --apply): pending migrations that only add
