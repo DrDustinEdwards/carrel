@@ -19,6 +19,7 @@ import { can } from "~/lib/roles";
 import { userAccessToken } from "./oauth.server";
 import { GoogleNotConnected, saClient } from "./service-account.server";
 import { timedFetch } from "~/lib/timed-fetch.server";
+import { splitSource } from "@dustinedwards/site-api/frontmatter";
 
 type Fetch = typeof fetch;
 
@@ -161,8 +162,10 @@ export async function searchManuscripts(env: Env, viewer: Viewer, words: string,
 // ---------- Send to Docs and Import, over drive.file
 
 function splitFrontmatter(source: string): { frontmatter: string; body: string } {
-  const m = /^---\n[\s\S]*?\n---\n?/.exec(source.replace(/\r\n/g, "\n"));
-  return m ? { frontmatter: m[0].endsWith("\n") ? m[0] : `${m[0]}\n`, body: source.replace(/\r\n/g, "\n").slice(m[0].length) } : { frontmatter: "", body: source };
+  const s = splitSource(source.replace(/\r\n/g, "\n"));
+  if (s.front === null) return { frontmatter: "", body: source };
+  const fence = `${s.open}${s.front}${s.close}`;
+  return { frontmatter: fence.endsWith("\n") ? fence : `${fence}\n`, body: s.body };
 }
 
 /** Sending outside Carrel is the Owner's (design section 3, "Roles": send externally). */
