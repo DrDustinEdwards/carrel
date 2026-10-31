@@ -5,7 +5,7 @@ import { createSiteClient, SiteApiError, type SiteClient } from "@dustinedwards/
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
-export type SiteId = "dustinedwards" | "germomics" | "foxhound" | "foxing" | "txasm" | "julieedwards";
+export type SiteId = "dustinedwards" | "germomics" | "foxhound" | "foxing" | "txasm" | "julieedwards" | "bsw";
 
 type SiteEntry = {
   name: string;
@@ -88,6 +88,16 @@ const SITES: Record<SiteId, SiteEntry> = {
     keyName: "SITE_JULIEEDWARDS_KEY",
     keepPublic: ["profile", "priorities", "about", "experience", "contact", "site"],
     searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_JULIEEDWARDS?.trim() || "sc-domain:julieedwards.info",
+  },
+  bsw: {
+    name: "BioScience Writers",
+    origin: (env) => env.SITE_BSW_ORIGIN,
+    key: (env) => env.SITE_BSW_KEY,
+    keyName: "SITE_BSW_KEY",
+    // Its pages are code in its own repository, so the site lists no items: Carrel reaches it for its media library.
+    keepPublic: [],
+    // A URL-prefix property until the site has its own domain (it answers noindex until then).
+    searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_BSW?.trim() || "https://bsw.dustin-edwards.workers.dev/",
   },
 };
 
