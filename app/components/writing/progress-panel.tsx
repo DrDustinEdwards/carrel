@@ -4,10 +4,12 @@
 // worked out after the page loads; until then the panel says it is counting.
 
 import { useEffect, useState } from "react";
+import { barChart } from "enarratio/lite/bar";
 import { Form } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
+import { ChartFrame } from "capsomer/react/chart-frame";
 import { Disclosure } from "capsomer/react/disclosure";
 import { Check, Field } from "capsomer/react/field";
 import { Meter } from "capsomer/react/meter";
@@ -34,10 +36,41 @@ function paceLine(paced: Pace, deadline: string) {
   }
 }
 
-function dayLabel(day: string, today: string) {
-  if (day === today) return "Today";
-  const weekday = WEEKDAYS[new Date(`${day}T12:00:00Z`).getUTCDay()]!;
-  return `${weekday} ${day.slice(5).replace("-", "/")}`;
+const weekday = (day: string) => WEEKDAYS[new Date(`${day}T12:00:00Z`).getUTCDay()]!;
+
+type Day = { day: string; words: number; writingDay: boolean };
+
+// The last seven days as Enarratio's bar chart, oldest first, with the band at or above today's
+// target; the table behind its "Show data" is the same numbers.
+function weekChart(days: Day[], target: number | null) {
+  const data = days.map((d) => ({ day: weekday(d.day).slice(0, 3), words: d.words })).reverse();
+  const writing = days.filter((d) => d.writingDay);
+  const off = days.filter((d) => !d.writingDay).map((d) => weekday(d.day));
+  const top = days.reduce((a, d) => (d.words > a.words ? d : a), days[0]!);
+  const total = days.reduce((sum, d) => sum + d.words, 0);
+  const alt =
+    target === null
+      ? `${n(total)} words typed over the last seven days${top.words > 0 ? `, the most on ${weekday(top.day)} (${n(top.words)})` : ""}.`
+      : `The ${n(target)}-word target was met on ${writing.filter((d) => d.words >= target).length} of the last ${writing.length} writing days.`;
+  return (width: number) =>
+    barChart({
+      data,
+      x: "day",
+      y: "words",
+      width,
+      height: 220,
+      id: "progress-week",
+      title: "Words typed, the last seven days",
+      subtitle: `${weekday(days.at(-1)!.day)} to today`,
+      alt,
+      xLabel: "Day",
+      yLabel: "Typed",
+      yUnit: "words",
+      formatValue: n,
+      notes: off.length ? `Days off: ${[...new Set(off)].join(", ")}.` : undefined,
+      source: "Typed words in Carrel's authorship record",
+      annotations: target === null ? undefined : [{ type: "range", axis: "y", from: target, to: Math.max(target, top.words), label: "Target" }],
+    });
 }
 
 export function ProgressPanel({
@@ -110,31 +143,7 @@ export function ProgressPanel({
           {target === null ? <span className="cap-muted"> A streak needs a target.</span> : null}
         </p>
         {goal.mode === "deadline" || deadline || projectTarget ? <p className="cap-muted">{paceLine(paced, deadline)}</p> : null}
-        <div className="cap-table-wrap" role="region" aria-labelledby="progress-week" tabIndex={0}>
-          <table className="cap-table">
-            <caption id="progress-week" className="cap-sr-only">
-              Words typed on each of the last seven days
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Day</th>
-                <th scope="col" data-num>
-                  Words
-                </th>
-                <th scope="col">Target</th>
-              </tr>
-            </thead>
-            <tbody>
-              {days.map((d) => (
-                <tr key={d.day}>
-                  <th scope="row">{dayLabel(d.day, today)}</th>
-                  <td data-num>{n(d.words)}</td>
-                  <td>{!d.writingDay ? <span className="cap-muted">Day off</span> : target === null ? <span className="cap-muted">None set</span> : d.words >= target ? <Status tone="ok">Met</Status> : d.day === today ? <span className="cap-muted">Not yet</span> : <span className="cap-muted">Missed</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ChartFrame draw={weekChart(days, target)} width={360} />
       </div>
     );
   }
