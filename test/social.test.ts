@@ -40,7 +40,7 @@ function fakeWorld(routineStatus: number | (() => number) = 200) {
       fires.push({ text: String(body.text ?? ""), headers: Object.fromEntries(request.headers) });
       const status = typeof routineStatus === "function" ? routineStatus() : routineStatus;
       if (status !== 200) return Response.json({ type: "error", error: { type: status === 429 ? "rate_limit_error" : "authentication_error", message: "no" } }, { status });
-      return Response.json({ type: "routine_fire", claude_code_session_id: "session_01", claude_code_session_url: "https://claude.ai/code/session_01" });
+      return Response.json({ type: "routine_fire", claude_code_session_id: "session_01TestSession", claude_code_session_url: "https://claude.ai/code/session_01TestSession" });
     }
     sent.push({ url: request.url, body, auth: request.headers.get("Authorization") });
     if (request.url.endsWith("createSession")) return Response.json({ accessJwt: "jwt", did: "did:plc:test" });
@@ -198,7 +198,7 @@ describe("the routine, and the template only after it fails", () => {
     expect(world.fires[0]!.headers).toMatchObject({ authorization: "Bearer sk-ant-oat01-test", "anthropic-version": "2023-06-01" });
     expect(world.fires[0]!.text).toContain("germomics-bluesky");
     expect(world.fires[0]!.text).toContain("foxing-bluesky");
-    expect(world.fires[0]!.text).toContain("Dustin's summary: What the river keeps.");
+    expect(world.fires[0]!.text).toContain('Dustin\'s summary: <data label="summary">What the river keeps.</data>');
     expect(world.fires[0]!.text).toContain("do not reply to anyone");
   });
 

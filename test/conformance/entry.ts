@@ -10,6 +10,9 @@
 import { SCOPE_READ } from "~/lib/mcp/scopes";
 import { handleMcp } from "~/lib/mcp/server";
 
+export { ToolCallLog } from "@dustinedwards/site-runtime/audit-log";
+export { RateLimiter } from "@dustinedwards/site-runtime/rate-limit/durable-object";
+
 const SESSION = {
   viewer: { id: 1, email: "owner@conformance.invalid", name: "Conformance", isOwner: true, isReviewer: false },
   client: "conformance suite",

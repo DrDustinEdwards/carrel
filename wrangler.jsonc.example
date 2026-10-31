@@ -101,6 +101,16 @@
 			{
 				"name": "DOC_ROOM",
 				"class_name": "DocRoom"
+			},
+			// The AI door's limit per person (site-runtime's checkRateLimit, 30 requests a minute).
+			{
+				"name": "MCP_RATE_LIMIT",
+				"class_name": "RateLimiter"
+			},
+			// The append-only tool-call log (site-runtime's ToolCallLog): refused, started, finished.
+			{
+				"name": "TOOL_CALL_LOG",
+				"class_name": "ToolCallLog"
 			}
 		]
 	},
@@ -108,6 +118,10 @@
 		{
 			"tag": "v1-doc-room",
 			"new_sqlite_classes": ["DocRoom"]
+		},
+		{
+			"tag": "v2-mcp-door",
+			"new_sqlite_classes": ["RateLimiter", "ToolCallLog"]
 		}
 	],
 	"send_email": [

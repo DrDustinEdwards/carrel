@@ -21,6 +21,9 @@ import { gate } from "./gate";
 import { newNonce, withDoorSecurityHeaders, withSecurityHeaders } from "./security-headers";
 
 export { DocRoom } from "./doc-room";
+// The AI door's rate limiter and tool-call log, site-runtime's (app/lib/mcp/door.ts, server.ts).
+export { ToolCallLog } from "@dustinedwards/site-runtime/audit-log";
+export { RateLimiter } from "@dustinedwards/site-runtime/rate-limit/durable-object";
 
 const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),

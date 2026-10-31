@@ -13,9 +13,11 @@
 // by email. The pages are never served here, and this door is never served on the browser's host.
 //
 // Routes on this host, outermost first:
-//   /mcp                          a named agent key (agent-keys.server.ts) goes straight to agentHandler;
+//   /mcp                          a foreign Origin is refused first (403, before any token is read); a
+//                                 named agent key (agent-keys.server.ts) goes straight to agentHandler;
 //                                 anything else: the provider checks the bearer token, then apiHandler
-//                                 finds the person and hands the request to server.ts
+//                                 finds the person and hands the request to server.ts. Each person (or
+//                                 agent) has 30 requests a minute.
 //   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
@@ -23,14 +25,16 @@
 //   anything else                 404
 
 import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import { recordAudit } from "@dustinedwards/site-runtime/audit-log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
+import { audienceRefusal, checkRateLimit, mcpOriginRefusal } from "@dustinedwards/site-runtime/mcp-server";
 
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
 import { deployedSha } from "~/lib/deployed";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
-import { carrelOrigin, handleMcp, MCP_ROUTE } from "./server";
+import { callLog, carrelOrigin, handleMcp, MCP_ROUTE, MCP_SERVER } from "./server";
 
 /** What a grant stores, encrypted, and hands to every request made with its tokens. */
 type DoorProps = { personId: number; email: string; scopes: string[]; client: string; clientId: string };
@@ -71,6 +75,19 @@ function liveness(env: Env): Response {
   const out = new Headers({ "Content-Type": "application/json; charset=utf-8" });
   for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.set(name, value);
   return new Response(JSON.stringify({ ok: true, sha: deployedSha(env) }), { status: 200, headers: out });
+}
+
+/**
+ * The door's limit, per person (an agent is a person row too), on site-runtime's limiter: it fails
+ * closed, and a refused request is a row in the call log.
+ */
+async function rateLimited(env: Env, personId: number, caller: string): Promise<Response | null> {
+  const { allowed, retryAfter } = await checkRateLimit(env.MCP_RATE_LIMIT, `person:${personId}`);
+  if (allowed) return null;
+  await recordAudit(callLog(env), { callId: crypto.randomUUID(), phase: "rate-limited", caller, server: { name: MCP_SERVER.name, version: MCP_SERVER.version } });
+  const out = text(`Too many requests. Try again in ${retryAfter} seconds.`, 429);
+  out.headers.set("Retry-After", String(retryAfter));
+  return out;
 }
 
 /**
@@ -116,16 +133,16 @@ export const apiHandler = {
     // The token must have been issued for this server (RFC 8707), checked here as well as by the
     // provider, so a provider set up for a second resource could never hand Carrel a token for it.
     // Nothing passes the token on: the site and the novels repository take Carrel's own keys.
-    if (auth?.audience !== `${mcpOrigin(env)}${MCP_ROUTE}`) {
-      console.warn(JSON.stringify({ door: "refused", reason: "audience", audience: auth?.audience ?? null }));
-      return text("Forbidden. This token was not issued for Carrel.", 403);
-    }
+    const foreign = audienceRefusal(auth, `${mcpOrigin(env)}${MCP_ROUTE}`, [SCOPE_READ]);
+    if (foreign) return foreign;
     const viewer = props?.email ? await findViewer(env.DB, props.email) : null;
     if (!viewer || viewer.id !== props?.personId) {
       console.warn(JSON.stringify({ door: "refused", reason: viewer ? "person-changed" : "unknown-person" }));
       return text("Forbidden. This grant does not belong to an active person in Carrel.", 403);
     }
-    const session = { viewer, client: props.client || "an unnamed AI client", scopes: effectiveScopes(auth.scope ?? []) };
+    const throttled = await rateLimited(env, viewer.id, `access:${viewer.email}`);
+    if (throttled) return throttled;
+    const session = { viewer, client: props.client || "an unnamed AI client", clientId: props.clientId, scopes: effectiveScopes(auth?.scope ?? []) };
     const response = await handleMcp(request, env, ctx, session, { carrelOrigin: carrelOrigin(env) });
     const out = new Response(response.body, response);
     for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(name, value);
@@ -147,6 +164,8 @@ async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, n
     return text("Forbidden. This agent key does not belong to an active agent in Carrel.", 403);
   }
   console.log(JSON.stringify({ door: "agent-key-accepted", agent: name }));
+  const throttled = await rateLimited(env, viewer.id, `agent:${name}`);
+  if (throttled) return throttled;
   const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES }, { carrelOrigin: carrelOrigin(env) });
   const out = new Response(response.body, response);
   for (const [header, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(header, value);
@@ -199,6 +218,9 @@ function providerFor(env: Env): OAuthProvider<Env> {
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
   if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
+    // Before any token is read, so a page on another origin gets 403, never a 401 to retry with a token.
+    const foreign = mcpOriginRefusal(request, [], PRIVATE_HEADERS);
+    if (foreign) return foreign;
     // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
     const agent = await agentPrincipal(env, request.headers.get("Authorization"));
     if (agent) return agentHandler(request, env, ctx, agent);
