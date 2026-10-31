@@ -1,8 +1,9 @@
-// The public site's security headers and page policy, from site-runtime's builders: www/worker.mjs sends them on its own
-// responses, and www/build.mjs writes them into dist/_headers for the static assets, which never run the Worker.
+// The public site's security headers, page policy and preloads, from site-runtime's builders: www/worker.mjs sends them on
+// its own responses, and www/build.mjs writes the headers into dist/_headers for the static assets.
 import { buildContentSecurityPolicy, reportingEndpoints } from "@dustinedwards/site-runtime/csp";
 import { TDM_RESERVATION_HEADERS } from "@drdustinedwards/site-helpers/robots";
 import { buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
+import { preloads } from "@dustinedwards/site-runtime/preload";
 
 export const REPORT_PATH = "/csp-report";
 
@@ -34,3 +35,13 @@ export const SITE_HEADERS = Object.freeze({
   "Content-Security-Policy": PAGE_CSP,
   "Reporting-Endpoints": REPORTING_ENDPOINTS,
 });
+
+/**
+ * What every page blocks on or paints first, sent as a preload Link (and so as Early Hints): the one stylesheet, the hero
+ * heading's Schibsted Grotesk and the lead's Source Serif 4. www/build.mjs refuses a build that lacks one of them.
+ */
+export const PAGE_PRELOADS = preloads([
+  { href: "/site.css", as: "style" },
+  { href: "/fonts/schibsted-grotesk-latin-wght-normal.woff2", as: "font", type: "font/woff2" },
+  { href: "/fonts/source-serif-4-latin-wght-normal.woff2", as: "font", type: "font/woff2" },
+]);

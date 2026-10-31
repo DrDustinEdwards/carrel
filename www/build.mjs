@@ -25,7 +25,7 @@ import { patchSvg } from "capsomer/behavior/manual";
 import { letterheadHtml } from "capsomer/behavior/site-header";
 import { build } from "vite";
 
-import { SITE_HEADERS } from "./headers.mjs";
+import { PAGE_PRELOADS, SITE_HEADERS } from "./headers.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -392,6 +392,8 @@ export async function buildSite(outDir) {
     }
   };
   walk(outDir);
+  const missing = PAGE_PRELOADS.links.filter(({ href }) => !files.includes(href.slice(1)));
+  if (missing.length) throw new Error(`preloads name files the build did not write: ${missing.map(({ href }) => href).join(", ")}`);
   return { files: files.sort() };
 }
 
