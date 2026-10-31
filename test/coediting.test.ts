@@ -13,7 +13,9 @@ import * as Y from "yjs";
 import { FRAGMENT, loadMarkdown, patchMarkdown, roomMarkdown, roomSchema } from "~/lib/editor/collab";
 import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
 import { listSuggestions, settle, suggestingDispatch, suggestionPlugins } from "~/lib/editor/suggest";
-import { openRoom, saveRoom } from "~/lib/rooms.server";
+import { merged } from "~/lib/merge";
+import { mergeSegments } from "~/lib/merge.server";
+import { mergeRoom, openRoom, saveRoom } from "~/lib/rooms.server";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { join } from "./room";
@@ -112,7 +114,31 @@ describe("a room", () => {
     await a.flush();
     const behind = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "Three.\n", version: "v3" } });
     expect(behind).toMatchObject({ source: "One, from the AI door. Mine.\n", version: "v2", unsaved: true, behind: true });
+
+    // B4/B5: the merge keeps both texts until it is used, and is refused once anyone typed since it was read.
+    const site = { source: "Three.\n", version: "v3" };
+    const both = merged(mergeSegments(behind!.source, site.source, "One, from the AI door.\n"), ["both"]);
+    expect(both).toBe("One, from the AI door. Mine.\n\nThree.\n");
+    expect(await mergeRoom(testEnv, project("owner"), owner, itemId, { from: { markdown: "an older read", version: "v2" }, site, merged: both })).toBe(false);
+    expect(await mergeRoom(testEnv, project("owner"), owner, itemId, { from: { markdown: behind!.source, version: "v2" }, site, merged: both })).toBe(true);
+    // The merged text stands on the site's version, still unsaved, so the next save is not refused as stale.
+    expect(await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: site })).toMatchObject({ source: both, version: "v3", unsaved: true, behind: false });
     a.close();
+  });
+
+  it("merges by block: a block only one side changed starts on that side, one both changed on the person's own", () => {
+    const base = "---\ntitle: A\n---\n\nOne.\n\nTwo.\n\nThree.\n";
+    const mine = "---\ntitle: A\n---\n\nOne, mine.\n\nTwo.\n\nThree, mine.\n";
+    const theirs = "---\ntitle: B\n---\n\nOne.\n\nTwo.\n\nThree, theirs.\n";
+    const segments = mergeSegments(mine, theirs, base);
+    expect(segments.filter((s) => s.kind === "choice").map((s) => [s.changedBy, s.start])).toEqual([
+      ["theirs", "theirs"],
+      ["mine", "mine"],
+      [null, "mine"],
+    ]);
+    expect(merged(segments, [])).toBe("---\ntitle: B\n---\n\nOne, mine.\n\nTwo.\n\nThree, mine.\n");
+    // Without the base every difference starts on the person's own text: nothing of theirs is dropped unasked.
+    expect(merged(mergeSegments(mine, theirs, null), [])).toBe(mine);
   });
 
   it("starts from the opener's own earlier draft, which then lives in the room", async () => {

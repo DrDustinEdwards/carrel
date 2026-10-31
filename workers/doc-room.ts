@@ -161,15 +161,19 @@ export class DocRoom extends YServer<Env> {
   /**
    * Replaces the whole text for everyone (Discard, the site's newer version, an AI draft taken, a
    * draft from before the room, an import). `unsaved`: the new text is not what the site or Git holds. `expectedVersion`, when given, must still be the room's, so two people asking for
-   * the site's newer version cannot load it twice over someone's new work.
+   * the site's newer version cannot load it twice over someone's new work. A merge (B4/B5) also gives
+   * `expectedMarkdown`, the text it was merged from, so nothing typed since is replaced, and `saved`,
+   * the site's text it now stands on.
    */
-  async replace(input: { markdown: string; version: string | null; by: string; expectedVersion?: string | null; unsaved?: boolean }): Promise<boolean> {
+  async replace(input: { markdown: string; version: string | null; by: string; expectedVersion?: string | null; unsaved?: boolean; expectedMarkdown?: string; saved?: string }): Promise<boolean> {
     await this.__unsafe_ensureInitialized();
     // A room nobody has opened has no dialect to read the text in: it starts from `seed`.
     if (!isSeeded(this.document)) return false;
     if (input.expectedVersion !== undefined && readMeta(this.document).version !== input.expectedVersion) return false;
+    if (input.expectedMarkdown !== undefined && roomMarkdown(this.document) !== input.expectedMarkdown) return false;
     // Text nobody has saved yet (an AI draft taken, an import) leaves the last saved text as it was.
-    loadMarkdown(this.document, { markdown: input.markdown, version: input.version, ...(input.unsaved ? { saved: readMeta(this.document).saved } : {}) });
+    const saved = input.saved ?? (input.unsaved ? readMeta(this.document).saved : undefined);
+    loadMarkdown(this.document, { markdown: input.markdown, version: input.version, ...(saved !== undefined ? { saved } : {}) });
     await this.#persist();
     this.#broadcast({ t: "replaced", by: input.by });
     return true;

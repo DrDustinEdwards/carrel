@@ -22,7 +22,7 @@ import { mentionDecisions } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 import { answer, kitBase } from "~/lib/kit.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
-import { siteClient, SiteNotConnected } from "~/lib/sites.server";
+import { actorOf, siteClient, SiteNotConnected } from "~/lib/sites.server";
 
 const ACTIONS: Record<string, (typeof mentionDecisions.$inferInsert)["action"]> = {
   "mention-approve": "approve",
@@ -53,7 +53,7 @@ export function mentionsSource(env: Env, project: SiteProject, viewer: Viewer, f
   const after = new Map<string, MentionStatus>();
   return {
     ...kitBase(env, project),
-    client: noting(siteClient(env, project.site, fetcher), after),
+    client: noting(siteClient(env, project.site, fetcher, actorOf(viewer)), after),
     editorHref: (id) => `/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(id)}`,
     async record({ kind, ids, changeId }) {
       const action = ACTIONS[kind];

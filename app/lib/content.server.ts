@@ -15,7 +15,7 @@ import { listedSearchFields } from "~/lib/seo.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, mayPublish, type Action, type Role } from "~/lib/roles";
-import { siteClient, siteConnection } from "~/lib/sites.server";
+import { actorOf, siteClient, siteConnection } from "~/lib/sites.server";
 import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
 
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
@@ -160,7 +160,7 @@ export async function writeToSite(
   itemId: string,
   request:
     | { action: "save"; source: string; expectedVersion: string | null }
-    | { action: "publish"; expectedVersion: string; source?: string }
+    | { action: "publish"; expectedVersion: string; source?: string; publishedAt?: string }
     | { action: "schedule"; expectedVersion: string; publishAt: string; source?: string }
     | { action: "unschedule"; expectedVersion: string }
     | { action: "unpublish"; expectedVersion: string },
@@ -175,7 +175,7 @@ export async function writeToSite(
   // and, for an Author, whether they wrote it.
   if (request.action === "save") requireCan(project, "edit");
   else if (!can(project.role, "publish") && !can(project.role, "publish_own")) forbid();
-  const client = siteClient(env, project.site, fetcher);
+  const client = siteClient(env, project.site, fetcher, actorOf(viewer));
   const current = await readDoc(env, project, itemId, fetcher);
   if (isPublic(request.action, current) && !(await mayPublishItem(env.DB, project, viewer, itemId))) forbid();
 
@@ -213,7 +213,8 @@ export async function writeToSite(
         result = await client.saveDraft(itemId, { source: request.source, expectedVersion: request.expectedVersion, changeId });
         break;
       case "publish":
-        result = await client.publish(itemId, { expectedVersion: request.expectedVersion, changeId, source: request.source });
+        // The date it is published under (a backdate), sent only where the site takes one (contentPublishedAt).
+        result = await client.publish(itemId, { expectedVersion: request.expectedVersion, changeId, source: request.source, ...(request.publishedAt ? { publishedAt: request.publishedAt } : {}) });
         break;
       case "schedule":
         result = await client.schedule(itemId, {
@@ -236,7 +237,7 @@ export async function writeToSite(
         ok: false,
         reason: "conflict",
         currentVersion: error.body.currentVersion ?? null,
-        message: "The post changed on the site since you opened it. Your text is kept here; reload the site's version to compare before saving.",
+        message: "The post changed on the site since you opened it. Your text is kept here, set beside the site's to merge before saving.",
       };
     }
     // The site's own words for a refusal, a text it cannot take or a write it does not do for this kind.

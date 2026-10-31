@@ -337,7 +337,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_get_checks",
     title: "Get a post's flags",
     scope: "read",
-    description: `The flags on a post from checks and reviewers, open and dismissed, and seo: the search and sharing checks on Dustin's working draft (or the site's text) with a preview of the post as a search result and a link card. An open flag holds publish until Dustin fixes the text or dismisses it; the search and sharing checks only flag. ${RULE}`,
+    description: `The flags on a post from checks and reviewers, open and dismissed, and seo: the search and sharing checks on Dustin's working draft (or the site's text) with a preview of the post as a search result and a link card. An open flag holds publish until Dustin fixes the text or dismisses it. The search and sharing checks flag, except three that hold a publish, a schedule or a save to a live post until the text is fixed: an image with no alt text, a share image with no alt text, and a canonical that is not a full https address (and, where the site renders one, a feature image with no alt text). ${RULE}`,
     inputSchema: { type: "object", properties: { project: PROJECT, item: ITEM }, required: ["project", "item"], additionalProperties: false },
     annotations: READ,
     outputSchema: shape({ open: ID, flags: LIST }, { seo: ANY }),

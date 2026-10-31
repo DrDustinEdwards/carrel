@@ -3,6 +3,7 @@
 
 import { createSiteClient, SiteApiError, type SiteClient } from "@dustinedwards/site-api/client";
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
+import { POST_FIELDS } from "@dustinedwards/site-api/frontmatter";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
 export type SiteId = "dustinedwards" | "germomics" | "foxhound" | "foxing" | "txasm" | "julieedwards";
@@ -160,11 +161,84 @@ export class SiteNotConnected extends Error {
   }
 }
 
-/** Throws SiteNotConnected when the site cannot be reached, so callers show why instead of a 500. */
-export function siteClient(env: Env, id: SiteId, fetcher?: typeof fetch): SiteClient {
+/** Who a write is by, as the site credits it (site-api v0.19.0 `actor`): the signed-in person's display name. */
+export type Actor = { name: string };
+
+/**
+ * The writes that carry the actor: a JSON body under these takes `actor`; a DELETE, and an upload whose
+ * body is the file, take `actorName` in the query instead. `POST /preview` is not a write and takes neither.
+ */
+const ACTOR_BODY = /\/api\/carrel\/v1\/(content\/|media(\/|$)|mentions\/|preview-links$)/;
+const ACTOR_QUERY = /\/api\/carrel\/v1\/(content\/[^/]+(\/schedule)?|preview-links\/[^/]+|media\/[^/]+|mentions\/[^/]+)$/;
+const ACTOR_UPLOAD = /\/api\/carrel\/v1\/media(\/[^/]+\/file)?$/;
+
+/**
+ * What a site's meta declares beyond the pinned site-api's own schema, which drops what it does not know.
+ * TODO site-api 0.19: `backlinks`, `previewLinkHours` and the featureImage post fields are in its Meta;
+ * read them from `client.meta()` and drop this.
+ */
+export type SiteExtras = { postFields: string[]; backlinks: boolean; previewLinkHoursMax: number | null };
+const EXTRAS = new WeakMap<object, { caps: Record<string, unknown> | null }>();
+
+/**
+ * The fetch every site client sends through. A write is credited to the person (site-api v0.19.0; an
+ * older site drops the field). Meta is read once as sent, for `siteExtras`, and a post field the
+ * pinned contract does not know yet is left out of what it parses, so a newer site does not break it.
+ */
+function siteFetch(base: typeof fetch, actor: Actor | undefined, seen: { caps: Record<string, unknown> | null }): typeof fetch {
+  // The client calls fetch(url, init) with a string or Blob body. The call is passed on in that form, never
+  // as a Request: a fetch that reads a Request (a test's, a harness's) would find its body already used.
+  return async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+    const json = new Headers(init?.headers).get("content-type") === "application/json";
+    const name = actor?.name.trim().slice(0, 200);
+    let call: Parameters<typeof fetch> = [input, init];
+    if (name && ((method === "DELETE" && ACTOR_QUERY.test(url.pathname)) || (method !== "GET" && !json && init?.body && ACTOR_UPLOAD.test(url.pathname)))) {
+      url.searchParams.set("actorName", name);
+      call = [url.toString(), init];
+    } else if (name && method !== "GET" && json && typeof init?.body === "string" && ACTOR_BODY.test(url.pathname)) {
+      call = [input, { ...init, body: JSON.stringify({ ...(JSON.parse(init.body) as Record<string, unknown>), actor: { name } }) }];
+    }
+    const response = await base(...call);
+    if (method !== "GET" || !url.pathname.endsWith("/api/carrel/v1/meta") || !response.ok) return response;
+    const text = await response.text();
+    let meta: { capabilities?: Record<string, unknown> };
+    try {
+      meta = JSON.parse(text) as typeof meta;
+    } catch {
+      return new Response(text, response);
+    }
+    seen.caps = meta.capabilities ?? null;
+    const fields = meta.capabilities?.postFields;
+    if (!Array.isArray(fields) || fields.every((f) => (POST_FIELDS as readonly unknown[]).includes(f))) return new Response(text, response);
+    const known = fields.filter((f) => (POST_FIELDS as readonly unknown[]).includes(f));
+    return Response.json({ ...meta, capabilities: { ...meta.capabilities, postFields: known } }, { status: response.status });
+  };
+}
+
+/** Throws SiteNotConnected when the site cannot be reached, so callers show why instead of a 500. `actor` is who its writes are by. */
+export function siteClient(env: Env, id: SiteId, fetcher?: typeof fetch, actor?: Actor): SiteClient {
   const connection = siteConnection(env, id);
   if (connection.state !== "connected") throw new SiteNotConnected(connection.detail);
-  return createSiteClient({ baseUrl: connection.origin, key: connection.key, fetch: fetcher ?? timedFetch });
+  const seen = { caps: null };
+  const client = createSiteClient({ baseUrl: connection.origin, key: connection.key, fetch: siteFetch(fetcher ?? timedFetch, actor, seen) });
+  EXTRAS.set(client, seen);
+  return client;
+}
+
+/** The actor for a person: their display name, or none when they have not set one (an address is not a name to publish). */
+export const actorOf = (viewer: { name: string }): Actor | undefined => (viewer.name.trim() ? { name: viewer.name.trim() } : undefined);
+
+/** What the client's last `meta()` declared beyond its contract (see SiteExtras). Empty before one. */
+export function siteExtras(client: SiteClient): SiteExtras {
+  const caps = EXTRAS.get(client)?.caps ?? {};
+  const hours = caps.previewLinkHours as { max?: unknown } | undefined;
+  return {
+    postFields: Array.isArray(caps.postFields) ? caps.postFields.filter((f): f is string => typeof f === "string") : [],
+    backlinks: caps.backlinks === true,
+    previewLinkHoursMax: typeof hours?.max === "number" && Number.isInteger(hours.max) && hours.max > 0 ? hours.max : null,
+  };
 }
 
 /** A site that is not connected or cannot be reached, said plainly instead of a crash. null for anything else. */
@@ -172,4 +246,25 @@ export function siteUnreachable(error: unknown): string | null {
   if (error instanceof SiteNotConnected) return `This site is not connected yet: ${error.detail}`;
   if (error instanceof SiteApiError) return error.body ? `The site refused: ${error.body.message}` : `The site answered ${error.status}.`;
   return null;
+}
+
+export type Backlink = { id: string; title: string; path: string | null };
+
+/**
+ * The posts that link to this one, where the site declares `backlinks` (site-api v0.19.0,
+ * `GET /content/:id/backlinks`). TODO site-api 0.19: use the client's own `backlinks(id)` and drop this.
+ */
+export async function siteBacklinks(env: Env, id: SiteId, itemId: string, fetcher?: typeof fetch): Promise<Backlink[]> {
+  const connection = siteConnection(env, id);
+  if (connection.state !== "connected") throw new SiteNotConnected(connection.detail);
+  const response = await (fetcher ?? timedFetch)(`${connection.origin}/api/carrel/v1/content/${encodeURIComponent(itemId)}/backlinks`, {
+    headers: { authorization: `Bearer ${connection.key}` },
+  });
+  if (!response.ok) throw new SiteApiError(response.status, null);
+  const body = (await response.json()) as { items?: unknown };
+  if (!Array.isArray(body.items)) return [];
+  return body.items.flatMap((raw: unknown) => {
+    const item = raw as { id?: unknown; title?: unknown; path?: unknown };
+    return typeof item?.id === "string" ? [{ id: item.id, title: typeof item.title === "string" && item.title ? item.title : item.id, path: typeof item.path === "string" ? item.path : null }] : [];
+  });
 }

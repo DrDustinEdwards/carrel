@@ -18,8 +18,12 @@ import { exact, parse } from "capsomer/behavior/time";
 
 import { FlagsPanel } from "~/components/editor/flags-panel";
 import { useEditorLayout } from "~/components/editor/layout";
-import { ScheduleDialog } from "~/components/editor/schedule-dialog";
+import { localValue, ScheduleDialog } from "~/components/editor/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { MergeView } from "~/components/editor/merge-view";
+import { featureFault, PostFields } from "~/components/editor/post-fields";
+import { PreviewLinks, type LinkRow } from "~/components/editor/preview-links";
+import { RenameButton } from "~/components/editor/rename-dialog";
 import { SearchFields } from "~/components/editor/search-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 import { useRoomEditing } from "~/components/editor/room-editing";
@@ -33,11 +37,13 @@ import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publ
 import { roomNames } from "~/lib/comments.server";
 import { discardDraft, mayPublishItem, readDoc, readDraft, readOwnDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { listRevisions } from "~/lib/history.server";
+import { listRevisions, readRevision } from "~/lib/history.server";
+import { mergeSegments } from "~/lib/merge.server";
+import type { Segment } from "~/lib/merge";
 import { joinSource, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
 import { listSections } from "~/lib/legal.server";
 import { kindNoun, kindWord } from "~/lib/kind-words";
-import { siteState } from "~/lib/save-state";
+import { siteState, unsavedNote } from "~/lib/save-state";
 import { importFromDocs, lastSentDoc, sendToDocs } from "~/lib/google/drive.server";
 import { isConnected } from "~/lib/google/oauth.server";
 import { pageStats } from "~/lib/google/search-console.server";
@@ -48,10 +54,11 @@ import { transitionsFor } from "capsomer/publish-transition";
 import { PageHead } from "capsomer/react/page-head";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { can } from "~/lib/roles";
-import { openRoom, rebaseRoom, replaceRoom, roomPath, roomVersion, saveRoom, siteCoauthors, withOthers } from "~/lib/rooms.server";
+import { creditOf, mergeRoom, openRoom, rebaseRoom, replaceRoom, roomPath, roomVersion, saveRoom, siteCoauthors, unsavedItems } from "~/lib/rooms.server";
 import { imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
-import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
+import { actorOf, siteClient, siteConnection, siteEntry, siteExtras, SiteNotConnected, siteUnreachable } from "~/lib/sites.server";
+import type { SiteClient } from "@dustinedwards/site-api/client";
 import { siteBinderTree } from "~/lib/writing/binder";
 import { readForm } from "~/lib/form.server";
 
@@ -119,6 +126,12 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   let scheduledUpdates = false;
   // The search fields the site renders (site-api v0.17.0), one box each in the editor.
   let searchFields: SearchField[] = [];
+  // The post fields the site renders (A2, A6), as its meta lists them, the v0.19.0 feature image among them.
+  let postFields: string[] = [];
+  // A publish date the site takes (A4), rename (A3), and preview links with the longest the site allows (E2).
+  let publishedAtSettable = false;
+  let renames = false;
+  let previewLinks: { max: number; links: LinkRow[] } | null = null;
   // The text of an update waiting on the live post, so its Author or the Owner can open it again.
   let pendingUpdate: { publishAt: string; source: string } | null = null;
   if (doc?.scheduledUpdate) {
@@ -130,15 +143,30 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   }
   if ((can(project.role, "edit") || canPublish) && !siteError) {
     try {
-      const { capabilities } = await siteClient(env, project.site).meta();
+      const client = siteClient(env, project.site);
+      const { capabilities } = await client.meta();
+      const extras = siteExtras(client);
       mediaAccept = can(project.role, "edit") && capabilities.media ? (capabilities.mediaUpload?.types.join(",") ?? null) : null;
       scheduledUpdates = capabilities.scheduledUpdates === true;
       searchFields = capabilities.searchFields ?? [];
+      postFields = extras.postFields;
+      publishedAtSettable = capabilities.contentPublishedAt === true;
+      renames = capabilities.contentRename === true && can(project.role, "edit") && doc !== null;
+      if (capabilities.previewLinks === true && can(project.role, "edit") && doc) {
+        const links = await client.previewLinks.list(itemId).catch(() => ({ items: [] }));
+        previewLinks = { max: extras.previewLinkHoursMax ?? 168, links: links.items };
+      }
     } catch {
       mediaAccept = null;
     }
   }
   const coauthors = revisions ? await siteCoauthors(env.DB, project.id, itemId) : new Map<string, string[]>();
+  // B4/B5: the room's unsaved text against the site's newer copy, with the version both started from where the site still has it.
+  let merge: { segments: Segment[]; hasBase: boolean; from: string | null; mine: string; siteVersion: string } | null = null;
+  if (opened?.behind && doc) {
+    const base = opened.version ? await readRevision(env, project, itemId, opened.version).catch(() => null) : null;
+    merge = { segments: mergeSegments(opened.source, doc.source, base), hasBase: base !== null, from: opened.version, mine: opened.source, siteVersion: doc.version };
+  }
   const paths = sitePaths(targets);
   const connection = siteConnection(env, project.site);
   const linkTargets: { href: string; title: string; state: "published" | "scheduled" | "draft" }[] = targets
@@ -148,7 +176,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   return {
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, siteId: project.site },
     itemId,
-    binder: siteBinderTree(targets, `/p/${project.slug}`),
+    binder: siteBinderTree(targets, `/p/${project.slug}`, await unsavedItems(env.DB, project.id)),
     canEdit: can(project.role, "edit") && opened !== null,
     media: mediaAccept ? { endpoint: `/p/${encodeURIComponent(project.slug)}/media/api`, accept: mediaAccept } : null,
     canPublish,
@@ -156,6 +184,11 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     canDismiss: can(project.role, "publish"),
     scheduledUpdates,
     searchFields,
+    postFields,
+    publishedAtSettable,
+    renames,
+    previewLinks,
+    merge,
     pendingUpdate,
     title: doc?.title ?? "",
     kind: doc?.kind ?? null,
@@ -179,7 +212,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     behind: opened?.behind ?? false,
     room: opened ? { path: roomPath("p", project.slug, itemId), viewer: roomViewer, names: await roomNames(env.DB, project.id) } : null,
     siteError,
-    revisions: revisions ? revisions.slice(0, HISTORY_SHOWN).map((r) => ({ version: r.version, at: r.at, author: withOthers(r.author, coauthors.get(r.version)), message: r.message })) : null,
+    revisions: revisions ? revisions.slice(0, HISTORY_SHOWN).map((r) => ({ version: r.version, at: r.at, author: creditOf(r, coauthors.get(r.version)), message: r.message })) : null,
     revisionCount: revisions?.length ?? 0,
     historyError,
     linkTargets,
@@ -201,6 +234,9 @@ type ActionResult =
   | { intent: "publish"; needsConfirm: true }
   | { intent: "dismiss-flag"; dismissed: number }
   | { intent: "write"; outcome: WriteOutcome }
+  | { intent: "merge"; ok: boolean; message: string }
+  | { intent: "preview-link"; link: { ok: true; url: string; expiresAt: string } | { ok: false; message: string } }
+  | { intent: "revoke-link"; ok: boolean; message: string }
   | { intent: "google"; ok: boolean; message: string; url?: string; imported?: boolean };
 
 export async function action({ params, request, context }: Route.ActionArgs): Promise<ActionResult> {
@@ -276,7 +312,53 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       const current = await readDoc(env, project, itemId);
       // The site's ceremony, kept: a post that has never been public is published only on a second, explicit ask.
       if (current && !current.publishedAt && form.get("confirm") !== "first-publish") return { intent, needsConfirm: true };
-      return { intent: "write", outcome: await fromRoom((source, expectedVersion) => writeToSite(env, project, viewer, itemId, { action: "publish", source, expectedVersion: onSiteVersion(expectedVersion) })) };
+      // A4: the date it is published under, where the site takes one; the editor sends it only then.
+      const publishedAt = String(form.get("publishedAt") ?? "");
+      if (publishedAt && (Number.isNaN(Date.parse(publishedAt)) || Date.parse(publishedAt) > Date.now())) throw new Response("A publish date is a time that has passed; a later one is a schedule.", { status: 400 });
+      return {
+        intent: "write",
+        outcome: await fromRoom((source, expectedVersion) =>
+          writeToSite(env, project, viewer, itemId, { action: "publish", source, expectedVersion: onSiteVersion(expectedVersion), ...(publishedAt ? { publishedAt: new Date(publishedAt).toISOString() } : {}) }),
+        ),
+      };
+    }
+    case "merge": {
+      // B4/B5: the merged text goes in for everyone, on the site's version it was merged with.
+      const current = await readDoc(env, project, itemId);
+      if (!current || current.version !== String(form.get("siteVersion") ?? "")) return { intent, ok: false, message: "The site's copy changed again, so the merge is shown again with its newest text. Nothing was replaced." };
+      const done = await mergeRoom(env, project, viewer, itemId, {
+        from: { markdown: String(form.get("mine") ?? ""), version: String(form.get("from") ?? "") || null },
+        site: { source: current.source, version: current.version },
+        merged: String(form.get("merged") ?? ""),
+      });
+      return done
+        ? { intent, ok: true, message: "Merged. The text now stands on the site's newest version; save it when it is ready." }
+        : { intent, ok: false, message: "The text changed while you merged, so the merge is shown again with it. Nothing was replaced." };
+    }
+    case "preview-link":
+    case "revoke-link": {
+      if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
+      const client = siteClient(env, project.site, undefined, actorOf(viewer));
+      const { capabilities } = await client.meta();
+      if (capabilities.previewLinks !== true) throw new Response("This site does not make preview links.", { status: 400 });
+      try {
+        if (intent === "revoke-link") {
+          await client.previewLinks.revoke(String(form.get("link") ?? ""), { changeId: crypto.randomUUID() });
+          return { intent, ok: true, message: "Preview link revoked." };
+        }
+        const hours = Number(form.get("hours"));
+        if (!Number.isInteger(hours) || hours < 1) throw new Response("Bad request", { status: 400 });
+        // E2: as long as the person chose, within the site's own limit (v0.19.0 previewLinkHours; a week before it).
+        // TODO site-api 0.19: PreviewLinkInput carries expiresInHours, and the cast goes.
+        const max = siteExtras(client).previewLinkHoursMax;
+        const input = max ? { id: itemId, expiresInHours: Math.min(hours, max), changeId: crypto.randomUUID() } : { id: itemId, hours: Math.min(hours, 168), changeId: crypto.randomUUID() };
+        const link = await client.previewLinks.create(input as Parameters<SiteClient["previewLinks"]["create"]>[0]);
+        return { intent, link: { ok: true, url: link.url, expiresAt: link.expiresAt } };
+      } catch (error) {
+        const said = siteUnreachable(error);
+        if (said === null) throw error;
+        return intent === "revoke-link" ? { intent, ok: false, message: said } : { intent, link: { ok: false, message: said } };
+      }
     }
     case "schedule": {
       const publishAt = String(form.get("publishAt") ?? "");
@@ -344,6 +426,17 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const maySave = data.canEdit && (!live || data.canPublish);
 
   const outcome = writer.data?.intent === "write" ? writer.data.outcome : null;
+
+  // A4: the publish date, where the site takes one, as the box shows it in the person's own zone. Filled
+  // once the page is live, since the server does not know that zone.
+  const [publishDate, setPublishDate] = useState("");
+  useEffect(() => {
+    if (data.publishedAtSettable && data.publishedAt) setPublishDate(localValue(data.publishedAt));
+  }, [data.publishedAtSettable, data.publishedAt]);
+  const datedPublish = (): Record<string, string> => (data.publishedAtSettable && publishDate ? { publishedAt: new Date(publishDate).toISOString() } : {});
+  const dateMoved = data.publishedAtSettable && data.status === "published" && publishDate !== "" && (!data.publishedAt || localValue(data.publishedAt) !== publishDate);
+  // E4: the preview at a desktop's width or a phone's.
+  const [previewWidth, setPreviewWidth] = useState<"desktop" | "phone">("desktop");
 
   // The preview reads the room's copy, which the room keeps a second behind the typing.
   const [previewAt, setPreviewAt] = useState(data.baseVersion ?? "");
@@ -413,7 +506,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       ? "Offline: changes wait here"
       : room.unsaved
         ? onSite
-          ? "Changes kept in Carrel, not yet on the site"
+          ? live
+            ? `${unsavedNote(data.status)}: the site still shows the last save`
+            : "Changes kept in Carrel, not yet on the site"
           : "Kept in Carrel, not yet on the site"
         : onSite
           ? siteState(data.status, data.everPublished)
@@ -455,6 +550,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     gateChecks.push({ id: `search-${fault.field}`, name: fault.field === "imageAlt" ? "Share image alt text" : "Canonical address", required: true, ok: false, cause: fault.message, pass: "Sound", href: "#search-fields", fix: fault.field === "imageAlt" ? "Describe the share image, or remove it." : "Enter the original's full https:// address, or clear the box." });
   }
   // The other search and sharing checks are advisory: the gate names each and points to the panel.
+  // A feature image with no alt text blocks it too (site-api v0.19.0 refuses the publish).
+  const noFeatureAlt = featureFault(splitSource(source).front, data.postFields);
+  if (noFeatureAlt) gateChecks.push({ id: "feature-alt", name: "Feature image alt text", required: true, ok: false, cause: noFeatureAlt, pass: "Described", href: "#post-fields", fix: "Describe the feature image, mark it as decoration, or remove it." });
   for (const [i, f] of (seo?.findings ?? []).entries()) {
     if (f.check === "image-alt" || f.check === "imageAlt" || f.check === "canonical") continue;
     gateChecks.push({ id: `seo-${i}`, name: "Search and sharing", required: false, ok: false, cause: f.message, pass: "Fits", href: "#seo", fix: "Change the post's details or the image." });
@@ -477,7 +575,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         title={data.title || data.itemId}
         lead={
           <>
-            {data.status === "published" ? <Pill tone="ok">Published</Pill> : data.status === "scheduled" ? <Pill tone="info">Scheduled</Pill> : data.status === "draft" ? <Pill variant="secondary">Draft</Pill> : <Pill variant="outline">Not on the site yet</Pill>}{" "}
+            {/* A5: a live post with changes nobody has saved says so, since the public still sees the last save. */}
+            {live && room.unsaved ? <Pill tone="warn">{unsavedNote(data.status)}</Pill> : data.status === "published" ? <Pill tone="ok">Published</Pill> : data.status === "scheduled" ? <Pill tone="info">Scheduled</Pill> : data.status === "draft" ? <Pill variant="secondary">Draft</Pill> : <Pill variant="outline">Not on the site yet</Pill>}{" "}
             {data.path ? <span className="cap-mono">{data.path}</span> : null}
           </>
         }
@@ -486,9 +585,18 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
       <div className="app-notices">
         {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
-        {data.behind ? (
+        {data.behind && data.merge ? (
+          <MergeView
+            key={`${data.merge.siteVersion}:${data.merge.mine.length}`}
+            segments={data.merge.segments}
+            hasBase={data.merge.hasBase}
+            busy={busy}
+            readOnly={!mayEdit}
+            apply={(merged) => void send("merge", { merged, mine: data.merge!.mine, from: data.merge!.from ?? "", siteVersion: data.merge!.siteVersion }).then((r) => r.intent === "merge" && say(r.message))}
+          />
+        ) : data.behind ? (
           <Banner tone="warn" title="The site's copy changed">
-            It changed after this copy was started, so saving it will be refused. Discard the unsaved changes to load the site's version, then make them again.
+            It changed after this copy was started. Your unsaved text is kept here; reload to set it beside the site's and merge them.
           </Banner>
         ) : null}
         {data.ownDraft && mayEdit ? (
@@ -552,7 +660,26 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               <section className="app-editor-pane" aria-label="Write">
                 {data.room ? editing.bar : null}
                 {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
-                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} sections={data.sections} kind={data.kind} searchFields={seo ? data.searchFields : []} />
+                <FrontmatterFields
+                  source={source}
+                  onChange={setSource}
+                  readOnly={readOnly || !mayEdit}
+                  sections={data.sections}
+                  kind={data.kind}
+                  searchFields={seo ? data.searchFields : []}
+                  hidden={data.publishedAtSettable ? ["date"] : []}
+                />
+                {seo ? (
+                  <PostFields
+                    source={source}
+                    onChange={setSource}
+                    readOnly={readOnly || !mayEdit}
+                    listed={data.postFields}
+                    origin={data.origin}
+                    media={data.media}
+                    date={data.publishedAtSettable && data.canPublish ? { value: publishDate, set: setPublishDate, live: data.everPublished } : null}
+                  />
+                ) : null}
                 {seo && data.searchFields.length > 0 ? (
                   <SearchFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} listed={data.searchFields} site={data.project.siteId} origin={data.origin} media={data.media} />
                 ) : null}
@@ -569,9 +696,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               </section>
             ) : null}
             {layout !== "write" ? (
-              <section className="app-preview-pane" aria-label="Preview">
+              <section className="app-preview-pane" aria-label="Preview" data-width={previewWidth}>
+                <Segmented legend="Preview width" hideLegend size="sm" value={previewWidth} onChange={setPreviewWidth} options={[{ value: "desktop", label: "Desktop" }, { value: "phone", label: "Phone" }]} />
                 {/* Sandboxed with no permissions: the site's page runs no script and has an opaque origin. */}
-                <iframe title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`} src={previewSrc} sandbox="" />
+                <iframe title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it, at a ${previewWidth}'s width`} src={previewSrc} sandbox="" />
               </section>
             ) : null}
           </div>
@@ -630,6 +758,12 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   {onSite && data.canPublish && data.status === "published" && data.scheduledUpdates ? (
                     <Button onClick={(event) => ask("schedule", event.currentTarget)}>{data.pendingUpdate ? "Replace the scheduled update" : "Schedule as an update"}</Button>
                   ) : null}
+                  {dateMoved && data.canPublish ? (
+                    <Button pending={busy} onClick={() => void send("publish", { confirm: "first-publish", ...datedPublish() })}>
+                      Change the publish date
+                    </Button>
+                  ) : null}
+                  {data.renames && data.version ? <RenameButton slug={data.project.slug} itemId={data.itemId} version={data.version} live={data.everPublished} noun={kindNoun(data.kind)} /> : null}
                   {room.unsaved && onSite ? (
                     <Button variant="quiet" pending={busy} onClick={(event) => ask("discard", event.currentTarget)}>
                       Discard unsaved changes
@@ -661,10 +795,27 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label="Publish checks"
               sites={[gateSite]}
               checks={gateChecks}
-              publish={() => writeThrough("publish", { confirm: "first-publish" })}
+              publish={() => writeThrough("publish", { confirm: "first-publish", ...datedPublish() })}
               unpublish={() => writeThrough("unpublish")}
               say={say}
               fail={(text) => say(text)}
+            />
+          ) : null}
+
+          {data.previewLinks ? (
+            <PreviewLinks
+              links={data.previewLinks.links}
+              maxHours={data.previewLinks.max}
+              busy={busy}
+              noun={kindNoun(data.kind)}
+              make={async (hours) => {
+                const r = await send("preview-link", { hours: String(hours) });
+                return r.intent === "preview-link" ? r.link : { ok: false, message: "The site did not answer." };
+              }}
+              revoke={async (link) => {
+                const r = await send("revoke-link", { link });
+                if (r.intent === "revoke-link") say(r.message);
+              }}
             />
           ) : null}
 

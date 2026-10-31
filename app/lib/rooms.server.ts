@@ -12,7 +12,7 @@
 // told the new version, and everyone who had a hand in the text goes into the authorship record.
 
 import { getServerByName } from "partyserver";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changeContributors, changes, drafts, people, rooms } from "~/db/schema";
@@ -103,11 +103,45 @@ export async function hasRoom(db: D1Database, projectId: number, itemId: string)
   return Boolean(row);
 }
 
+/** The items of a project whose room holds changes nobody has saved to the site (A5), from the rooms' D1 mirror. */
+export async function unsavedItems(db: D1Database, projectId: number): Promise<Set<string>> {
+  const rows = await drizzle(db)
+    .select({ itemId: rooms.itemId })
+    .from(rooms)
+    .where(and(eq(rooms.projectId, projectId), ne(rooms.source, rooms.savedSource)))
+    .all();
+  return new Set(rows.map((r) => r.itemId));
+}
+
 /** Replaces the room's whole text for everyone. Takes edit: Discard, the site's version, an AI draft, a draft from before the room, an import. */
 export async function replaceRoom(env: Env, project: Where, viewer: Viewer, itemId: string, input: { markdown: string; version: string | null; unsaved?: boolean }): Promise<void> {
   if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
   const room = await stub(env, project.id, itemId);
   if (!(await room.replace({ ...input, by: viewer.name || viewer.email }))) throw new Response("Open the file before replacing its text.", { status: 409 });
+}
+
+/**
+ * A merge of the room's text with the site's newer copy (B4/B5): the merged text goes in for everyone,
+ * standing on the site's version, still unsaved. Refused (false) when anyone typed since the merge was
+ * read or the room moved on, so nothing is lost: the page shows the merge again.
+ */
+export async function mergeRoom(
+  env: Env,
+  project: Where,
+  viewer: Viewer,
+  itemId: string,
+  input: { from: { markdown: string; version: string | null }; site: { source: string; version: string }; merged: string },
+): Promise<boolean> {
+  if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
+  const room = await stub(env, project.id, itemId);
+  return room.replace({
+    markdown: input.merged,
+    version: input.site.version,
+    by: viewer.name || viewer.email,
+    expectedVersion: input.from.version,
+    expectedMarkdown: input.from.markdown,
+    saved: input.site.source,
+  });
 }
 
 /** The room's version now, for a write that sends no text (unpublish, unschedule). */
@@ -173,6 +207,15 @@ export async function coauthorsOf(db: D1Database, saves: { changeId: string; sav
 
 /** A save's author with the others who wrote its text: "Dustin with Ana, Ben". */
 export const withOthers = (author: string, others: string[] | undefined) => (others?.length ? `${author} with ${others.join(", ")}` : author);
+
+/**
+ * Everyone credited for a revision (C2): the site's own names (site-api v0.17.0 `authors`, else its one
+ * `author`), the primary first, then anyone else Carrel saw write its text in the room.
+ */
+export function creditOf(revision: { author: string; authors?: string[] }, others: string[] | undefined): string {
+  const names = revision.authors?.length ? revision.authors : [revision.author];
+  return withOthers(names[0]!, [...names.slice(1), ...(others ?? []).filter((o) => !names.includes(o))]);
+}
 
 /** The same for a post's revisions on its site, by the version each save made. */
 export async function siteCoauthors(db: D1Database, projectId: number, itemId: string): Promise<Map<string, string[]>> {

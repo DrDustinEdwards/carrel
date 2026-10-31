@@ -4,6 +4,7 @@
 // one commit. Pure, so the browser, the server and the tests share it.
 
 import { kindPlural } from "~/lib/kind-words";
+import { unsavedNote } from "~/lib/save-state";
 import { chapterOf, fileKindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
 
 /** A row of the binder as the loader sends it; the page turns `meta` into the row's muted note. */
@@ -173,13 +174,13 @@ export function parseOrder(raw: string): ChapterOrder[] | null {
  * with its state. Series join it when the site-api contract carries them (ruling point 5, build step
  * 7); until then there is nothing to order, so a site's binder only finds and opens.
  */
-export function siteBinderTree(items: { itemId: string; kind: string; title: string; status: string }[], base: string): BinderNode[] {
+export function siteBinderTree(items: { itemId: string; kind: string; title: string; status: string }[], base: string, unsaved: ReadonlySet<string> = new Set()): BinderNode[] {
   const kinds = [...new Set(items.map((i) => i.kind))].sort((a, b) => (a === "post" ? -1 : b === "post" ? 1 : a < b ? -1 : 1));
   return kinds.map((kind) => ({
     id: `kind:${kind}`,
     label: kindPlural(kind),
     children: items
       .filter((i) => i.kind === kind)
-      .map((i) => ({ id: `item:${i.itemId}`, label: i.title || i.itemId, href: `${base}/e/${encodeURIComponent(i.itemId)}`, meta: i.status.charAt(0).toUpperCase() + i.status.slice(1) })),
+      .map((i) => ({ id: `item:${i.itemId}`, label: i.title || i.itemId, href: `${base}/e/${encodeURIComponent(i.itemId)}`, meta: unsaved.has(i.itemId) ? unsavedNote(i.status) : i.status.charAt(0).toUpperCase() + i.status.slice(1) })),
   }));
 }

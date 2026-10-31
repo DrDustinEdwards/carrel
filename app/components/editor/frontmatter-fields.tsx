@@ -42,6 +42,7 @@ export function FrontmatterFields({
   sections = [],
   kind = null,
   searchFields = [],
+  hidden = [],
 }: {
   source: string;
   onChange?: (next: string) => void;
@@ -50,6 +51,8 @@ export function FrontmatterFields({
   kind?: string | null;
   /** The search fields the site lists: the description is then one box in Search and sharing, not here too. */
   searchFields?: readonly string[];
+  /** Fields shown elsewhere: the date, where the site takes a publish date in the post fields box. */
+  hidden?: readonly FieldKey[];
 }) {
   const parts = splitSource(source);
   const { front, body } = parts;
@@ -76,7 +79,7 @@ export function FrontmatterFields({
     );
   }
   const inSearch = (key: FieldKey) => !legal && searchFields.includes(key);
-  const shown = FIELDS.filter((f) => (f.on === "all" || f.on === (legal ? "legal" : "post")) && (!readOnly || values[f.key] !== "") && !inSearch(f.key));
+  const shown = FIELDS.filter((f) => (f.on === "all" || f.on === (legal ? "legal" : "post")) && (!readOnly || values[f.key] !== "") && !inSearch(f.key) && !hidden.includes(f.key));
   if (shown.length === 0) return null;
   const used = sectionsUsed(body);
   const unused = sections.filter((s) => !used.includes(s.key));

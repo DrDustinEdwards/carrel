@@ -13,7 +13,7 @@
 
 import { backupHealth } from "@dustinedwards/d1-dump";
 import { PACKAGE_VERSION } from "@dustinedwards/site-api";
-import { runConformance } from "@dustinedwards/site-api/conformance";
+import { runConformance, type ConformanceReport } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { durableObjectCheck, healthResponse, kvCheck } from "@dustinedwards/site-runtime/health";
@@ -34,7 +34,26 @@ import { timedFetch } from "~/lib/timed-fetch.server";
 type SiteConformance = {
   status: "pass" | "fail" | "error";
   findings: { severity: "error"; check: "M1"; detail: string }[];
+  /** M2: every probe of the run, by name, and whether it passed or was skipped. Never the site's own words. */
+  probes?: Probe[];
 };
+
+type Probe = { name: string; ok: boolean; skipped?: true };
+
+/**
+ * The run's probes. TODO site-api 0.19: its report lists them, skipped ones too, as `probes`; until then
+ * each check is a probe that ran, and the one Carrel turns off, the media upload round trip, is skipped.
+ */
+function probesOf(report: ConformanceReport): Probe[] {
+  const given = (report as { probes?: unknown }).probes;
+  if (Array.isArray(given)) {
+    return given.flatMap((p: { name?: unknown; ok?: unknown; skipped?: unknown }) => (typeof p?.name === "string" ? [{ name: p.name, ok: p.ok === true, ...(p.skipped === true ? { skipped: true as const } : {}) }] : []));
+  }
+  return [...report.checks.map((c) => ({ name: c.name, ok: c.ok })), { name: "media upload round trip", ok: true, skipped: true as const }];
+}
+
+/** "Probes: meta ok, list ok, media upload round trip skipped." */
+const probeLine = (probes: Probe[]) => `Probes: ${probes.map((p) => `${p.name} ${p.skipped ? "skipped" : p.ok ? "ok" : "FAILED"}`).join(", ")}.`;
 
 export type CheckResult = { name: string; ok: boolean; detail: string; conformance?: { origin: string } & SiteConformance };
 
@@ -107,16 +126,23 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
       fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
         fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch,
     });
+    const probes = probesOf(report);
+    const ran = probes.filter((p) => !p.skipped).length;
     if (report.ok) {
-      return { name, ok: true, detail: `${site} conforms (${report.checks[0]?.detail ?? "meta ok"}).`, conformance: { origin: connection.origin, status: "pass", findings: [] } };
+      return {
+        name,
+        ok: true,
+        detail: `${site} conforms (${report.checks[0]?.detail ?? "meta ok"}): ${ran} probes ran, ${probes.length - ran} skipped. ${probeLine(probes)}`,
+        conformance: { origin: connection.origin, status: "pass", findings: [], probes },
+      };
     }
     const failed = report.checks.filter((c) => !c.ok);
     return {
       name,
       ok: false,
-      detail: `${site} does not conform. ${failed.map((c) => `${c.name}: ${c.detail}`).join(" | ")}`,
+      detail: `${site} does not conform. ${failed.map((c) => `${c.name}: ${c.detail}`).join(" | ")} ${probeLine(probes)}`,
       // The check's name only: its detail can quote the site's answer, which stays in Dustin's email.
-      conformance: { origin: connection.origin, status: "fail", findings: failed.map((c) => ({ severity: "error", check: "M1", detail: `${api} ${c.name} failed` })) },
+      conformance: { origin: connection.origin, status: "fail", findings: failed.map((c) => ({ severity: "error", check: "M1", detail: `${api} ${c.name} failed` })), probes },
     };
   } catch (thrown) {
     return { name, ok: false, detail: `${site} could not be checked: ${message(thrown)}`, conformance: error("could not be checked") };
@@ -262,7 +288,7 @@ export async function runChecks(
  */
 function conformanceReport(results: CheckResult[], at: string) {
   const sites: Record<string, SiteConformance> = {};
-  for (const r of results) if (r.conformance) sites[r.conformance.origin] = { status: r.conformance.status, findings: r.conformance.findings };
+  for (const r of results) if (r.conformance) sites[r.conformance.origin] = { status: r.conformance.status, findings: r.conformance.findings, ...(r.conformance.probes ? { probes: r.conformance.probes } : {}) };
   return { check: "carrel-conformance", at, ref: `site-api v${PACKAGE_VERSION}`, sites };
 }
 

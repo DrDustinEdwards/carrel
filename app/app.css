@@ -520,18 +520,34 @@
 /* The preview is the site's own page in a sandboxed frame, so it is white whatever the theme. */
 .app-preview-pane {
   display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-m);
   background: #fff;
 
+  & > .cap-segmented {
+    align-self: stretch;
+    padding: var(--space-2);
+    border-block-end: 1px solid var(--line);
+    background: var(--surface);
+  }
   & iframe {
     flex: 1;
     width: 100%;
     min-height: 28rem;
-    height: calc(100dvh - 14rem);
+    height: calc(100dvh - 16rem);
     border: 0;
     background: #fff;
+  }
+  /* E4: a phone's width, centered on the page around it. */
+  &[data-width="phone"] {
+    background: var(--sunken);
+    & iframe {
+      align-self: center;
+      max-width: 390px;
+      border-inline: 1px solid var(--line-strong);
+    }
   }
 }
 
@@ -736,6 +752,101 @@ html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-
   }
   .app-share-image-thumb {
     max-inline-size: 16rem;
+  }
+}
+
+/* The post fields box: the authors in order, each with its moves, and the box that adds one. */
+.app-authors {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding-inline-start: var(--space-5);
+
+  & li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+.app-authors-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: end;
+  & > :first-child {
+    flex: 1 1 14rem;
+  }
+}
+
+/* The merge view: each difference with the person's text beside the site's, and the choice under them. */
+.app-merge {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.app-merge-same {
+  padding: var(--space-1) var(--space-3);
+  border-inline-start: 2px solid var(--line);
+  font-size: var(--fs-detail);
+}
+.app-merge-choice {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+}
+.app-merge-sides {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+
+  & section {
+    min-width: 0;
+  }
+}
+.app-merge-side {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-detail);
+  font-weight: 600;
+}
+.app-merge-text {
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-s);
+  background: var(--sunken);
+
+  & pre {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: var(--fs-detail);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  & pre + pre {
+    margin-block-start: var(--space-2);
+  }
+}
+
+/* An item's preview links: when each was made and when it stops, with its revoke beside it. */
+.app-link-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  & li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--fs-detail);
   }
 }
 

@@ -69,6 +69,28 @@ describe("the posts list's writes", () => {
     expect(back).toMatchObject({ itemId: "old-notes", action: "content-restore", before: toTrash!.after });
   });
 
+  it("names the posts that link here before a trash, where the site says (site-api v0.19.0), and credits the person on every write", async () => {
+    // TODO site-api 0.19: the fake site answers `backlinks` and the backlinks route itself.
+    const bodies: unknown[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      const path = new URL(request.url).pathname;
+      if (path.endsWith("/content/old-notes/backlinks")) return Response.json({ items: [{ id: "spring", title: "Spring notes", path: "/writing/spring" }] });
+      if (request.method !== "GET" && request.headers.get("content-type") === "application/json") bodies.push(await request.clone().json());
+      const answer = await site.fetch(request);
+      if (!path.endsWith("/meta")) return answer;
+      const meta = (await answer.json()) as { capabilities: object };
+      return Response.json({ ...meta, capabilities: { ...meta.capabilities, backlinks: true } });
+    });
+    const version = await draft("old-notes");
+    const asked = await post("author@test.invalid", { intent: "trash", ids: "old-notes", versions: version });
+    expect(asked).toMatchObject({ ok: false, confirm: { intent: "trash", lead: "1 other post links to this post: \u201cSpring notes\u201d (/writing/spring). Its link would lead nowhere while it is in the Trash.", fields: { backlinks: "seen" } } });
+    expect(writes().filter((w) => w.includes("/trash"))).toEqual([]);
+    expect(await post("author@test.invalid", { intent: "trash", ids: "old-notes", versions: version, backlinks: "seen" })).toMatchObject({ ok: true });
+    expect(bodies.length).toBeGreaterThanOrEqual(2);
+    expect(bodies.every((b) => (b as { actor?: { name: string } }).actor?.name === "author")).toBe(true);
+  });
+
   it("keeps the Author of a renamed draft, so they still publish it", async () => {
     const version = await draft("first-name");
     expect(await post("author@test.invalid", { intent: "rename", ids: "first-name", versions: version, newId: "second-name" })).toMatchObject({ ok: true });

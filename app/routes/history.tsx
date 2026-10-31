@@ -25,7 +25,7 @@ import { listRevisions, orderPair, readRevision, revisionPatch } from "~/lib/his
 import { kindNoun } from "~/lib/kind-words";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
-import { siteCoauthors, withOthers } from "~/lib/rooms.server";
+import { creditOf, siteCoauthors } from "~/lib/rooms.server";
 import { SiteNotConnected } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
 
@@ -58,6 +58,9 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const noun = kindNoun(doc?.kind);
   const list = revisions ?? [];
   const picks = query.getAll("v");
+  // A save of text several people wrote names them all: the site's names, then the room's.
+  const coauthors = await siteCoauthors(env.DB, project.id, itemId);
+  const credit = (r: (typeof list)[number]) => creditOf(r, coauthors.get(r.version));
   let view: View = { kind: "none" };
   let picked: string[] = [];
 
@@ -101,7 +104,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       view =
         source === null
           ? { kind: "problem", message: "The site could not open that revision's source. A site on an older version of the site API cannot." }
-          : { kind: "source", version, message: revision.message, author: revision.author, at: revision.at, source, current: at === 0, previous: list[at + 1]?.version ?? null, newest: at === 0 ? null : list[0]!.version };
+          : { kind: "source", version, message: revision.message, author: credit(revision), at: revision.at, source, current: at === 0, previous: list[at + 1]?.version ?? null, newest: at === 0 ? null : list[0]!.version };
     }
   } else if (picks.length > 0) {
     const pair = orderPair(list, picks);
@@ -111,7 +114,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     } else {
       picked = [pair.from.version, pair.to.version];
       const heading = `${utc(pair.from.at)} to ${utc(pair.to.at)}`;
-      const lead = `What changed on the site between the revision by ${pair.from.author} and the one by ${pair.to.author}.`;
+      const lead = `What changed on the site between the revision by ${credit(pair.from)} and the one by ${credit(pair.to)}.`;
       if (by === "line") {
         const patch = await revisionPatch(env, project, itemId, pair.from.version, pair.to.version);
         view = patch === null ? { kind: "problem", message: "The site could not give the changes between those revisions." } : { kind: "compare", heading, lead, patch, before: null, after: null };
@@ -125,14 +128,13 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
                 heading,
                 lead,
                 patch: null,
-                before: { title: "Earlier revision", who: pair.from.author, time: pair.from.at, text: before },
-                after: { title: "Later revision", who: pair.to.author, time: pair.to.at, text: after },
+                before: { title: "Earlier revision", who: credit(pair.from), time: pair.from.at, text: before },
+                after: { title: "Later revision", who: credit(pair.to), time: pair.to.at, text: after },
               };
       }
     }
   }
 
-  const coauthors = await siteCoauthors(env.DB, project.id, itemId);
   return {
     project: { slug: project.slug, name: project.name },
     itemId,
@@ -141,8 +143,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     by,
     view,
     picked,
-    // A save of text several people wrote in the post's room names them all.
-    revisions: list.map((r) => ({ version: r.version, at: r.at, author: withOthers(r.author, coauthors.get(r.version)), message: r.message })),
+    revisions: list.map((r) => ({ version: r.version, at: r.at, author: credit(r), message: r.message })),
     siteError,
     againstSite: Boolean(draft && doc),
     aiDrafts: aiDrafts.map((d) => ({ id: d.id, client: d.client, createdAt: d.createdAt })),

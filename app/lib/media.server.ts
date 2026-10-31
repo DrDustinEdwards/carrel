@@ -22,7 +22,7 @@ import { changes } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 import { answer, kitBase } from "~/lib/kit.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
-import { siteClient, siteUnreachable } from "~/lib/sites.server";
+import { actorOf, siteClient, siteUnreachable } from "~/lib/sites.server";
 
 /** The authorship record's action for each kind the kit records (migration 0007 and later; site-api v0.13's in 0024). */
 const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
@@ -57,7 +57,7 @@ export function useHref(slug: string, use: { type: string; id: string }): string
 export function mediaSource(env: Env, project: SiteProject, viewer: Viewer, fetcher?: typeof fetch): ContentSource {
   return {
     ...kitBase(env, project),
-    client: siteClient(env, project.site, fetcher),
+    client: siteClient(env, project.site, fetcher, actorOf(viewer)),
     editorHref: (id) => useHref(project.slug, { type: "post", id }),
     async record({ kind, ids, changeId }) {
       const action = ACTIONS[kind];

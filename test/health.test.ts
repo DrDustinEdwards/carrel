@@ -144,7 +144,12 @@ describe("site health", () => {
       return (await response.json()) as { check: string; sites: Record<string, { status: string; findings: { detail: string }[] }> };
     };
     await runHealth(env, through(site));
-    expect((await report()).sites[SITE_ORIGIN]).toEqual({ status: "pass", findings: [] });
+    // M2: the report names every probe of the run, with ok or skipped.
+    const passed = (await report()).sites[SITE_ORIGIN] as unknown as { status: string; findings: unknown[]; probes: { name: string; ok: boolean; skipped?: true }[] };
+    expect(passed).toMatchObject({ status: "pass", findings: [] });
+    expect(passed.probes.length).toBeGreaterThan(5);
+    expect(passed.probes.every((p) => p.ok)).toBe(true);
+    expect(passed.probes).toContainEqual({ name: "media upload round trip", ok: true, skipped: true });
     await runHealth(env, through(site, true));
     const body = await report();
     expect(body.check).toBe("carrel-conformance");

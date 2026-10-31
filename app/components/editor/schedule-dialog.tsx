@@ -22,7 +22,7 @@ type Props = {
 };
 
 /** An ISO time as a datetime-local input's value, in the browser's own zone. */
-function localValue(iso: string): string {
+export function localValue(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;

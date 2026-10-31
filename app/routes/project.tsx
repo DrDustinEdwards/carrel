@@ -26,6 +26,8 @@ import { kindsIn, searchItems } from "~/lib/index.server";
 import { shareFromForm } from "~/lib/people-admin.server";
 import { postsSource, runIntent } from "~/lib/posts.server";
 import { requireSiteProject } from "~/lib/projects.server";
+import { unsavedItems } from "~/lib/rooms.server";
+import { unsavedNote } from "~/lib/save-state";
 import { can } from "~/lib/roles";
 import { siteConnection, siteEntry, siteUnreachable } from "~/lib/sites.server";
 import { onlyInCarrel, waitingWork } from "~/lib/waiting.server";
@@ -52,16 +54,23 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   if (connection.state !== "connected") return { project: head, data: null, fresh: [], unavailable: `${connection.detail} Posts appear here once the site's key is set.` };
   const query = readPostQuery(new URL(request.url).searchParams);
   try {
-    const [kit, writing, waiting, indexed] = await Promise.all([
+    const [kit, writing, waiting, indexed, unsaved] = await Promise.all([
       loadPosts(postsSource(env, project, viewer), query),
       kindsIn(env.DB, project.id),
       waitingWork(env.DB, project, viewer),
       searchItems(env.DB, project.id, {}),
+      unsavedItems(env.DB, project.id),
     ]);
     // A data kind (the lab registry) is published with no page; it stays out of the writing list, as
     // the index keeps it out (index.server.ts, writingKinds). The counts then cover more than the rows, so they go.
     const isData = (r: { kind: string; status: string; path: string | null }) => !writing.includes(r.kind) && r.status === "published" && r.path === null;
-    const rows = kit.rows.filter((r) => !isData(r)).map((r) => ({ ...r, notes: r.notes?.map((n) => ({ text: n.text, tone: "info" as const })) }));
+    // A5: a row whose room holds unsaved changes says so; a live one says the public sees the older text.
+    const rows = kit.rows
+      .filter((r) => !isData(r))
+      .map((r) => {
+        const notes = [...(unsaved.has(r.id) && !r.trashedAt ? [{ text: unsavedNote(r.status) }] : []), ...(r.notes ?? [])].map((n) => ({ text: n.text, tone: "info" as const }));
+        return { ...r, notes: notes.length > 0 ? notes : undefined };
+      });
     const dropped = rows.length < kit.rows.length;
     const data: PostsData = {
       ...kit,

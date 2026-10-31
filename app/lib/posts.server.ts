@@ -13,7 +13,7 @@
 // - Carrel's own state: a post with unsaved changes in Carrel is left alone by a tag change or a
 //   rename, a copy never takes an id Carrel already uses, and a row says when AI drafts wait on it.
 
-import { runPostsIntent, type ContentSource, type IntentResult } from "@dustinedwards/site-api/admin";
+import { runPostsIntent, type ContentSource, type Fields, type IntentResult } from "@dustinedwards/site-api/admin";
 import type { SiteClient } from "@dustinedwards/site-api/client";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -23,7 +23,7 @@ import { indexDoc, refreshIndex, removeFromIndex } from "~/lib/index.server";
 import type { Viewer } from "~/lib/people.server";
 import { answer, kitBase } from "~/lib/kit.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
-import { siteClient, siteUnreachable } from "~/lib/sites.server";
+import { actorOf, siteBacklinks, siteClient, siteExtras, siteUnreachable, type Backlink } from "~/lib/sites.server";
 import { waitingWork } from "~/lib/waiting.server";
 
 /** The authorship record's action for each kind the kit records. Tags are a save of the post, as an editor's save is. */
@@ -66,7 +66,7 @@ const editorHref = (slug: string, id: string) => `/p/${encodeURIComponent(slug)}
 
 /** One site's posts, as the content kit reads and writes them for this person. */
 export function postsSource(env: Env, project: SiteProject, viewer: Viewer, fetcher?: typeof fetch): ContentSource {
-  const client = siteClient(env, project.site, fetcher);
+  const client = siteClient(env, project.site, fetcher, actorOf(viewer));
   const writes = new Map<string, Write>();
   return {
     ...kitBase(env, project),
@@ -135,6 +135,36 @@ export async function runIntent(env: Env, viewer: Viewer, slug: string | undefin
       const done = await refreshIndex(env, { id: project.id, site: project.site });
       return { ok: true, message: `${done.listed} posts listed, ${done.fetched} read in full${done.pending > 0 ? `, ${done.pending} more on the next refresh` : ""}.` };
     }
-    return await runPostsIntent(postsSource(env, project, viewer), form);
+    const intent = String(form.get("intent") ?? "");
+    const linking = intent === "delete" || intent === "trash" ? await linkingPosts(env, project, form) : [];
+    if (linking.length === 0) return await runPostsIntent(postsSource(env, project, viewer), form);
+    // F4: a trash, which Undo brings back, asks first only because other posts link here.
+    if (intent === "trash" && form.get("backlinks") !== "seen") {
+      const ids = form.getAll("ids").map(String);
+      const fields: Fields = {};
+      for (const k of new Set(form.keys())) if (k !== "intent") fields[k] = form.getAll(k).map(String);
+      fields.backlinks = "seen";
+      const noun = ids.length === 1 ? "this post" : "these posts";
+      return { ok: false, message: "Other posts link here.", confirm: { intent, title: `Move ${ids.length === 1 ? "1 post" : `${ids.length} posts`} to the Trash?`, lead: linkingLead(linking, noun, "lead nowhere while it is in the Trash"), action: "Move to the Trash", items: ids, fields } };
+    }
+    const result = await runPostsIntent(postsSource(env, project, viewer), form);
+    return result.confirm ? { ...result, confirm: { ...result.confirm, lead: `${result.confirm.lead ?? ""} ${linkingLead(linking, form.getAll("ids").length === 1 ? "this post" : "these posts", "break")}`.trim() } } : result;
   }, siteUnreachable);
+}
+
+/** The posts outside this change that link to the ones it trashes or deletes, where the site says (site-api v0.19.0 `backlinks`). */
+async function linkingPosts(env: Env, project: SiteProject, form: FormData): Promise<Backlink[]> {
+  const client = siteClient(env, project.site);
+  await client.meta();
+  if (!siteExtras(client).backlinks) return [];
+  const ids = new Set(form.getAll("ids").map(String));
+  const found = new Map<string, Backlink>();
+  for (const id of ids) for (const link of await siteBacklinks(env, project.site, id)) if (!ids.has(link.id)) found.set(link.id, link);
+  return [...found.values()];
+}
+
+/** "2 other posts link to this post: “A” (/blog/a), “B”. Their links break." */
+function linkingLead(linking: Backlink[], noun: string, fate: string): string {
+  const named = linking.map((l) => `“${l.title}”${l.path ? ` (${l.path})` : ""}`).join(", ");
+  return `${linking.length === 1 ? "1 other post links" : `${linking.length} other posts link`} to ${noun}: ${named}. ${linking.length === 1 ? "Its link would" : "Their links would"} ${fate}.`;
 }
