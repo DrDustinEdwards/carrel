@@ -98,7 +98,7 @@ jobs:
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@e99e4651b943f83b6591309b2151e7332786e64a # v0.20.2
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@f55d2caadaa7a18a73397fb8defffb2e3123967b # v0.20.3
     with:
       worker-name: carrel-desk
       d1-database: carrel
