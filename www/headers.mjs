@@ -20,6 +20,7 @@ const PAGE_CSP = buildContentSecurityPolicy({
   cloudflareWebAnalytics: true,
   reportUri: REPORT_PATH,
   reportTo: "csp-endpoint",
+  extraDirectives: ["manifest-src 'self'"],
 }).value;
 
 const REPORTING_ENDPOINTS = reportingEndpoints("csp-endpoint", new URL(REPORT_PATH, "https://carrel.dustinedwards.info"));
