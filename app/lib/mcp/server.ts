@@ -41,19 +41,14 @@ const INSTRUCTIONS = [
 
 const MAX_TOOL_INPUT_ELEMENTS = 10_000;
 
-/** The call log's binding. Cast because site-runtime types it as the untyped namespace (0.35.0). */
-export const callLog = (env: Env) => ({ TOOL_CALL_LOG: env.TOOL_CALL_LOG as unknown as DurableObjectNamespace });
-
 /**
- * The caller as invokeTool names it: an agent by its name, anyone else by the email the door verified.
- * invokeTool's own check is a single-administrator one, so it is handed the person the door found as
- * that administrator: the person check is the door's, and what they may do is decided by their role
- * in the functions every tool calls.
+ * The caller as invokeTool names it: an agent by its name, anyone else as the person the door
+ * verified. What they may do is decided by their role in the functions every tool calls.
  */
 function callerOf(session: McpSession): McpCaller {
-  const agent = /^agent:([a-z0-9_]+)$/.exec(session.viewer.email);
+  const agent = /^agent:(.+)$/.exec(session.viewer.email);
   if (agent) return { kind: "agent", principal: agent[1]!, scopes: session.scopes };
-  return { kind: "admin", props: { email: session.viewer.email, clientId: session.clientId }, scopes: session.scopes };
+  return { kind: "person", email: session.viewer.email, clientId: session.clientId, scopes: session.scopes };
 }
 
 /**
@@ -70,9 +65,8 @@ function buildServer(env: Env, session: McpSession, deps: ToolDeps) {
       maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
       cacheHints: mcpCacheHints({ shared: ["tools/list", "server/discover"] }),
     });
-    const log = { ADMIN_EMAIL: session.viewer.email, ...callLog(env) };
     for (const tool of TOOLS) {
-      const challenge = toolScopeChallenge(log, MCP_SERVER, tool);
+      const challenge = toolScopeChallenge(env, MCP_SERVER, tool);
       server.registerTool(
         tool.name,
         {
@@ -87,7 +81,7 @@ function buildServer(env: Env, session: McpSession, deps: ToolDeps) {
         },
         async (args: unknown, ctx) => {
           const input = (args ?? {}) as Record<string, unknown>;
-          return invokeTool(log, MCP_SERVER, { caller: callerOf(session), tool, args: input, meta: ctx.mcpReq._meta as { traceparent?: unknown } | undefined, run: () => runTool(tool, input, { env, session, deps }) });
+          return invokeTool(env, MCP_SERVER, { caller: callerOf(session), tool, args: input, meta: ctx.mcpReq._meta, run: () => runTool(tool, input, { env, session, deps }) });
         },
       );
     }

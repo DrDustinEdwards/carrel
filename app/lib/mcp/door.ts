@@ -34,7 +34,7 @@ import { deployedSha } from "~/lib/deployed";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
-import { callLog, carrelOrigin, handleMcp, MCP_ROUTE, MCP_SERVER } from "./server";
+import { carrelOrigin, handleMcp, MCP_ROUTE, MCP_SERVER } from "./server";
 
 /** What a grant stores, encrypted, and hands to every request made with its tokens. */
 type DoorProps = { personId: number; email: string; scopes: string[]; client: string; clientId: string };
@@ -84,7 +84,7 @@ function liveness(env: Env): Response {
 async function rateLimited(env: Env, personId: number, caller: string): Promise<Response | null> {
   const { allowed, retryAfter } = await checkRateLimit(env.MCP_RATE_LIMIT, `person:${personId}`);
   if (allowed) return null;
-  await recordAudit(callLog(env), { callId: crypto.randomUUID(), phase: "rate-limited", caller, server: { name: MCP_SERVER.name, version: MCP_SERVER.version } });
+  await recordAudit(env, { callId: crypto.randomUUID(), phase: "rate-limited", caller, server: { name: MCP_SERVER.name, version: MCP_SERVER.version } });
   const out = text(`Too many requests. Try again in ${retryAfter} seconds.`, 429);
   out.headers.set("Retry-After", String(retryAfter));
   return out;
@@ -140,7 +140,7 @@ export const apiHandler = {
       console.warn(JSON.stringify({ door: "refused", reason: viewer ? "person-changed" : "unknown-person" }));
       return text("Forbidden. This grant does not belong to an active person in Carrel.", 403);
     }
-    const throttled = await rateLimited(env, viewer.id, `access:${viewer.email}`);
+    const throttled = await rateLimited(env, viewer.id, `person:${viewer.email}`);
     if (throttled) return throttled;
     const session = { viewer, client: props.client || "an unnamed AI client", clientId: props.clientId, scopes: effectiveScopes(auth?.scope ?? []) };
     const response = await handleMcp(request, env, ctx, session, { carrelOrigin: carrelOrigin(env) });
