@@ -6,7 +6,7 @@
 //
 // The ruling of 2026-10-10 (capsid/rulings/mcp-2026-10-10.md) sets the shape around them: names
 // prefixed carrel_, all four annotation hints on every tool, a cursor on the one list that can run
-// long, a declared scope on every tool (a write needs carrel:write), a notice on every answer that
+// long, a declared scope on every tool (a write needs carrel.write), a notice on every answer that
 // carries text from outside Carrel, and the call log's rows for every call (server.ts, site-runtime's
 // invokeTool).
 //
