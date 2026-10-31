@@ -21,7 +21,9 @@ const e = process.env;
 if (args[0] === "d1" && args[1] === "list") {
   console.log(JSON.stringify([{ uuid: e.STUB_D1_ID, name: "carrel" }, { uuid: "x", name: "other" }]));
 } else if (args[0] === "kv") {
-  console.log(JSON.stringify([{ id: e.STUB_KV_ID, title: "carrel-oauth" }, { id: "y", title: "OAUTH_KV" }]));
+  const kv = [{ id: e.STUB_KV_ID, title: e.STUB_KV_TITLE || "carrel-desk-oauth" }, { id: "y", title: "OAUTH_KV" }];
+  if (e.STUB_KV_SECOND) kv.push({ id: e.STUB_KV_SECOND, title: "carrel-oauth" });
+  console.log(JSON.stringify(kv));
 } else if (args[0] === "deploy") {
   if (e.STUB_FAIL === "deploy") process.exit(1);
 }
@@ -149,7 +151,15 @@ for (const [label, env] of refusals) {
 }
 {
   const r = attempt({ ...GOOD, STUB_KV_ID: "ffffffffffffffffffffffffffffffff" });
-  expect("KV id that is not the one titled carrel-oauth: refuses, no deploy", r.code !== 0 && !deployed(r), JSON.stringify(r.calls));
+  expect("KV id that is not the one titled carrel-desk-oauth: refuses, no deploy", r.code !== 0 && !deployed(r), JSON.stringify(r.calls));
+}
+{
+  const r = attempt({ ...GOOD, STUB_KV_TITLE: "carrel-oauth" });
+  expect("the namespace still under its old title carrel-oauth: deploys", r.code === 0 && deployed(r), `exit ${r.code} ${JSON.stringify(r.calls)}`);
+}
+{
+  const r = attempt({ ...GOOD, STUB_KV_SECOND: "ffffffffffffffffffffffffffffffff" });
+  expect("both titles present: refuses, no deploy", r.code !== 0 && !deployed(r), JSON.stringify(r.calls));
 }
 {
   const r = attempt(GOOD, { realConfig: true });
