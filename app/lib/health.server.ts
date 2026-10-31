@@ -256,7 +256,7 @@ export async function runChecks(
  * The scoreboard's report: every connected site's conformance, keyed by its origin. A site not
  * connected yet is left out, so the scoreboard, not this report, decides whether that is expected.
  */
-export function conformanceReport(results: CheckResult[], at: string) {
+function conformanceReport(results: CheckResult[], at: string) {
   const sites: Record<string, SiteConformance> = {};
   for (const r of results) if (r.conformance) sites[r.conformance.origin] = { status: r.conformance.status, findings: r.conformance.findings };
   return { check: "carrel-conformance", at, ref: `site-api v${PACKAGE_VERSION}`, sites };
