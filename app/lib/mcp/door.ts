@@ -19,14 +19,15 @@
 //   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
-//   /health                       liveness, and the deployed commit for the deploy's live gate
+//   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
 //   anything else                 404
 
 import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
 
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
-import { deployedSha } from "~/lib/deployed";
+import { healthAnswer } from "~/lib/health.server";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
@@ -63,17 +64,6 @@ function text(body: string, status: number): Response {
 }
 
 /**
- * Liveness on the AI door, the one Carrel host outside Access, so CI can read it before anyone signs in.
- * The live gate polls it until `sha` is the commit it deployed. It says nothing else: no backup age, no
- * table, no error text (the backup health stays on the browser host's /health, behind Access).
- */
-function liveness(env: Env): Response {
-  const out = new Headers({ "Content-Type": "application/json; charset=utf-8" });
-  for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.set(name, value);
-  return new Response(JSON.stringify({ ok: true, sha: deployedSha(env) }), { status: 200, headers: out });
-}
-
-/**
  * Grok and Gemini still register (as of 2026-10-09; ruling capsid/rulings/mcp-2026-10-10.md, rule 13).
  * A registration names only callbacks listed exactly: the ones every user shares (DCR_CALLBACKS) and
  * any exact https callback in DCR_REDIRECT_URIS (a per-connector id), read loosely because an older
@@ -85,8 +75,8 @@ const REGISTER_PATH = "/register";
 const registrationAllowlist = (env: Env) => [...DCR_CALLBACKS, (env as { DCR_REDIRECT_URIS?: string }).DCR_REDIRECT_URIS ?? ""].join(",");
 
 /**
- * Everything on this host the provider does not own: /health, the consent page (shown for every
- * authorization of every client, nothing remembers an approval) and the Access /callback.
+ * Everything else on this host the provider does not own: the consent page (shown for every authorization
+ * of every client, nothing remembers an approval) and the Access /callback.
  */
 const login = loginHandler<DoorEnv>({
   name: "Carrel",
@@ -102,7 +92,6 @@ const login = loginHandler<DoorEnv>({
   },
   // A client that names no Carrel scope, or the legacy one, is offered writing too (scopes.ts).
   wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),
-  health: liveness,
 });
 
 /**
@@ -117,12 +106,12 @@ export const apiHandler = {
     // provider, so a provider set up for a second resource could never hand Carrel a token for it.
     // Nothing passes the token on: the site and the novels repository take Carrel's own keys.
     if (auth?.audience !== `${mcpOrigin(env)}${MCP_ROUTE}`) {
-      console.warn(JSON.stringify({ door: "refused", reason: "audience", audience: auth?.audience ?? null }));
+      logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "audience", audience: auth?.audience ?? null }, { level: "warn" });
       return text("Forbidden. This token was not issued for Carrel.", 403);
     }
     const viewer = props?.email ? await findViewer(env.DB, props.email) : null;
     if (!viewer || viewer.id !== props?.personId) {
-      console.warn(JSON.stringify({ door: "refused", reason: viewer ? "person-changed" : "unknown-person" }));
+      logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: viewer ? "person-changed" : "unknown-person" }, { level: "warn" });
       return text("Forbidden. This grant does not belong to an active person in Carrel.", 403);
     }
     const session = { viewer, client: props.client || "an unnamed AI client", scopes: effectiveScopes(auth.scope ?? []) };
@@ -143,10 +132,10 @@ export const apiHandler = {
 async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, name: string): Promise<Response> {
   const viewer = await findAgentViewer(env.DB, name);
   if (!viewer) {
-    console.warn(JSON.stringify({ door: "refused", reason: "agent-not-in-carrel", agent: name }));
+    logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "agent-not-in-carrel", agent: name }, { level: "warn" });
     return text("Forbidden. This agent key does not belong to an active agent in Carrel.", 403);
   }
-  console.log(JSON.stringify({ door: "agent-key-accepted", agent: name }));
+  logEvent("agent_key_accepted", { agent: name });
   const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES }, { carrelOrigin: carrelOrigin(env) });
   const out = new Response(response.body, response);
   for (const [header, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(header, value);
@@ -198,6 +187,7 @@ function providerFor(env: Env): OAuthProvider<Env> {
 /** Serves one request that arrived on the AI door's hostname. */
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
+  if (pathname === "/health") return healthAnswer(env);
   if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
     // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
     const agent = await agentPrincipal(env, request.headers.get("Authorization"));
