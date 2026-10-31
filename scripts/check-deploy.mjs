@@ -36,9 +36,14 @@ require("node:fs").appendFileSync(process.env.STUB_LOG, "build\\n");
 if (process.env.STUB_FAIL === "build") process.exit(1);
 `;
 
+const headersStub = `
+require("node:fs").appendFileSync(process.env.STUB_LOG, "headers\\n");
+`;
+
 const dir = mkdtempSync(join(tmpdir(), "carrel-deploy-"));
 writeFileSync(join(dir, "wrangler-stub.cjs"), wranglerStub);
 writeFileSync(join(dir, "build-stub.cjs"), buildStub);
+writeFileSync(join(dir, "headers-stub.cjs"), headersStub);
 writeFileSync(join(dir, "migrations-stub.cjs"), migrationsStub);
 
 /**
@@ -57,6 +62,7 @@ function attempt(env, { realConfig = false, args = [] } = {}) {
       CARREL_ROOT: proj,
       WRANGLER_ENTRY: join(dir, "wrangler-stub.cjs"),
       BUILD_ENTRY: join(dir, "build-stub.cjs"),
+      HEADERS_ENTRY: join(dir, "headers-stub.cjs"),
       MIGRATIONS_ENTRY: join(dir, "migrations-stub.cjs"),
       STUB_LOG: log,
       STUB_D1_ID: D1,
