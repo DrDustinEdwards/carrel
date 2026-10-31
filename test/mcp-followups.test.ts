@@ -145,25 +145,25 @@ describe("export refuses a book with import markers", () => {
 
 describe("carrel_draft_social_post", () => {
   async function socialAccount() {
-    const projectId = await addProject("germomics", "dustinedwards");
+    const projectId = await addProject("field-notes", "dustinedwards");
     const owner = await viewerFor("owner@test.invalid");
-    await createAccount(testEnv.DB, owner, { key: "germomics-bluesky", name: "Germomics", platform: "bluesky", kind: "brand", handle: "g.bsky.social", projectId });
+    await createAccount(testEnv.DB, owner, { key: "example-bluesky", name: "Example Co", platform: "bluesky", kind: "brand", handle: "g.bsky.social", projectId });
     const row = await testEnv.DB.prepare("SELECT id FROM social_accounts").first<{ id: number }>();
     await setSwitches(testEnv.DB, owner, row!.id, { enabled: true });
-    await recordPublication(testEnv.DB, projectId, { id: "ep-1", title: "Episode 1", url: "https://site.test/ep-1", summary: "" });
+    await recordPublication(testEnv.DB, projectId, { id: "note-1", title: "Field notes 1", url: "https://site.test/note-1", summary: "" });
     return (await testEnv.DB.prepare("SELECT id FROM social_events").first<{ id: number }>())!.id;
   }
 
   it("stores the Owner's session's draft by event id, credited to the client", async () => {
     const eventId = await socialAccount();
-    const result = await (await connect("owner@test.invalid", "Claude Code"))("carrel_draft_social_post", { event_id: eventId, text: "Episode 1 is out: https://site.test/ep-1" });
+    const result = await (await connect("owner@test.invalid", "Claude Code"))("carrel_draft_social_post", { event_id: eventId, text: "Field notes 1 is out: https://site.test/note-1" });
     expect(result.structuredContent).toMatchObject({ stored: true });
     expect(await testEnv.DB.prepare("SELECT source, status, created_by FROM social_posts").first()).toEqual({ source: "predrafted", status: "drafted", created_by: "Claude Code" });
   });
 
   it("stores by account, project and item too", async () => {
     await socialAccount();
-    const result = await (await connect("owner@test.invalid"))("carrel_draft_social_post", { account: "germomics-bluesky", project: "germomics", item: "ep-2", text: "Episode 2." });
+    const result = await (await connect("owner@test.invalid"))("carrel_draft_social_post", { account: "example-bluesky", project: "field-notes", item: "note-2", text: "Field notes 2." });
     expect(result.structuredContent).toMatchObject({ stored: true });
   });
 

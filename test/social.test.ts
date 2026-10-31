@@ -78,20 +78,20 @@ async function posts() {
   return (await socialOverview(testEnv.DB, await owner())).posts.map((p) => ({ ...p.post, accountKey: p.accountKey }));
 }
 
-const PIECE = { id: "post-one", title: "Stromatolites of the Paluxy", url: "https://site.test/blog/post-one", summary: "What the river keeps." };
+const PIECE = { id: "post-one", title: "Spring update", url: "https://site.test/blog/post-one", summary: "What changed this season." };
 
 beforeEach(async () => {
   clearBlueskySessions();
   await resetDb();
   await addPerson("owner@test.invalid", { owner: true });
   await runBackup(testEnv); // the health check wants a fresh dump
-  projectId = await addProject("germomics", "dustinedwards");
+  projectId = await addProject("field-notes", "dustinedwards");
   env = {
     ...connectedEnv(),
     SOCIAL_ROUTINE_URL: ROUTINE_URL,
     SOCIAL_ROUTINE_TOKEN: "sk-ant-oat01-test",
-    SOCIAL_GERMOMICS_BLUESKY_BLUESKY_APP_PASSWORD: "app-pass",
-    SOCIAL_FOXING_BLUESKY_BLUESKY_APP_PASSWORD: "app-pass-2",
+    SOCIAL_EXAMPLE_BLUESKY_BLUESKY_APP_PASSWORD: "app-pass",
+    SOCIAL_SAMPLE_BLUESKY_BLUESKY_APP_PASSWORD: "app-pass-2",
     SOCIAL_DUSTIN_X_X_API_KEY: "k",
     SOCIAL_DUSTIN_X_X_API_SECRET: "s",
     SOCIAL_DUSTIN_X_X_ACCESS_TOKEN: "t",
@@ -144,9 +144,9 @@ describe("X signing", () => {
 
 describe("the primary path: a draft stored ahead", () => {
   it("sends the pre-drafted post when the piece goes live, with no routine and no AI", async () => {
-    await account("germomics-bluesky");
+    await account("example-bluesky");
     const world = fakeWorld();
-    expect(await draftSocialPost(testEnv.DB, { accountKey: "germomics-bluesky", projectId, itemId: "post-one", text: `New episode: Stromatolites. ${PIECE.url}`, createdBy: "Claude 1.0" })).toMatchObject({ ok: true });
+    expect(await draftSocialPost(testEnv.DB, { accountKey: "example-bluesky", projectId, itemId: "post-one", text: `New post: Spring update. ${PIECE.url}`, createdBy: "Claude 1.0" })).toMatchObject({ ok: true });
 
     // Before it goes live, nothing moves.
     expect((await processSocial(env, { fetcher: world.fetch, now: NOW })).sent).toBe(0);
@@ -155,15 +155,15 @@ describe("the primary path: a draft stored ahead", () => {
     expect(tick).toMatchObject({ linted: 1, sent: 1, routineFired: 0, templated: 0 });
     expect(world.fires).toEqual([]);
     const record = world.sent.find((s) => s.url.endsWith("createRecord"))!;
-    expect(record.body).toMatchObject({ collection: "app.bsky.feed.post", record: { text: `New episode: Stromatolites. ${PIECE.url}` } });
+    expect(record.body).toMatchObject({ collection: "app.bsky.feed.post", record: { text: `New post: Spring update. ${PIECE.url}` } });
     expect((record.body.record as { facets: unknown[] }).facets).toHaveLength(1);
     expect((await posts())[0]).toMatchObject({ status: "sent", source: "predrafted", createdBy: "Claude 1.0" });
   });
 
   it("PLANT: a post failing the lint is held, and goes only once edited and approved", async () => {
-    const id = await account("germomics-bluesky");
+    const id = await account("example-bluesky");
     const world = fakeWorld();
-    await draftSocialPost(testEnv.DB, { accountKey: "germomics-bluesky", projectId, itemId: "post-one", text: "Great question: the Paluxy is a masterpiece.", createdBy: "Claude" });
+    await draftSocialPost(testEnv.DB, { accountKey: "example-bluesky", projectId, itemId: "post-one", text: "Great question: the spring update is a masterpiece.", createdBy: "Claude" });
     await recordPublication(testEnv.DB, projectId, PIECE, NOW);
     await processSocial(env, { fetcher: world.fetch, now: NOW });
     const [held] = await posts();
@@ -174,7 +174,7 @@ describe("the primary path: a draft stored ahead", () => {
     const o = await owner();
     expect(await decidePost(testEnv.DB, o, held!.id, { action: "approve" })).toMatchObject({ ok: false });
     await setSwitches(testEnv.DB, o, id, { mode: "approval" });
-    expect(await decidePost(testEnv.DB, o, held!.id, { action: "edit", text: `A new episode on the Paluxy's stromatolites. ${PIECE.url}` })).toMatchObject({ ok: true, findings: [] });
+    expect(await decidePost(testEnv.DB, o, held!.id, { action: "edit", text: `A new post on what changed this spring. ${PIECE.url}` })).toMatchObject({ ok: true, findings: [] });
     expect(await decidePost(testEnv.DB, o, held!.id, { action: "approve" })).toEqual({ ok: true });
     expect((await processSocial(env, { fetcher: world.fetch, now: NOW })).sent).toBe(1);
   });
@@ -182,13 +182,13 @@ describe("the primary path: a draft stored ahead", () => {
 
 describe("the routine, and the template only after it fails", () => {
   async function published() {
-    await account("germomics-bluesky");
+    await account("example-bluesky");
     await recordPublication(testEnv.DB, projectId, PIECE, NOW);
   }
 
   it("batches waiting items across accounts into one routine run, after the batch delay", async () => {
-    await account("germomics-bluesky");
-    await account("foxing-bluesky");
+    await account("example-bluesky");
+    await account("sample-bluesky");
     await recordPublication(testEnv.DB, projectId, PIECE, NOW);
     const world = fakeWorld();
     expect((await processSocial(env, { fetcher: world.fetch, now: NOW })).routineFired).toBe(0); // Still gathering.
@@ -196,9 +196,9 @@ describe("the routine, and the template only after it fails", () => {
     expect(tick).toMatchObject({ routineFired: 1, templated: 0 });
     expect(world.fires).toHaveLength(1);
     expect(world.fires[0]!.headers).toMatchObject({ authorization: "Bearer sk-ant-oat01-test", "anthropic-version": "2023-06-01" });
-    expect(world.fires[0]!.text).toContain("germomics-bluesky");
-    expect(world.fires[0]!.text).toContain("foxing-bluesky");
-    expect(world.fires[0]!.text).toContain('Dustin\'s summary: <data label="summary">What the river keeps.</data>');
+    expect(world.fires[0]!.text).toContain("example-bluesky");
+    expect(world.fires[0]!.text).toContain("sample-bluesky");
+    expect(world.fires[0]!.text).toContain('Dustin\'s summary: <data label="summary">What changed this season.</data>');
     expect(world.fires[0]!.text).toContain("do not reply to anyone");
   });
 
@@ -206,7 +206,7 @@ describe("the routine, and the template only after it fails", () => {
     await published();
     const world = fakeWorld();
     await processSocial(env, { fetcher: world.fetch, now: later(BATCH_DELAY_MS) });
-    await draftSocialPost(testEnv.DB, { accountKey: "germomics-bluesky", projectId, itemId: "post-one", text: `Stromatolites, and what the river keeps. ${PIECE.url}`, createdBy: "routine" });
+    await draftSocialPost(testEnv.DB, { accountKey: "example-bluesky", projectId, itemId: "post-one", text: `Spring update, and what changed this season. ${PIECE.url}`, createdBy: "routine" });
     const tick = await processSocial(env, { fetcher: world.fetch, now: later(BATCH_DELAY_MS + 60_000) });
     expect(tick).toMatchObject({ sent: 1, templated: 0 });
     expect((await posts()).map((p) => [p.source, p.status])).toEqual([["routine", "sent"]]);
@@ -263,7 +263,7 @@ describe("the routine, and the template only after it fails", () => {
 
 describe("PLANT: the health email when a template post goes out", () => {
   it("emails once when it goes out, stays failing until Dustin marks it seen, then recovers", async () => {
-    await account("germomics-bluesky");
+    await account("example-bluesky");
     await recordPublication(testEnv.DB, projectId, PIECE, NOW);
     const e = { ...env, SOCIAL_ROUTINE_URL: undefined } as Env;
     await processSocial(e, { fetcher: fakeWorld().fetch, now: later(BATCH_DELAY_MS) });
@@ -273,7 +273,7 @@ describe("PLANT: the health email when a template post goes out", () => {
     await runHealth({ ...testEnv, EMAIL: box.EMAIL }, certs);
     await runHealth({ ...testEnv, EMAIL: box.EMAIL }, certs);
     expect(box.sent).toHaveLength(1);
-    expect(box.sent[0]!.text).toContain(`FAIL social-templates: 1 template post went out because the routine did not draft it: germomics-bluesky: "New: ${PIECE.title}.`);
+    expect(box.sent[0]!.text).toContain(`FAIL social-templates: 1 template post went out because the routine did not draft it: example-bluesky: "New: ${PIECE.title}.`);
 
     const [template] = await posts();
     await decidePost(testEnv.DB, await owner(), template!.id, { action: "acknowledge" });
@@ -284,7 +284,7 @@ describe("PLANT: the health email when a template post goes out", () => {
 
 describe("switches and caps", () => {
   it("an account that is off when a piece goes live posts nothing, then or later", async () => {
-    const id = await account("germomics-bluesky");
+    const id = await account("example-bluesky");
     await setSwitches(testEnv.DB, await owner(), id, { enabled: false });
     await recordPublication(testEnv.DB, projectId, PIECE, NOW);
     await setSwitches(testEnv.DB, await owner(), id, { enabled: true });
@@ -302,10 +302,10 @@ describe("switches and caps", () => {
   });
 
   it("keeps to the daily cap and the gap between posts, and posts the rest later", async () => {
-    await account("germomics-bluesky");
+    await account("example-bluesky");
     const world = fakeWorld();
     for (const n of [1, 2, 3, 4]) {
-      await draftSocialPost(testEnv.DB, { accountKey: "germomics-bluesky", projectId, itemId: `post-${n}`, text: `Piece ${n}.`, createdBy: "s" });
+      await draftSocialPost(testEnv.DB, { accountKey: "example-bluesky", projectId, itemId: `post-${n}`, text: `Piece ${n}.`, createdBy: "s" });
       await recordPublication(testEnv.DB, projectId, { ...PIECE, id: `post-${n}` }, NOW);
     }
     expect((await processSocial(env, { fetcher: world.fetch, now: NOW })).sent).toBe(1); // The gap.
@@ -341,25 +341,25 @@ describe("the lint", () => {
     expect(lintPost("x".repeat(281), "x", [])).toEqual(["281 characters, over X's 280."]);
     expect(lintPost(`${"x".repeat(250)} https://example.com/${"a".repeat(80)}`, "x", [])).toEqual([]); // A link counts as 23.
     expect(lintPost("@someone great point", "bluesky", [])).toEqual(["It opens with an @handle, which reads as a reply."]);
-    expect(lintPost("It's not just a podcast, it's a movement.", "bluesky", [])).toEqual([`"not just a podcast, it's": Say what it is. "Not X, it's Y" sets up a claim nobody made.`]);
-    expect(lintPost("New episode on the river's stromatolites.", "bluesky", [])).toEqual([]);
+    expect(lintPost("It's not just a newsletter, it's a movement.", "bluesky", [])).toEqual([`"not just a newsletter, it's": Say what it is. "Not X, it's Y" sets up a claim nobody made.`]);
+    expect(lintPost("New post on the spring survey.", "bluesky", [])).toEqual([]);
     // A word the site's own posts use is not flagged.
-    expect(lintPost("A masterpiece of an episode.", "bluesky", [])).toHaveLength(1);
-    expect(lintPost("A masterpiece of an episode.", "bluesky", ["The edit was a small masterpiece, and nobody noticed the cut."])).toEqual([]);
+    expect(lintPost("A masterpiece of a post.", "bluesky", [])).toHaveLength(1);
+    expect(lintPost("A masterpiece of a post.", "bluesky", ["The edit was a small masterpiece, and nobody noticed the cut."])).toEqual([]);
   });
 });
 
 describe("a publish records the event", () => {
   it("records the piece's title, address and summary for its accounts when it goes live through Carrel", async () => {
-    await account("germomics-bluesky");
+    await account("example-bluesky");
     const site = fakeSite();
     const viewer = await owner();
-    const project = await requireSiteProject(testEnv.DB, viewer, "germomics", "publish");
-    const saved = await writeToSite(env, project, viewer, "post-one", { action: "save", source: "---\ntitle: Stromatolites\ndescription: What the river keeps.\n---\nBody.\n", expectedVersion: null }, site.fetch);
+    const project = await requireSiteProject(testEnv.DB, viewer, "field-notes", "publish");
+    const saved = await writeToSite(env, project, viewer, "post-one", { action: "save", source: "---\ntitle: Spring update\ndescription: What changed this season.\n---\nBody.\n", expectedVersion: null }, site.fetch);
     if (!saved.ok) throw new Error(saved.message);
     await writeToSite(env, project, viewer, "post-one", { action: "publish", expectedVersion: saved.version }, site.fetch);
     const event = await testEnv.DB.prepare("SELECT title, url, summary, published_at FROM social_events").first<{ title: string; url: string; summary: string; published_at: string }>();
-    expect(event).toMatchObject({ title: "Stromatolites", summary: "What the river keeps." });
+    expect(event).toMatchObject({ title: "Spring update", summary: "What changed this season." });
     expect(event!.published_at).not.toBeNull();
   });
 });
