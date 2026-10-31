@@ -14,7 +14,7 @@ import { carrelDesk, carrelMcp } from "@dustinedwards/site-runtime/sites";
 export const CSP_REPORT_PATH = "/csp-report";
 
 /** The browser host's set: Desk's entry in site-runtime's registry (./sites), the shared standard exactly. */
-export const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: carrelDesk }));
+const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: carrelDesk }));
 
 /** The AI door's set, for its CSP sink (csp-report.ts); withMcpHeaders (workers/app.ts) sets everything else there. */
 export const doorSecurityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: carrelMcp }));
