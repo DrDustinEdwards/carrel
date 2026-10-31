@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { addPerson as adminAddPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
-import { findViewer } from "~/lib/people.server";
+import { deskPeopleEmails, findViewer } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as peopleAction, loader as peopleLoader } from "~/routes/people";
 import { action as flagsAction, loader as flagsLoader } from "~/routes/project.flags";
@@ -79,6 +79,12 @@ describe("the people page", () => {
     expect(await findViewer(testEnv.DB, "wife@test.invalid")).toBeNull();
     await peopleAction({ request: form({ intent: "enable", person: String(id) }), params: {}, context } as never);
     expect(await findViewer(testEnv.DB, "wife@test.invalid")).toMatchObject({ email: "wife@test.invalid" });
+  });
+
+  it("gives the drift check everyone the Desk lets in: not a reviewer, an agent or a disabled person", async () => {
+    await addPerson("agent:sample");
+    await addPerson("gone@test.invalid", { disabled: true });
+    expect((await deskPeopleEmails(testEnv.DB)).sort()).toEqual(["editor@test.invalid", "owner@test.invalid", "reader@test.invalid", "stranger@test.invalid"]);
   });
 
   it("refuses an email already in Carrel, and one that is not an email", async () => {

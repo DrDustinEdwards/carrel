@@ -6,14 +6,12 @@
 // sets a security header, except a route that chooses its own policy on purpose (the preview, the
 // print export), which is kept.
 
-import { buildContentSecurityPolicy, generateNonce, reportingEndpoints } from "@dustinedwards/site-runtime/csp";
+import { CSP_REPORT_GROUP, buildContentSecurityPolicy, buildStagedPolicy, generateNonce, reportingEndpoints } from "@dustinedwards/site-runtime/csp";
 import { applyHeaderSet, buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
 import { carrelDesk, carrelMcp } from "@dustinedwards/site-runtime/sites";
 
 /** Where browsers send violation reports: a path on the AI door, the one Carrel host outside Access. */
 export const CSP_REPORT_PATH = "/csp-report";
-/** The `report-to` group name, declared by the Reporting-Endpoints header. */
-const CSP_REPORT_GROUP = "csp";
 
 /** The browser host's set: Desk's entry in site-runtime's registry (./sites), the shared standard exactly. */
 export const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: carrelDesk }));
@@ -36,8 +34,8 @@ const isHttpsOrigin = (origin: string) => /^https:\/\/[^\s;,'"]+$/.test(origin);
  * from the site that serves it, and nothing else may load an image. `reportOrigin` is the AI door's
  * origin, whose /csp-report is reachable without an Access session.
  */
-export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
-  return buildContentSecurityPolicy({
+function appOptions(nonce: string, imageOrigins: string[], reportOrigin: string): Parameters<typeof buildContentSecurityPolicy>[0] {
+  return {
     nonce,
     // 'strict-dynamic': the nonced entry scripts load the route chunks.
     strictDynamic: true,
@@ -53,7 +51,23 @@ export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrig
     // 'self' covers it, so no frame-src is written (site-runtime 0.26.0 refuses a redundant one).
     reportUri: `${reportOrigin}${CSP_REPORT_PATH}`,
     reportTo: CSP_REPORT_GROUP,
-  }).value;
+  };
+}
+
+export function appPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
+  return buildContentSecurityPolicy(appOptions(nonce, imageOrigins, reportOrigin)).value;
+}
+
+/**
+ * The Report-Only companion: the app policy with what Desk's registry entry stages ("report-only" denyUnlisted and
+ * trustedTypes, ./sites), so the reports name what the stricter policy would block before it blocks anything.
+ */
+function stagedAppPolicy(nonce: string, imageOrigins: string[] = [], reportOrigin = ""): string {
+  const options = appOptions(nonce, imageOrigins, reportOrigin);
+  // default-src 'none' no longer covers the editor's preview iframe, so frame-src names it ('self' plus Desk's origin;
+  // site-runtime always writes 'self' first and has no way to write it alone).
+  const sources = { ...options.sources, frame: [carrelDesk.origin] };
+  return buildStagedPolicy({ ...options, sources }, { denyUnlisted: true, trustedTypes: true }).value;
 }
 
 /** `set` stamped on the response, or on a copy when its headers cannot be changed (Response.redirect's cannot). */
@@ -68,7 +82,7 @@ function stamped(response: Response, set: Readonly<Record<string, string>>): Res
   }
 }
 
-function apply(response: Response, set: Readonly<Record<string, string>>, policy: string, reportOrigin: string): Response {
+function apply(response: Response, set: Readonly<Record<string, string>>, policy: string, staged: string, reportOrigin: string): Response {
   // The preview alone may be framed, and only by Carrel itself: its route says SAMEORIGIN, and nothing
   // a route says can loosen framing further than that.
   const framedByCarrel = response.headers.get("X-Frame-Options")?.trim().toUpperCase() === "SAMEORIGIN";
@@ -76,7 +90,10 @@ function apply(response: Response, set: Readonly<Record<string, string>>, policy
   const ownPolicy = response.headers.has("Content-Security-Policy");
   const out = stamped(response, set);
   if (framedByCarrel) out.headers.set("X-Frame-Options", "SAMEORIGIN");
-  if (!ownPolicy) out.headers.set("Content-Security-Policy", policy);
+  if (!ownPolicy) {
+    out.headers.set("Content-Security-Policy", policy);
+    out.headers.set("Content-Security-Policy-Report-Only", staged);
+  }
   if (reportOrigin) out.headers.set("Reporting-Endpoints", reportingEndpoints(CSP_REPORT_GROUP, new URL(CSP_REPORT_PATH, reportOrigin)));
   return out;
 }
@@ -87,5 +104,5 @@ export function withSecurityHeaders(
   nonce: string,
   { imageOrigins = [], reportOrigin = "" }: { imageOrigins?: string[]; reportOrigin?: string } = {},
 ): Response {
-  return apply(response, securityHeaders, appPolicy(nonce, imageOrigins, reportOrigin), reportOrigin);
+  return apply(response, securityHeaders, appPolicy(nonce, imageOrigins, reportOrigin), stagedAppPolicy(nonce, imageOrigins, reportOrigin), reportOrigin);
 }

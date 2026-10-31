@@ -1,4 +1,5 @@
 import { withAdminIdle } from "@dustinedwards/site-runtime/access";
+import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
 import { logEvent, withRequestLog } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
@@ -16,6 +17,7 @@ import { reportInbox } from "~/lib/inbox-report.server";
 import { aiDoor, isMcpHost, mcpOrigin } from "~/lib/mcp/door";
 import { carrelOrigin } from "~/lib/mcp/server";
 import { refreshAllSites } from "~/lib/refresh.server";
+import { deskPeopleEmails } from "~/lib/people.server";
 import { siteOrigins } from "~/lib/sites.server";
 import { processSocial } from "~/lib/social/queue.server";
 
@@ -63,6 +65,13 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
     return response;
   }
   const nonce = newNonce();
+  // The Desk's people, hashed with a fresh salt, for the daily Access drift check (.github/workflows/access-drift.yml).
+  // Before the gate, because the caller is carrel-desk-login's service token and not a person: adminListResponse answers
+  // only a GET carrying that application's verified Access token from a service token, and 404 to everything else.
+  if (new URL(request.url).pathname === ADMIN_LIST_PATH) {
+    const list = await adminListResponse(request, env, { admins: await deskPeopleEmails(env.DB) });
+    return withSecurityHeaders(list, nonce, { imageOrigins: siteOrigins(env), reportOrigin: mcpOrigin(env) });
+  }
   const response = await gate(request, env, async (req, viewer) => {
     // A live editor's WebSocket into its file's room (rooms.server.ts): the same sign-in and role as the page.
     if (new URL(req.url).pathname.startsWith("/collab/")) {

@@ -78,7 +78,7 @@ describe("rendered responses through the gate", () => {
     const response = await through(() => html("<!doctype html><p>page</p>"));
     expect(failed(response.headers)).toEqual([]);
     expect(response.headers.get("Strict-Transport-Security")).toBe(STANDARD_SECURITY_HEADERS["Strict-Transport-Security"]);
-    expect(response.headers.get("Reporting-Endpoints")).toBe(`csp="${DOOR}/csp-report"`);
+    expect(response.headers.get("Reporting-Endpoints")).toBe(`csp-endpoint="${DOOR}/csp-report"`);
     // The gate's caching survives: private, and untransformed so the beacon is never injected.
     expect(response.headers.get("Cache-Control")).toBe("private, no-store, no-transform");
   });
