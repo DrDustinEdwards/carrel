@@ -4,6 +4,7 @@
 
 import { runMediaIntent } from "@dustinedwards/site-api/admin";
 import { SEARCH_FIELDS } from "@dustinedwards/site-api/frontmatter";
+import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { nearestPassages, profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
@@ -83,12 +84,18 @@ export function harness(base: Env): Promise<World> {
   return ready;
 }
 
+/** The site's 404 report, for the 404s screen. */
+const NOT_FOUND = [
+  { path: "/blog/old-phage-post", kind: "page" as const, hits: 14, referrers: [{ host: "example.com", hits: 9 }, { host: "", hits: 5 }] },
+  { path: "/research/protocols/plaque-assay-v1", kind: "page" as const, hits: 3, referrers: [{ host: "", hits: 3 }] },
+];
+
 async function build(base: Env): Promise<World> {
   const db = base.DB;
   await migrate(db);
 
   // The site renders all six search fields (site-api v0.17.0), so the editor shows every box.
-  const adapter = kindedAdapter();
+  const adapter = kindedAdapter(memoryAdapter({ notFound: NOT_FOUND }));
   adapter.content = { ...adapter.content, searchFields: SEARCH_FIELDS };
   const [site, gh, saKey, appKey] = [fakeSite(adapter), fakeNovels(), await serviceAccountKey(), await githubStyleKey()];
   const google = fakeGoogle({

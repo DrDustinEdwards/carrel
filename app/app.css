@@ -44,6 +44,8 @@
 @import "capsomer/publish-gate.css";
 @import "capsomer/share-preview.css";
 @import "capsomer/stat-tile.css";
+@import "capsomer/chart-frame.css";
+@import "enarratio/base.css";
 @import "capsomer/drop-zone.css";
 @import "capsomer/media.css";
 @import "capsomer/tree.css";
