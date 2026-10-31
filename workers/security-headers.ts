@@ -7,6 +7,7 @@
 
 import { buildContentSecurityPolicy, buildPolicy, generateNonce, reportingEndpoints } from "@dustinedwards/site-runtime/csp";
 import { applyHeaderSet, buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
+import { carrelDesk, carrelMcp } from "@dustinedwards/site-runtime/sites";
 
 /** Where browsers send violation reports: a path on the AI door, the one Carrel host outside Access. */
 export const CSP_REPORT_PATH = "/csp-report";
@@ -14,20 +15,13 @@ export const CSP_REPORT_PATH = "/csp-report";
 const CSP_REPORT_GROUP = "csp";
 
 /** The browser host's set: Desk's entry in site-runtime's registry (./sites), the shared standard exactly. */
-export const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: "carrel-desk" }));
+export const securityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: carrelDesk }));
 
-/** The AI door's set: the standard with one deviation. */
-export const doorSecurityHeaders: Readonly<Record<string, string>> = Object.freeze(
-  buildSecurityHeaders({
-    overrides: {
-      "Cross-Origin-Opener-Policy": {
-        value: null,
-        reason:
-          "AI clients (claude.ai among them) open /authorize in a popup and wait for it through window.opener; same-origin would sever that opener and the sign-in would never return.",
-      },
-    },
-  }),
-);
+/**
+ * The AI door's set: its registry entry, the standard less COOP, because AI clients (claude.ai among them) open
+ * /authorize in a popup and wait for it through window.opener, which same-origin would sever.
+ */
+export const doorSecurityHeaders: Readonly<Record<string, string>> = Object.freeze(buildSecurityHeaders({ site: carrelMcp }));
 
 /** A nonce from the platform's randomness; a derived or fixed value would pass every test and protect nothing. */
 export const newNonce = generateNonce;

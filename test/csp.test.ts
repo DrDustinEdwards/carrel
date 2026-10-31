@@ -1,24 +1,20 @@
 // The security headers (workers/security-headers.ts) where the live check (site-runtime-security) cannot see them:
 // Desk's pages are behind Access, so a stranger gets Access's redirect, never a page. The shared set on every signed-in
 // response, redirects and refusals included, graded against Desk's registry entry; the preview alone may be framed and
-// only by Carrel, and the site's page inside it runs sandboxed. The AI door has no registry entry yet, so its own set
-// is graded here too.
+// only by Carrel, and the site's page inside it runs sandboxed. The AI door is public, so the live check grades it;
+// only its consent policy's form-action choice stays here.
 
 import { checkSecurityHeaders, failures, STANDARD_SECURITY_HEADERS } from "@dustinedwards/site-runtime";
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { stubAccess } from "@dustinedwards/devkit/access";
-import { createExecutionContext } from "cloudflare:test";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { aiDoor } from "~/lib/mcp/door";
 import { previewPolicy, previewResponse, withSiteBase } from "~/lib/preview.server";
 
 import { gate } from "../workers/gate";
 import {
   appPolicy,
   DOOR_POLICY,
-  doorSecurityHeaders,
-  withDoorSecurityHeaders,
   withSecurityHeaders,
 } from "../workers/security-headers";
 
@@ -121,18 +117,8 @@ describe("rendered responses through the gate", () => {
   });
 });
 
-describe("rendered responses on the AI door", () => {
-  const door = async (request: Request) => withDoorSecurityHeaders(await aiDoor(request, testEnv, createExecutionContext()), DOOR);
-
-  it("liveness, a 404 and the OAuth metadata pass the shared check against the door's set", async () => {
-    for (const path of ["/health", "/no-such-page", "/.well-known/oauth-authorization-server"]) {
-      const response = await door(new Request(`${DOOR}${path}`));
-      expect(failed(response.headers, { standard: doorSecurityHeaders }), path).toEqual([]);
-      expect(response.headers.get("Content-Security-Policy"), path).toBe(DOOR_POLICY);
-    }
-  });
-
-  it("the consent page's policy runs no script and leaves form-action out, so the sign-in's redirect chain is not cut", () => {
+describe("the AI door's consent page", () => {
+  it("runs no script and leaves form-action out, so the sign-in's redirect chain is not cut", () => {
     expect(DOOR_POLICY).toContain("default-src 'none'");
     expect(DOOR_POLICY).not.toMatch(/form-action/);
     expect(DOOR_POLICY).not.toMatch(/script-src/);
