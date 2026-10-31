@@ -14,7 +14,7 @@
 //
 // Two faults in those fields block a publish, like alt text in the body (searchFieldRefusal): a share
 // image with no alt text, and a canonical address that is not a full https one. Both are broken output,
-// not judgement; a title or description too wide for a result only warns.
+// not judgment; a title or description too wide for a result only warns.
 
 import { SERP_DESCRIPTION_LIMIT, SERP_TITLE_LIMIT, truncateForSerp } from "@drdustinedwards/site-helpers/head";
 import { readKey, searchFieldsOf, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
