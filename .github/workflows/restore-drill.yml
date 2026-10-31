@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   drill:
-    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@dfdb60397d24f15c80b9468059d7d601b2caa6bf # v0.20.1
+    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@f55d2caadaa7a18a73397fb8defffb2e3123967b # v0.20.3
     with:
       bucket: carrel-backups
       # d1-dump 0.7.0, untagged until Dustin tags it; move to v0.7.0 then.
