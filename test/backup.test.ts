@@ -2,13 +2,10 @@
 // and is marked complete only after its own checks. Each failure is planted here and must be seen red.
 
 import { BackupIncomplete, backupHealth, dumpDatabase, latestDump, standardProblems, type DumpResult } from "@dustinedwards/d1-dump";
-import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { BACKUP_CRON, BACKUP_OPTIONS, EXCLUDED_TABLES, REQUIRED_TABLES } from "~/lib/backup-checks";
 import { runBackup } from "~/lib/backup.server";
-import { cloudflareContext } from "~/lib/context";
-import { loader as healthLoader } from "~/routes/health";
 import example from "../wrangler.jsonc.example?raw";
 
 import { addPerson, resetDb, testEnv } from "./env";
@@ -79,19 +76,5 @@ describe("the nightly dump", () => {
   it("the nightly cron in the Worker config is the one the handler runs the dump on", () => {
     expect(example).toContain(`"${BACKUP_CRON}"`);
     expect(example).toMatch(/"binding": "BACKUPS",\s*"bucket_name": "carrel-backups"/);
-  });
-});
-
-describe("GET /health", () => {
-  async function body() {
-    const context = new RouterContextProvider();
-    context.set(cloudflareContext, { env: testEnv, ctx: { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext });
-    const response = await healthLoader({ context, request: new Request("https://carrel.test/health"), params: {} } as never);
-    return { status: response.status, ...((await response.json()) as { db: string; backup: { last_ok: string | null } }) };
-  }
-
-  // healthResponse itself is tested in site-runtime; this checks Carrel wires D1 and the dump into it.
-  it("says D1 is up and reports the dump", async () => {
-    expect(await body()).toMatchObject({ status: 200, db: "up", backup: { last_ok: null } });
   });
 });

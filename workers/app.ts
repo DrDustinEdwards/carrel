@@ -1,3 +1,4 @@
+import { runJobs } from "@dustinedwards/site-runtime/cron";
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
@@ -57,17 +58,16 @@ export default {
     return withSecurityHeaders(response, nonce, { imageOrigins: siteOrigins(env), reportOrigin: mcpOrigin(env) });
   },
 
-  scheduled(controller, env, ctx) {
-    // The nightly cron runs the dump alone. A failure is logged and left for the health check, whose
-    // backup age keeps growing, to report; it is never swallowed.
-    if (controller.cron === BACKUP_CRON) {
-      ctx.waitUntil(runBackup(env).catch((error) => console.error(JSON.stringify({ backup: "failed", error: String(error) }))));
-      return;
-    }
-    ctx.waitUntil(runHealth(env));
-    ctx.waitUntil(refreshAllSites(env));
-    ctx.waitUntil(refreshGoogle(env));
-    ctx.waitUntil(reportInbox(env));
-    ctx.waitUntil(processSocial(env).catch((error) => console.error(JSON.stringify({ social: "tick-failed", error: String(error) }))));
+  // Each job runs in turn, isolated, and is recorded in cron_runs for /health's cron check (site-runtime's runJobs).
+  // The nightly cron runs the dump alone.
+  async scheduled(controller, env) {
+    if (controller.cron === BACKUP_CRON) return runJobs(env.DB, [{ name: "backup", everyMinutes: 1440, run: () => runBackup(env) }]);
+    await runJobs(env.DB, [
+      { name: "health", everyMinutes: 15, run: () => runHealth(env) },
+      { name: "refresh-sites", everyMinutes: 15, run: () => refreshAllSites(env) },
+      { name: "refresh-google", everyMinutes: 15, run: () => refreshGoogle(env) },
+      { name: "inbox-report", everyMinutes: 15, run: () => reportInbox(env) },
+      { name: "social", everyMinutes: 15, run: () => processSocial(env) },
+    ]);
   },
 } satisfies ExportedHandler<Env>;

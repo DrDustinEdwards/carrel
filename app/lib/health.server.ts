@@ -15,10 +15,13 @@ import { backupHealth } from "@dustinedwards/d1-dump";
 import { PACKAGE_VERSION } from "@dustinedwards/site-api";
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
+import { cronCheck } from "@dustinedwards/site-runtime/cron";
+import { healthResponse, kvCheck } from "@dustinedwards/site-runtime/health";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { aiPublications, googleKeysSeen, googleTokens, healthState, people, reports } from "~/db/schema";
+import { deployedSha } from "~/lib/deployed";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
 import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
@@ -326,6 +329,31 @@ export async function runHealth(
     console.error(JSON.stringify({ health: "record-failed", error: message(error) }));
   }
   return { results, emailed };
+}
+
+/**
+ * GET /health, the one answer on both hosts (site-runtime's healthResponse). On the AI door it is outside Access, so it
+ * says only what any family site says in public: D1 and OAUTH_KV answer, the dump's age, the crons, the deployed commit
+ * the live gate waits for, and the names (never the details) of the checks above that are failing.
+ */
+export function healthAnswer(env: Env): Promise<Response> {
+  return healthResponse({
+    ping: () => env.DB.prepare("SELECT 1").first(),
+    backup: () => backupHealth(env.BACKUPS),
+    sha: deployedSha(env),
+    checks: [
+      kvCheck("oauth-kv", env.OAUTH_KV),
+      cronCheck(env.DB),
+      {
+        name: "alerts",
+        level: "warn",
+        run: async () => {
+          const failing = await drizzle(env.DB).select({ name: healthState.checkName }).from(healthState).where(eq(healthState.ok, false)).all();
+          return failing.length === 0 || { ok: false, detail: `Failing: ${failing.map((f) => f.name).join(", ")}.` };
+        },
+      },
+    ],
+  });
 }
 
 function message(error: unknown): string {

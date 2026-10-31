@@ -9,6 +9,7 @@
 // Access like every other.
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
+import { logEvent, OWASP_EVENTS, requestFields } from "@dustinedwards/site-runtime/log";
 import { refuseCrossOrigin } from "@dustinedwards/site-runtime/origin";
 
 import { verifyAccess } from "~/lib/access.server";
@@ -31,8 +32,8 @@ function withPrivateHeaders(response: Response): Response {
 }
 
 /** The same bare 403 for every refusal, so a caller learns nothing about why. The reason is logged. */
-function refuse(reason: string): Response {
-  console.warn(JSON.stringify({ gate: "refused", reason }));
+function refuse(request: Request, reason: string): Response {
+  logEvent(OWASP_EVENTS.authorizationFailure, { door: "browser", reason, ...requestFields(request) }, { level: "warn" });
   return withPrivateHeaders(
     new Response("Forbidden", { status: 403, headers: { "Content-Type": "text/plain; charset=utf-8" } }),
   );
@@ -47,17 +48,17 @@ export async function gate(
   let viewer: Viewer | null;
   try {
     const access = await verifyAccess(request, { teamDomain: env.ACCESS_TEAM_DOMAIN, audience: env.ACCESS_AUD }, keys);
-    if (!access.ok) return refuse(access.reason);
+    if (!access.ok) return refuse(request, access.reason);
     viewer = await findViewer(env.DB, access.email);
   } catch (error) {
-    return refuse(`error: ${error instanceof Error ? error.message : String(error)}`);
+    return refuse(request, `error: ${error instanceof Error ? error.message : String(error)}`);
   }
-  if (!viewer) return refuse("unknown-person");
+  if (!viewer) return refuse(request, "unknown-person");
   // A reviewer is an AI agent, not a person: it has no business at the browser door.
-  if (viewer.isReviewer) return refuse("reviewer-at-browser-door");
+  if (viewer.isReviewer) return refuse(request, "reviewer-at-browser-door");
   // A change sent from another site's page. React Router checks Origin on a page's action, but not on a resource route's
   // (media, bulk, mentions), so the door checks every request once. A request with no Origin (curl, a server) passes.
-  if (refuseCrossOrigin(request)) return refuse("cross-origin");
+  if (refuseCrossOrigin(request)) return refuse(request, "cross-origin");
   const response = await render(request, viewer);
   // A live editor's WebSocket (101) is the socket itself: copying it would drop the socket.
   return response.status === 101 ? response : withPrivateHeaders(response);

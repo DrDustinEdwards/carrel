@@ -40,7 +40,7 @@ export const healthState = sqliteTable("health_state", {
   changedAt: text("changed_at").notNull(),
 });
 
-/** A public report rewritten on a schedule, its whole JSON body (drizzle/0025_reports.sql). */
+/** A public report rewritten on a schedule, its whole JSON body (drizzle/0026_reports.sql). */
 export const reports = sqliteTable("reports", {
   name: text("name").primaryKey(),
   body: text("body").notNull(),
