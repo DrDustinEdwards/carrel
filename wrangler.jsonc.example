@@ -129,6 +129,11 @@
 	"ratelimits": [
 		{ "name": "CSP_REPORT_RATE_LIMIT", "namespace_id": "7703", "simple": { "limit": 60, "period": 60 } }
 	],
+	// The deployed version's id and time, read by /health's cron check so a job added in this version is not called
+	// "never ran" before its first window has passed (app/lib/health.server.ts).
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	},
 	"send_email": [
 		{
 			"name": "EMAIL"

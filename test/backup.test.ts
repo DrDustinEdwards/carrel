@@ -1,11 +1,12 @@
-// The nightly D1 dump: it leaves credential tables out, requires the authorship and AI draft tables,
-// and is marked complete only after its own checks. Each failure is planted here and must be seen red.
+// The nightly D1 dump: it leaves credential tables out, passes d1-dump's credential-column check, requires the
+// authorship and AI draft tables, and is marked complete only after its own checks. Each failure is planted here and must be seen red.
 
 import { BackupIncomplete, backupHealth, dumpDatabase, latestDump, standardProblems, type DumpResult } from "@dustinedwards/d1-dump";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { BACKUP_CRON, BACKUP_OPTIONS, EXCLUDED_TABLES, REQUIRED_TABLES } from "~/lib/backup-checks";
 import { runBackup } from "~/lib/backup.server";
+import { CRON_JOBS } from "~/lib/cron-schedule";
 import example from "../wrangler.jsonc.example?raw";
 
 import { addPerson, resetDb, testEnv } from "./env";
@@ -57,24 +58,12 @@ describe("the nightly dump", () => {
     expect(problems(dump)).toEqual(["authorship is missing from the dump"]);
   });
 
-  it("every table that looks like a credential is excluded or reviewed, and every excluded name is a table", async () => {
-    const tables = (await testEnv.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'd1_%'").all<{ name: string }>()).results.map((r) => r.name);
-    // Reviewed and kept on purpose: none holds a live credential. google_keys_seen holds a key's public id and first-seen date.
-    const reviewed = ["google_keys_seen"];
-    const looksSecret = /token|secret|password|credential|refresh|oauth_state|_states$/i;
-    const flagged: string[] = [];
-    for (const name of tables) {
-      const columns = (await testEnv.DB.prepare(`SELECT name FROM pragma_table_info('${name}')`).all<{ name: string }>()).results.map((r) => r.name);
-      if (looksSecret.test(name) || columns.some((c) => looksSecret.test(c))) flagged.push(name);
-    }
-    expect(tables.length).toBeGreaterThan(20);
-    expect(flagged.length).toBeGreaterThan(0);
-    expect(flagged.filter((t) => !(EXCLUDED_TABLES as readonly string[]).includes(t) && !reviewed.includes(t))).toEqual([]);
-    expect(EXCLUDED_TABLES.filter((t) => !tables.includes(t))).toEqual([]);
-  });
-
-  it("the nightly cron in the Worker config is the one the handler runs the dump on", () => {
+  it("the nightly cron in the Worker config is the one the handler runs the dump on, and every trigger has its jobs", () => {
     expect(example).toContain(`"${BACKUP_CRON}"`);
+    expect(CRON_JOBS[BACKUP_CRON]?.map((j) => j.name)).toContain("backup");
+    const crons = JSON.parse(/"crons":\s*(\[[^\]]*\])/.exec(example)?.[1] ?? "[]") as string[];
+    expect(crons.length).toBeGreaterThan(1);
+    expect(Object.keys(CRON_JOBS).sort()).toEqual([...crons].sort());
     expect(example).toMatch(/"binding": "BACKUPS",\s*"bucket_name": "carrel-backups"/);
   });
 });

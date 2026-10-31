@@ -16,11 +16,12 @@ import { PACKAGE_VERSION } from "@dustinedwards/site-api";
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
-import { healthResponse, kvCheck } from "@dustinedwards/site-runtime/health";
+import { durableObjectCheck, healthResponse, kvCheck } from "@dustinedwards/site-runtime/health";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { aiPublications, googleKeysSeen, googleTokens, healthState, people, reports } from "~/db/schema";
+import { ALL_JOBS } from "~/lib/cron-schedule";
 import { deployedSha } from "~/lib/deployed";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
 import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
@@ -333,8 +334,21 @@ export async function runHealth(
 
 /**
  * GET /health, the one answer on both hosts (site-runtime's healthResponse). On the AI door it is outside Access, so it
- * says only what any family site says in public: D1 and OAUTH_KV answer, the dump's age, the crons, the deployed commit
- * the live gate waits for, and the names (never the details) of the checks above that are failing.
+ * says only what any family site says in public: D1 answers, the bindings are there, the dump's age, the crons, the
+ * deployed commit the live gate waits for, and the names (never the details) of the checks above that are failing.
+ *
+ * Levels (H3). Only D1 (`db`, the helper's ping) is fail level: without it neither door can find a person, so Carrel is
+ * down and a 503 is the truth. Everything else is warn and answers 200:
+ * - oauth-kv is warn, a stated choice. Without OAUTH_KV the AI door cannot issue or check a grant, but Desk, the app
+ *   people use, still serves every page and save, so a 503 would call Carrel down while it works. The warn still reaches
+ *   Capsid's watcher, which reads the checks.
+ * - doc-room, mcp-rate-limit and tool-call-log are the three Durable Object namespaces (site-runtime's
+ *   durableObjectCheck: bound, and an id minted; no object is woken or billed). Without DOC_ROOM co-editing stops but
+ *   the editor still saves; without the other two the AI door refuses calls, as with OAUTH_KV.
+ * - email is the send_email binding, checked present only: sending a probe would mail Dustin every few minutes. A failed
+ *   send is already seen where it matters, as the ai-publish-email check above and the health run's own alert.
+ * Left out: CSP_REPORT_RATE_LIMIT, because a probe would spend a count and a missing binding only drops reports, which
+ * the receiver answers 204 regardless. BACKUPS is the backup check's own read.
  */
 export function healthAnswer(env: Env): Promise<Response> {
   return healthResponse({
@@ -342,8 +356,14 @@ export function healthAnswer(env: Env): Promise<Response> {
     backup: () => backupHealth(env.BACKUPS),
     sha: deployedSha(env),
     checks: [
-      kvCheck("oauth-kv", env.OAUTH_KV),
-      cronCheck(env.DB),
+      { ...kvCheck("oauth-kv", env.OAUTH_KV), level: "warn" },
+      durableObjectCheck("doc-room", env.DOC_ROOM),
+      durableObjectCheck("mcp-rate-limit", env.MCP_RATE_LIMIT),
+      durableObjectCheck("tool-call-log", env.TOOL_CALL_LOG),
+      { name: "email", level: "warn", run: async () => typeof env.EMAIL?.send === "function" || { ok: false, detail: "The EMAIL binding is missing." } },
+      // Each job with its own interval, so one that never ran (a trigger that does not fire it) warns too. Held back
+      // until its window has passed since this version was deployed.
+      cronCheck(env.DB, { jobs: ALL_JOBS, deployedAt: deployedAt(env) }),
       {
         name: "alerts",
         level: "warn",
@@ -354,6 +374,13 @@ export function healthAnswer(env: Env): Promise<Response> {
       },
     ],
   });
+}
+
+/** When this version was deployed, from the CF_VERSION_METADATA binding; read loosely, since an older config has none. */
+function deployedAt(env: Env): Date | undefined {
+  const timestamp = (env as { CF_VERSION_METADATA?: { timestamp?: string } }).CF_VERSION_METADATA?.timestamp;
+  const at = timestamp ? new Date(timestamp) : undefined;
+  return at && !Number.isNaN(at.getTime()) ? at : undefined;
 }
 
 function message(error: unknown): string {
