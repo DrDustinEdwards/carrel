@@ -54,6 +54,15 @@ export async function gate(
     return refuse(request, `error: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (!viewer) return refuse(request, "unknown-person");
+  return admit(request, viewer, render);
+}
+
+/**
+ * Everything the door does once Access has vouched for `viewer`: the reviewer, cross-site and isolation refusals, then
+ * the page with its private headers. The signed-in crawl (app/lib/signed-in-crawl.server.ts) calls it in-process as the
+ * Owner, so it grades exactly what a signed-in browser gets; nothing outside the Worker can reach it without `gate`.
+ */
+export async function admit(request: Request, viewer: Viewer, render: Render): Promise<Response> {
   // A reviewer is an AI agent, not a person: it has no business at the browser door.
   if (viewer.isReviewer) return refuse(request, "reviewer-at-browser-door");
   // A change sent from another site's page. React Router checks Origin on a page's action, but not on a resource route's
