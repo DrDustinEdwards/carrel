@@ -29,10 +29,12 @@ function urlPart(url: string): string {
 
 /** Plain Markdown for a site with no figure syntax of its own: the caption, when there is one, as an emphasized line under it. */
 const plain = (url: string, alt: string, caption: string) =>
-  `![${alt.trim().replace(/[[\]]/g, "")}](${urlPart(url)})${caption ? `\n*${oneLine(caption).replace(/[*_]/g, "\\$&")}*` : ""}`;
+  `![${alt.trim().replace(/[[\]]/g, "") || '""'}](${urlPart(url)})${caption ? `\n*${oneLine(caption).replace(/[*_]/g, "\\$&")}*` : ""}`;
 
+// An empty alt is a decorative pick (the picker asks for alt text or decorative). Prelum refuses
+// ![](x) and :::figure with no alt, and reads ![""](x) as decorative, so a decorative pick is plain.
 export function figureMarkup(site: string, url: string, alt: string, caption = ""): string {
-  return (FIGURES[site] ?? plain)(url, alt, caption.trim());
+  return ((alt.trim() && FIGURES[site]) || plain)(url, alt, caption.trim());
 }
 
 /**
