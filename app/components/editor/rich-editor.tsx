@@ -2,7 +2,7 @@
 // formatted text with the Markdown underneath kept byte for byte (lib/editor/markdown.mjs). It keeps
 // what the Markdown editor did: the APG toolbar (bold, italic, link, heading, code, footnote, the app's
 // blocks, an image), Ctrl or Cmd B, I, E, K and S, the link palette over the app's pages, the block
-// menu on a lone "/", an image that is not in the text until it has alt text, the word count and
+// menu on a lone "/", an image described before it is uploaded, the word count and
 // reading time, read-only, and Tab leaving the text. Markdown the editor does not format (front
 // matter, code, tables, directives, math) sits in source blocks, edited as Markdown in place.
 //
@@ -20,7 +20,7 @@ import { Placeholder } from "@tiptap/extensions";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import { useEffect, useRef, useState } from "react";
-import { countWords, filterLinkTargets, looksLikeUrl, minutesForWords, type LinkTarget, type Scaffold } from "capsomer/behavior/markdown-editor";
+import { countWords, filterLinkTargets, looksLikeUrl, minutesForWords, type ImageDescription, type LinkTarget, type Scaffold } from "capsomer/behavior/markdown-editor";
 import { place } from "capsomer/behavior/popover";
 
 import { FRAGMENT, markdownOf } from "~/lib/editor/collab";
@@ -68,8 +68,9 @@ export type RichEditorProps = {
   placeholder?: string;
   scaffolds?: Scaffold[];
   linkTargets?: LinkTarget[];
-  onUpload?: (file: File) => Promise<{ url: string }>;
-  imageMarkdown?: (image: { url: string; alt: string; name: string }) => string;
+  /** Called once the image is described, as Capsomer's markdown editor calls it. */
+  onUpload?: (file: File, image: ImageDescription, signal: AbortSignal) => Promise<{ url: string }>;
+  imageMarkdown?: (image: { url: string; alt: string; decorative: boolean; name: string }) => string;
   accept?: string;
   onReady?: (handle: RichEditorHandle) => void;
   room?: RichRoom;
@@ -79,7 +80,9 @@ export type RichEditorProps = {
 const defaultImage = ({ url, alt }: { url: string; alt: string }) => `![${alt.replace(/[[\]]/g, "").trim() || '""'}](${url})`;
 
 type Palette = { from: number; to: number; query: string; active: number };
-type Upload = { name: string; state: "sending" } | { name: string; state: "alt"; url: string } | null;
+// An image is described before it is sent (ATAG 2.0 B.2.3; site-api 0.19+ refuses an undescribed
+// upload): the step holds the file and a local preview until Insert, then sends it once.
+type Upload = { file: File; preview: string; sending: AbortController | null } | null;
 
 export function RichEditor(props: RichEditorProps) {
   const { ariaLabel, value, readOnly, dialect, placeholder = "Write here.", scaffolds = [], linkTargets = [], onUpload, accept, room } = props;
@@ -94,7 +97,13 @@ export function RichEditor(props: RichEditorProps) {
   const [words, setWords] = useState(() => countWords(value));
   const [palette, setPalette] = useState<Palette | null>(null);
   const [slash, setSlash] = useState<number | null>(null);
-  const [upload, setUpload] = useState<Upload>(null);
+  const [upload, setUploadState] = useState<Upload>(null);
+  const uploadRef = useRef<Upload>(null);
+  const setUpload = (next: Upload) => {
+    uploadRef.current?.sending?.abort();
+    uploadRef.current = next;
+    setUploadState(next);
+  };
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [alt, setAlt] = useState("");
   const [said, say] = useState("");
@@ -366,31 +375,59 @@ export function RichEditor(props: RichEditorProps) {
     editor.commands.unsetMark("link", { extendEmptyMarkRange: false });
   }
 
-  // ---- images: uploaded, then not in the text until they have alt text
-  async function startUpload(file: File) {
-    const send = propsRef.current.onUpload;
-    if (!send) return;
+  // ---- images: described, then sent, then in the text
+  function startUpload(file: File) {
+    if (!propsRef.current.onUpload) return;
     setUploadError(null);
-    setUpload({ name: file.name, state: "sending" });
-    say(`Uploading ${file.name}`);
+    setAlt("");
+    // A data: URL, not blob:, so the preview needs nothing Desk's img-src does not already allow.
+    const next: NonNullable<Upload> = { file, preview: "", sending: null };
+    setUpload(next);
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (uploadRef.current === next && typeof reader.result === "string") {
+        const shown = { ...next, preview: reader.result };
+        uploadRef.current = shown;
+        setUploadState(shown);
+      }
+    });
+    reader.readAsDataURL(file);
+    say(`Describe ${file.name} to insert it.`);
+    requestAnimationFrame(() => altRef.current?.focus());
+  }
+  function cancelUpload() {
+    setUpload(null);
+    setUploadError(null);
+    editorRef.current?.commands.focus();
+  }
+  async function insertImage(decorative: boolean) {
+    const current = uploadRef.current;
+    const send = propsRef.current.onUpload;
+    const text = decorative ? "" : alt.trim();
+    if (!current || current.sending || !send || (!decorative && !text)) return;
+    const sending = new AbortController();
+    const busy = { ...current, sending };
+    uploadRef.current = busy;
+    setUploadState(busy);
+    setUploadError(null);
+    say(`Uploading ${current.file.name}`);
     try {
-      const { url } = await send(file);
-      setAlt("");
-      setUpload({ name: file.name, state: "alt", url });
-      say("Uploaded. Describe the image to insert it.");
-      requestAnimationFrame(() => altRef.current?.focus());
+      const { url } = await send(current.file, { alt: text, decorative }, sending.signal);
+      if (uploadRef.current !== busy) return;
+      const md = (propsRef.current.imageMarkdown ?? defaultImage)({ url, alt: text, decorative, name: current.file.name });
+      uploadRef.current = null;
+      setUploadState(null);
+      insertMarkdown(md);
+      say("Image inserted.");
     } catch (error) {
-      setUpload(null);
+      if (uploadRef.current !== busy) return;
+      // The step stays, with what was typed, so a retry is one press.
+      const kept = { ...current, sending: null };
+      uploadRef.current = kept;
+      setUploadState(kept);
       setUploadError(error instanceof Error ? error.message : "The upload failed.");
       say("");
     }
-  }
-  function insertImage() {
-    if (upload?.state !== "alt" || !alt.trim()) return;
-    const md = (propsRef.current.imageMarkdown ?? defaultImage)({ url: upload.url, alt: alt.trim(), name: upload.name });
-    setUpload(null);
-    insertMarkdown(md);
-    say("Image inserted.");
   }
 
   // ---- the toolbar
@@ -428,7 +465,7 @@ export function RichEditor(props: RichEditorProps) {
         focusSourceBlock(e, { id: "footnote", label: "Footnote", hint: "", text: `[^${n}]: ` });
       }),
     },
-    ...(onUpload ? [{ id: "image", label: "Insert image", hint: "Uploads a file, then asks for alt text", paths: GLYPH.image, run: () => fileRef.current?.click() }] : []),
+    ...(onUpload ? [{ id: "image", label: "Insert image", hint: "Asks for alt text, then uploads the file", paths: GLYPH.image, run: () => fileRef.current?.click() }] : []),
   ];
   const blocks = scaffolds.map((s) => ({ id: `scaffold-${s.id}`, label: s.label, hint: s.hint, keys: undefined, paths: s.icon ? [s.icon] : [], glyph: s.label.slice(0, 1), run: () => insertScaffold(s, false) }));
   const all = [...tools, ...blocks];
@@ -510,67 +547,66 @@ export function RichEditor(props: RichEditorProps) {
           }}
         />
       ) : null}
-      {uploadError ? (
-        <p className="cap-field-error cap-md-upload-error" role="alert">
-          {uploadError}
-        </p>
-      ) : null}
       {upload ? (
-        <div className="cap-md-upload" role="group" aria-label="Describe the image" aria-busy={upload.state === "sending" ? "true" : undefined}>
-          {upload.state === "sending" ? (
-            <p className="cap-md-upload-wait">Uploading {upload.name}</p>
-          ) : (
-            <>
-              <img className="cap-md-upload-thumb" src={upload.url} alt="" />
-              <div className="cap-md-upload-fields">
-                <label className="cap-field-label" htmlFor="rich-alt">
-                  Alt text{" "}
-                  <span className="cap-field-required" aria-hidden="true">
-                    Required
-                  </span>
-                </label>
-                <input
-                  ref={altRef}
-                  id="rich-alt"
-                  className="cap-input"
-                  autoComplete="off"
-                  placeholder="What the image shows"
-                  aria-describedby="rich-alt-help"
-                  value={alt}
-                  onChange={(e) => setAlt(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      insertImage();
-                    } else if (e.key === "Escape") {
-                      e.preventDefault();
-                      setUpload(null);
-                      editorRef.current?.commands.focus();
-                    }
-                  }}
-                />
-                <p className="cap-field-help" id="rich-alt-help">
-                  The image is uploaded. It is not in the text until it has alt text.
-                </p>
-                <div className="cap-md-upload-actions">
-                  <button type="button" className="cap-btn" data-variant="primary" disabled={!alt.trim()} onClick={insertImage}>
-                    Insert image
-                  </button>
-                  <button
-                    type="button"
-                    className="cap-btn"
-                    data-variant="quiet"
-                    onClick={() => {
-                      setUpload(null);
-                      editorRef.current?.commands.focus();
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+        <div
+          className="cap-md-upload"
+          role="group"
+          aria-label="Describe the image"
+          aria-busy={upload.sending ? "true" : undefined}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              cancelUpload();
+            }
+          }}
+        >
+          <img className="cap-md-upload-thumb" src={upload.preview || undefined} alt="" />
+          <div className="cap-md-upload-fields">
+            <label className="cap-field-label" htmlFor="rich-alt">
+              Alt text{" "}
+              <span className="cap-field-required" aria-hidden="true">
+                Required
+              </span>
+            </label>
+            <input
+              ref={altRef}
+              id="rich-alt"
+              className="cap-input"
+              autoComplete="off"
+              placeholder="What the image shows"
+              aria-describedby="rich-alt-help"
+              value={alt}
+              readOnly={Boolean(upload.sending)}
+              onChange={(e) => setAlt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void insertImage(false);
+                }
+              }}
+            />
+            <p className="cap-field-help" id="rich-alt-help">
+              Describe {upload.file.name} for a person who cannot see it, or insert it as decorative if it adds nothing. It is uploaded when you insert it.
+            </p>
+            {upload.sending ? <p className="cap-md-upload-wait">Uploading {upload.file.name}</p> : null}
+            {uploadError ? (
+              <p className="cap-field-error cap-md-upload-error" role="alert">
+                {uploadError}
+              </p>
+            ) : null}
+            <div className="cap-md-upload-actions">
+              <button type="button" className="cap-btn" data-variant="primary" disabled={!alt.trim() || Boolean(upload.sending)} onClick={() => void insertImage(false)}>
+                Insert image
+              </button>
+              <button type="button" className="cap-btn" disabled={Boolean(upload.sending)} onClick={() => void insertImage(true)}>
+                Insert as decorative
+              </button>
+              <button type="button" className="cap-btn" data-variant="quiet" onClick={cancelUpload}>
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
       {palette ? (

@@ -17,12 +17,18 @@ export type Uploaded = {
   src: string;
 };
 
-export async function uploadImage(endpoint: string, file: File): Promise<Uploaded> {
+/**
+ * Sends the file with what the person said about it: alt text, or decorative. site-api 0.19+ refuses an upload with
+ * neither, and the site checks the alt itself (not the file's name, not "image"), so its refusal is the error shown.
+ */
+export async function uploadImage(endpoint: string, file: File, image: { alt: string; decorative: boolean }, signal?: AbortSignal): Promise<Uploaded> {
   let response: Response;
   try {
     const form = new FormData();
     form.set("file", file);
-    response = await fetch(endpoint, { method: "POST", body: form });
+    if (image.decorative) form.set("decorative", "yes");
+    else form.set("alt", image.alt);
+    response = await fetch(endpoint, { method: "POST", body: form, signal });
   } catch (error) {
     throw new Error(`Upload failed: ${error instanceof Error ? error.message : String(error)}`);
   }

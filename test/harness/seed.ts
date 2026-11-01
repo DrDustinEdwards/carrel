@@ -158,12 +158,13 @@ async function build(base: Env): Promise<World> {
   for (const [name, alt] of [
     ["status-dashboard.png", "The status dashboard with three services reporting healthy"],
     ["survey-map.png", "A map of the survey plots, with the north half shaded"],
+    // No alt is the decorative choice: site-api 0.19+ refuses an upload with neither.
     ["harlan-gate.png", ""],
     ["river-up.png", "The river at the low-water crossing, in flood"],
     ["field-notebook.png", "An open field notebook with a pressed leaf"],
     ["release-banner.png", ""],
   ] as const) {
-    const out = await runMediaIntent(source, { intent: "upload", file: new File([PNG], name, { type: "image/png" }), alt });
+    const out = await runMediaIntent(source, { intent: "upload", file: new File([PNG], name, { type: "image/png" }), ...(alt ? { alt } : { decorative: "yes" }) });
     const id = out.ok ? out.outcomes?.[0]?.id : undefined;
     if (id) {
       const item = await source.client.media.get(id);

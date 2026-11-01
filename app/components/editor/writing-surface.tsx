@@ -97,8 +97,8 @@ export function WritingSurface({
   // the Markdown must carry the site's own address, so each upload remembers which is which.
   const sites = useRef(new Map<string, string>());
   const onUpload = images
-    ? async (file: File) => {
-        const uploaded = await uploadImage(images.endpoint, file);
+    ? async (file: File, image: { alt: string; decorative: boolean }, signal: AbortSignal) => {
+        const uploaded = await uploadImage(images.endpoint, file, image, signal);
         sites.current.set(uploaded.src, uploaded.url);
         return { url: uploaded.src };
       }
