@@ -14,6 +14,7 @@ import { Segmented } from "capsomer/react/segmented";
 import type { Editor } from "@tiptap/core";
 import { Alert } from "capsomer/react/banner";
 
+import { ChartInsert, type ChartPreview } from "~/components/editor/chart-insert";
 import { RichEditor, type RichEditorHandle, type RichRoom } from "~/components/editor/rich-editor";
 import { LibraryInsert } from "~/components/media/library-insert";
 import { uploadImage, type EditorMedia } from "~/components/media/upload";
@@ -47,6 +48,7 @@ export function WritingSurface({
   dialect = "site",
   room,
   onEditor,
+  chart,
 }: {
   /** What the surface is called to a screen reader, for example "Post" or "Scene". */
   label: string;
@@ -62,6 +64,8 @@ export function WritingSurface({
   room?: { rich: (RichRoom & { key: string }) | null; markdownLocked: string | null };
   /** The formatted editor, once made, for the room's panels. */
   onEditor?: (editor: Editor | null) => void;
+  /** A site post's chart preview; absent, no "Insert chart" (a book, a reader). */
+  chart?: ChartPreview | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const rich = useRef<RichEditorHandle | null>(null);
@@ -115,6 +119,15 @@ export function WritingSurface({
             { value: "markdown", label: "Markdown" },
           ]}
         />
+        {chart && !readOnly ? (
+          <ChartInsert
+            preview={chart}
+            onInsert={(block) => {
+              if (mode === "formatted") rich.current?.insertMarkdown(block);
+              else insertIntoMarkdown(root.current, block);
+            }}
+          />
+        ) : null}
         {images ? (
           <LibraryInsert
             media={images}

@@ -11,7 +11,11 @@
   ],
   "ignoreDependencies": [
     "cloudflare",
-    "@modelcontextprotocol/conformance"
+    "@modelcontextprotocol/conformance",
+    "@observablehq/plot",
+    "hast-util-from-html",
+    "hast-util-to-string",
+    "linkedom"
   ],
   "project": [
     "app/**/*.{ts,tsx,mjs}",

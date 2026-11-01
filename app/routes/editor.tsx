@@ -49,6 +49,7 @@ import { PageHead } from "capsomer/react/page-head";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { can } from "~/lib/roles";
 import { openRoom, rebaseRoom, replaceRoom, roomPath, roomVersion, saveRoom, siteCoauthors, withOthers } from "~/lib/rooms.server";
+import type { ChartFinding } from "~/lib/chart-check.client";
 import { imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
@@ -419,7 +420,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           ? siteState(data.status, data.everPublished)
           : "";
   // Absolute, not relative: from /p/x/e/item a bare "preview" would resolve to /p/x/e/preview.
-  const previewSrc = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview?at=${encodeURIComponent(previewAt)}`;
+  const previewBase = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview`;
+  const previewSrc = `${previewBase}?at=${encodeURIComponent(previewAt)}`;
   const failure = outcome && !outcome.ok && !viaGate.current ? outcome : null;
   const google = writer.data?.intent === "google" && !busy ? writer.data : null;
 
@@ -435,6 +437,22 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     () => seoCheck(data.project.siteId, source, { kind: data.kind, origin: data.origin, path: data.address, searchFields: data.searchFields }),
     [source, data.kind, data.project.siteId, data.origin, data.address, data.searchFields],
   );
+  // The chart check runs on Prelum's own chart code, loaded only when the text holds a chart, a moment
+  // after the typing stops (lib/chart-check.client.ts).
+  const body = splitSource(source).body;
+  const hasChart = body.includes(":::chart");
+  const [chartFindings, setChartFindings] = useState<ChartFinding[]>([]);
+  useEffect(() => {
+    if (!hasChart) return setChartFindings([]);
+    let live = true;
+    const timer = setTimeout(() => {
+      void import("~/lib/chart-check.client").then((m) => live && setChartFindings(m.checkCharts(body)));
+    }, 800);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [body, hasChart]);
   // Open flags never stop a publish here (checks and reviewers flag, they do not decide), so each is advisory.
   const gateChecks: GateCheck[] = data.flags.map((f) => ({
     id: `flag-${f.id}`,
@@ -458,6 +476,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   for (const [i, f] of (seo?.findings ?? []).entries()) {
     if (f.check === "image-alt" || f.check === "imageAlt" || f.check === "canonical") continue;
     gateChecks.push({ id: `seo-${i}`, name: "Search and sharing", required: false, ok: false, cause: f.message, pass: "Fits", href: "#seo", fix: "Change the post's details or the image." });
+  }
+
+  // The chart check (E4): Prelum's strictCharts problems and its warnings, one advisory line each.
+  for (const [i, f] of chartFindings.entries()) {
+    gateChecks.push({ id: `chart-${i}`, name: "Chart", required: false, ok: false, cause: `${f.message} (line ${f.line})`, pass: "Reads well", href: "#write", fix: f.strict ? "Change the chart's directive: its title, its series or its words." : "Change the chart's directive if it helps the reader." });
   }
 
   const historyPath = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/history`;
@@ -549,7 +572,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         <div className="app-editor-main">
           <div className="app-editor-body" data-layout={layout}>
             {layout !== "preview" ? (
-              <section className="app-editor-pane" aria-label="Write">
+              <section className="app-editor-pane" id="write" aria-label="Write">
                 {data.room ? editing.bar : null}
                 {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
                 <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} sections={data.sections} kind={data.kind} searchFields={seo ? data.searchFields : []} />
@@ -565,6 +588,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   onEditor={editing.setEditor}
                   linkTargets={data.linkTargets.map((t) => ({ href: t.href, title: t.title, hint: t.href, note: t.state !== "published" ? `not live yet (${t.state})` : undefined }))}
                   media={data.media ? { ...data.media, figure: (url: string, alt: string, caption?: string) => figureMarkup(data.project.siteId, url, alt, caption) } : null}
+                  chart={{ action: previewBase, source: (block) => joinSource({ ...splitSource(source), body: block }) }}
                 />
               </section>
             ) : null}

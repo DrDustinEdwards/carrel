@@ -140,6 +140,18 @@ export const SCREENS = [
   { name: "book-scene-editor", viewer: "editor", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".app-rich-surface" },
   { name: "post-live", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface" },
   { name: "post-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface" },
+  // The insert-chart dialog with data pasted: the type, the columns, the drafted finding and the chart check.
+  {
+    name: "post-chart-insert",
+    viewer: "owner",
+    path: `/p/${SITE}/e/counting-what-the-build-skips`,
+    wait: ".app-rich-surface",
+    after: async (page) => {
+      await page.getByRole("button", { name: "Insert chart", exact: true }).click();
+      await page.getByLabel("Data, as CSV").fill("year,visits,readers\n2024,1204,300\n2025,1530,410\n2026,987,350");
+      await page.getByText("The chart check flags").waitFor();
+    },
+  },
   { name: "post-working-copy", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface" },
   { name: "post-scheduled", viewer: "owner", path: `/p/${SITE}/e/getting-started`, wait: ".app-rich-surface" },
   { name: "post-editor-live", viewer: "editor", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface" },
