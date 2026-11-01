@@ -8,7 +8,6 @@
 import { createExecutionContext } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { agentPrincipal } from "~/lib/agent-keys.server";
 import { addAgent, listPeople, PeopleRefusal, setProjectRole } from "~/lib/people-admin.server";
 import { findAgentViewer } from "~/lib/people.server";
 import { aiDoor } from "~/lib/mcp/door";
@@ -198,7 +197,6 @@ describe("what a named agent key refuses", () => {
 
   it("is inert until a secret exists: with none, the door answers as it did before", async () => {
     const none = connectedEnv();
-    expect(await agentPrincipal(none, `Bearer ${KEY}`)).toBeNull();
     const response = await door(modernRequest(1, "tools/list"), none);
     expect(response.status).toBe(401);
   });

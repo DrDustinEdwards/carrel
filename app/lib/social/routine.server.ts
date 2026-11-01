@@ -4,14 +4,15 @@
 // stores it through Carrel's MCP tools; Carrel sends it later with no AI at runtime. No API key and no
 // subscription token is ever stored: the trigger token reaches this one routine and can read nothing.
 //
-// The fire itself, and the check that the URL is Anthropic's, are site-runtime's ./routine, shared with
-// germomics' drafting routine.
+// The fire itself, its duplicate guard (fireOnce, keyed by the run, on D1's routine_fires table) and
+// the check that the URL is Anthropic's, are site-runtime's ./routine, shared with germomics' drafting
+// routine.
 
 import { untrusted, UNTRUSTED_DATA_RULE } from "@dustinedwards/site-runtime/anthropic";
 import { WRITING_RULES } from "@dustinedwards/site-runtime/prose";
 import { routineConfig as checkRoutine, type RoutineConfig } from "@dustinedwards/site-runtime/routine";
 
-export { fireRoutine } from "@dustinedwards/site-runtime/routine";
+export { d1FireStore, fireOnce } from "@dustinedwards/site-runtime/routine";
 
 export function routineConfig(env: Env): RoutineConfig | { missing: string } {
   const url = env.SOCIAL_ROUTINE_URL?.trim() ?? "";

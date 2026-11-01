@@ -38,7 +38,8 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { reports } from "~/db/schema";
-import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
+import { agentPrincipal } from "@dustinedwards/site-runtime/agent-keys";
+import { agentClient } from "~/lib/agent-keys.server";
 import { healthAnswer } from "~/lib/health.server";
 import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";
 import { SIGNED_IN_REPORT_NAME } from "~/lib/signed-in-crawl.server";
