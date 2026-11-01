@@ -35,6 +35,8 @@ export default [
   route("p/:project/e/:item/ai/:id/preview", "routes/ai-draft.preview.ts"),
   route("b/:project/export/:format", "routes/book.export.ts"),
   route("b/:project/authorship", "routes/book.authorship.ts"),
+  // The chart demo: sample data, no sign-in, noindex, answered before the door (workers/demo.ts).
+  route("demos/progress", "routes/demos.progress.tsx"),
   route("health", "routes/health.ts"),
   route("auth/google/:step", "routes/auth.google.ts"),
 ] satisfies RouteConfig;
