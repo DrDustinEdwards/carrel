@@ -93,6 +93,11 @@
 		{
 			"binding": "BACKUPS",
 			"bucket_name": "carrel-backups"
+		},
+		// The AI door's tool-call log copies (the nightly tool-call-log-export job), with a lock rule on tool-calls/.
+		{
+			"binding": "AUDIT_BUCKET",
+			"bucket_name": "carrel-desk-tool-calls"
 		}
 	],
 	// One room per open file for live co-editing (workers/doc-room.ts, y-partyserver): the shared working
