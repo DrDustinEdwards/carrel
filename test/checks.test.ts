@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { chartBlock } from "~/lib/chart-block";
-import { checkCharts, suggestFinding } from "~/lib/chart-check";
+import { checkCharts, suggestFinding } from "~/lib/chart-check.client";
 import {
   checkContinuity,
   checkFile,

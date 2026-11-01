@@ -12,7 +12,7 @@ import { Segmented } from "capsomer/react/segmented";
 import { Select } from "capsomer/react/select";
 
 import { CHART_KINDS, chartBlock, csvColumns, type ChartKind } from "~/lib/chart-block";
-import type { ChartFinding } from "~/lib/chart-check";
+import type { ChartFinding } from "~/lib/chart-check.client";
 
 // Larger than any chart a post should inline; Prelum and Enarratio set their own limits under it.
 const MAX_CSV_BYTES = 200 * 1024;
@@ -67,7 +67,7 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
     }
     let live = true;
     const timer = setTimeout(() => {
-      void import("~/lib/chart-check").then((m) => {
+      void import("~/lib/chart-check.client").then((m) => {
         if (!live) return;
         setFindings(m.checkCharts(final || block));
         setSuggestion(m.suggestFinding(block));

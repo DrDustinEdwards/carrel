@@ -49,7 +49,7 @@ import { PageHead } from "capsomer/react/page-head";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { can } from "~/lib/roles";
 import { openRoom, rebaseRoom, replaceRoom, roomPath, roomVersion, saveRoom, siteCoauthors, withOthers } from "~/lib/rooms.server";
-import type { ChartFinding } from "~/lib/chart-check";
+import type { ChartFinding } from "~/lib/chart-check.client";
 import { imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
@@ -438,7 +438,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     [source, data.kind, data.project.siteId, data.origin, data.address, data.searchFields],
   );
   // The chart check runs on Prelum's own chart code, loaded only when the text holds a chart, a moment
-  // after the typing stops (lib/chart-check.ts).
+  // after the typing stops (lib/chart-check.client.ts).
   const body = splitSource(source).body;
   const hasChart = body.includes(":::chart");
   const [chartFindings, setChartFindings] = useState<ChartFinding[]>([]);
@@ -446,7 +446,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (!hasChart) return setChartFindings([]);
     let live = true;
     const timer = setTimeout(() => {
-      void import("~/lib/chart-check").then((m) => live && setChartFindings(m.checkCharts(body)));
+      void import("~/lib/chart-check.client").then((m) => live && setChartFindings(m.checkCharts(body)));
     }, 800);
     return () => {
       live = false;

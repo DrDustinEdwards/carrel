@@ -29,11 +29,16 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   try {
     return previewResponse(await siteClient(env, project.site).preview({ id: params.item, source }), connection.origin);
   } catch (error) {
-    if (error instanceof SiteNotConnected) return previewFailure(error.detail);
-    if (error instanceof SiteApiError && error.body) return previewFailure(`The site could not render this: ${error.body.message}`);
-    console.error(JSON.stringify({ preview: "failed", itemId: params.item, error: String(error) }));
-    return previewFailure("The site did not answer the preview request.");
+    return failed(error, params.item);
   }
+}
+
+/** A preview the site could not give: what it said, or that it did not answer. */
+function failed(error: unknown, itemId: string): Response {
+  if (error instanceof SiteNotConnected) return previewFailure(error.detail);
+  if (error instanceof SiteApiError && error.body) return previewFailure(`The site could not render this: ${error.body.message}`);
+  console.error(JSON.stringify({ preview: "failed", itemId, error: String(error) }));
+  return previewFailure("The site did not answer the preview request.");
 }
 
 export async function loader({ params, context }: Route.LoaderArgs) {
@@ -58,9 +63,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     const html = await siteClient(env, project.site).preview({ id: itemId, source });
     return previewResponse(label ? withLabel(html, label) : html, connection.origin);
   } catch (error) {
-    if (error instanceof SiteNotConnected) return previewFailure(error.detail);
-    if (error instanceof SiteApiError && error.body) return previewFailure(`The site could not render this: ${error.body.message}`);
-    console.error(JSON.stringify({ preview: "failed", itemId, error: String(error) }));
-    return previewFailure("The site did not answer the preview request.");
+    return failed(error, itemId);
   }
 }
