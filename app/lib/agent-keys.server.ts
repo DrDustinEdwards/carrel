@@ -5,14 +5,10 @@
 // The name is never taken from the request. It is a property of WHICH configured secret the
 // presented key matched, so a caller proves it holds a key and can never choose what it is called.
 //
-// This file decides who is knocking, and nothing more. What that agent may do comes from the
-// person row "agent:<name>" in Carrel's People table (people.server.ts, findAgentViewer), never
-// from the key, and the functions every tool calls refuse what the role does not allow.
-
-import { safeEqual } from "@dustinedwards/site-runtime/compare";
-
-/** The prefix that makes a Worker secret an agent key. */
-const AGENT_KEY_PREFIX = "AGENT_KEY_";
+// Who is knocking is site-runtime's agentPrincipal (./agent-keys), which the door calls; this file
+// holds only how Carrel names and credits an agent. What that agent may do comes from the person
+// row "agent:<name>" in Carrel's People table (people.server.ts, findAgentViewer), never from the
+// key, and the functions every tool calls refuse what the role does not allow.
 
 /** The shape of an agent's name: what follows the prefix, lower-cased. */
 const AGENT_NAME = /^[a-z0-9][a-z0-9_-]{0,31}$/;
@@ -29,30 +25,4 @@ export function agentEmail(name: string): string {
 /** What the audit trail credits an agent's writes to: the same text as its person row's email. */
 export function agentClient(name: string): string {
   return agentEmail(name);
-}
-
-/**
- * Which agent, if any, presented this Authorization header. Null for a missing or malformed header,
- * for any key that matches no configured secret (an OAuth access token is one of these), and when no
- * AGENT_KEY_* secret exists at all: the door is then exactly what it was. Null always means "fall
- * through to OAuth", never "this is an agent".
- *
- * A secret that is blank, or whose name is not a valid agent name, is skipped, so an empty secret
- * cannot become a master key. Every candidate is compared, with no early exit, so the time taken
- * does not depend on which key matched or where it sat.
- */
-export async function agentPrincipal(env: object, authorization: string | null): Promise<string | null> {
-  if (!authorization) return null;
-  const match = /^Bearer[ ]+(\S+)$/i.exec(authorization.trim());
-  if (!match) return null;
-  const presented = match[1]!;
-
-  let found: string | null = null;
-  for (const [secret, value] of Object.entries(env)) {
-    if (!secret.startsWith(AGENT_KEY_PREFIX)) continue;
-    const name = secret.slice(AGENT_KEY_PREFIX.length).toLowerCase();
-    if (!isAgentName(name) || typeof value !== "string" || !value.trim()) continue;
-    if (await safeEqual(presented, value.trim())) found = name;
-  }
-  return found;
 }

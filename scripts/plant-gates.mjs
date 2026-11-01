@@ -56,12 +56,10 @@ const PLANTS = [
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "return viewer ? { personId: viewer.id } : null;", replace: "return { personId: viewer?.id ?? 0 };", label: "an unknown person gets a grant" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (!viewer || viewer.id !== props?.personId) {", replace: "if (!viewer) {", label: "the per-request person check trusts a stale grant" },
   // Named agent keys: the key names an agent and grants nothing.
-  { gate: "tests", file: "app/lib/agent-keys.server.ts", find: "if (await safeEqual(presented, value.trim())) found = name;", replace: "found = name;", label: "any presented key matches a configured agent key" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (agent) return agentHandler(request, env, ctx, agent);", replace: 'if (agent || request.headers.get("Authorization")) return agentHandler(request, env, ctx, agent ?? "grok");', label: "an unknown key or an OAuth token is treated as the grok agent" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (agent) return agentHandler(request, env, ctx, agent);", replace: 'if (agent) return agentHandler(request, env, ctx, request.headers.get("X-Agent-Name") ?? agent);', label: "the agent's name taken from the request" },
   { gate: "tests", file: "app/lib/mcp/door.ts", find: "{ viewer, client: agentClient(name), scopes: AGENT_SCOPES }", replace: "{ viewer: { ...viewer, isOwner: true }, client: agentClient(name), scopes: AGENT_SCOPES }", label: "an agent key acts as the Owner" },
   { gate: "tests", file: "app/lib/people.server.ts", find: "return viewer && !viewer.isOwner ? viewer : null;", replace: "return viewer;", label: "a person row marked Owner may be an agent" },
-  { gate: "tests", file: "app/lib/agent-keys.server.ts", find: "/^Bearer[ ]+(\\S+)$/i.exec(authorization.trim())", replace: "/^\\s*(?:Bearer\\s+)?(\\S+)/i.exec(authorization.trim())", label: "a bare key with no Bearer scheme is read as an agent key" },
   { gate: "tests", file: "app/lib/people.server.ts", find: "and(eq(people.email, email.trim()), isNull(people.disabledAt))", replace: "eq(people.email, email.trim())", label: "a disabled person (or agent) is still found" },
   // The MCP ruling of 2026-10-10: the security floor (rule 12), the tightened
   // registration (rule 13), honest hints and a cursor.

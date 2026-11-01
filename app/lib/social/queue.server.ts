@@ -21,7 +21,7 @@ import { packExcerpts } from "~/lib/voice.server";
 
 import { lintPost } from "./lint";
 import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
-import { fireRoutine, routineConfig, routinePrompt } from "./routine.server";
+import { d1FireStore, fireOnce, routineConfig, routinePrompt } from "./routine.server";
 import { timedFetch } from "~/lib/timed-fetch.server";
 import { readKey, splitSource } from "@dustinedwards/site-api/frontmatter";
 
@@ -323,9 +323,11 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
             return { eventId: e.id, account: `${a.name} (${a.key})`, platform: a.platform, voiceGuide: a.voiceGuide, title: e.title, url: e.url, summary: e.summary };
           }),
         );
-        const fired = await fireRoutine(config, prompt, fetcher);
-        // A fire with no answer may have started a session: treat it as fired, never fire it again.
-        const started = fired.ok || fired.outcome === "unknown";
+        // Through site-runtime's duplicate guard (R2), keyed by this run: a retry of the same run never fires again.
+        const fired = await fireOnce(d1FireStore(env.DB), `social-run:${run!.id}:${now.toISOString()}`, config, prompt, { fetcher, now });
+        // A fire with no answer may have started a session, and one already fired did: treat both as fired, never fire
+        // them again.
+        const started = fired.ok || fired.outcome === "unknown" || fired.outcome === "already_fired";
         await d
           .update(socialRoutineRuns)
           .set({ events: JSON.stringify(claimed.map((e) => e.id)), status: started ? "fired" : "failed", sessionUrl: fired.ok ? fired.sessionUrl : null, error: fired.ok ? null : fired.error })
