@@ -19,6 +19,7 @@
 //                                 finds the person and hands the request to server.ts. Each person (or
 //                                 agent) has 30 requests a minute.
 //   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
+//   /owner                        the owner page: your grants with Revoke, and for the Owner the tool-call log (loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
 //   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
@@ -121,6 +122,9 @@ const login = loginHandler<DoorEnv>({
   wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),
   // Every sign-in, admitted or refused, is a `sign-in` row in the call log beside the tool calls.
   audit: { name: MCP_SERVER.name, version: MCP_SERVER.version },
+  // The owner page (/owner, site-runtime ./owner-page): each person lists and revokes their own grants, and only the
+  // Owner reads the tool-call log, which holds everyone's calls.
+  owner: { readsLog: async (env, email) => (await findViewer(env.DB, email))?.isOwner === true },
 });
 
 /**
