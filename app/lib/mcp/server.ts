@@ -10,11 +10,13 @@
 // every tool calls the same functions the buttons do, and those functions refuse. check:mcp-roles
 // fails the build if role logic appears in this folder.
 
-import { invokeTool, mcpCacheHints, routeMcpEra, toolScopeChallenge, type McpCaller } from "@dustinedwards/site-runtime/mcp-server";
+import { invokeTool, mcpCacheHints, routeMcpEra, toolsForGrant, type McpCaller } from "@dustinedwards/site-runtime/mcp-server";
+
+import { fetchUntil } from "~/lib/timed-fetch.server";
 import { fromJsonSchema, isLegacyRequest, McpServer, type JsonSchemaType } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 
-import { effectiveScopes, SCOPE_READ, SCOPE_WRITE } from "./scopes";
+import { SCOPE_READ, SCOPE_WRITE } from "./scopes";
 import { type McpSession, outputSchemaOf, runTool, TOOLS, type ToolDeps } from "./tools";
 
 /** The AI door's one path, on its own hostname (door.ts). */
@@ -30,7 +32,7 @@ const SERVER_INFO = {
   icons: [{ src: `${PUBLIC}/favicon.svg`, mimeType: "image/svg+xml", sizes: ["any"] }],
 };
 
-/** Carrel's server as refusals, the scope challenge and the call log name it. */
+/** Carrel's server as refusals and the call log name it. */
 export const MCP_SERVER = { site: "Carrel", scopes: { read: SCOPE_READ, write: SCOPE_WRITE }, name: SERVER_INFO.name, version: SERVER_INFO.version };
 
 const INSTRUCTIONS = [
@@ -52,21 +54,32 @@ function callerOf(session: McpSession): McpCaller {
 }
 
 /**
- * The server factory, called per request: stateless means no instance outlives the call that made
- * it. The session (the person and the AI client, from the token) is closed over, never read from
- * the request.
+ * Who a request is: a session (the person and the AI client, from the token, or a named agent), or
+ * the list-only test key (site-runtime probeDoor), which has no person and runs no tool.
  */
-function buildServer(env: Env, session: McpSession, deps: ToolDeps) {
+type Who = { session: McpSession } | { probe: McpCaller };
+
+/**
+ * The server factory, called per request: stateless means no instance outlives the call that made
+ * it. The session is closed over, never read from the request.
+ */
+function buildServer(env: Env, who: Who, deps: ToolDeps) {
+  const caller = "probe" in who ? who.probe : callerOf(who.session);
   return () => {
     // The element cap on tool arguments (GHSA-46jr-4wx8-v453): the SDK leaves it off by default.
-    // Every list is the same for every grant (none is filtered by scope), so a shared cache may keep it.
+    // tools/list depends on the grant, so only server/discover may sit in a shared cache.
     const server = new McpServer(SERVER_INFO, {
       instructions: INSTRUCTIONS,
       maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
-      cacheHints: mcpCacheHints({ shared: ["tools/list", "server/discover"] }),
+      cacheHints: mcpCacheHints({ shared: ["server/discover"] }),
     });
-    for (const tool of TOOLS) {
-      const challenge = toolScopeChallenge(env, MCP_SERVER, tool);
+    // Only the tools this grant can call are listed (checklist T7, site-runtime's toolsForGrant over the scopes as
+    // scopes.ts reads them; the test key is listed the read tools), each with the server's icon (T9). site-runtime's
+    // registerTools does the same, but it sets its own scopeChallenge from the token's raw scopes, and a pre-2026-10-10
+    // "carrel" token must read as both. Every Carrel tool has a fixed scope, so a listed tool is always one the grant
+    // can call and no step-up is left to offer; invokeTool still checks the scope on every call.
+    const listed = toolsForGrant(TOOLS, "probe" in who ? [SCOPE_READ] : who.session.scopes, MCP_SERVER.scopes);
+    for (const tool of listed) {
       server.registerTool(
         tool.name,
         {
@@ -75,13 +88,17 @@ function buildServer(env: Env, session: McpSession, deps: ToolDeps) {
           inputSchema: fromJsonSchema(tool.inputSchema as JsonSchemaType),
           outputSchema: fromJsonSchema(outputSchemaOf(tool) as JsonSchemaType),
           annotations: tool.annotations,
-          // A write on a read-only OAuth grant is answered 403 insufficient_scope, so the client can ask
-          // again. The token's scopes are read as scopes.ts reads them: the pre-2026-10-10 "carrel" is both.
-          scopeChallenge: (context) => challenge({ ...context, authInfo: context.authInfo && { ...context.authInfo, scopes: effectiveScopes(context.authInfo.scopes) } }),
+          icons: SERVER_INFO.icons,
         },
         async (args: unknown, ctx) => {
           const input = (args ?? {}) as Record<string, unknown>;
-          return invokeTool(env, MCP_SERVER, { caller: callerOf(session), tool, args: input, meta: ctx.mcpReq._meta, run: () => runTool(tool, input, { env, session, deps }) });
+          // invokeTool refuses the test key on every call, before run; with no session there is nothing to run as.
+          // The request's abort signal (P11) reaches the tool and every outbound fetch it makes.
+          const run =
+            "session" in who
+              ? (signal?: AbortSignal) => runTool(tool, input, { env, session: who.session, deps: { ...deps, fetcher: fetchUntil(signal, deps.fetcher) }, signal })
+              : () => Promise.reject(new Error("The list-only test key runs no tool."));
+          return invokeTool(env, MCP_SERVER, { caller, tool, args: input, meta: ctx.mcpReq._meta, signal: ctx.mcpReq.signal, run });
         },
       );
     }
@@ -97,10 +114,10 @@ export async function handleMcp(
   request: Request,
   env: Env,
   ctx: ExecutionContext,
-  session: McpSession,
+  who: McpSession | { probe: McpCaller },
   deps: ToolDeps,
 ): Promise<Response> {
-  const factory = buildServer(env, session, deps);
+  const factory = buildServer(env, "probe" in who ? who : { session: who }, deps);
   const host = new URL(request.url).hostname;
   const options = { route: MCP_ROUTE, allowedHostnames: [host], allowedOriginHostnames: [host], corsOptions: false as const };
 

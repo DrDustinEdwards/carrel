@@ -30,6 +30,8 @@
     "0025_cron_runs.sql": "a0df24eec19a6974fb3831976f80aeba591f5b6b6073d44e2e154701dc43bf3c",
     "0026_reports.sql": "8f6c16dcb39dfd99de8cd31891522f6e02abae3d0f386dc5650fda1868c5fb13",
     "0027_posts_kit_changes.sql": "e0cab1b8f3f739263d05c7b8da91847dc23211f874af71b3d1235a33993b43eb",
-    "0028_not_found.sql": "6df88b23ef9c521aaee3c3be18bb53545a4671638159b4a067b042729aec89c8"
+    "0028_not_found.sql": "6df88b23ef9c521aaee3c3be18bb53545a4671638159b4a067b042729aec89c8",
+    "0029_bsw.sql": "9a8e956b657ef8a48496f7504ec39dceee5758326329ffd7d2d0a49839be198d",
+    "0030_routine_fires.sql": "95fbcd789dfc6785ff7433e8593ff0065f2a04c1a1e86845668b338e6d9eaccc"
   }
 }

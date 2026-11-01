@@ -6,7 +6,9 @@
  * `wrangler secret put`, never here: ACCESS_AUD (the AUD tag of the Worker's Access application),
  * ACCESS_SAAS_CLIENT_ID and ACCESS_SAAS_CLIENT_SECRET (the AI door's Access for SaaS login), and one
  * key per site, SITE_DUSTINEDWARDS_KEY, SITE_GERMOMICS_KEY, SITE_FOXHOUND_KEY, SITE_FOXING_KEY,
- * SITE_TXASM_KEY and SITE_JULIEEDWARDS_KEY (absent until the site is connected).
+ * SITE_TXASM_KEY, SITE_JULIEEDWARDS_KEY and SITE_BSW_KEY (absent until the site is connected), and,
+ * optionally, MCP_PROBE_KEY, the list-only test key for the daily live check (at least 32 characters;
+ * it lists the read tools and runs none, app/lib/mcp/door.ts).
  *
  * NEVER PUBLIC, BY DEPLOY ORDER. desk.dustinedwards.info has a hostname Access application (not
  * Worker-level Access, which refuses WebSockets and so the co-editing rooms: docs/coediting.md), and
@@ -91,6 +93,11 @@
 		{
 			"binding": "BACKUPS",
 			"bucket_name": "carrel-backups"
+		},
+		// The AI door's tool-call log copies (the nightly tool-call-log-export job), with a lock rule on tool-calls/.
+		{
+			"binding": "AUDIT_BUCKET",
+			"bucket_name": "carrel-desk-tool-calls"
 		}
 	],
 	// One room per open file for live co-editing (workers/doc-room.ts, y-partyserver): the shared working
@@ -162,6 +169,8 @@
 		"SEARCH_CONSOLE_PROPERTY_FOXING": "sc-domain:foxing.app",
 		"SEARCH_CONSOLE_PROPERTY_TXASM": "sc-domain:txasm.org",
 		"SEARCH_CONSOLE_PROPERTY_JULIEEDWARDS": "sc-domain:julieedwards.info",
+		// A URL-prefix property: BioScience Writers has no domain of its own yet.
+		"SEARCH_CONSOLE_PROPERTY_BSW": "https://bsw.dustin-edwards.workers.dev/",
 		// The site Carrel reaches through site-api. Its key is the secret SITE_DUSTINEDWARDS_KEY.
 		"SITE_DUSTINEDWARDS_ORIGIN": "https://dustinedwards.info",
 		// germomics, served by its own Worker at this domain. Its key is the secret SITE_GERMOMICS_KEY.
@@ -173,6 +182,9 @@
 		// txasm's two site pages, served by its own Worker at this domain. Its key is the secret SITE_TXASM_KEY.
 		"SITE_TXASM_ORIGIN": "https://txasm.dustin-edwards.workers.dev",
 		// julieedwards.info's sections, served at this domain. Its key is the secret SITE_JULIEEDWARDS_KEY.
-		"SITE_JULIEEDWARDS_ORIGIN": "https://julieedwards.info"
+		"SITE_JULIEEDWARDS_ORIGIN": "https://julieedwards.info",
+		// BioScience Writers' media library (its pages are code), served by its own Worker at this address. Its key is the
+		// secret SITE_BSW_KEY.
+		"SITE_BSW_ORIGIN": "https://bsw.dustin-edwards.workers.dev"
 	}
 }

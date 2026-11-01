@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { OUTSIDE_NOTICE } from "~/lib/mcp/tools";
+import { OUTSIDE_DATA_NOTICE as OUTSIDE_NOTICE } from "@dustinedwards/site-runtime/mcp-server";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { connectAs } from "./mcp-client";

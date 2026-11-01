@@ -19,25 +19,30 @@
 //                                 finds the person and hands the request to server.ts. Each person (or
 //                                 agent) has 30 requests a minute.
 //   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
+//   /owner                        the owner page: your grants with Revoke, and for the Owner the tool-call log (loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
 //   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
 //   /reports/conformance.json     each site's latest conformance, public, for devkit's scoreboard
+//   /reports/signed-in-security.json  Desk's signed-in pages graded in-process (signed-in-crawl.server.ts), public
 //   anything else                 404
 
 import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { recordAudit } from "@dustinedwards/site-runtime/audit-log";
 import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
-import { audienceRefusal, checkRateLimit, mcpOriginRefusal } from "@dustinedwards/site-runtime/mcp-server";
+import { audienceRefusal, checkRateLimit, mcpOriginRefusal, probeDoor } from "@dustinedwards/site-runtime/mcp-server";
+import { SIGNED_IN_REPORT_PATH } from "@dustinedwards/site-runtime/signed-in-crawl";
 
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { reports } from "~/db/schema";
-import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
+import { agentPrincipal } from "@dustinedwards/site-runtime/agent-keys";
+import { agentClient } from "~/lib/agent-keys.server";
 import { healthAnswer } from "~/lib/health.server";
-import { findAgentViewer, findViewer } from "~/lib/people.server";
+import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";
+import { SIGNED_IN_REPORT_NAME } from "~/lib/signed-in-crawl.server";
 
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
 import { carrelOrigin, handleMcp, MCP_ROUTE, MCP_SERVER } from "./server";
@@ -114,10 +119,13 @@ const login = loginHandler<DoorEnv>({
     const viewer = await findViewer(env.DB, email);
     return viewer ? { personId: viewer.id } : null;
   },
-  // A client that names no Carrel scope, or the legacy one, is offered writing too (scopes.ts).
+  // The write box starts ticked only for a client that asked for write, by today's name or an earlier one (scopes.ts).
   wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),
   // Every sign-in, admitted or refused, is a `sign-in` row in the call log beside the tool calls.
   audit: { name: MCP_SERVER.name, version: MCP_SERVER.version },
+  // The owner page (/owner, site-runtime ./owner-page): each person lists and revokes their own grants, and only the
+  // Owner reads the tool-call log, which holds everyone's calls.
+  owner: { readsLog: (env, email) => readsToolCallLog(env.DB, email) },
 });
 
 /**
@@ -144,10 +152,7 @@ export const apiHandler = {
     const throttled = await rateLimited(env, viewer.id, `access:${viewer.email}`);
     if (throttled) return throttled;
     const session = { viewer, client: props.client || "an unnamed AI client", clientId: props.clientId, scopes: effectiveScopes(auth?.scope ?? []) };
-    const response = await handleMcp(request, env, ctx, session, { carrelOrigin: carrelOrigin(env) });
-    const out = new Response(response.body, response);
-    for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(name, value);
-    return out;
+    return servePrivate(request, env, ctx, session);
   },
 };
 
@@ -167,7 +172,12 @@ async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, n
   logEvent(OWASP_EVENTS.signInSuccess, { door: "ai", method: "agent-key", agent: name });
   const throttled = await rateLimited(env, viewer.id, `agent:${name}`);
   if (throttled) return throttled;
-  const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES }, { carrelOrigin: carrelOrigin(env) });
+  return servePrivate(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES });
+}
+
+/** Serves one MCP request for a session or the list-only test key, with the private headers. */
+async function servePrivate(request: Request, env: Env, ctx: ExecutionContext, who: Parameters<typeof handleMcp>[3]): Promise<Response> {
+  const response = await handleMcp(request, env, ctx, who, { carrelOrigin: carrelOrigin(env) });
   const out = new Response(response.body, response);
   for (const [header, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(header, value);
   return out;
@@ -215,9 +225,10 @@ function providerFor(env: Env): OAuthProvider<Env> {
   return provider;
 }
 
-/** The health run's latest conformance report (health.server.ts), as stored. Before the first run there is none. */
-async function conformanceReport(env: Env): Promise<Response> {
-  const row = await drizzle(env.DB).select({ body: reports.body }).from(reports).where(eq(reports.name, "conformance")).get();
+/** A stored public report, as stored: the health run's conformance report (health.server.ts) or the signed-in crawl's
+ *  (signed-in-crawl.server.ts). Before the first run there is none. */
+async function storedReport(env: Env, name: string): Promise<Response> {
+  const row = await drizzle(env.DB).select({ body: reports.body }).from(reports).where(eq(reports.name, name)).get();
   if (!row) return text("No report yet.", 404);
   return new Response(row.body, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", ...PRIVATE_HEADERS } });
 }
@@ -226,11 +237,16 @@ async function conformanceReport(env: Env): Promise<Response> {
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
   if (pathname === "/health") return healthAnswer(env);
-  if (pathname === REPORT_PATH && request.method === "GET") return conformanceReport(env);
+  if (pathname === REPORT_PATH && request.method === "GET") return storedReport(env, "conformance");
+  if (pathname === SIGNED_IN_REPORT_PATH && request.method === "GET") return storedReport(env, SIGNED_IN_REPORT_NAME);
   if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
     // Before any token is read, so a page on another origin gets 403, never a 401 to retry with a token.
     const foreign = mcpOriginRefusal(request, [], PRIVATE_HEADERS);
     if (foreign) return foreign;
+    // The list-only test key for the daily live check (secret MCP_PROBE_KEY): it lists the read tools,
+    // runs none, and never reaches a person. Without the key, nothing changes.
+    const probed = await probeDoor(request, env, { server: MCP_SERVER, limiter: env.MCP_RATE_LIMIT, serve: (req, caller) => servePrivate(req, env, ctx, { probe: caller }) });
+    if (probed) return probed;
     // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
     const agent = await agentPrincipal(env, request.headers.get("Authorization"));
     if (agent) return agentHandler(request, env, ctx, agent);

@@ -202,6 +202,15 @@ describe("the routine, and the template only after it fails", () => {
     expect(world.fires[0]!.text).toContain("do not reply to anyone");
   });
 
+  it("PLANT: two overlapping ticks fire the routine once for the same piece", async () => {
+    await published();
+    const world = fakeWorld();
+    const ticks = await Promise.all([0, 1].map(() => processSocial(env, { fetcher: world.fetch, now: later(BATCH_DELAY_MS) })));
+    expect(world.fires).toHaveLength(1);
+    expect(ticks.reduce((n, t) => n + t.routineFired, 0)).toBe(1);
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM social_routine_runs").first()).toEqual({ n: 1 });
+  });
+
   it("uses the routine's draft when it arrives in time, and no template", async () => {
     await published();
     const world = fakeWorld();

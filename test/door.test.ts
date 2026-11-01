@@ -10,9 +10,13 @@ import { createExecutionContext } from "cloudflare:test";
 import { stubAccess } from "@dustinedwards/devkit/access";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
+import { carrelDesk } from "@dustinedwards/site-runtime/sites";
 
-import { gate } from "../workers/gate";
+import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
+import { runSignedInCrawl, type DeskAs } from "~/lib/signed-in-crawl.server";
+
+import { admit, gate } from "../workers/gate";
+import { newNonce, withSecurityHeaders } from "../workers/security-headers";
 import { addPerson, addProject, localKeys, resetDb, share, testEnv } from "./env";
 import { MCP_HOST, modernRequest, readMessage, type ToolCallResult } from "./mcp-client";
 import { connectedEnv, fakeSite } from "./site";
@@ -165,7 +169,7 @@ async function door(request: Request, env: Env = doorEnv()) {
  */
 async function signIn(
   claims: (nonce: string) => IdClaims = () => ({}),
-  opts: { decision?: "approve" | "deny" | "read-only"; accessError?: boolean; scope?: string; resource?: string } = {},
+  opts: { decision?: "approve" | "deny" | "read-only" | "tick-write"; accessError?: boolean; scope?: string; resource?: string } = {},
 ) {
   const access = fakeAccess(claims);
   vi.stubGlobal("fetch", access.fetch);
@@ -178,7 +182,7 @@ async function signIn(
     state: "client-state",
     code_challenge: await s256(VERIFIER),
     code_challenge_method: "S256",
-    scope: opts.scope ?? "carrel:read carrel:write",
+    scope: opts.scope ?? "carrel.read carrel.write",
     resource: opts.resource ?? RESOURCE,
   });
   // An empty scope means the client sent none at all.
@@ -193,9 +197,9 @@ async function signIn(
   expect(html).toContain("Allow Claude Code to use Carrel?");
   expect(html).toContain("client.test");
   const handle = /name="handle" value="([^"]+)"/.exec(html)![1]!;
-  // As a browser would send it: the write box as the page set it, unticked for "read-only".
+  // As a browser would send it: the write box as the page set it, unticked for "read-only", ticked for "tick-write".
   const form = new URLSearchParams({ handle, decision: opts.decision === "deny" ? "deny" : "approve" });
-  if (opts.decision !== "read-only" && /name="allow_write" value="1" checked/.test(html)) form.set("allow_write", "1");
+  if (opts.decision === "tick-write" || (opts.decision !== "read-only" && /name="allow_write" value="1" checked/.test(html))) form.set("allow_write", "1");
 
   const approve = await door(
     new Request(`${DOOR}/authorize`, {
@@ -239,6 +243,12 @@ async function callTool(token: string, name: string, args: Record<string, unknow
   return { status: 200, result: (await readMessage(response)).result as unknown as ToolCallResult };
 }
 
+/** A write tool a read grant is not listed (T7): the call is an unknown tool, so nothing runs and no step-up is offered. */
+function expectNotRun(answer: { status: number; result?: ToolCallResult }): void {
+  expect(answer.status).toBe(200);
+  expect(answer.result?.structuredContent).toBeUndefined();
+}
+
 describe("the AI door's OAuth surface", () => {
   it("answers /mcp without a token with a Bearer challenge that points at its metadata", async () => {
     const response = await door(modernRequest(1, "tools/list"));
@@ -252,7 +262,7 @@ describe("the AI door's OAuth surface", () => {
     const meta = (await (await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))).json()) as Record<string, unknown>;
     expect(meta.client_id_metadata_document_supported).toBe(true);
     expect(meta.registration_endpoint).toBe(`${DOOR}/register`);
-    expect(meta.scopes_supported).toEqual(["carrel:read", "carrel:write"]);
+    expect(meta.scopes_supported).toEqual(["carrel.read", "carrel.write"]);
   });
 
   // The deploy's live gate (devkit's worker-deploy.yml) polls this until it names the commit it shipped. It is
@@ -496,45 +506,51 @@ describe("least scope", () => {
     return connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
   }
 
-  it("PLANT: a client that asks only to read gets read: reads work, a write gets the step-up challenge naming both scopes", async () => {
-    const { final } = await signIn(undefined, { scope: "carrel:read" });
+  /** A flag from a read-only grant: the tool is unknown to it, nothing runs and no finding is stored. */
+  async function expectFlagRefused(token: string, env: Env) {
+    expectNotRun(await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env));
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+  }
+
+  it("PLANT: a client that asks only to read gets read: reads work, the write tools are not listed, and a write runs nothing (T7)", async () => {
+    const { final } = await signIn(undefined, { scope: "carrel.read" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
     expect((await callTool(token, "carrel_list_projects", {}, env)).result).toMatchObject({ structuredContent: { projects: [{ slug: "de-info" }] } });
-    const refused = await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env);
-    expect(refused.status).toBe(403);
-    expect(refused.challenge).toContain('error="insufficient_scope"');
-    expect(refused.challenge).toContain('scope="carrel:read carrel:write"');
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+    const listed = await door(modernRequest(8, "tools/list", {}, { Authorization: `Bearer ${token}` }), env);
+    const names = ((await readMessage(listed)).result as unknown as { tools: { name: string }[] }).tools.map((t) => t.name);
+    expect(names).toContain("carrel_read_item");
+    expect(names).not.toContain("carrel_add_finding");
+    await expectFlagRefused(token, env);
   });
 
   it("PLANT: the person narrows a client's write request to reading only on the consent page", async () => {
     const { final } = await signIn(undefined, { decision: "read-only" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
-    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).status).toBe(403);
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+    await expectFlagRefused(token, env);
   });
 
-  it("a client that asked to write, and was allowed, can write", async () => {
-    const { final } = await signIn();
+  // A client still sending the legacy scope carrel is asked for both, as its first consent was.
+  it.each(["carrel.read carrel.write", "carrel"])("a client that asked to write (%s), and was allowed, can write", async (scope) => {
+    const { final } = await signIn(undefined, { scope });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
     expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
   });
 
-  it("PLANT: a client that asks for no scope gets read and write, and the consent page still offers reading only", async () => {
+  it("PLANT: a client that asks for no scope gets reading only unless the person ticks write on the consent page", async () => {
     const { final } = await signIn(undefined, { scope: "" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
-    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
-    // The same request, narrowed by the person, is reading only.
-    const narrowed = await signIn(undefined, { scope: "", decision: "read-only" });
-    const readOnly = await tokenFor(narrowed.final.searchParams.get("code")!);
-    expect((await callTool(readOnly, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).status).toBe(403);
+    await expectFlagRefused(token, env);
+    // The same request, with the box ticked by the person, can write.
+    const ticked = await signIn(undefined, { scope: "", decision: "tick-write" });
+    const writer = await tokenFor(ticked.final.searchParams.get("code")!);
+    expect((await callTool(writer, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
   });
 
-  it("PLANT: a token from a grant made before 2026-10-10 (scope carrel) can still write; a read-only one cannot", async () => {
+  it("PLANT: a token from a grant with an earlier scope name (carrel, carrel:write) can still write; carrel:read cannot", async () => {
     // The provider hands the handler the grant's own scope, and a refresh keeps it (it only narrows a
     // requested scope to the grant's), so an old connection arrives with ["carrel"] until it signs in again.
     await seeded();
@@ -549,14 +565,9 @@ describe("least scope", () => {
       return apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_add_finding", arguments: { project: "de-info", item: "post-one", message: `As ${scope.join(" ")}.` } }), env, ctx);
     };
     expect((await readMessage(await call(["carrel"]))).result).toMatchObject({ structuredContent: { flagged: true } });
-    expect((await call(["carrel:read"])).status).toBe(403);
-  });
-
-  it("a client still sending the legacy scope carrel is asked for both, as its first consent was", async () => {
-    const { final } = await signIn(undefined, { scope: "carrel" });
-    const token = await tokenFor(final.searchParams.get("code")!);
-    const env = await seeded();
-    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
+    expect((await readMessage(await call(["carrel:read", "carrel:write"]))).result).toMatchObject({ structuredContent: { flagged: true } });
+    const readOnly = await readMessage(await call(["carrel:read"]));
+    expect(readOnly.error ?? (readOnly.result as { isError?: boolean } | undefined)?.isError).toBeTruthy();
   });
 });
 
@@ -588,7 +599,7 @@ describe("the token's audience", () => {
     const call = (audience: string) => {
       const ctx = Object.assign(createExecutionContext(), {
         props: { personId: owner!.id, email: "owner@test.invalid", client: "Claude", clientId: CLIENT_ID },
-        auth: { audience, scope: ["carrel:read"] },
+        auth: { audience, scope: ["carrel.read"] },
       });
       return apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_list_projects", arguments: {} }), doorEnv(), ctx);
     };
@@ -614,5 +625,54 @@ describe("the token's audience", () => {
     expect(result!.isError).toBeFalsy();
     expect(sent.length).toBeGreaterThan(0);
     for (const line of sent) expect(line).not.toContain(token);
+  });
+});
+
+// The signed-in crawl (app/lib/signed-in-crawl.server.ts): Desk grades its own pages behind Access, in-process, as the
+// Owner, and the AI door serves the report devkit's scoreboard reads. It must never pass with no one signed in, never
+// send anything but a GET, and go through the door's own admission and headers.
+
+type CrawlReport = { check: string; ref: string; sites: Record<string, { status: string; findings: { check: string; detail: string }[] }> };
+
+async function crawlReport(): Promise<CrawlReport> {
+  const response = await aiDoor(new Request("https://carrel-mcp.test/reports/signed-in-security.json"), testEnv, createExecutionContext());
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  return (await response.json()) as CrawlReport;
+}
+
+describe("the signed-in crawl", () => {
+  it("PLANT: with no Owner it reports error, never a pass; with one it GETs Desk's pages as the Owner through the door", async () => {
+    const seen: string[] = [];
+    const deskAs: DeskAs = async (request, viewer) => {
+      const nonce = newNonce();
+      const page = await admit(request, viewer, async (req, who) => {
+        seen.push(`${req.method} ${new URL(req.url).pathname} ${who.email}`);
+        const missing = new URL(req.url).pathname === "/signed-in-crawl-404";
+        return new Response(`<!doctype html><title>Desk</title><script nonce="${nonce}" src="/assets/app.js"></script>`, {
+          status: missing ? 404 : 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      });
+      return withSecurityHeaders(page, nonce, { imageOrigins: [], reportOrigin: "https://carrel-mcp.test" });
+    };
+
+    const owners = (disabledAt: string | null) => testEnv.DB.prepare("UPDATE people SET disabled_at = ? WHERE is_owner = 1").bind(disabledAt).run();
+    await owners("2026-01-01T00:00:00Z");
+    await runSignedInCrawl(testEnv, deskAs);
+    const none = (await crawlReport()).sites[carrelDesk.origin];
+    expect(none?.status).toBe("error");
+    expect(none?.findings[0]?.detail).toMatch(/no active Owner/);
+
+    await owners(null);
+    await addProject("de-info", "dustinedwards");
+    await runSignedInCrawl(testEnv, deskAs);
+    const body = await crawlReport();
+    expect(body.check).toBe("signed-in-security");
+    expect(body.sites[carrelDesk.origin]?.status).not.toBe("error");
+    expect(seen.every((line) => line.startsWith("GET ") && line.endsWith(" owner@test.invalid"))).toBe(true);
+    expect(seen.map((line) => line.split(" ")[1])).toEqual(expect.arrayContaining(["/", "/p/de-info", "/signed-in-crawl-404", "/assets/app.js"]));
+    // Findings only: no page body or cookie in the report.
+    expect(JSON.stringify(body)).not.toMatch(/<title>|owner@test\.invalid/);
   });
 });

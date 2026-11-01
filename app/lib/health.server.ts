@@ -16,6 +16,7 @@ import { PACKAGE_VERSION } from "@dustinedwards/site-api";
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
+import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
 import { durableObjectCheck, healthResponse, kvCheck } from "@dustinedwards/site-runtime/health";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -342,9 +343,11 @@ export async function runHealth(
  * - oauth-kv is warn, a stated choice. Without OAUTH_KV the AI door cannot issue or check a grant, but Desk, the app
  *   people use, still serves every page and save, so a 503 would call Carrel down while it works. The warn still reaches
  *   Capsid's watcher, which reads the checks.
- * - doc-room, mcp-rate-limit and tool-call-log are the three Durable Object namespaces (site-runtime's
+ * - doc-room and mcp-rate-limit are Durable Object namespaces (site-runtime's
  *   durableObjectCheck: bound, and an id minted; no object is woken or billed). Without DOC_ROOM co-editing stops but
- *   the editor still saves; without the other two the AI door refuses calls, as with OAUTH_KV.
+ *   the editor still saves; without the rate limiter the AI door refuses calls, as with OAUTH_KV.
+ * - tool-call-log is site-runtime's auditLogCheck (L8): a call with no finished row after 15 minutes, a spike, or rows
+ *   not copied to AUDIT_BUCKET for two days. Without TOOL_CALL_LOG it fails too, and the AI door refuses calls.
  * - email is the send_email binding, checked present only: sending a probe would mail Dustin every few minutes. A failed
  *   send is already seen where it matters, as the ai-publish-email check above and the health run's own alert.
  * Left out: CSP_REPORT_RATE_LIMIT, because a probe would spend a count and a missing binding only drops reports, which
@@ -359,7 +362,8 @@ export function healthAnswer(env: Env): Promise<Response> {
       { ...kvCheck("oauth-kv", env.OAUTH_KV), level: "warn" },
       durableObjectCheck("doc-room", env.DOC_ROOM),
       durableObjectCheck("mcp-rate-limit", env.MCP_RATE_LIMIT),
-      durableObjectCheck("tool-call-log", env.TOOL_CALL_LOG),
+      // The tool-call log (L8, warn with an alert): a call with no finished row, a spike, or rows not copied for two days.
+      auditLogCheck(env),
       { name: "email", level: "warn", run: async () => typeof env.EMAIL?.send === "function" || { ok: false, detail: "The EMAIL binding is missing." } },
       // Each job with its own interval, so one that never ran (a trigger that does not fire it) warns too. Held back
       // until its window has passed since this version was deployed.

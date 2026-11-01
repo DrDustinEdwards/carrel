@@ -6,18 +6,20 @@
 //
 //   node www/build.mjs [outDir]
 
+import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { ACCESSIBILITY_PATH, accessibilityStatement } from "@drdustinedwards/site-helpers/accessibility";
 import { defineHead, headHtml } from "@drdustinedwards/site-helpers/head";
 import { iconLinks, webManifest } from "@drdustinedwards/site-helpers/icons";
 import { llmsDocument } from "@drdustinedwards/site-helpers/llms";
 import { aiTxt, robotsDocument } from "@drdustinedwards/site-helpers/robots";
 import { graph, jsonLd, thing, website } from "@drdustinedwards/site-helpers/schema";
 import { sitemapDocument } from "@drdustinedwards/site-helpers/sitemap";
-import { headersFile } from "@dustinedwards/site-runtime/headers";
+import { integrityHash } from "@dustinedwards/site-runtime/csp";
 import { escapeHtml as esc } from "@dustinedwards/site-runtime/html";
 import { securityTxt } from "@dustinedwards/site-runtime/security-txt";
 import { familyFooterHtml } from "capsomer/behavior/family-footer";
@@ -25,7 +27,7 @@ import { patchSvg } from "capsomer/behavior/manual";
 import { letterheadHtml } from "capsomer/behavior/site-header";
 import { build } from "vite";
 
-import { PAGE_PRELOADS, SITE_HEADERS } from "./headers.mjs";
+import { PAGE_PRELOADS } from "./headers.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -41,7 +43,7 @@ const SECURITY_TXT_EXPIRES = "2027-10-26T00:00:00Z";
 const CONTACT = "security@dustinedwards.info";
 
 /**
- * The IndexNow key, served as /<key>.txt; www.yml reads it from this line for prelum-indexnow after each deploy. A key
+ * The IndexNow key, served as /<key>.txt; ci.yml's indexnow job reads it from this line for prelum-indexnow after each deploy. A key
  * is public by design: it only proves the pinging site owns the origin.
  */
 const INDEXNOW_KEY = "00d4cd444d72b3dbef372abe5f4cc447";
@@ -75,11 +77,12 @@ function writeStyles(outDir) {
   const serif = SERIF.split("/").pop() ?? "";
   copyFileSync(require.resolve(SERIF), join(outDir, "fonts", serif));
   const css = [
-    "/* Built by www/build.mjs: Capsomer's fonts, tokens, base, Carrel's family, the manual theme and the family footer, then www/site.css. */",
+    "/* Built by www/build.mjs: Capsomer's fonts, tokens, base, link system, Carrel's family, the manual theme and the family footer, then www/site.css. */",
     inlineCss(join(capsomer, "css", "fonts.css")).replaceAll('url("../fonts/', 'url("fonts/'),
     `@font-face {\n  font-family: "Source Serif 4";\n  font-style: normal;\n  font-weight: 200 900;\n  font-display: swap;\n  src: url("fonts/${serif}") format("woff2");\n}`,
     inlineCss(join(capsomer, "css", "tokens.css")),
     inlineCss(base),
+    inlineCss(join(capsomer, "components", "link", "link.css")),
     `@layer cap.tokens {\n${inlineCss(join(capsomer, "tokens", `family-${FAMILY}.css`))}\n}`,
     inlineCss(join(capsomer, "components", "manual", "manual.css")),
     inlineCss(join(capsomer, "components", "family-footer", "family-footer.css")),
@@ -126,7 +129,7 @@ const page = () => {
 <div><p class="cap-family-footer-center-name">Carrel</p><p class="cap-family-footer-about">An open-source writing app for posts across several websites and for books. You run it on Cloudflare; this page is its public front.</p></div>
 <div class="cap-family-footer-columns">
 <ul class="cap-family-footer-links"><li><a href="#what">What it does</a></li><li><a href="#path">From draft to live</a></li><li><a href="#ai">AI that stays beside you</a></li><li><a href="#run">Run your own</a></li></ul>
-<ul class="cap-family-footer-links"><li><a href="${REPO}">Source, MIT licensed</a></li><li><a href="${REPO}#develop">Install it</a></li></ul>
+<ul class="cap-family-footer-links"><li><a href="${REPO}" rel="external">Source, MIT licensed</a></li><li><a href="${REPO}#develop" rel="external">Install it</a></li></ul>
 </div>
 <p class="cap-family-footer-stamp"><span>Publishing to ${SITES.length} sites</span></p>
 </div>`;
@@ -203,7 +206,7 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 
 <section class="cap-part" id="run" aria-labelledby="run-title">
 <h2 class="cap-part-title" id="run-title"><span class="cap-part-no">1.5</span>Run your own</h2>
-<p class="cap-part-lead">Carrel is one Cloudflare Worker with a D1 database, behind Cloudflare Access. Each site connects through <a href="https://github.com/DrDustinEdwards/site-api">site-api</a>.</p>
+<p class="cap-part-lead">Carrel is one Cloudflare Worker with a D1 database, behind Cloudflare Access. Each site connects through <a href="https://github.com/DrDustinEdwards/site-api" rel="external">site-api</a>.</p>
 <div class="run">
 <ol class="cap-leader-index">
 <li><span class="cap-leader-index-link"><span class="cap-leader-index-no">1</span><span class="cap-leader-index-name">Create the database and add yourself as Owner</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">D1</span></span></li>
@@ -216,14 +219,19 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 <nav class="cap-signs" aria-label="Install"><a class="cap-sign" rel="next" href="${REPO}#develop">The steps on GitHub</a></nav>
 </section>
 </main>
-<footer>${familyFooterHtml({ site: "carrel", center })}</footer>`;
+<footer>${familyFooterHtml({ site: "carrel", center, statement: ACCESSIBILITY_PATH })}</footer>`;
 };
 
 /** The share card: the top of the page at 1200 by 630. */
 const CARD = { url: "/og-card.png", width: 1200, height: 630, alt: "Carrel: one desk for everything you write" };
 
-/** The family letterhead (capsomer/site-header) with its theme button, wired by /site.js. */
-const HEADER = letterheadHtml({
+/**
+ * The family letterhead (capsomer/site-header) with its theme button, wired by /site.js. Only the home page marks its
+ * link as the current page.
+ *
+ * @param {string} [current]
+ */
+const header = (current) => letterheadHtml({
   name: "Carrel",
   mark: '<img src="/icon.svg" alt="" width="32" height="32">',
   links: [
@@ -233,7 +241,7 @@ const HEADER = letterheadHtml({
     ["/#ai", "AI"],
     ["/#run", "Run your own"],
   ],
-  current: "Home",
+  current,
 });
 
 /** The home page's structured data: the site, and Carrel itself as an open-source application. */
@@ -276,23 +284,27 @@ const ICON_LINKS = iconLinks()
 
 const head = defineHead({ origin: ORIGIN, siteName: "Carrel", image: CARD, locale: "en_US" });
 
-/** @param {{ title: string, description: string, body: string, index?: boolean }} p */
-const documentHtml = ({ title, description, body, index = true }) => `<!doctype html>
+/**
+ * @param {{ title: string, description: string, body: string, path?: string, index?: boolean }} p the page; only "/" marks Home current
+ * @param {{ theme: string, site: string }} integrity each script's integrity (integrityHash): with crossorigin, what
+ *   Integrity-Policy asks of a script, a classic one included.
+ */
+const documentHtml = ({ title, description, body, path = "/", index = true }, integrity) => `<!doctype html>
 <html lang="en" data-family="${FAMILY}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${headHtml([...head({ path: "/", title, fullTitle: true, description, noindex: !index }), ...(index ? [jsonLd(SCHEMA)] : [])])}
+${headHtml([...head({ path, title, fullTitle: true, description, noindex: !index }), ...(index && path === "/" ? [jsonLd(SCHEMA)] : [])])}
 ${ICON_LINKS}
 <link rel="stylesheet" href="/site.css">
-<script src="/theme.js"></script>
+<script src="/theme.js" integrity="${integrity.theme}" crossorigin="anonymous"></script>
 </head>
 <body>
-${HEADER}
+${header(path === "/" ? "Home" : undefined)}
 <div class="cap-page">
 ${body}
 </div>
-<script type="module" src="/site.js"></script>
+<script type="module" src="/site.js" integrity="${integrity.site}" crossorigin="anonymous"></script>
 </body>
 </html>
 `;
@@ -320,25 +332,20 @@ async function bundle(file, format) {
   return chunk.code;
 }
 
+/** site-runtime's one `_headers` writer, from the public site's registry entry, with Prelum's TDMRep header. */
+const HEADERS_BIN = join(HERE, "..", "node_modules", "@dustinedwards", "site-runtime", "bin", "site-runtime-headers.mjs");
+
 /**
- * The `_headers` file for the static assets, which never run the Worker: www/headers.mjs's set and a short cache on
- * `/*`. site-runtime's headersFile leaves a page policy out of `/*`, since most sites' pages are rendered with their own;
- * every page here is a static file with this one policy, so a second `/*` rule adds it back (Cloudflare joins rules).
- * `charset` names UTF-8 on every text file, which the asset server otherwise sends as a bare type (ASVS 4.1.1).
- *
- * @returns {string}
+ * The accessibility statement (devkit-a11y S6), Prelum's, with this site's facts. devkit-a11y's run of 2026-11-01 found
+ * nothing open on the page itself (its webmanifest findings are the scan reading a JSON file as a page).
  */
-function staticHeaders() {
-  const { "Content-Security-Policy": csp, ...set } = SITE_HEADERS;
-  return headersFile(
-    { ...set, "Cache-Control": "public, max-age=300, must-revalidate" },
-    {
-      comment: "Generated by www/build.mjs from www/headers.mjs: site-runtime's standard set, Prelum's TDMRep header and the page policy.",
-      paths: { "/*": { "Content-Security-Policy": csp } },
-      charset: true,
-    },
-  );
-}
+const STATEMENT = accessibilityStatement({
+  siteName: "Carrel's public site",
+  contact: { href: "https://dustinedwards.info/contact", label: "the contact page on dustinedwards.info" },
+  date: "2026-11-01",
+  capsomer: true,
+  links: "marked",
+});
 
 /**
  * @param {string} outDir
@@ -352,10 +359,13 @@ export async function buildSite(outDir) {
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
   for (const name of readdirSync(join(HERE, "static"))) copyFileSync(join(HERE, "static", name), join(outDir, name));
-  writeFileSync(join(outDir, "_headers"), staticHeaders());
+  execFileSync(process.execPath, [HEADERS_BIN, "--site", "carrel", "--out", join(outDir, "_headers"), "--header", "tdm-reservation: 1"]);
   writeStyles(outDir);
-  writeFileSync(join(outDir, "theme.js"), await bundle("theme.js", "iife"));
-  writeFileSync(join(outDir, "site.js"), await bundle("site.js", "es"));
+  const theme = await bundle("theme.js", "iife");
+  const site = await bundle("site.js", "es");
+  writeFileSync(join(outDir, "theme.js"), theme);
+  writeFileSync(join(outDir, "site.js"), site);
+  const integrity = { theme: await integrityHash(theme), site: await integrityHash(site) };
 
   writeFileSync(
     join(outDir, "index.html"),
@@ -363,7 +373,7 @@ export async function buildSite(outDir) {
       title: TITLE,
       description: DESCRIPTION,
       body: page(),
-    }),
+    }, integrity),
   );
   writeFileSync(
     join(outDir, "404.html"),
@@ -371,13 +381,23 @@ export async function buildSite(outDir) {
       title: "Not found: Carrel",
       description: "There is no page at this address.",
       index: false,
-      body: `<main id="main" tabindex="-1">\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer>${familyFooterHtml({ site: "carrel" })}</footer>`,
-    }),
+      body: `<main id="main" tabindex="-1">\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer>${familyFooterHtml({ site: "carrel", statement: ACCESSIBILITY_PATH })}</footer>`,
+    }, integrity),
+  );
+
+  writeFileSync(
+    join(outDir, "accessibility.html"),
+    documentHtml({
+      title: `${STATEMENT.title}: Carrel`,
+      description: STATEMENT.description,
+      path: ACCESSIBILITY_PATH,
+      body: `<main id="main" tabindex="-1" class="statement">\n<h1>${esc(STATEMENT.title)}</h1>\n${STATEMENT.html}\n</main>\n<footer>${familyFooterHtml({ site: "carrel", statement: ACCESSIBILITY_PATH })}</footer>`,
+    }, integrity),
   );
 
   mkdirSync(join(outDir, ".well-known"), { recursive: true });
   writeFileSync(join(outDir, ".well-known", "security.txt"), securityTxt({ origin: ORIGIN, contact: CONTACT, expires: SECURITY_TXT_EXPIRES }));
-  writeFileSync(join(outDir, "sitemap.xml"), sitemapDocument([{ loc: `${ORIGIN}/` }]));
+  writeFileSync(join(outDir, "sitemap.xml"), sitemapDocument([{ loc: `${ORIGIN}/` }, { loc: `${ORIGIN}${ACCESSIBILITY_PATH}` }]));
   writeFileSync(join(outDir, "robots.txt"), robotsDocument({ origin: ORIGIN, notes: [`llms.txt: ${ORIGIN}/llms.txt`] }));
   writeFileSync(join(outDir, "ai.txt"), aiTxt({ origin: ORIGIN, name: "Carrel", contact: CONTACT }));
   writeFileSync(join(outDir, "llms.txt"), LLMS);

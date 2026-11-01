@@ -8,7 +8,6 @@
 import { createExecutionContext } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { agentPrincipal } from "~/lib/agent-keys.server";
 import { addAgent, listPeople, PeopleRefusal, setProjectRole } from "~/lib/people-admin.server";
 import { findAgentViewer } from "~/lib/people.server";
 import { aiDoor } from "~/lib/mcp/door";
@@ -198,7 +197,6 @@ describe("what a named agent key refuses", () => {
 
   it("is inert until a secret exists: with none, the door answers as it did before", async () => {
     const none = connectedEnv();
-    expect(await agentPrincipal(none, `Bearer ${KEY}`)).toBeNull();
     const response = await door(modernRequest(1, "tools/list"), none);
     expect(response.status).toBe(401);
   });
@@ -209,25 +207,6 @@ describe("what a named agent key refuses", () => {
       if (path !== "/health") expect(response.status, path).toBeGreaterThanOrEqual(400);
       expect(await response.text(), path).not.toContain("projects");
     }
-  });
-});
-
-describe("how the key is read", () => {
-  it("names the agent from the secret's name, lower-cased, and only a valid name", async () => {
-    expect(await agentPrincipal({ AGENT_KEY_GROK: KEY }, `Bearer ${KEY}`)).toBe("grok");
-    expect(await agentPrincipal({ AGENT_KEY_Mixed_Case: KEY }, `Bearer ${KEY}`)).toBe("mixed_case");
-    for (const name of ["AGENT_KEY_", "AGENT_KEY_has space", "AGENT_KEY_" + "x".repeat(33), "AGENT_KEY_-lead", "NOT_AGENT_KEY_GROK", "agent_key_grok"]) {
-      expect(await agentPrincipal({ [name]: KEY }, `Bearer ${KEY}`), name).toBeNull();
-    }
-    expect(await agentPrincipal({ AGENT_KEY_GROK: 7 as unknown as string }, `Bearer 7`)).toBeNull();
-  });
-
-  it("picks the right agent among several and refuses a key that is none of them", async () => {
-    const e = { AGENT_KEY_GROK: KEY, AGENT_KEY_OTHER: OTHER_KEY };
-    expect(await agentPrincipal(e, `Bearer ${OTHER_KEY}`)).toBe("other");
-    expect(await agentPrincipal(e, `Bearer ${KEY}`)).toBe("grok");
-    expect(await agentPrincipal(e, "Bearer nope")).toBeNull();
-    expect(await agentPrincipal(e, null)).toBeNull();
   });
 });
 

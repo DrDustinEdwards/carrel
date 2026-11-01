@@ -17,7 +17,7 @@ The `deploy` job in `.github/workflows/ci.yml` calls devkit's shared workflow, `
 
 1. Check `CARREL_D1_DATABASE_ID`, `CARREL_KV_OAUTH_ID` and `CARREL_ALERT_EMAIL` are set and not placeholders.
 2. Render `wrangler.jsonc` from `wrangler.jsonc.example` (real ids and email, both custom-domain routes on). It refuses to overwrite a `wrangler.jsonc` that is not the placeholder copy.
-3. Check the ids against the account: the D1 database named `carrel` and the KV namespace titled `carrel-oauth` must have exactly those ids.
+3. Check the ids against the account: the D1 database named `carrel` and the one KV namespace titled `carrel-desk-oauth` (or, until Dustin renames it, its old title `carrel-oauth`) must have exactly those ids.
 4. Build.
 5. `devkit-migrations drizzle --apply carrel` (devkit's shared step): it applies the pending migrations that only add, after reading the D1 Time Travel bookmark, and then the database must have none pending. A drop, rename, row delete or `-- contract:` migration is refused with the command to run it by hand, so it waits for Dustin.
 

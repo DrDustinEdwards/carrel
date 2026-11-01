@@ -75,7 +75,8 @@ export type RichEditorProps = {
   room?: RichRoom;
 };
 
-const defaultImage = ({ url, alt }: { url: string; alt: string }) => `![${alt.replace(/[[\]]/g, "")}](${url})`;
+// An empty alt is a decorative pick; Prelum reads ![""](x) as decorative and refuses ![](x).
+const defaultImage = ({ url, alt }: { url: string; alt: string }) => `![${alt.replace(/[[\]]/g, "").trim() || '""'}](${url})`;
 
 type Palette = { from: number; to: number; query: string; active: number };
 type Upload = { name: string; state: "sending" } | { name: string; state: "alt"; url: string } | null;
