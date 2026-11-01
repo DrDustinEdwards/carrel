@@ -6,6 +6,7 @@
 /* Desk wears the public page's olive (Dustin: "match the theme of the site"). */
 @import "capsomer/family-olive.css";
 @import "capsomer/base.css";
+@import "capsomer/link.css";
 @import "capsomer/prose.css";
 
 /* Shared building blocks first, then the components built on them. */
@@ -962,10 +963,6 @@ html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-
   }
   & :is(ul, ol) {
     padding-inline-start: 1.5em;
-  }
-  & a {
-    color: var(--accent-text);
-    text-decoration: underline;
   }
   & code {
     font-family: var(--mono);
