@@ -31,7 +31,7 @@ import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-prov
 import { recordAudit } from "@dustinedwards/site-runtime/audit-log";
 import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
-import { audienceRefusal, checkRateLimit, mcpOriginRefusal } from "@dustinedwards/site-runtime/mcp-server";
+import { audienceRefusal, checkRateLimit, type McpCaller, mcpOriginRefusal, probeDoor } from "@dustinedwards/site-runtime/mcp-server";
 import { SIGNED_IN_REPORT_PATH } from "@dustinedwards/site-runtime/signed-in-crawl";
 
 import { eq } from "drizzle-orm";
@@ -180,6 +180,14 @@ async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, n
   return out;
 }
 
+/** The list-only test key's requests: the read tools listed, every call refused (site-runtime probeDoor). */
+async function probeHandler(request: Request, env: Env, ctx: ExecutionContext, caller: McpCaller): Promise<Response> {
+  const response = await handleMcp(request, env, ctx, { probe: caller }, { carrelOrigin: carrelOrigin(env) });
+  const out = new Response(response.body, response);
+  for (const [header, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(header, value);
+  return out;
+}
+
 const providers = new Map<string, OAuthProvider<Env>>();
 
 /**
@@ -240,6 +248,10 @@ export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext):
     // Before any token is read, so a page on another origin gets 403, never a 401 to retry with a token.
     const foreign = mcpOriginRefusal(request, [], PRIVATE_HEADERS);
     if (foreign) return foreign;
+    // The list-only test key for the daily live check (secret MCP_PROBE_KEY): it lists the read tools,
+    // runs none, and never reaches a person. Without the key, nothing changes.
+    const probed = await probeDoor(request, env, { server: MCP_SERVER, limiter: env.MCP_RATE_LIMIT, serve: (req, caller) => probeHandler(req, env, ctx, caller) });
+    if (probed) return probed;
     // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
     const agent = await agentPrincipal(env, request.headers.get("Authorization"));
     if (agent) return agentHandler(request, env, ctx, agent);
