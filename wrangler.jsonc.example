@@ -6,7 +6,9 @@
  * `wrangler secret put`, never here: ACCESS_AUD (the AUD tag of the Worker's Access application),
  * ACCESS_SAAS_CLIENT_ID and ACCESS_SAAS_CLIENT_SECRET (the AI door's Access for SaaS login), and one
  * key per site, SITE_DUSTINEDWARDS_KEY, SITE_GERMOMICS_KEY, SITE_FOXHOUND_KEY, SITE_FOXING_KEY,
- * SITE_TXASM_KEY, SITE_JULIEEDWARDS_KEY and SITE_BSW_KEY (absent until the site is connected).
+ * SITE_TXASM_KEY, SITE_JULIEEDWARDS_KEY and SITE_BSW_KEY (absent until the site is connected), and,
+ * optionally, MCP_PROBE_KEY, the list-only test key for the daily live check (at least 32 characters;
+ * it lists the read tools and runs none, app/lib/mcp/door.ts).
  *
  * NEVER PUBLIC, BY DEPLOY ORDER. desk.dustinedwards.info has a hostname Access application (not
  * Worker-level Access, which refuses WebSockets and so the co-editing rooms: docs/coediting.md), and

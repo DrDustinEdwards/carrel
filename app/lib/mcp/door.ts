@@ -31,7 +31,7 @@ import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-prov
 import { recordAudit } from "@dustinedwards/site-runtime/audit-log";
 import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
 import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
-import { audienceRefusal, checkRateLimit, mcpOriginRefusal } from "@dustinedwards/site-runtime/mcp-server";
+import { audienceRefusal, checkRateLimit, mcpOriginRefusal, probeDoor } from "@dustinedwards/site-runtime/mcp-server";
 import { SIGNED_IN_REPORT_PATH } from "@dustinedwards/site-runtime/signed-in-crawl";
 
 import { eq } from "drizzle-orm";
@@ -151,10 +151,7 @@ export const apiHandler = {
     const throttled = await rateLimited(env, viewer.id, `access:${viewer.email}`);
     if (throttled) return throttled;
     const session = { viewer, client: props.client || "an unnamed AI client", clientId: props.clientId, scopes: effectiveScopes(auth?.scope ?? []) };
-    const response = await handleMcp(request, env, ctx, session, { carrelOrigin: carrelOrigin(env) });
-    const out = new Response(response.body, response);
-    for (const [name, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(name, value);
-    return out;
+    return servePrivate(request, env, ctx, session);
   },
 };
 
@@ -174,7 +171,12 @@ async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, n
   logEvent(OWASP_EVENTS.signInSuccess, { door: "ai", method: "agent-key", agent: name });
   const throttled = await rateLimited(env, viewer.id, `agent:${name}`);
   if (throttled) return throttled;
-  const response = await handleMcp(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES }, { carrelOrigin: carrelOrigin(env) });
+  return servePrivate(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES });
+}
+
+/** Serves one MCP request for a session or the list-only test key, with the private headers. */
+async function servePrivate(request: Request, env: Env, ctx: ExecutionContext, who: Parameters<typeof handleMcp>[3]): Promise<Response> {
+  const response = await handleMcp(request, env, ctx, who, { carrelOrigin: carrelOrigin(env) });
   const out = new Response(response.body, response);
   for (const [header, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(header, value);
   return out;
@@ -240,6 +242,10 @@ export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext):
     // Before any token is read, so a page on another origin gets 403, never a 401 to retry with a token.
     const foreign = mcpOriginRefusal(request, [], PRIVATE_HEADERS);
     if (foreign) return foreign;
+    // The list-only test key for the daily live check (secret MCP_PROBE_KEY): it lists the read tools,
+    // runs none, and never reaches a person. Without the key, nothing changes.
+    const probed = await probeDoor(request, env, { server: MCP_SERVER, limiter: env.MCP_RATE_LIMIT, serve: (req, caller) => servePrivate(req, env, ctx, { probe: caller }) });
+    if (probed) return probed;
     // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
     const agent = await agentPrincipal(env, request.headers.get("Authorization"));
     if (agent) return agentHandler(request, env, ctx, agent);

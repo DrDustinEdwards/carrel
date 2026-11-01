@@ -54,25 +54,31 @@ function callerOf(session: McpSession): McpCaller {
 }
 
 /**
- * The server factory, called per request: stateless means no instance outlives the call that made
- * it. The session (the person and the AI client, from the token) is closed over, never read from
- * the request.
+ * Who a request is: a session (the person and the AI client, from the token, or a named agent), or
+ * the list-only test key (site-runtime probeDoor), which has no person and runs no tool.
  */
-function buildServer(env: Env, session: McpSession, deps: ToolDeps) {
+type Who = { session: McpSession } | { probe: McpCaller };
+
+/**
+ * The server factory, called per request: stateless means no instance outlives the call that made
+ * it. The session is closed over, never read from the request.
+ */
+function buildServer(env: Env, who: Who, deps: ToolDeps) {
+  const caller = "probe" in who ? who.probe : callerOf(who.session);
   return () => {
     // The element cap on tool arguments (GHSA-46jr-4wx8-v453): the SDK leaves it off by default.
-    // tools/list now depends on the grant, so only server/discover may sit in a shared cache.
+    // tools/list depends on the grant, so only server/discover may sit in a shared cache.
     const server = new McpServer(SERVER_INFO, {
       instructions: INSTRUCTIONS,
       maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
       cacheHints: mcpCacheHints({ shared: ["server/discover"] }),
     });
     // Only the tools this grant can call are listed (checklist T7, site-runtime's toolsForGrant over the scopes as
-    // scopes.ts reads them), each with the server's icon (T9). site-runtime's registerTools does the same, but it sets
-    // its own scopeChallenge from the token's raw scopes, and a pre-2026-10-10 "carrel" token must read as both. Every
-    // Carrel tool has a fixed scope, so a listed tool is always one the grant can call and no step-up is left to offer;
-    // invokeTool still checks the scope on every call.
-    const listed = toolsForGrant(TOOLS, session.scopes, MCP_SERVER.scopes);
+    // scopes.ts reads them; the test key is listed the read tools), each with the server's icon (T9). site-runtime's
+    // registerTools does the same, but it sets its own scopeChallenge from the token's raw scopes, and a pre-2026-10-10
+    // "carrel" token must read as both. Every Carrel tool has a fixed scope, so a listed tool is always one the grant
+    // can call and no step-up is left to offer; invokeTool still checks the scope on every call.
+    const listed = toolsForGrant(TOOLS, "probe" in who ? [SCOPE_READ] : who.session.scopes, MCP_SERVER.scopes);
     for (const tool of listed) {
       server.registerTool(
         tool.name,
@@ -86,15 +92,13 @@ function buildServer(env: Env, session: McpSession, deps: ToolDeps) {
         },
         async (args: unknown, ctx) => {
           const input = (args ?? {}) as Record<string, unknown>;
+          // invokeTool refuses the test key on every call, before run; with no session there is nothing to run as.
           // The request's abort signal (P11) reaches the tool and every outbound fetch it makes.
-          return invokeTool(env, MCP_SERVER, {
-            caller: callerOf(session),
-            tool,
-            args: input,
-            meta: ctx.mcpReq._meta,
-            signal: ctx.mcpReq.signal,
-            run: (signal) => runTool(tool, input, { env, session, deps: { ...deps, fetcher: fetchUntil(signal, deps.fetcher) }, signal }),
-          });
+          const run =
+            "session" in who
+              ? (signal?: AbortSignal) => runTool(tool, input, { env, session: who.session, deps: { ...deps, fetcher: fetchUntil(signal, deps.fetcher) }, signal })
+              : () => Promise.reject(new Error("The list-only test key runs no tool."));
+          return invokeTool(env, MCP_SERVER, { caller, tool, args: input, meta: ctx.mcpReq._meta, signal: ctx.mcpReq.signal, run });
         },
       );
     }
@@ -110,10 +114,10 @@ export async function handleMcp(
   request: Request,
   env: Env,
   ctx: ExecutionContext,
-  session: McpSession,
+  who: McpSession | { probe: McpCaller },
   deps: ToolDeps,
 ): Promise<Response> {
-  const factory = buildServer(env, session, deps);
+  const factory = buildServer(env, "probe" in who ? who : { session: who }, deps);
   const host = new URL(request.url).hostname;
   const options = { route: MCP_ROUTE, allowedHostnames: [host], allowedOriginHostnames: [host], corsOptions: false as const };
 
