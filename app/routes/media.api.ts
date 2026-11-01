@@ -6,7 +6,7 @@
 // cursor (site-api v0.13.0's loadMediaChanges), for the library's live updates: the files as they are
 // now and the ids deleted for good, or `{ reload: true }` when the site can no longer answer from it.
 // POST with an `intent` runs it through the content kit, as the
-// library's page does with no script; POST with only a file is the editor's paste, drop or Insert
+// library's page does with no script; POST with a file and its alt or decorative is the editor's paste, drop or Insert
 // image, answered with the site's address for it. A Reader may read; the kit refuses a write the role
 // does not allow before the site hears anything.
 
