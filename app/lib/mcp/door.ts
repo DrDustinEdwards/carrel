@@ -117,7 +117,7 @@ const login = loginHandler<DoorEnv>({
     const viewer = await findViewer(env.DB, email);
     return viewer ? { personId: viewer.id } : null;
   },
-  // A client that names no Carrel scope, or the legacy one, is offered writing too (scopes.ts).
+  // The write box starts ticked only for a client that asked for write, by today's name or an earlier one (scopes.ts).
   wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),
   // Every sign-in, admitted or refused, is a `sign-in` row in the call log beside the tool calls.
   audit: { name: MCP_SERVER.name, version: MCP_SERVER.version },
