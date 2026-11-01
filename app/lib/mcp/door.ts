@@ -40,7 +40,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { reports } from "~/db/schema";
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
 import { healthAnswer } from "~/lib/health.server";
-import { findAgentViewer, findViewer } from "~/lib/people.server";
+import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";
 import { SIGNED_IN_REPORT_NAME } from "~/lib/signed-in-crawl.server";
 
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
@@ -124,7 +124,7 @@ const login = loginHandler<DoorEnv>({
   audit: { name: MCP_SERVER.name, version: MCP_SERVER.version },
   // The owner page (/owner, site-runtime ./owner-page): each person lists and revokes their own grants, and only the
   // Owner reads the tool-call log, which holds everyone's calls.
-  owner: { readsLog: async (env, email) => (await findViewer(env.DB, email))?.isOwner === true },
+  owner: { readsLog: (env, email) => readsToolCallLog(env.DB, email) },
 });
 
 /**
