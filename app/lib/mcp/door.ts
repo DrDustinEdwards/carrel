@@ -19,6 +19,7 @@
 //                                 finds the person and hands the request to server.ts. Each person (or
 //                                 agent) has 30 requests a minute.
 //   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
+//   /owner                        the owner page: your grants with Revoke, and for the Owner the tool-call log (loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
 //   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
@@ -39,7 +40,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { reports } from "~/db/schema";
 import { agentClient, agentPrincipal } from "~/lib/agent-keys.server";
 import { healthAnswer } from "~/lib/health.server";
-import { findAgentViewer, findViewer } from "~/lib/people.server";
+import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";
 import { SIGNED_IN_REPORT_NAME } from "~/lib/signed-in-crawl.server";
 
 import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
@@ -117,10 +118,13 @@ const login = loginHandler<DoorEnv>({
     const viewer = await findViewer(env.DB, email);
     return viewer ? { personId: viewer.id } : null;
   },
-  // A client that names no Carrel scope, or the legacy one, is offered writing too (scopes.ts).
+  // The write box starts ticked only for a client that asked for write, by today's name or an earlier one (scopes.ts).
   wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),
   // Every sign-in, admitted or refused, is a `sign-in` row in the call log beside the tool calls.
   audit: { name: MCP_SERVER.name, version: MCP_SERVER.version },
+  // The owner page (/owner, site-runtime ./owner-page): each person lists and revokes their own grants, and only the
+  // Owner reads the tool-call log, which holds everyone's calls.
+  owner: { readsLog: (env, email) => readsToolCallLog(env.DB, email) },
 });
 
 /**
