@@ -33,8 +33,8 @@ function run(block: string, strict: boolean): Run {
     for (const [plugin, ...args] of setup.remark as [(...a: unknown[]) => (tree: unknown) => void, ...unknown[]][]) plugin(...args)(tree);
     setup.result?.();
   } catch (error) {
-    // Prelum's ContentError names the file first; the editor names the line instead.
-    return { refused: (error instanceof Error ? error.message : String(error)).replace(/^chart: /, ""), warnings, summary: null };
+    // Prelum's ContentError names the file and the block first; the editor names the line instead.
+    return { refused: unprefixed((error instanceof Error ? error.message : String(error)).replace(/^chart: /, "")), warnings, summary: null };
   }
   // The pack's rehype half takes the models the remark half built: the first is the charts'.
   const models = (setup.rehype[0]?.[1] ?? []) as { html?: string }[];
@@ -42,6 +42,9 @@ function run(block: string, strict: boolean): Run {
   const summary = /<p class="enarratio-summary">([^<]*)<\/p>/.exec(html)?.[1] ?? null;
   return { refused: null, warnings, summary: summary ? decode(summary) : null };
 }
+
+/** A message without the `:::chart "type": ` Prelum puts before it. */
+const unprefixed = (message: string) => message.replace(/^:::chart "[^"]*": /, "");
 
 const decode = (text: string) =>
   text.replace(/&(amp|lt|gt|quot|#39);/g, (_, e: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" })[e] ?? _);
@@ -55,7 +58,7 @@ export function checkCharts(body: string): ChartFinding[] {
     // A refused block stops before its warnings; the lenient run lists the ones the refusal did not name.
     const warnings = strict.refused ? run(text, false).warnings : strict.warnings;
     for (const warning of warnings) {
-      const message = warning.replace(/^:::chart "[^"]*": /, "");
+      const message = unprefixed(warning);
       if (!strict.refused?.includes(message)) out.push({ line, message, strict: false });
     }
   }
