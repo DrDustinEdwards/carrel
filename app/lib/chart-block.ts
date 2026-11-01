@@ -2,6 +2,8 @@
 // check (E4). Pure, shared by the browser and the tests. The syntax is Prelum's (README, "Charts in
 // posts"): the attributes on the directive, the data as a fenced CSV block, an optional caption.
 
+import { escapeHtml } from "@dustinedwards/site-runtime/html";
+
 export const CHART_KINDS = [
   { value: "bar", label: "Bar" },
   { value: "line", label: "Line" },
@@ -58,9 +60,9 @@ export function csvColumns(csv: string): { name: string; numeric: boolean }[] {
   }));
 }
 
-// A directive attribute is double-quoted; a quote or an ampersand in it is written as a character
-// reference, which the directive parser reads back.
-const attr = (value: string) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/\s+/g, " ").trim();
+// A directive attribute is double-quoted on one line; a quote or an ampersand in it is written as a
+// character reference, which the directive parser reads back.
+const attr = (value: string) => escapeHtml(value.replace(/\s+/g, " ").trim());
 
 /** The block the dialog inserts, in Prelum's syntax. Empty fields are left out. */
 export function chartBlock(f: ChartFields): string {
