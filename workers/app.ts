@@ -1,4 +1,5 @@
 import { withAdminIdle } from "@dustinedwards/site-runtime/access";
+import { exportAuditLog } from "@dustinedwards/site-runtime/audit-log";
 import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
 import { logEvent, withRequestLog } from "@dustinedwards/site-runtime/log";
@@ -125,6 +126,10 @@ const WORK: Record<JobName, (env: Env, ctx: ExecutionContext) => Promise<unknown
   backup: (env) => runBackup(env),
   "prune-404": (env) => pruneNotFound(env.DB),
   "signed-in-crawl": (env, ctx) => runSignedInCrawl(env, deskAs(env, ctx)),
+  "tool-call-log-export": (env) => {
+    if (!env.AUDIT_BUCKET) throw new Error("AUDIT_BUCKET is not bound; the tool-call log is not copied");
+    return exportAuditLog(env, env.AUDIT_BUCKET);
+  },
 };
 
 /*

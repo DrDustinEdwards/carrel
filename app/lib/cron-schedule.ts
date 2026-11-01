@@ -7,7 +7,7 @@ import { BACKUP_CRON } from "~/lib/backup-checks";
 
 const QUARTER_HOUR_CRON = "*/15 * * * *";
 
-export type JobName = "health" | "refresh-sites" | "refresh-google" | "inbox-report" | "social" | "backup" | "prune-404" | "signed-in-crawl";
+export type JobName = "health" | "refresh-sites" | "refresh-google" | "inbox-report" | "social" | "backup" | "prune-404" | "signed-in-crawl" | "tool-call-log-export";
 
 type ScheduledJob = { name: JobName; everyMinutes: number; timeoutMs: number };
 
@@ -31,6 +31,8 @@ export const CRON_JOBS: Record<string, ScheduledJob[]> = {
     { name: "backup", everyMinutes: 1440, timeoutMs: 10 * MINUTE },
     // Carrel's own 404 counts (workers/app.ts) are kept 90 days, site-runtime's default (N7).
     { name: "prune-404", everyMinutes: 1440, timeoutMs: 1 * MINUTE },
+    // The AI door's tool-call log copied to R2 and its copied rows past 90 days pruned (site-runtime's exportAuditLog, L6-L7).
+    { name: "tool-call-log-export", everyMinutes: 1440, timeoutMs: 2 * MINUTE },
   ],
 };
 
