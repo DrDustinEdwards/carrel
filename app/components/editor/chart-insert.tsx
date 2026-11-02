@@ -55,8 +55,11 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
   }, [columns]);
 
   const ready = columns.length >= 2 && x !== "" && y.length > 0 && !y.includes(x);
-  const block = ready ? chartBlock({ type, x, y, title, alt: alt || "A chart.", caption, csv }) : "";
-  const final = ready && alt.trim() ? chartBlock({ type, x, y, title, alt, caption, csv }) : "";
+  // The check reads the block as written, so a blank alt is flagged by Prelum's required-alt rule (B52).
+  // Only the suggested finding, which needs a drawable chart to summarize, draws it with a stand-in.
+  const block = ready ? chartBlock({ type, x, y, title, alt, caption, csv }) : "";
+  const drawable = ready ? chartBlock({ type, x, y, title, alt: alt.trim() || "Draft.", caption, csv }) : "";
+  const final = alt.trim() ? block : "";
 
   // The check and the drafted finding, on Prelum's code, loaded only once the dialog has a chart.
   useEffect(() => {
@@ -69,15 +72,15 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
     const timer = setTimeout(() => {
       void import("~/lib/chart-check.client").then((m) => {
         if (!live) return;
-        setFindings(m.checkCharts(final || block));
-        setSuggestion(m.suggestFinding(block));
+        setFindings(m.checkCharts(block));
+        setSuggestion(m.suggestFinding(drawable));
       });
     }, 300);
     return () => {
       live = false;
       clearTimeout(timer);
     };
-  }, [block, final]);
+  }, [block, drawable]);
 
   const close = () => {
     setOpen(false);
