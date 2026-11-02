@@ -8,6 +8,10 @@ Cloudflare's Worker-level Access does not pass WebSockets: "WebSocket upgrade re
 
 To set it up again: **Zero Trust** > **Access controls** > **Applications** > **Create new application** > **Self-hosted and private**, name `carrel-desk-login`, **Add public hostname** `desk.dustinedwards.info`, policy `carrel-admin`, One-time PIN kept, **Create**. Then copy the **Application Audience (AUD) Tag** from the application's **Additional settings** into **Workers & Pages** > carrel-desk > **Settings** > **Variables and Secrets** > `ACCESS_AUD`, and select **Deploy**.
 
+### The public paths
+
+Desk has one public page, the chart demo at `/demos/progress` (sample data, noindex, GET only, served before the door by `workers/demo.ts`), so a live check sees the book page's chart. A more specific Access application path takes precedence over the hostname application, and a Bypass policy on it turns Access off for that path only (Cloudflare One docs, "Application paths" and "Common policies: Bypass a public endpoint", read 2026-11-01). So: **Zero Trust** > **Access controls** > **Applications** > **Create new application** > **Self-hosted and private**, name `carrel-desk-public`, **Add public hostname** `desk.dustinedwards.info` with path `demos`, and again with path `assets` (the built app's hashed files, the public repository's own code, which the demo page loads), policy **Bypass**, include **Everyone**, **Create**. The door still checks every other path, so nothing else opens.
+
 ## The room
 
 - **One Durable Object per file** (`workers/doc-room.ts`), built on [y-partyserver](https://github.com/cloudflare/partykit/tree/main/packages/y-partyserver) 2.2.0 over Yjs 13.6. The binding is `DOC_ROOM`, migration tag `v1-doc-room` (`wrangler.jsonc.example`). The room keeps its copy in its own SQLite storage after every change, so it outlives hibernation and deploys, and mirrors it as Markdown into D1's `rooms` table, which the nightly backup carries.
