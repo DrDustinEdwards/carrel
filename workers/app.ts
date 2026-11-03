@@ -29,6 +29,7 @@ import { connectRoom } from "~/lib/rooms.server";
 
 import { cspReport, isCspReport } from "./csp-report";
 import { admit, gate, type Render } from "./gate";
+import { demoHeaders, isDemo } from "./demo";
 import { newNonce, withSecurityHeaders } from "./security-headers";
 
 export { DocRoom } from "./doc-room";
@@ -74,8 +75,20 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
     const list = await adminListResponse(request, env, { admins: await deskPeopleEmails(env.DB) });
     return deskHeaders(list, nonce, env);
   }
+  // The chart demo (workers/demo.ts): one sample page, GET only, before the door.
+  if (isDemo(request)) return deskHeaders(demoHeaders(await demoRender(env, ctx, nonce)(request)), nonce, env);
   const response = await gate(request, env, deskRender(env, ctx, nonce));
   return deskHeaders(response, nonce, env);
+}
+
+/** The demo page, rendered with no viewer: its route reads none (app/routes/demos.progress.tsx). */
+function demoRender(env: Env, ctx: ExecutionContext, nonce: string) {
+  return (req: Request) => {
+    const context = new RouterContextProvider();
+    context.set(cloudflareContext, { env, ctx });
+    context.set(nonceContext, nonce);
+    return requestHandler(req, context);
+  };
 }
 
 /** Desk's page, room or resource route for a viewer the door has admitted. */

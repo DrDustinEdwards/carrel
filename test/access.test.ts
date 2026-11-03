@@ -4,6 +4,7 @@ import { stubAccess } from "@dustinedwards/devkit/access";
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { isDemo } from "../workers/demo";
 import { gate } from "../workers/gate";
 import { addPerson, localKeys, resetDb, testEnv } from "./env";
 
@@ -123,4 +124,16 @@ describe("gate: admission", () => {
     expect(response.status).toBe(200);
   });
 
+});
+
+// The chart demo is the one page served before the gate (workers/demo.ts). Planted: anything wider would let
+// an anonymous request reach a signed-in page or a write.
+describe("the demo's way past the gate", () => {
+  it("opens /demos/progress to GET and HEAD, and nothing else", () => {
+    const at = (path: string, method = "GET") => isDemo(new Request(`https://carrel.test${path}`, { method }));
+    expect(at("/demos/progress")).toBe(true);
+    expect(at("/demos/progress", "HEAD")).toBe(true);
+    for (const method of ["POST", "PUT", "DELETE"]) expect(at("/demos/progress", method)).toBe(false);
+    for (const path of ["/", "/demos", "/demos/", "/demos/progress/", "/demos/progress.data", "/demos/../people", "/b/sample/demos/progress"]) expect(at(path)).toBe(false);
+  });
 });
