@@ -6,6 +6,7 @@ import { Banner } from "capsomer/react/banner";
 import { PageHead } from "capsomer/react/page-head";
 
 import { Frame, type FrameData } from "~/components/frame";
+import { getZone } from "~/lib/context";
 import { ProgressPanel } from "~/components/writing/progress-panel";
 import { sampleProgress } from "~/lib/demo/writing-sample";
 
@@ -15,8 +16,8 @@ export function meta() {
   return [{ title: "Writing progress demo · Carrel" }, { name: "robots", content: "noindex" }];
 }
 
-export function loader() {
-  return sampleProgress();
+export function loader({ context }: Route.LoaderArgs) {
+  return { ...sampleProgress(), zone: getZone(context) };
 }
 
 // The frame as a visitor sees it: no name, no Owner's views, one sample book.
