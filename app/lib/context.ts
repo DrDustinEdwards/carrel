@@ -13,6 +13,17 @@ export const viewerContext = createContext<Viewer>();
  */
 export const nonceContext = createContext<string>();
 
+/**
+ * The visitor's likely time zone, from Cloudflare's reading of the request (request.cf.timezone), or UTC. The
+ * writing progress panel counts its first render in it, so the browser's recount in the device's own zone, after
+ * hydration, matches the server's HTML and moves nothing (app/components/writing/progress-panel.tsx).
+ */
+export const zoneContext = createContext<string>("UTC");
+
+export function getZone(context: Readonly<RouterContextProvider>): string {
+  return context.get(zoneContext);
+}
+
 export function getNonce(context: Readonly<RouterContextProvider>): string {
   return context.get(nonceContext);
 }

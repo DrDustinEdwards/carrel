@@ -27,6 +27,17 @@ export const STREAK_HORIZON_DAYS = 400;
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
+/** The zone if Intl knows it, else UTC: a request's guessed zone is checked before anything counts in it. */
+export function knownZone(zone: string | undefined): string {
+  if (!zone) return "UTC";
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: zone });
+    return zone;
+  } catch {
+    return "UTC";
+  }
+}
+
 /** The calendar day (YYYY-MM-DD) an instant falls on in a time zone. */
 export function dayKey(at: string | Date, timeZone: string): string {
   let format = formatters.get(timeZone);

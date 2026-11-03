@@ -21,7 +21,7 @@ import { ProgressPanel } from "~/components/writing/progress-panel";
 import { StatusLabelPill } from "~/components/writing/status-label";
 
 import { bookRepo, draftPaths, exportGate, listFiles, listFindings, refreshBook, requireBookProject } from "~/lib/books.server";
-import { getEnv, getViewer } from "~/lib/context";
+import { getEnv, getViewer, getZone } from "~/lib/context";
 import { slugify } from "@drdustinedwards/site-helpers/slug";
 import { chapterOf, nextNumbered, readingOrder, titleFromSegment } from "~/lib/novels/layout";
 import { shareFromForm } from "~/lib/people-admin.server";
@@ -108,7 +108,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     // Drafts of files Git does not have yet, so a started scene is not lost from view.
     unsaved: drafts.filter((p) => !known.has(p)),
     labels: status.labels,
-    progress: { entries, goal, projectTarget: bookEntry?.target ?? null, deadline: bookEntry?.deadline ?? "" },
+    progress: { entries, goal, projectTarget: bookEntry?.target ?? null, deadline: bookEntry?.deadline ?? "", zone: getZone(context) },
   };
 }
 

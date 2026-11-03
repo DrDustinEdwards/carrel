@@ -1,7 +1,10 @@
 // Today's writing on the book page (ruling 6): the words typed today against today's target, the
 // streak, the pace a deadline asks for, the last seven days, and the person's own goal. A day is the
-// local calendar day in this device's time zone, which only the browser knows: the server counts in
-// UTC and says so, and the panel counts again in the device's zone once the page loads.
+// local calendar day in this device's time zone, which only the browser knows. The server counts in
+// the zone Cloudflare places the request in (zoneContext, app/lib/context.ts), and the panel counts
+// again in the device's zone once the page loads. The two agree for nearly every reader, so the recount
+// changes nothing on screen; a note shown only before the recount would move the whole panel when it
+// went (web.dev, "Optimize CLS": removing content shifts the page as much as inserting it).
 
 import { useEffect, useState } from "react";
 import { barChart } from "enarratio/lite/bar";
@@ -52,7 +55,9 @@ function weekChart(days: Day[], target: number | null) {
     target === null
       ? `${n(total)} words typed over the last seven days${top.words > 0 ? `, the most on ${weekday(top.day)} (${n(top.words)})` : ""}.`
       : `The ${n(target)}-word target was met on ${writing.filter((d) => d.words >= target).length} of the last ${writing.length} writing days.`;
-  return (width: number) =>
+  // `fit` is the height the server's drawing showed at the frame's width (Capsomer's ChartFrame from
+  // 0.66; before it, undefined): the redraw keeps it, so it does not push the page down on a phone.
+  return (width: number, fit?: { height?: number }) =>
     barChart({
       data,
       x: "day",
@@ -70,6 +75,7 @@ function weekChart(days: Day[], target: number | null) {
       notes: off.length ? `Days off: ${[...new Set(off)].join(", ")}.` : undefined,
       source: "Typed words in Carrel's authorship record",
       annotations: target === null ? undefined : [{ type: "range", axis: "y", from: target, to: Math.max(target, top.words), label: "Target" }],
+      ...fit,
     });
 }
 
@@ -79,6 +85,7 @@ export function ProgressPanel({
   projectTarget,
   deadline,
   wordsNow,
+  zone: requestZone,
   canEdit,
   titlePage,
   error,
@@ -89,21 +96,22 @@ export function ProgressPanel({
   projectTarget: number | null;
   deadline: string;
   wordsNow: number;
+  /** The zone the server counted in: the request's, from Cloudflare, or UTC. */
+  zone: string;
   canEdit: boolean;
   /** The title page's address, where the project target and deadline are set. */
   titlePage: string;
   error: string | null;
   saved: boolean;
 }) {
-  // The device's zone, read once the page is in the browser. The server's render counts in UTC.
-  const [zone, setZone] = useState<string | null>(null);
+  // The server's zone first, so hydration matches its HTML; then the device's own, read in the browser.
+  const [zone, setZone] = useState(requestZone);
   const [mode, setMode] = useState(goal.mode);
-  useEffect(() => setZone(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), []);
+  useEffect(() => setZone(Intl.DateTimeFormat().resolvedOptions().timeZone || requestZone), [requestZone]);
   useEffect(() => setMode(goal.mode), [goal.mode]);
 
-  const counted = zone ?? "UTC";
-  const today = dayKey(new Date(), counted);
-  const totals = dayTotals(entries, counted, goal.allowNegative);
+  const today = dayKey(new Date(), zone);
+  const totals = dayTotals(entries, zone, goal.allowNegative);
   const wordsToday = totals.get(today) ?? 0;
   const paced = pace({ projectTarget, deadline, wordsNow, wordsToday, today, writingDays: goal.writingDays });
   const target = targetFor(goal, today, paced);
@@ -114,11 +122,6 @@ export function ProgressPanel({
 
   const body = (
     <div className="app-stack" data-tight>
-      {zone ? null : (
-        <p className="cap-muted" role="status">
-          Counted in UTC until this page loads, then in this device's time zone.
-        </p>
-      )}
       {target !== null ? (
         <Meter
           label="Typed today"

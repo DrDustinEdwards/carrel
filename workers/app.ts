@@ -8,7 +8,8 @@ import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
 import { carrelMcp } from "@dustinedwards/site-runtime/sites";
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
+import { cloudflareContext, nonceContext, viewerContext, zoneContext } from "~/lib/context";
+import { knownZone } from "~/lib/writing/progress";
 import { runBackup } from "~/lib/backup.server";
 import { CRON_JOBS, type JobName } from "~/lib/cron-schedule";
 import { deployedSha } from "~/lib/deployed";
@@ -87,8 +88,15 @@ function demoRender(env: Env, ctx: ExecutionContext, nonce: string) {
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env, ctx });
     context.set(nonceContext, nonce);
+    context.set(zoneContext, requestZone(req));
     return requestHandler(req, context);
   };
+}
+
+/** The time zone Cloudflare places the request in, if it is one this runtime knows; UTC otherwise. */
+function requestZone(request: Request): string {
+  const zone = request.cf?.timezone;
+  return knownZone(typeof zone === "string" ? zone : undefined);
 }
 
 /** Desk's page, room or resource route for a viewer the door has admitted. */
@@ -105,6 +113,7 @@ function deskRender(env: Env, ctx: ExecutionContext, nonce: string): Render {
     context.set(cloudflareContext, { env, ctx });
     context.set(viewerContext, viewer);
     context.set(nonceContext, nonce);
+    context.set(zoneContext, requestZone(req));
     return requestHandler(req, context);
   };
 }
