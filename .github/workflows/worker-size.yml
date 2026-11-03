@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   worker-size:
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-size.yml@454002f526e5e8e645a9c110605880e220b611a0 # v0.21.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-size.yml@bff463b6b198aad0206e00b29ef6e03454efd98c # v0.21.1
     with:
       # The version in package.json's engines field, as ci.yml reads it.
       node-version-file: package.json
