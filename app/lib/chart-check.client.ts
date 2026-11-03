@@ -1,6 +1,6 @@
 // The chart check (E4) and the suggested finding (E5), on Prelum's own chart code: each `:::chart` block
 // is run through Prelum's editorial pack with `strictCharts` (Prelum v0.27.0), the option that refuses a
-// chart with no title, author text above reading grade 9 or too many series, so the editor names the
+// chart with no title or too many series, so the editor names the
 // same problems the site's render would only warn about. The check flags; Dustin decides (CLAUDE.md):
 // the editor shows each as an advisory line in the publish checks, never a block.
 //
@@ -18,7 +18,7 @@ export type ChartFinding = {
   /** The line the block starts on, in the text given. */
   line: number;
   message: string;
-  /** Prelum refuses it under strictCharts (no title, too many series, above grade 9, or a block it cannot draw). */
+  /** Prelum refuses it under strictCharts (no title, too many series, or a block it cannot draw). */
   strict: boolean;
 };
 
