@@ -5,10 +5,10 @@ import { preloads } from "@dustinedwards/site-runtime/preload";
 
 /**
  * What every page blocks on or paints first, sent as a preload Link (and so as Early Hints): the one stylesheet, the hero
- * heading's Schibsted Grotesk and the lead's Source Serif 4. www/build.mjs refuses a build that lacks one of them.
+ * heading's Inter and the lead's Source Serif 4. www/build.mjs refuses a build that lacks one of them.
  */
 export const PAGE_PRELOADS = preloads([
   { href: "/site.css", as: "style" },
-  { href: "/fonts/schibsted-grotesk-latin-wght-normal.woff2", as: "font", type: "font/woff2" },
+  { href: "/fonts/inter-latin-opsz-normal.woff2", as: "font", type: "font/woff2" },
   { href: "/fonts/source-serif-4-latin-wght-normal.woff2", as: "font", type: "font/woff2" },
 ]);
