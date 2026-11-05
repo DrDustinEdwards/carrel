@@ -103,7 +103,7 @@ jobs:
   deploy:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@bff463b6b198aad0206e00b29ef6e03454efd98c # v0.21.1
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@0c1b0a6aa70b7991888cc2d5686af6e8a8e28f3d # v0.21.3
     with:
       worker-name: carrel-desk
       d1-database: carrel
@@ -130,7 +130,7 @@ jobs:
   deploy-www:
     needs: [check, gates]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@bff463b6b198aad0206e00b29ef6e03454efd98c # v0.21.1
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@0c1b0a6aa70b7991888cc2d5686af6e8a8e28f3d # v0.21.3
     with:
       worker-name: carrel
       health-url: https://carrel.dustinedwards.info/health
