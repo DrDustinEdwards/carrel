@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   drill:
-    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@bff463b6b198aad0206e00b29ef6e03454efd98c # v0.21.1
+    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@0c1b0a6aa70b7991888cc2d5686af6e8a8e28f3d # v0.21.3
     with:
       bucket: carrel-backups
       # The same d1-dump release the nightly dump runs (package.json).
