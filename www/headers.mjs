@@ -9,6 +9,6 @@ import { preloads } from "@dustinedwards/site-runtime/preload";
  */
 export const PAGE_PRELOADS = preloads([
   { href: "/site.css", as: "style" },
-  { href: "/fonts/inter-latin-opsz-normal.woff2", as: "font", type: "font/woff2" },
+  { href: "/fonts/inter-latin-wght-normal.woff2", as: "font", type: "font/woff2" },
   { href: "/fonts/source-serif-4-latin-wght-normal.woff2", as: "font", type: "font/woff2" },
 ]);
