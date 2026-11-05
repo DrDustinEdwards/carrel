@@ -15,8 +15,8 @@ describe("the search and sharing checks", () => {
   it("PLANT: flags a long search title, a short description, images with no alt and no card image", () => {
     const source = [
       "---",
-      // 46 characters, past 60 with the site's " | Dustin Edwards".
-      'title: "Giving an AI agent write access to a live site"',
+      // 730 px wide with the site's " | Dustin Edwards"; a result clips a title at 600 px.
+      'title: "Giving an AI agent write access to a live site and every draft on it"',
       'description: "Too short."',
       "---",
       "![](/media/a.png)",
@@ -36,7 +36,7 @@ describe("the search and sharing checks", () => {
       ["image-alt", 7],
       ["card-image", null],
     ]);
-    expect(check.findings[0]!.excerpt).toBe("Giving an AI agent write access to a live site | Dustin Edwards");
+    expect(check.findings[0]!.excerpt).toBe("Giving an AI agent write access to a live site and every draft on it | Dustin Edwards");
     expect(check.preview.card.image).toBeNull();
   });
 

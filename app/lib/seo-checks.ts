@@ -16,7 +16,7 @@
 // image with no alt text, and a canonical address that is not a full https one. Both are broken output,
 // not judgment; a title or description too wide for a result only warns.
 
-import { SERP_DESCRIPTION_LIMIT, SERP_TITLE_LIMIT, truncateForSerp } from "@drdustinedwards/site-helpers/head";
+import { SERP_DESCRIPTION, SERP_TITLE, serpWidth, truncateForSerp } from "@drdustinedwards/site-helpers/head";
 import { readKey, searchFieldsOf, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
 
 import { legalTypeOf } from "~/lib/legal";
@@ -213,11 +213,11 @@ export function seoCheck(
   const fullTitle = title ? `${title}${fields.titleSuffix ?? ""}` : "";
   if (!title) {
     findings.push({ check: "title", message: "No title: a search result has nothing to show for this post.", excerpt: null, line: null });
-  } else if (fullTitle.length > SERP_TITLE_LIMIT) {
+  } else if (serpWidth(fullTitle, SERP_TITLE.font) > SERP_TITLE.px) {
     const added = fields.titleSuffix ? ` with the site's "${fields.titleSuffix.trim()}"` : "";
     findings.push({
       check: "title",
-      message: `The search title is ${plural(fullTitle.length)}${added}; results clip at about ${SERP_TITLE_LIMIT}.`,
+      message: `The search title is ${Math.round(serpWidth(fullTitle, SERP_TITLE.font))} px wide${added}; results clip at about ${SERP_TITLE.px} px.`,
       excerpt: fullTitle,
       line: null,
     });
@@ -226,8 +226,8 @@ export function seoCheck(
   const description = first(front, fields.description);
   if (!description) {
     findings.push({ check: "description", message: "No description: a search engine writes its own from the page, and a link card shows none.", excerpt: null, line: null });
-  } else if (description.length > SERP_DESCRIPTION_LIMIT) {
-    findings.push({ check: "description", message: `The description is ${plural(description.length)}; results clip at about ${SERP_DESCRIPTION_LIMIT}.`, excerpt: description, line: null });
+  } else if (serpWidth(description, SERP_DESCRIPTION.font) > SERP_DESCRIPTION.px) {
+    findings.push({ check: "description", message: `The description is ${Math.round(serpWidth(description, SERP_DESCRIPTION.font))} px wide; results clip at about ${SERP_DESCRIPTION.px} px.`, excerpt: description, line: null });
   } else if (description.length < DESCRIPTION_MIN) {
     findings.push({ check: "description", message: `The description is ${plural(description.length)}, under ${DESCRIPTION_MIN}: too short to say what the post is.`, excerpt: description, line: null });
   }
@@ -251,7 +251,7 @@ export function seoCheck(
   return {
     findings,
     preview: {
-      search: { title: truncateForSerp(fullTitle, SERP_TITLE_LIMIT), description: truncateForSerp(description, SERP_DESCRIPTION_LIMIT) },
+      search: { title: truncateForSerp(fullTitle, SERP_TITLE), description: truncateForSerp(description, SERP_DESCRIPTION) },
       card: {
         title: first(front, fields.cardTitle ?? fields.title),
         description: first(front, fields.cardDescription ?? fields.description),
