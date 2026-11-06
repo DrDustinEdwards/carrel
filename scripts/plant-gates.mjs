@@ -60,8 +60,8 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
-    find: 'if (!session.viewer.isOwner || project.role !== "owner") throw new AiRefusal',
-    replace: "if (false) throw new AiRefusal",
+    find: 'if (!session.viewer.isOwner || project.role !== "owner")\n    throw new AiRefusal',
+    replace: "if (false)\n    throw new AiRefusal",
     label: "publish no longer Owner-only",
   },
   {
@@ -81,7 +81,7 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
-    find: 'if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");',
+    find: 'if (session.viewer.isReviewer)\n    throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");',
     replace: "",
     label: "a reviewer may write a draft",
   },
@@ -119,9 +119,8 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/mcp/door.ts",
-    find: "{ viewer, client: agentClient(name), scopes: AGENT_SCOPES }",
-    replace:
-      "{ viewer: { ...viewer, isOwner: true }, client: agentClient(name), scopes: AGENT_SCOPES }",
+    find: "    viewer,\n    client: agentClient(name),",
+    replace: "    viewer: { ...viewer, isOwner: true },\n    client: agentClient(name),",
     label: "an agent key acts as the Owner",
   },
   {
@@ -157,16 +156,16 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
-    find: 'if (session.viewer.isReviewer || !session.viewer.isOwner) throw new AiRefusal("Social posts',
-    replace: 'if (session.viewer.isReviewer) throw new AiRefusal("Social posts',
+    find: 'if (session.viewer.isReviewer || !session.viewer.isOwner)\n    throw new AiRefusal("Social posts',
+    replace: 'if (session.viewer.isReviewer)\n    throw new AiRefusal("Social posts',
     label: "a social event reachable by any session",
   },
   {
     gate: "tests",
     file: "app/lib/mcp/door.ts",
-    find: '    if (foreign) {\n      logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "audience"',
+    find: '    if (foreign) {\n      logEvent(\n        OWASP_EVENTS.authorizationFailure,\n        { door: "ai", reason: "audience"',
     replace:
-      '    if (false) {\n      logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "audience"',
+      '    if (false) {\n      logEvent(\n        OWASP_EVENTS.authorizationFailure,\n        { door: "ai", reason: "audience"',
     label: "a token for another audience let through",
   },
   {
@@ -208,16 +207,16 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/mcp/server.ts",
-    find: 'const listed = toolsForGrant(TOOLS, "probe" in who ? [SCOPE_READ] : who.session.scopes, MCP_SERVER.scopes);',
+    find: 'const listed = toolsForGrant(\n      TOOLS,\n      "probe" in who ? [SCOPE_READ] : who.session.scopes,\n      MCP_SERVER.scopes,\n    );',
     replace: "const listed = TOOLS;",
     label: "a read-only grant is listed the write tools",
   },
   {
     gate: "tests",
     file: "app/lib/mcp/tools.ts",
-    find: "Open world: the public site.\n    annotations: { readOnlyHint: false, destructiveHint: true,",
+    find: "Open world: the public site.\n    annotations: {\n      readOnlyHint: false,\n      destructiveHint: true,",
     replace:
-      "Open world: the public site.\n    annotations: { readOnlyHint: false, destructiveHint: false,",
+      "Open world: the public site.\n    annotations: {\n      readOnlyHint: false,\n      destructiveHint: false,",
     label: "publish no longer marked destructive",
   },
   {
