@@ -3,6 +3,8 @@
 interface CarrelSecrets {
   /** The AUD tag of the Worker's Access application. Set with `wrangler secret put ACCESS_AUD`. */
   ACCESS_AUD: string;
+  /** Keys site-runtime's admin idle cookie (withAdminIdle `secret`). Minted by the deploy (devkit worker-deploy `generated-secrets`), never shown; unset falls back to the unkeyed cookie and logs admin_idle_unkeyed. */
+  ADMIN_IDLE_SECRET?: string;
   /**
    * dustinedwards.info's Carrel key, the same value the site holds. Absent until the site is
    * connected (setup step 10). Set with `Get-Clipboard | npx wrangler secret put SITE_DUSTINEDWARDS_KEY`.
