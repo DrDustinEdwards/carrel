@@ -10,6 +10,7 @@
 //   It publishes the site's text as it stands or, on Dustin's instruction, the session's own AI draft;
 //   the site keeps every earlier version, so the history page can restore the one before.
 
+import { sendEmail } from "@dustinedwards/site-runtime/email";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
@@ -269,7 +270,7 @@ export async function aiPublish(
     const doc = await readDoc(env, project, itemId, opts.fetcher).catch(() => null);
     const title = doc?.title || itemId;
     const base = `${opts.carrelOrigin}/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(itemId)}`;
-    await env.EMAIL.send({
+    const sent = await sendEmail(env.EMAIL, {
       from: env.ALERT_FROM,
       to: env.ALERT_EMAIL,
       subject: `Carrel: ${session.client} published "${title}"`,
@@ -285,6 +286,7 @@ export async function aiPublish(
         "",
       ].join("\n"),
     });
+    if (!sent.sent) throw new Error(sent.error);
     emailed = true;
     await d.update(aiPublications).set({ emailedAt: new Date().toISOString() }).where(eq(aiPublications.changeId, outcome.changeId));
   } catch (error) {

@@ -11,6 +11,7 @@
 // Each run also rewrites the public conformance report (conformanceReport below), which devkit's
 // shared scoreboard reads; it carries check names and the site's API address, never a key or site text.
 
+import { sendEmail } from "@dustinedwards/site-runtime/email";
 import { backupHealth } from "@dustinedwards/d1-dump";
 import { PACKAGE_VERSION } from "@dustinedwards/site-api";
 import { runConformance } from "@dustinedwards/site-api/conformance";
@@ -305,18 +306,14 @@ export async function runHealth(
   let emailed = false;
   if (changed.length > 0) {
     const failing = results.filter((r) => !r.ok);
-    try {
-      await env.EMAIL.send({
-        from: env.ALERT_FROM,
-        to: env.ALERT_EMAIL,
-        subject: failing.length === 0 ? "Carrel: all checks pass" : `Carrel: ${failing.length} check${failing.length === 1 ? "" : "s"} failing`,
-        text: results.map((r) => `${r.ok ? "ok  " : "FAIL"} ${r.name}: ${r.detail}`).join("\n"),
-      });
-      emailed = true;
-    } catch (error) {
-      console.error(JSON.stringify({ health: "email-failed", error: message(error) }));
-      return { results, emailed: false };
-    }
+    const sent = await sendEmail(env.EMAIL, {
+      from: env.ALERT_FROM,
+      to: env.ALERT_EMAIL,
+      subject: failing.length === 0 ? "Carrel: all checks pass" : `Carrel: ${failing.length} check${failing.length === 1 ? "" : "s"} failing`,
+      text: results.map((r) => `${r.ok ? "ok  " : "FAIL"} ${r.name}: ${r.detail}`).join("\n"),
+    });
+    if (!sent.sent) return { results, emailed: false };
+    emailed = true;
   }
 
   const at = now().toISOString();
