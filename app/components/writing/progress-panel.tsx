@@ -6,7 +6,7 @@
 // changes nothing on screen; a note shown only before the recount would move the whole panel when it
 // went (web.dev, "Optimize CLS": removing content shifts the page as much as inserting it).
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { barChart } from "enarratio/lite/bar";
 import { Form } from "react-router";
 import { Link } from "capsomer/react/link";
@@ -20,6 +20,7 @@ import { Panel } from "capsomer/react/panel";
 import { Status } from "capsomer/react/status";
 
 import { dayTotals, pace, recentDays, streak, targetFor, WEEKDAYS, dayKey, type Goal, type Pace, type SaveEntry } from "~/lib/writing/progress";
+import { useBrowserZone } from "~/lib/hydrated";
 
 const n = (value: number) => value.toLocaleString("en-US");
 
@@ -105,12 +106,19 @@ export function ProgressPanel({
   saved: boolean;
 }) {
   // The server's zone first, so hydration matches its HTML; then the device's own, read in the browser.
-  const [zone, setZone] = useState(requestZone);
+  const zone = useBrowserZone(requestZone);
   const [mode, setMode] = useState(goal.mode);
-  useEffect(() => setZone(Intl.DateTimeFormat().resolvedOptions().timeZone || requestZone), [requestZone]);
-  useEffect(() => setMode(goal.mode), [goal.mode]);
+  // A new goal from the server replaces the mode being chosen, adjusted while rendering
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [goalMode, setGoalMode] = useState(goal.mode);
+  if (goal.mode !== goalMode) {
+    setGoalMode(goal.mode);
+    setMode(goal.mode);
+  }
+  // The day is read once, when the panel is drawn, not on every render.
+  const [now] = useState(() => new Date());
 
-  const today = dayKey(new Date(), zone);
+  const today = dayKey(now, zone);
   const totals = dayTotals(entries, zone, goal.allowNegative);
   const wordsToday = totals.get(today) ?? 0;
   const paced = pace({ projectTarget, deadline, wordsNow, wordsToday, today, writingDays: goal.writingDays });

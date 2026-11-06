@@ -5,7 +5,7 @@
 // figure takes the file's own caption, which the post can change like any other text. The search and
 // sharing fields use the same picker for the share image, with their own words and their own onPick.
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { Button } from "capsomer/react/button";
 import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Empty } from "capsomer/react/empty";
@@ -36,8 +36,8 @@ export function LibraryInsert({
   const [error, setError] = useState("");
   const library = media.endpoint.replace(/\/api$/, "");
 
-  const load = async (query: string) => {
-    setError("");
+  // The library's answer for a query, into data or error (after the fetch, so never synchronously).
+  const fetchLibrary = async (query: string) => {
     try {
       const response = await fetch(`${media.endpoint}${query}`, { headers: { accept: "application/json" } });
       const body = (await response.json().catch(() => null)) as (MediaData & { error?: undefined }) | { error?: string } | null;
@@ -48,11 +48,23 @@ export function LibraryInsert({
     }
   };
 
-  const loadRef = useRef(load);
-  loadRef.current = load;
+  const load = async (query: string) => {
+    setError("");
+    await fetchLibrary(query);
+  };
 
+  // The memoized form below calls the latest load; the ref is set after each render, not during it.
+  const loadRef = useRef(load);
+  useLayoutEffect(() => {
+    loadRef.current = load;
+  });
+
+  // An effect event, so the effect reads the latest fetch without re-running on it. The error is
+  // already empty here, so the first load has nothing to clear.
+  const loadFirst = useEffectEvent(() => void fetchLibrary(""));
   useEffect(() => {
-    if (open && !data && !error) void loadRef.current("");
+    // oxlint-disable-next-line react/set-state-in-effect -- fetches the library when the dialog opens; its state is set when the answer comes, after an await.
+    if (open && !data && !error) loadFirst();
   }, [open, data, error]);
 
   // A link to another view of the library (a tag, a page, a file to choose) loads it here.

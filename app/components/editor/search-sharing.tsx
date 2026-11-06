@@ -48,7 +48,7 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
           <OgCardPreview
             image={
               preview.card.image ? (
-                <img src={preview.card.image} alt="This post's card image" width={1200} height={630} />
+                <img src={preview.card.image} alt="This post's sharing card" width={1200} height={630} />
               ) : (
                 <span className="app-share-noimage">No card image</span>
               )

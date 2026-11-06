@@ -118,6 +118,7 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
             {q ? "Try other words, or fewer of them." : "Refresh from Drive to read the shared folder."}
           </Empty>
         ) : (
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region takes focus so a keyboard can scroll it (axe scrollable-region-focusable)
           <div className="cap-table-wrap" role="region" aria-labelledby="manuscripts-caption" tabIndex={0}>
             <table className="cap-table">
               <caption id="manuscripts-caption" className="cap-sr-only">

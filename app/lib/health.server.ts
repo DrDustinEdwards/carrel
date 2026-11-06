@@ -321,7 +321,7 @@ export async function runHealth(
 
   const at = now().toISOString();
   try {
-    for (const r of [...new Set([...changed, ...unseen])]) {
+    for (const r of new Set([...changed, ...unseen])) {
       await db
         .insert(healthState)
         .values({ checkName: r.name, ok: r.ok, detail: r.detail, changedAt: at })

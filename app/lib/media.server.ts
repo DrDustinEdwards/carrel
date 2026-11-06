@@ -45,7 +45,7 @@ const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
 };
 
 /** Where a place that uses a file opens in Carrel: a post opens in its editor. */
-export function useHref(slug: string, use: { type: string; id: string }): string {
+export function usageHref(slug: string, use: { type: string; id: string }): string {
   return use.type === "post" ? `/p/${encodeURIComponent(slug)}/e/${encodeURIComponent(use.id)}` : "";
 }
 
@@ -58,7 +58,7 @@ export function mediaSource(env: Env, project: SiteProject, viewer: Viewer, fetc
   return {
     ...kitBase(env, project),
     client: siteClient(env, project.site, fetcher),
-    editorHref: (id) => useHref(project.slug, { type: "post", id }),
+    editorHref: (id) => usageHref(project.slug, { type: "post", id }),
     async record({ kind, ids, changeId }) {
       const action = ACTIONS[kind];
       if (!action) return;
