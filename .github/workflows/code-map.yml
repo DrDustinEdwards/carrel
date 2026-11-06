@@ -5,12 +5,13 @@ name: code-map
 # replaces code-map.json on the orphan branch `code-map`, which Capsid's daily build reads for the system explorer. That
 # branch holds no code and nothing runs from it.
 #
-# Not a gate: it runs after a push to main, so a failure here is a red run on main and never a red pull request. No
-# mutation run yet (Carrel has no Stryker), so there is no schedule.
+# Not a gate: it runs nightly on main, so a failure here is a red run on main and never a red pull request. Nightly, not on
+# every push (devkit README, "No second run on main"): the explorer reads the newest map, at most a day behind. No mutation
+# run yet (Carrel has no Stryker).
 
 on:
-  push:
-    branches: [main]
+  schedule:
+    - cron: "17 4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
     # A called workflow holds no more than this job grants: the write lets it push code-map.json to the code-map branch.
     permissions:
       contents: write
-    # One run at a time, so an older push's map never lands after a newer one's.
+    # One run at a time, so an older run's map never lands after a newer one's.
     concurrency:
       group: code-map
       cancel-in-progress: false
