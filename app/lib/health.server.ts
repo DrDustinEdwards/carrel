@@ -17,7 +17,7 @@ import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
-import { durableObjectCheck, healthResponse, kvCheck } from "@dustinedwards/site-runtime/health";
+import { durableObjectCheck, healthResponse, kvCheck, r2Check } from "@dustinedwards/site-runtime/health";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -350,6 +350,7 @@ export async function runHealth(
  *   not copied to AUDIT_BUCKET for two days. Without TOOL_CALL_LOG it fails too, and the AI door refuses calls.
  * - email is the send_email binding, checked present only: sending a probe would mail Dustin every few minutes. A failed
  *   send is already seen where it matters, as the ai-publish-email check above and the health run's own alert.
+ * - audit-bucket is site-runtime's r2Check on AUDIT_BUCKET, the tool-call log's copies: one `head`, never a list.
  * Left out: CSP_REPORT_RATE_LIMIT, because a probe would spend a count and a missing binding only drops reports, which
  * the receiver answers 204 regardless. BACKUPS is the backup check's own read.
  */
@@ -364,6 +365,8 @@ export function healthAnswer(env: Env): Promise<Response> {
       durableObjectCheck("mcp-rate-limit", env.MCP_RATE_LIMIT),
       // The tool-call log (L8, warn with an alert): a call with no finished row, a spike, or rows not copied for two days.
       auditLogCheck(env),
+      // AUDIT_BUCKET answers: a head of one key (no list), warn like the rest; a throw (an unbound binding included) fails it.
+      { ...r2Check("audit-bucket", env.AUDIT_BUCKET), level: "warn" },
       { name: "email", level: "warn", run: async () => typeof env.EMAIL?.send === "function" || { ok: false, detail: "The EMAIL binding is missing." } },
       // Each job with its own interval, so one that never ran (a trigger that does not fire it) warns too. Held back
       // until its window has passed since this version was deployed.
