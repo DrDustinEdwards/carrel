@@ -419,11 +419,11 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                   <span className="cap-muted">{chapter.words.toLocaleString()} words</span>
                   {chapter.flags ? <Status tone="warn">{chapter.flags} flagged</Status> : null}
                 </h3>
-                {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region takes focus so a keyboard can scroll it (axe scrollable-region-focusable) */}
                 <div
                   className="cap-table-wrap"
                   role="region"
                   aria-labelledby={`scenes-${chapter.slug}`}
+                  // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region takes focus so a keyboard can scroll it (axe scrollable-region-focusable)
                   tabIndex={0}
                 >
                   <table className="cap-table">
