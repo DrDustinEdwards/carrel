@@ -81,7 +81,7 @@ describe("ePub", () => {
   it("puts an uncompressed mimetype first, as the container format requires", () => {
     const zip = buildEpub(BOOK, { id: "x", modified: new Date() });
     // Local file header: signature, then compression method at offset 8 (0 = stored), name at 30.
-    expect([...zip.slice(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
+    expect(Array.from(zip.slice(0, 4))).toEqual([0x50, 0x4b, 0x03, 0x04]);
     expect(zip[8]).toBe(0);
     expect(strFromU8(zip.slice(30, 38))).toBe("mimetype");
     expect(strFromU8(files["mimetype"]!)).toBe("application/epub+zip");

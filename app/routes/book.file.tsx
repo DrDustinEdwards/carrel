@@ -410,7 +410,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   <Button variant="primary" pending={busy} disabledReason={!data.connected ? "Git is not connected, so saving waits. The text is kept here in Carrel." : undefined} onClick={() => void send("save")}>
                     Save to Git
                   </Button>
-                  <Button pending={checker.state !== "idle"} onClick={() => checker.submit({ intent: "check", source }, { method: "post" })}>
+                  <Button pending={checker.state !== "idle"} onClick={() => void checker.submit({ intent: "check", source }, { method: "post" })}>
                     Check this text
                   </Button>
                   {room.unsaved && data.version ? (
@@ -535,7 +535,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         body={[]}
         action="Discard unsaved changes"
         returnTo={asking?.opener}
-        perform={async () => void (await send("discard"))}
+        perform={async () => {
+          await send("discard");
+        }}
         onClose={() => setAsking(null)}
       />
       <ConfirmDialog

@@ -4,7 +4,7 @@
 // width as a Google result sets them (serp-width.ts); too wide only warns. The two faults that block a
 // publish are seo-checks' searchFieldFaults, shown here on their boxes and in the publish gate.
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
@@ -14,6 +14,7 @@ import { joinSource, readKey, searchFieldsOf, setSearchFields, splitSource, type
 import { LibraryInsert } from "~/components/media/library-insert";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { SERP_WIDTH, textWidth } from "~/lib/serp-width";
+import { useHydrated } from "~/lib/hydrated";
 
 const PICK_WORDS = {
   label: "Choose from library",
@@ -65,8 +66,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
   const parts = splitSource(source);
   const front = parts.front;
   // Canvas is only in the browser; the meters say "Measuring" until the page is live.
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
+  const ready = useHydrated();
   const title = useTyped(readKey(front, "searchTitle"));
   const description = useTyped(readKey(front, "description"));
   const alt = useTyped(readKey(front, "imageAlt"));

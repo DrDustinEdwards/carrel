@@ -7,7 +7,7 @@
 // typed in the Markdown view goes into it block by block (room-editing.tsx).
 
 import { EditorView } from "@codemirror/view";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { MarkdownEditor, type LinkTarget } from "capsomer/react/markdown-editor";
 import { Segmented } from "capsomer/react/segmented";
 
@@ -19,6 +19,7 @@ import { RichEditor, type RichEditorHandle, type RichRoom } from "~/components/e
 import { LibraryInsert } from "~/components/media/library-insert";
 import { uploadImage, type EditorMedia } from "~/components/media/upload";
 import type { Dialect } from "~/lib/editor/markdown.mjs";
+import { useRemembered } from "~/lib/remembered";
 import { SCAFFOLDS } from "~/lib/site-markdown";
 
 export type { LinkTarget };
@@ -69,28 +70,17 @@ export function WritingSurface({
 }) {
   const root = useRef<HTMLDivElement>(null);
   const rich = useRef<RichEditorHandle | null>(null);
-  const [mode, setMode] = useState<Mode>("formatted");
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(MODE_KEY) === "markdown") setMode("markdown");
-    } catch {
-      // Storage refused: the formatted editor, as the default.
-    }
-  }, []);
+  // Remembered in this browser; the formatted editor until it is read, and as the default.
+  const [storedMode, rememberMode] = useRemembered(MODE_KEY);
+  const mode: Mode = storedMode === "markdown" ? "markdown" : "formatted";
   // The panels let go of the formatted editor when it is put away, and of each one made again.
   const editorKey = room?.rich?.key;
+  const releaseEditor = useEffectEvent(() => onEditor?.(null));
   useEffect(() => {
-    if (mode !== "formatted") onEditor?.(null);
-    return () => onEditor?.(null);
+    if (mode !== "formatted") releaseEditor();
+    return () => releaseEditor();
   }, [mode, editorKey]);
-  const choose = (next: Mode) => {
-    setMode(next);
-    try {
-      localStorage.setItem(MODE_KEY, next);
-    } catch {
-      // Not remembered, still switched.
-    }
-  };
+  const choose = (next: Mode) => rememberMode(next);
   // Never for a Reader, whatever the parent passes: a read-only editor inserts nothing.
   const images = readOnly ? null : (media ?? null);
   // The editor shows the picture it just uploaded at `src` (an address Carrel's page can load), while

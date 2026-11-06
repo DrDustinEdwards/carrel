@@ -80,6 +80,7 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
       <div className="app-actions">
         {!done && item.status !== "draft" ? (
           <Form method="post">
+            {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- the page exists only to confirm this one action, so focus starts on it */}
             <Button type="submit" variant="danger" pending={busy} autoFocus>
               Unpublish now
             </Button>

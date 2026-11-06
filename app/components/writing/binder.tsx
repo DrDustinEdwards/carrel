@@ -22,8 +22,13 @@ const fromTree = (nodes: TreeNode[]): BinderNode[] =>
 export function Binder({ nodes, book, current, canEdit }: { nodes: BinderNode[]; book: string; current: string; canEdit: boolean }) {
   const shown = useMemo(() => toTree(nodes), [nodes]);
   const [tree, setTree] = useState(shown);
-  // A fresh order from the server (after a move, a save or a refresh) replaces what the tree holds.
-  useEffect(() => setTree(shown), [shown]);
+  // A fresh order from the server (after a move, a save or a refresh) replaces what the tree holds,
+  // adjusted while rendering (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [seenShown, setSeenShown] = useState(shown);
+  if (shown !== seenShown) {
+    setSeenShown(shown);
+    setTree(shown);
+  }
   const mover = useFetcher<ReorderAnswer>();
   const navigate = useNavigate();
   const handled = useRef<unknown>(null);
@@ -34,6 +39,7 @@ export function Binder({ nodes, book, current, canEdit }: { nodes: BinderNode[];
     if (mover.state !== "idle" || !answer || handled.current === answer) return;
     handled.current = answer;
     if (!answer.ok) {
+      // oxlint-disable-next-line react/set-state-in-effect -- once per fetcher answer (handled), which may also navigate: a refused move puts the server's order back.
       setTree(shown);
       setProblem(answer.message);
       return;

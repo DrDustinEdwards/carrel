@@ -186,7 +186,7 @@ async function route(db: D1Database, post: typeof socialPosts.$inferSelect, acco
   await drizzle(db).update(socialEvents).set({ state: "covered" }).where(and(eq(socialEvents.id, post.eventId), inArray(socialEvents.state, ["waiting", "routine"])));
 }
 
-async function useTemplate(db: D1Database, event: typeof socialEvents.$inferSelect, account: Account) {
+async function applyTemplate(db: D1Database, event: typeof socialEvents.$inferSelect, account: Account) {
   const d = drizzle(db);
   const [post] = await d
     .insert(socialPosts)
@@ -273,7 +273,7 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
     .where(and(eq(socialEvents.state, "routine"), inArray(socialEvents.accountId, ids), lte(socialRoutineRuns.requestedAt, new Date(now.getTime() - ROUTINE_WAIT_MS).toISOString())))
     .all();
   for (const { event } of stale) {
-    await useTemplate(env.DB, event, accounts.get(event.accountId)!);
+    await applyTemplate(env.DB, event, accounts.get(event.accountId)!);
     result.templated++;
   }
 
@@ -347,7 +347,7 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
     if (templateAll) {
       result.errors.push(`template used: ${templateAll}`);
       for (const event of waiting) {
-        await useTemplate(env.DB, event, accounts.get(event.accountId)!);
+        await applyTemplate(env.DB, event, accounts.get(event.accountId)!);
         result.templated++;
       }
     }
