@@ -36,7 +36,7 @@ export default defineConfig({
           SITE_DUSTINEDWARDS_ORIGIN: "https://site.test",
           CARREL_MCP_ORIGIN: "https://carrel-mcp.test",
           TEST_D1_MIGRATIONS: D1_MIGRATIONS,
-          // A fake key for the tool-call log's signatures (site-runtime 0.84 requires one).
+          // A fake key for the tool-call log's signatures (site-runtime 0.85 requires one).
           AUDIT_SIGNING_KEY: "test-signing-key-not-a-real-one-0123456789",
         },
       },
