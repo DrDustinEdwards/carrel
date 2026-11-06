@@ -81,6 +81,12 @@ describe("a room", () => {
     // Both see both changes, and the untouched bytes of the file are untouched.
     expect(roomMarkdown(a.doc)).toBe("First line. More.\n\nNow Second line.\n");
     expect(roomMarkdown(b.doc)).toBe(roomMarkdown(a.doc));
+    // An editor's change over the room's message cap is refused, as an oversize suggestion is.
+    edit(b.doc, typeAtEnd("x".repeat(256 * 1024)));
+    await b.flush();
+    await a.flush();
+    expect(b.said.some((m) => m.t === "refused")).toBe(true);
+    expect(roomMarkdown(a.doc)).toBe("First line. More.\n\nNow Second line.\n");
 
     const sent: { source: string; version: string | null }[] = [];
     const saved = await saveRoom(testEnv, project("owner"), owner, itemId, async (source, expectedVersion) => {
