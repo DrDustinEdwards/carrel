@@ -30,6 +30,8 @@ const CALLS: Record<string, Record<string, unknown>> = {
   carrel_publish_item: { project: SITE, item: "post-one", expected_version: "v" },
   carrel_import_media: { project: SITE, url: "https://example.com/a.png", alt: "A" },
   carrel_delete_media: { project: SITE, ids: ["file-one"] },
+  carrel_review_mentions: { project: SITE },
+  carrel_decide_mention: { project: SITE, decision: "approve", ids: ["1"] },
   carrel_list_book_files: { project: BOOK },
   carrel_read_book_file: { project: BOOK, path: SCENE },
   carrel_check_book_text: { project: BOOK, path: SCENE, source: "x" },
