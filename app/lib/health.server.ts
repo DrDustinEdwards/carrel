@@ -17,7 +17,7 @@ import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
-import { durableObjectCheck, healthResponse, kvCheck, r2Check } from "@dustinedwards/site-runtime/health";
+import { durableObjectCheck, emailCheck, healthResponse, kvCheck, r2Check } from "@dustinedwards/site-runtime/health";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -367,7 +367,7 @@ export function healthAnswer(env: Env): Promise<Response> {
       auditLogCheck(env),
       // AUDIT_BUCKET answers: a head of one key (no list), warn like the rest; a throw (an unbound binding included) fails it.
       { ...r2Check("audit-bucket", env.AUDIT_BUCKET), level: "warn" },
-      { name: "email", level: "warn", run: async () => typeof env.EMAIL?.send === "function" || { ok: false, detail: "The EMAIL binding is missing." } },
+      emailCheck("email", env.EMAIL),
       // Each job with its own interval, so one that never ran (a trigger that does not fire it) warns too. Held back
       // until its window has passed since this version was deployed.
       cronCheck(env.DB, { jobs: ALL_JOBS, deployedAt: deployedAt(env) }),
