@@ -162,6 +162,10 @@ Every tool is named `carrel_<action>_<resource>` and carries all four annotation
 | `carrel_save_draft` | Editor, Owner | a new AI draft beside the person's own; never over it, never to the site. The answer carries the writing checks on what was saved |
 | `carrel_add_finding` | anyone with a role, reviewers above all | a flag on a post, credited to the client |
 | `carrel_publish_item` | the Owner's own sessions | the post as saved on the site at `expected_version`; refused while any flag is open; recorded as "published by <client> on Dustin's instruction"; emails Dustin an unpublish link |
+| `carrel_import_media` | anyone who may edit the site's library | a picture from its https address, with alt text, as the Desk's Import does; a file already stored is reported, not stored twice |
+| `carrel_delete_media` | the Owner's own sessions | library files by id, for good, through the Desk's own Delete (trash first where the site has one, then removed); the site refuses a file a page still uses, and the answer names it |
+| `carrel_review_mentions` | the Owner's own sessions | a page of a site's webmention queue with the whole queue's counts, stranger text marked as data |
+| `carrel_decide_mention` | the Owner's own sessions | approve, reject or take back mentions, through the Desk's mentions list; delete and the sweep stay in the Desk |
 | `carrel_list_book_files`, `carrel_read_book_file`, `carrel_check_book_text` | anyone with a role on the book | the book's files, a file with its version and flags, and the checks run on text without saving |
 | `carrel_save_book_draft` | Editor, Owner | a new AI draft of a book file beside the person's own; never committed to Git |
 | `carrel_add_book_finding` | anyone with a role, reviewers above all | a flag on a book file; a recheck never withdraws it, and it holds export |

@@ -5,7 +5,8 @@
 // drawn as text: the source address is never a link. Every action is a form post, so it all works with
 // no script; with script the posts go through the mentions endpoint and answer in place.
 
-import { loadMentions, type IntentResult } from "@dustinedwards/site-api/admin";
+import { loadMentions, readMentionsQuery, type IntentResult } from "@dustinedwards/site-api/admin";
+import { kitMentionsSearch, mentionsDataOfKit } from "capsomer/behavior/mentions-list";
 import { Banner } from "capsomer/react/banner";
 import { MentionsList } from "capsomer/react/mentions-list";
 import { PageHead } from "capsomer/react/page-head";
@@ -13,7 +14,7 @@ import { PageHead } from "capsomer/react/page-head";
 import { KitForm, useKitSubmit } from "~/components/kit-form";
 import { ProjectTabs } from "~/components/project-tabs";
 import { getEnv, getViewer } from "~/lib/context";
-import { mentionsQuery, mentionsSource, mentionsView, runIntent, unreachable } from "~/lib/mentions.server";
+import { mentionsSource, runIntent, unreachable } from "~/lib/mentions.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { siteEntry } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
@@ -32,9 +33,9 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const head = { slug: project.slug, name: project.name, site: siteEntry(project.site).name };
   const search = new URL(request.url).searchParams;
   try {
-    const kit = await loadMentions(mentionsSource(env, project, viewer), mentionsQuery(search));
+    const kit = await loadMentions(mentionsSource(env, project, viewer), readMentionsQuery(kitMentionsSearch(search)));
     if (!kit.offers.mentions) return { project: head, data: null, unavailable: "This site does not receive webmentions through Carrel yet." };
-    return { project: head, data: mentionsView(kit, search), unavailable: null };
+    return { project: head, data: mentionsDataOfKit(kit, search), unavailable: null };
   } catch (error) {
     const message = unreachable(error);
     if (message === null) throw error;
