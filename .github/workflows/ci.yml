@@ -1,10 +1,12 @@
-# Carrel's checks, on every push and every pull request, and a deploy on a push to main after they
+# Carrel's checks, on every pull request and every push to main, and a deploy on a push to main after they
 # pass. The check and gates jobs use no secrets: the tests run in workerd with a local D1 and never
 # reach the network, and the gates start their own local Workers. Only the deploy job holds secrets.
 name: CI
 
 on:
+  # A branch's run comes from its pull request; a push runs only on main, so no commit runs twice.
   push:
+    branches: [main]
   pull_request:
 
 permissions:
