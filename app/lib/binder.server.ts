@@ -27,7 +27,13 @@ const PATH_COLUMNS = [
   ["untyped_words", "path"],
 ] as const;
 
-export async function reorderBook(db: D1Database, repo: NovelsRepo, project: BookProject, viewer: Viewer, desired: ChapterOrder[]): Promise<ReorderResult> {
+export async function reorderBook(
+  db: D1Database,
+  repo: NovelsRepo,
+  project: BookProject,
+  viewer: Viewer,
+  desired: ChapterOrder[],
+): Promise<ReorderResult> {
   if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
   const files = await listFiles(db, project);
   const plan = planRenames(
@@ -59,16 +65,29 @@ export async function reorderBook(db: D1Database, repo: NovelsRepo, project: Boo
   let commit: string;
   try {
     ({ commit } = await repo.commitMany({
-      renames: plan.renames.map((r) => ({ from: `${project.book}/${r.from}`, to: `${project.book}/${r.to}`, sha: sha.get(r.from)! })),
+      renames: plan.renames.map((r) => ({
+        from: `${project.book}/${r.from}`,
+        to: `${project.book}/${r.to}`,
+        sha: sha.get(r.from)!,
+      })),
       message: `Reorder ${project.book}: ${plan.renames.length} file${plan.renames.length === 1 ? "" : "s"} renumbered\n\nCarrel-Change: ${changeId}`,
       author: { name: viewer.name || viewer.email, email: viewer.email },
     }));
   } catch (error) {
     if (error instanceof GitConflict) {
-      return { ok: false, reason: "conflict", message: "The book changed in Git since Carrel last read it, so nothing was moved. Refresh the book from Git, then move again." };
+      return {
+        ok: false,
+        reason: "conflict",
+        message:
+          "The book changed in Git since Carrel last read it, so nothing was moved. Refresh the book from Git, then move again.",
+      };
     }
     console.error(JSON.stringify({ book: "reorder-failed", error: String(error) }));
-    return { ok: false, reason: "failed", message: "Git did not accept the move, so nothing was moved." };
+    return {
+      ok: false,
+      reason: "failed",
+      message: "Git did not accept the move, so nothing was moved.",
+    };
   }
 
   // Two steps through a placeholder, so a file moving onto a path another file is leaving never
@@ -76,13 +95,27 @@ export async function reorderBook(db: D1Database, repo: NovelsRepo, project: Boo
   const temp = (i: number) => `\u0000moving/${changeId}/${i}`;
   const statements: D1PreparedStatement[] = [];
   for (const [table, column] of PATH_COLUMNS) {
-    plan.renames.forEach((r, i) => statements.push(db.prepare(`UPDATE ${table} SET ${column} = ? WHERE project_id = ? AND ${column} = ?`).bind(temp(i), project.id, r.from)));
-    plan.renames.forEach((r, i) => statements.push(db.prepare(`UPDATE ${table} SET ${column} = ? WHERE project_id = ? AND ${column} = ?`).bind(r.to, project.id, temp(i))));
+    plan.renames.forEach((r, i) =>
+      statements.push(
+        db
+          .prepare(`UPDATE ${table} SET ${column} = ? WHERE project_id = ? AND ${column} = ?`)
+          .bind(temp(i), project.id, r.from),
+      ),
+    );
+    plan.renames.forEach((r, i) =>
+      statements.push(
+        db
+          .prepare(`UPDATE ${table} SET ${column} = ? WHERE project_id = ? AND ${column} = ?`)
+          .bind(r.to, project.id, temp(i)),
+      ),
+    );
   }
   statements.push(
     ...plan.renames.map((r) =>
       db
-        .prepare("INSERT INTO book_moves (project_id, change_id, from_path, to_path, commit_sha, person_id) VALUES (?, ?, ?, ?, ?, ?)")
+        .prepare(
+          "INSERT INTO book_moves (project_id, change_id, from_path, to_path, commit_sha, person_id) VALUES (?, ?, ?, ?, ?, ?)",
+        )
         .bind(project.id, changeId, r.from, r.to, commit, viewer.id),
     ),
   );
@@ -94,7 +127,11 @@ export async function reorderBook(db: D1Database, repo: NovelsRepo, project: Boo
 }
 
 /** Every path this file has had, newest first, following the moves back from `path`. */
-export async function formerPaths(db: D1Database, projectId: number, path: string): Promise<string[]> {
+export async function formerPaths(
+  db: D1Database,
+  projectId: number,
+  path: string,
+): Promise<string[]> {
   const rows = await drizzle(db)
     .select({ from: bookMoves.fromPath, to: bookMoves.toPath, id: bookMoves.id })
     .from(bookMoves)
@@ -119,7 +156,13 @@ export async function formerPaths(db: D1Database, projectId: number, path: strin
 export async function movesOf(db: D1Database, projectId: number, paths: string[]) {
   if (paths.length === 0) return [];
   return drizzle(db)
-    .select({ from: bookMoves.fromPath, to: bookMoves.toPath, commit: bookMoves.commitSha, personId: bookMoves.personId, at: bookMoves.createdAt })
+    .select({
+      from: bookMoves.fromPath,
+      to: bookMoves.toPath,
+      commit: bookMoves.commitSha,
+      personId: bookMoves.personId,
+      at: bookMoves.createdAt,
+    })
     .from(bookMoves)
     .where(and(eq(bookMoves.projectId, projectId), inArray(bookMoves.toPath, paths)))
     .all();

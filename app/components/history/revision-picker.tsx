@@ -11,7 +11,17 @@ export type RevisionRow = { version: string; at: string; author: string; message
 
 const utc = (iso: string) => `${iso.slice(0, 16).replace("T", " ")} UTC`;
 
-export function RevisionPicker({ revisions, historyPath, picked = [], label }: { revisions: RevisionRow[]; historyPath: string; picked?: string[]; label: string }) {
+export function RevisionPicker({
+  revisions,
+  historyPath,
+  picked = [],
+  label,
+}: {
+  revisions: RevisionRow[];
+  historyPath: string;
+  picked?: string[];
+  label: string;
+}) {
   const captionId = `${label.replace(/\W+/g, "-").toLowerCase()}-caption`;
   return (
     <form method="get" action={historyPath} className="app-stack" data-tight aria-label={label}>
@@ -34,14 +44,22 @@ export function RevisionPicker({ revisions, historyPath, picked = [], label }: {
               <tr key={r.version} data-state={picked.includes(r.version) ? "selected" : undefined}>
                 <td>
                   <label className="cap-check">
-                    <input type="checkbox" name="v" value={r.version} defaultChecked={picked.includes(r.version)} />
+                    <input
+                      type="checkbox"
+                      name="v"
+                      value={r.version}
+                      defaultChecked={picked.includes(r.version)}
+                    />
                     <span className="cap-sr-only">
                       Compare the revision from {utc(r.at)} by {r.author}
                     </span>
                   </label>
                 </td>
                 <th scope="row">
-                  <Link className="cap-table-open" to={`${historyPath}?version=${encodeURIComponent(r.version)}`}>
+                  <Link
+                    className="cap-table-open"
+                    to={`${historyPath}?version=${encodeURIComponent(r.version)}`}
+                  >
                     {r.message || "No message"}
                     <span className="cap-sr-only">, open its source</span>
                   </Link>

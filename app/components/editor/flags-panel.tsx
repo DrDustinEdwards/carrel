@@ -19,13 +19,22 @@ type Props = {
 export function FlagsPanel({ flags, aiDrafts, canPublish, onDismiss }: Props) {
   const openFlags = flags.filter((f) => f.status === "open").length;
   return (
-    <Panel title="Flags and AI drafts" id="flags" count={openFlags} src={`${aiDrafts.length} AI draft${aiDrafts.length === 1 ? "" : "s"} beside yours`}>
+    <Panel
+      title="Flags and AI drafts"
+      id="flags"
+      count={openFlags}
+      src={`${aiDrafts.length} AI draft${aiDrafts.length === 1 ? "" : "s"} beside yours`}
+    >
       <div className="app-stack" data-tight>
         {flags.length > 0 ? (
           <ul className="app-flags" aria-label="Flags">
             {flags.map((f) => (
               <li key={f.id}>
-                {f.status === "open" ? <Status tone="warn">Open</Status> : <Pill variant="secondary">Dismissed</Pill>}
+                {f.status === "open" ? (
+                  <Status tone="warn">Open</Status>
+                ) : (
+                  <Pill variant="secondary">Dismissed</Pill>
+                )}
                 <span>
                   {f.message}
                   {f.excerpt ? (
@@ -59,7 +68,7 @@ export function FlagsPanel({ flags, aiDrafts, canPublish, onDismiss }: Props) {
             ))}
           </ul>
         ) : null}
-                    </div>
+      </div>
     </Panel>
   );
 }

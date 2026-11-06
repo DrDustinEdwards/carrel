@@ -23,9 +23,21 @@ import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
-import { accessState, syncAccess, type AccessState, type SyncOutcome } from "~/lib/access-sync.server";
+import {
+  accessState,
+  syncAccess,
+  type AccessState,
+  type SyncOutcome,
+} from "~/lib/access-sync.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { addAgent, addPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
+import {
+  addAgent,
+  addPerson,
+  listPeople,
+  PeopleRefusal,
+  setDisabled,
+  setProjectRole,
+} from "~/lib/people-admin.server";
 import { isMemberRole } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
@@ -37,11 +49,16 @@ export function meta() {
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = getEnv(context);
-  const [listed, access] = await Promise.all([listPeople(env.DB, getViewer(context)), accessState(env)]);
+  const [listed, access] = await Promise.all([
+    listPeople(env.DB, getViewer(context)),
+    accessState(env),
+  ]);
   return { ...listed, access };
 }
 
-type ActionResult = { ok: true; intent: string; added?: string; agent?: string; access?: SyncOutcome } | { ok: false; intent: string; message: string };
+type ActionResult =
+  | { ok: true; intent: string; added?: string; agent?: string; access?: SyncOutcome }
+  | { ok: false; intent: string; message: string };
 
 export async function action({ request, context }: Route.ActionArgs): Promise<ActionResult> {
   const env = getEnv(context);
@@ -61,12 +78,21 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
         return { ok: true, intent, added: added.email };
       }
       case "add-agent": {
-        const added = await addAgent(db, viewer, { name: String(form.get("agent") ?? ""), label: String(form.get("label") ?? "") });
+        const added = await addAgent(db, viewer, {
+          name: String(form.get("agent") ?? ""),
+          label: String(form.get("label") ?? ""),
+        });
         return { ok: true, intent, agent: added.email };
       }
       case "role": {
         const role = String(form.get("role") ?? "");
-        const change = await setProjectRole(db, viewer, personId, Number(form.get("project")), isMemberRole(role) ? role : null);
+        const change = await setProjectRole(
+          db,
+          viewer,
+          personId,
+          Number(form.get("project")),
+          isMemberRole(role) ? role : null,
+        );
         return { ok: true, intent, access: await syncAccess(env, change) };
       }
       case "disable":
@@ -103,14 +129,16 @@ function AccessStatus({ access, busy }: { access: AccessState; busy: boolean }) 
   if (last?.ok) {
     return (
       <Banner tone="ok" title="Cloudflare Access is in step">
-        Desk lets in each person with a role on a project, and no one else but you. Synced <Time at={last.syncedAt} />.
+        Desk lets in each person with a role on a project, and no one else but you. Synced{" "}
+        <Time at={last.syncedAt} />.
       </Banner>
     );
   }
   if (last) {
     return (
       <Alert tone="warn" title="Waiting for Cloudflare" action={retry}>
-        {last.refusal} Tried <Time at={last.syncedAt} />. Carrel's own roles already apply; only getting past Access waits.
+        {last.refusal} Tried <Time at={last.syncedAt} />. Carrel's own roles already apply; only
+        getting past Access waits.
       </Alert>
     );
   }
@@ -133,17 +161,25 @@ function AccessButton({ person }: { person: Person }) {
   const disabled = Boolean(person.disabledAt);
   useEffect(() => {
     const data = fetcher.data;
-    if (fetcher.state !== "idle" || !data?.ok || data.intent !== "disable" || said.current === data) return;
+    if (fetcher.state !== "idle" || !data?.ok || data.intent !== "disable" || said.current === data)
+      return;
     said.current = data;
     say(`${name} is disabled. They are refused at both doors on their next request.`, {
-      undo: () => fetcher.submit({ intent: "enable", person: String(person.id) }, { method: "post" }),
+      undo: () =>
+        fetcher.submit({ intent: "enable", person: String(person.id) }, { method: "post" }),
       undone: `${name} is enabled again.`,
     });
   }, [fetcher, name, person.id, say]);
   return (
     <fetcher.Form method="post">
       <input type="hidden" name="person" value={person.id} />
-      <Button type="submit" name="intent" value={disabled ? "enable" : "disable"} size="sm" pending={fetcher.state !== "idle"}>
+      <Button
+        type="submit"
+        name="intent"
+        value={disabled ? "enable" : "disable"}
+        size="sm"
+        pending={fetcher.state !== "idle"}
+      >
         {disabled ? "Enable" : "Disable"}
         <span className="cap-sr-only"> {name}</span>
       </Button>
@@ -157,9 +193,16 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
 
   return (
     <div className="app-page">
-      <PageHead title="People" lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page." />
+      <PageHead
+        title="People"
+        lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page."
+      />
 
-      {actionData && !actionData.ok ? <Alert tone="crit" title="Nothing changed">{actionData.message}</Alert> : null}
+      {actionData && !actionData.ok ? (
+        <Alert tone="crit" title="Nothing changed">
+          {actionData.message}
+        </Alert>
+      ) : null}
 
       <AccessStatus access={access} busy={busy} />
 
@@ -167,47 +210,73 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         <Alert tone="warn" title={`Added ${actionData.agent}. It has no key and no role yet.`}>
           <div className="app-steps">
             <p>
-              An agent reaches the AI door with a key, a Worker secret named <code>AGENT_KEY_</code> and the agent's name in capitals. Carrel never shows or stores the key.
-              The key says which agent is knocking and grants nothing: what the agent may do is the role you set for it below, and it can never publish.
+              An agent reaches the AI door with a key, a Worker secret named <code>AGENT_KEY_</code>{" "}
+              and the agent's name in capitals. Carrel never shows or stores the key. The key says
+              which agent is knocking and grants nothing: what the agent may do is the role you set
+              for it below, and it can never publish.
             </p>
             <ol>
-              <li>Set the Worker secret from a file, in the carrel folder: <code>Get-Content &lt;key file&gt; -Raw | npx wrangler secret put AGENT_KEY_{actionData.agent.slice("agent:".length).toUpperCase()}</code>.</li>
-              <li>Set the agent's role on each project it may use, below. Editor lets it save AI drafts, and it flags and previews as a Reader does.</li>
+              <li>
+                Set the Worker secret from a file, in the carrel folder:{" "}
+                <code>
+                  Get-Content &lt;key file&gt; -Raw | npx wrangler secret put AGENT_KEY_
+                  {actionData.agent.slice("agent:".length).toUpperCase()}
+                </code>
+                .
+              </li>
+              <li>
+                Set the agent's role on each project it may use, below. Editor lets it save AI
+                drafts, and it flags and previews as a Reader does.
+              </li>
             </ol>
           </div>
         </Alert>
       ) : actionData?.ok && actionData.added && access.configured ? (
         <Alert tone="info" title={`Added ${actionData.added}. Share a project with them below.`}>
           <p>
-            Cloudflare Access lets them into Desk once they hold a role on a project, and keeps them out again when they are disabled or have no role left. Access emails a
-            login code only if <em>One-time PIN</em> is set up (Zero Trust &gt; Integrations &gt; Identity providers); without it, a person with no Cloudflare account
-            cannot sign in. The AI door (carrel-mcp.dustinedwards.info) is still allowed by hand, in its policy <em>Carrel people</em>.
+            Cloudflare Access lets them into Desk once they hold a role on a project, and keeps them
+            out again when they are disabled or have no role left. Access emails a login code only
+            if <em>One-time PIN</em> is set up (Zero Trust &gt; Integrations &gt; Identity
+            providers); without it, a person with no Cloudflare account cannot sign in. The AI door
+            (carrel-mcp.dustinedwards.info) is still allowed by hand, in its policy{" "}
+            <em>Carrel people</em>.
           </p>
         </Alert>
       ) : actionData?.ok && actionData.added ? (
         <Alert tone="warn" title={`Added ${actionData.added}. They cannot sign in yet.`}>
           <div className="app-steps">
             <p>
-              Carrel decides what a person may do once they are in. Cloudflare Access decides whether they get in at all, and Carrel does not manage it. Allow the same email in
+              Carrel decides what a person may do once they are in. Cloudflare Access decides
+              whether they get in at all, and Carrel does not manage it. Allow the same email in
               both places:
             </p>
             <ol>
               <li>
-                <strong>Desk</strong> (desk.dustinedwards.info). In Workers &amp; Pages &gt; carrel &gt; Access, the policy today allows only{" "}
-                <em>Cloudflare account</em> members, and that tab offers only <em>Cloudflare account</em> and <em>Email domain</em>. For one person who is not an account
-                member, add an Include rule with the <em>Emails</em> selector and their address: in Zero Trust &gt; Access controls &gt; Policies (a reusable policy added to
-                the Worker's application), or on the Worker's application itself in Zero Trust &gt; Access controls &gt; Applications.
+                <strong>Desk</strong> (desk.dustinedwards.info). In Workers &amp; Pages &gt; carrel
+                &gt; Access, the policy today allows only <em>Cloudflare account</em> members, and
+                that tab offers only <em>Cloudflare account</em> and <em>Email domain</em>. For one
+                person who is not an account member, add an Include rule with the <em>Emails</em>{" "}
+                selector and their address: in Zero Trust &gt; Access controls &gt; Policies (a
+                reusable policy added to the Worker's application), or on the Worker's application
+                itself in Zero Trust &gt; Access controls &gt; Applications.
               </li>
               <li>
-                <strong>The AI door</strong> (carrel-mcp.dustinedwards.info), only if they will use Carrel from Claude: in Zero Trust &gt; Access controls &gt; Policies,
-                configure the policy <em>Carrel people</em> (used by the Access for SaaS application <em>Carrel AI Door</em>) and add the address to its Emails rule.
+                <strong>The AI door</strong> (carrel-mcp.dustinedwards.info), only if they will use
+                Carrel from Claude: in Zero Trust &gt; Access controls &gt; Policies, configure the
+                policy <em>Carrel people</em> (used by the Access for SaaS application{" "}
+                <em>Carrel AI Door</em>) and add the address to its Emails rule.
               </li>
             </ol>
             <p>
-              <strong>Signing in without a Cloudflare account:</strong> Access emails a login code only if <em>One-time PIN</em> is set up, in Zero Trust &gt; Integrations
-              &gt; Identity providers &gt; Add new identity provider &gt; One-time PIN. Without it, a person with no Cloudflare account has no way to sign in.
+              <strong>Signing in without a Cloudflare account:</strong> Access emails a login code
+              only if <em>One-time PIN</em> is set up, in Zero Trust &gt; Integrations &gt; Identity
+              providers &gt; Add new identity provider &gt; One-time PIN. Without it, a person with
+              no Cloudflare account has no way to sign in.
             </p>
-            <p>Then share a project with them below. A person with no role on a project sees nothing of it.</p>
+            <p>
+              Then share a project with them below. A person with no role on a project sees nothing
+              of it.
+            </p>
           </div>
         </Alert>
       ) : actionData?.ok && actionData.intent === "role" ? (
@@ -216,22 +285,37 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
 
       {/* One card per person, each project's role in a grid inside it: the page grows down with more
           projects, never sideways (a table of people by projects was wider than the window). */}
-      <Panel title="Access" count={people.length} src="A disabled person is refused at both doors on their next request, whatever Access says. Their roles are kept." flush>
+      <Panel
+        title="Access"
+        count={people.length}
+        src="A disabled person is refused at both doors on their next request, whatever Access says. Their roles are kept."
+        flush
+      >
         <div className="cap-panel-pad app-people">
           <p className="cap-muted app-note">
-            A Reader reads and comments. An Editor also writes and saves drafts. An Author on a site's project also publishes, schedules and unpublishes the posts they wrote
-            in Carrel. Only the Owner publishes anyone else's post, sends anything else outside Carrel and manages people.
+            A Reader reads and comments. An Editor also writes and saves drafts. An Author on a
+            site's project also publishes, schedules and unpublishes the posts they wrote in Carrel.
+            Only the Owner publishes anyone else's post, sends anything else outside Carrel and
+            manages people.
           </p>
           <ul className="app-people-list" aria-label="People and their role on each project">
             {people.map((person) => {
-              const kind = person.isOwner ? "Owner" : person.email.startsWith("agent:") ? "Agent (AI)" : person.isReviewer ? "Reviewer (AI)" : "Person";
+              const kind = person.isOwner
+                ? "Owner"
+                : person.email.startsWith("agent:")
+                  ? "Agent (AI)"
+                  : person.isReviewer
+                    ? "Reviewer (AI)"
+                    : "Person";
               return (
                 <li key={person.id} className="app-person">
                   <div className="app-person-head">
                     <h3>{person.name || person.email}</h3>
                     {person.name ? <span className="cap-muted">{person.email}</span> : null}
                     <Pill variant="outline">{kind}</Pill>
-                    {person.disabledAt ? <Pill variant="secondary">Disabled {person.disabledAt.slice(0, 10)}</Pill> : null}
+                    {person.disabledAt ? (
+                      <Pill variant="secondary">Disabled {person.disabledAt.slice(0, 10)}</Pill>
+                    ) : null}
                     {person.isOwner ? null : (
                       <span className="app-person-access">
                         <AccessButton person={person} />
@@ -241,9 +325,13 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                   {person.isOwner ? (
                     <p className="cap-muted app-note">Owner of every project.</p>
                   ) : (
-                    <ul className="app-person-roles" aria-label={`${person.name || person.email} on each project`}>
+                    <ul
+                      className="app-person-roles"
+                      aria-label={`${person.name || person.email} on each project`}
+                    >
                       {projects.map((project) => {
-                        const role = person.roles.find((r) => r.projectId === project.id)?.role ?? "";
+                        const role =
+                          person.roles.find((r) => r.projectId === project.id)?.role ?? "";
                         const id = `role-${person.id}-${project.id}`;
                         return (
                           <li key={project.id}>
@@ -265,13 +353,23 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                                     { value: "", label: "No access" },
                                     { value: "reader", label: "Reader" },
                                     // Reviewers read and flag only: Editor and Author are not offered, and the server refuses them anyway.
-                                    ...(person.isReviewer ? [] : [{ value: "editor", label: "Editor" }]),
+                                    ...(person.isReviewer
+                                      ? []
+                                      : [{ value: "editor", label: "Editor" }]),
                                     // An Author publishes their own posts: a person on a site's project, never an agent.
-                                    ...(person.isReviewer || person.email.startsWith("agent:") || project.kind !== "site" ? [] : [{ value: "author", label: "Author" }]),
+                                    ...(person.isReviewer ||
+                                    person.email.startsWith("agent:") ||
+                                    project.kind !== "site"
+                                      ? []
+                                      : [{ value: "author", label: "Author" }]),
                                   ]}
                                 />
                                 <Button type="submit" size="sm" pending={busy}>
-                                  Set<span className="cap-sr-only"> role for {person.email} on {project.name}</span>
+                                  Set
+                                  <span className="cap-sr-only">
+                                    {" "}
+                                    role for {person.email} on {project.name}
+                                  </span>
                                 </Button>
                               </span>
                             </Form>
@@ -300,8 +398,19 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
           <fieldset className="cap-field">
             <legend className="cap-field-label">Kind</legend>
             <div className="cap-field-options">
-              <Check type="radio" name="reviewer" value="no" defaultChecked label="A person, given a role on each project under Access" />
-              <Check type="radio" name="reviewer" value="yes" label="A reviewer: another company's AI agent, which reads and flags only, through the AI door" />
+              <Check
+                type="radio"
+                name="reviewer"
+                value="no"
+                defaultChecked
+                label="A person, given a role on each project under Access"
+              />
+              <Check
+                type="radio"
+                name="reviewer"
+                value="yes"
+                label="A reviewer: another company's AI agent, which reads and flags only, through the AI door"
+              />
             </div>
           </fieldset>
           <div className="app-actions">
@@ -312,11 +421,25 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         </Form>
       </Panel>
 
-      <Panel title="Add an AI agent" src="For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never as you.">
+      <Panel
+        title="Add an AI agent"
+        src="For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never as you."
+      >
         <Form method="post" className="app-form">
           <div className="app-fields">
-            <Field label="Agent name" required help="Lower case, such as grok. Its key is the Worker secret AGENT_KEY_ and this name in capitals.">
-              <input className="cap-input" type="text" name="agent" required autoComplete="off" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,31}" />
+            <Field
+              label="Agent name"
+              required
+              help="Lower case, such as grok. Its key is the Worker secret AGENT_KEY_ and this name in capitals."
+            >
+              <input
+                className="cap-input"
+                type="text"
+                name="agent"
+                required
+                autoComplete="off"
+                pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,31}"
+              />
             </Field>
             <Field label="Label">
               <input className="cap-input" type="text" name="label" autoComplete="off" />

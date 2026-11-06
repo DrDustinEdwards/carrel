@@ -26,8 +26,14 @@ beforeEach(async () => {
 
 describe("germomics", () => {
   it("PLANT: flags a key without an https origin", async () => {
-    const results = await runChecks(germomicsEnv({ SITE_GERMOMICS_ORIGIN: "http://germomics.com" }), certsOk);
-    expect(results.find((r) => r.name === "site-germomics")).toMatchObject({ ok: false, detail: "The origin for Germomics is not https." });
+    const results = await runChecks(
+      germomicsEnv({ SITE_GERMOMICS_ORIGIN: "http://germomics.com" }),
+      certsOk,
+    );
+    expect(results.find((r) => r.name === "site-germomics")).toMatchObject({
+      ok: false,
+      detail: "The origin for Germomics is not https.",
+    });
   });
 
   it("is reached through the site client and its images load from its origin", async () => {
@@ -42,8 +48,11 @@ describe("germomics", () => {
     expect(figureMarkup("dustinedwards", url, "A figure")).toBe(
       ':::figure{src="https://media.example.com/a%20b%22%28c%29%3Cd%3E.png" alt="A figure"}\n:::',
     );
-    expect(figureMarkup("unknown-site", url, "A figure")).toBe("![A figure](https://media.example.com/a%20b%22%28c%29%3Cd%3E.png)");
-    expect(figureMarkup("dustinedwards", "https://media.example.com/plain.png", "x")).toContain('src="https://media.example.com/plain.png"');
+    expect(figureMarkup("unknown-site", url, "A figure")).toBe(
+      "![A figure](https://media.example.com/a%20b%22%28c%29%3Cd%3E.png)",
+    );
+    expect(figureMarkup("dustinedwards", "https://media.example.com/plain.png", "x")).toContain(
+      'src="https://media.example.com/plain.png"',
+    );
   });
-
 });

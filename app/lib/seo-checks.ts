@@ -16,8 +16,18 @@
 // image with no alt text, and a canonical address that is not a full https one. Both are broken output,
 // not judgment; a title or description too wide for a result only warns.
 
-import { SERP_DESCRIPTION, SERP_TITLE, serpWidth, truncateForSerp } from "@drdustinedwards/site-helpers/head";
-import { readKey, searchFieldsOf, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
+import {
+  SERP_DESCRIPTION,
+  SERP_TITLE,
+  serpWidth,
+  truncateForSerp,
+} from "@drdustinedwards/site-helpers/head";
+import {
+  readKey,
+  searchFieldsOf,
+  splitSource,
+  type SearchField,
+} from "@dustinedwards/site-api/frontmatter";
 
 import { legalTypeOf } from "~/lib/legal";
 
@@ -49,14 +59,22 @@ const SOCIAL_FIELDS: Record<string, SocialFields> = {
     image: "cover.src",
   },
   // germomics app/lib/carrel/source.ts: seoTitle and seoDescription over title and excerpt.
-  germomics: { title: ["seoTitle", "title"], description: ["seoDescription", "excerpt"], image: "coverImage" },
+  germomics: {
+    title: ["seoTitle", "title"],
+    description: ["seoDescription", "excerpt"],
+    image: "coverImage",
+  },
   // foxhound app/lib/carrel/source.ts: no image field.
   foxhound: { title: ["title"], description: ["excerpt"], image: null },
   // foxing apps/web/app/lib/carrel/journal-source.ts.
   foxing: { title: ["title"], description: ["excerpt"], image: "cover_image_url" },
 };
 
-const DEFAULT_FIELDS: SocialFields = { title: ["title"], description: ["description", "excerpt"], image: null };
+const DEFAULT_FIELDS: SocialFields = {
+  title: ["title"],
+  description: ["description", "excerpt"],
+  image: null,
+};
 
 type SeoFinding = {
   check: "title" | "description" | "image-alt" | "card-image" | "noindex" | SearchFault["field"];
@@ -86,7 +104,9 @@ function value(front: string | null, key: string): string {
   let raw: string;
   if (child) {
     // A nested key: `child:` indented under `parent:`, as dustinedwards.info writes its cover.
-    const block = new RegExp(`^${parent}:[ \\t]*\\r?\\n((?:[ \\t]+.*(?:\\r?\\n|$))*)`, "m").exec(front ?? "");
+    const block = new RegExp(`^${parent}:[ \\t]*\\r?\\n((?:[ \\t]+.*(?:\\r?\\n|$))*)`, "m").exec(
+      front ?? "",
+    );
     const line = block?.[1]!.split(/\r?\n/).find((l) => new RegExp(`^\\s+${child}:`).test(l));
     raw = line ? readKey(line.trim(), child) : "";
   } else {
@@ -106,7 +126,8 @@ function first(front: string | null, keys: readonly string[]): string {
 
 /** The site's keys with the listed shared search fields put first. */
 function withSearchFields(fields: SocialFields, listed: readonly SearchField[]): SocialFields {
-  const before = (key: SearchField, keys: readonly string[]) => (listed.includes(key) ? [key, ...keys.filter((k) => k !== key)] : keys);
+  const before = (key: SearchField, keys: readonly string[]) =>
+    listed.includes(key) ? [key, ...keys.filter((k) => k !== key)] : keys;
   return {
     ...fields,
     title: before("searchTitle", fields.title),
@@ -127,7 +148,11 @@ export function imagesWithoutAlt(source: string): { excerpt: string; src: string
   const { body } = splitSource(text);
   const startLine = text.slice(0, text.length - body.length).split("\n").length;
   const found: { excerpt: string; src: string; line: number }[] = [];
-  const srcOf = (attrs: string) => /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>}]+))/i.exec(attrs)?.slice(1).find((v) => v !== undefined) ?? "";
+  const srcOf = (attrs: string) =>
+    /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>}]+))/i
+      .exec(attrs)
+      ?.slice(1)
+      .find((v) => v !== undefined) ?? "";
   let fence: string | null = null;
   body.split("\n").forEach((raw, i) => {
     const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(raw)?.[1];
@@ -138,15 +163,22 @@ export function imagesWithoutAlt(source: string): { excerpt: string; src: string
     if (fence !== null) return;
     const line = raw.replace(/`[^`]*`/g, "");
     for (const m of line.matchAll(/!\[([^\]]*)\](\([^)]*\)|\[[^\]]*\])/g)) {
-      if (!m[1]!.trim()) found.push({ excerpt: m[0], src: m[2]!.slice(1, -1).trim().split(/\s+/)[0] ?? "", line: startLine + i });
+      if (!m[1]!.trim())
+        found.push({
+          excerpt: m[0],
+          src: m[2]!.slice(1, -1).trim().split(/\s+/)[0] ?? "",
+          line: startLine + i,
+        });
     }
     for (const m of line.matchAll(/<img\b[^>]*>/gi)) {
       const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(m[0]);
-      if (!alt || !(alt[1] ?? alt[2] ?? alt[3] ?? "").trim()) found.push({ excerpt: m[0], src: srcOf(m[0]), line: startLine + i });
+      if (!alt || !(alt[1] ?? alt[2] ?? alt[3] ?? "").trim())
+        found.push({ excerpt: m[0], src: srcOf(m[0]), line: startLine + i });
     }
     for (const m of line.matchAll(/^\s*:{2,}figure\{([^}]*)\}/g)) {
       const alt = /\balt\s*=\s*"([^"]*)"/.exec(m[1]!);
-      if (!alt || !alt[1]!.trim()) found.push({ excerpt: m[0].trim(), src: srcOf(m[1]!), line: startLine + i });
+      if (!alt || !alt[1]!.trim())
+        found.push({ excerpt: m[0].trim(), src: srcOf(m[1]!), line: startLine + i });
     }
   });
   return found;
@@ -166,14 +198,20 @@ function isAbsoluteHttps(value: string): boolean {
 }
 
 /** The search fields' faults that block a publish, for the fields the site lists. */
-export function searchFieldFaults(front: string | null, listed: readonly SearchField[]): SearchFault[] {
+export function searchFieldFaults(
+  front: string | null,
+  listed: readonly SearchField[],
+): SearchFault[] {
   const values = searchFieldsOf(front);
   const faults: SearchFault[] = [];
   if (listed.includes("image") && values.image && !values.imageAlt) {
     faults.push({ field: "imageAlt", message: "The share image has no alt text" });
   }
   if (listed.includes("canonical") && values.canonical && !isAbsoluteHttps(values.canonical)) {
-    faults.push({ field: "canonical", message: `The canonical address is not a full https:// address: ${values.canonical}` });
+    faults.push({
+      field: "canonical",
+      message: `The canonical address is not a full https:// address: ${values.canonical}`,
+    });
   }
   return faults;
 }
@@ -181,14 +219,18 @@ export function searchFieldFaults(front: string | null, listed: readonly SearchF
 /** Why a publish is refused for the search fields, or null when they are sound. */
 export function searchFieldRefusal(source: string, listed: readonly SearchField[]): string | null {
   const faults = searchFieldFaults(splitSource(source.replace(/\r\n/g, "\n")).front, listed);
-  return faults.length ? `Fix the search and sharing fields before the post goes out. ${faults.map((f) => `${f.message}.`).join(" ")}` : null;
+  return faults.length
+    ? `Fix the search and sharing fields before the post goes out. ${faults.map((f) => `${f.message}.`).join(" ")}`
+    : null;
 }
 
 /** Why a publish is refused for alt text, naming each image by its address and line; null when every image has alt text. */
 export function missingAltRefusal(source: string): string | null {
   const images = imagesWithoutAlt(source);
   if (images.length === 0) return null;
-  const named = images.map((image) => `${image.src || image.excerpt} (line ${image.line})`).join("; ");
+  const named = images
+    .map((image) => `${image.src || image.excerpt} (line ${image.line})`)
+    .join("; ");
   return `Every image needs alt text before the post goes out. Describe what each of these shows: ${named}.`;
 }
 
@@ -201,18 +243,29 @@ export function missingAltRefusal(source: string): string | null {
 export function seoCheck(
   site: string,
   source: string,
-  page: { kind: string | null; origin: string | null; path: string | null; searchFields?: readonly SearchField[] },
+  page: {
+    kind: string | null;
+    origin: string | null;
+    path: string | null;
+    searchFields?: readonly SearchField[];
+  },
 ): SeoCheck | null {
   const listed = page.searchFields ?? [];
   const fields = withSearchFields(SOCIAL_FIELDS[site] ?? DEFAULT_FIELDS, listed);
   const { front } = splitSource(source.replace(/\r\n/g, "\n"));
-  if (front === null || (page.kind ?? "post") !== "post" || legalTypeOf(source) !== null) return null;
+  if (front === null || (page.kind ?? "post") !== "post" || legalTypeOf(source) !== null)
+    return null;
   const findings: SeoFinding[] = [];
 
   const title = first(front, fields.title);
   const fullTitle = title ? `${title}${fields.titleSuffix ?? ""}` : "";
   if (!title) {
-    findings.push({ check: "title", message: "No title: a search result has nothing to show for this post.", excerpt: null, line: null });
+    findings.push({
+      check: "title",
+      message: "No title: a search result has nothing to show for this post.",
+      excerpt: null,
+      line: null,
+    });
   } else if (serpWidth(fullTitle, SERP_TITLE.font) > SERP_TITLE.px) {
     const added = fields.titleSuffix ? ` with the site's "${fields.titleSuffix.trim()}"` : "";
     findings.push({
@@ -225,33 +278,72 @@ export function seoCheck(
 
   const description = first(front, fields.description);
   if (!description) {
-    findings.push({ check: "description", message: "No description: a search engine writes its own from the page, and a link card shows none.", excerpt: null, line: null });
+    findings.push({
+      check: "description",
+      message:
+        "No description: a search engine writes its own from the page, and a link card shows none.",
+      excerpt: null,
+      line: null,
+    });
   } else if (serpWidth(description, SERP_DESCRIPTION.font) > SERP_DESCRIPTION.px) {
-    findings.push({ check: "description", message: `The description is ${Math.round(serpWidth(description, SERP_DESCRIPTION.font))} px wide; results clip at about ${SERP_DESCRIPTION.px} px.`, excerpt: description, line: null });
+    findings.push({
+      check: "description",
+      message: `The description is ${Math.round(serpWidth(description, SERP_DESCRIPTION.font))} px wide; results clip at about ${SERP_DESCRIPTION.px} px.`,
+      excerpt: description,
+      line: null,
+    });
   } else if (description.length < DESCRIPTION_MIN) {
-    findings.push({ check: "description", message: `The description is ${plural(description.length)}, under ${DESCRIPTION_MIN}: too short to say what the post is.`, excerpt: description, line: null });
+    findings.push({
+      check: "description",
+      message: `The description is ${plural(description.length)}, under ${DESCRIPTION_MIN}: too short to say what the post is.`,
+      excerpt: description,
+      line: null,
+    });
   }
 
   for (const image of imagesWithoutAlt(source)) {
-    findings.push({ check: "image-alt", message: "An image with no alt text: a screen reader and a search engine get nothing from it.", excerpt: image.excerpt, line: image.line });
+    findings.push({
+      check: "image-alt",
+      message:
+        "An image with no alt text: a screen reader and a search engine get nothing from it.",
+      excerpt: image.excerpt,
+      line: image.line,
+    });
   }
 
-  const image = (listed.includes("image") ? value(front, "image") : "") || (fields.image ? value(front, fields.image) : "");
+  const image =
+    (listed.includes("image") ? value(front, "image") : "") ||
+    (fields.image ? value(front, fields.image) : "");
   if ((fields.image || listed.includes("image")) && !image) {
-    findings.push({ check: "card-image", message: "No card image: a shared link shows the site's default image, or none.", excerpt: null, line: null });
+    findings.push({
+      check: "card-image",
+      message: "No card image: a shared link shows the site's default image, or none.",
+      excerpt: null,
+      line: null,
+    });
   }
 
-  for (const fault of searchFieldFaults(front, listed)) findings.push({ check: fault.field, message: fault.message, excerpt: null, line: null });
+  for (const fault of searchFieldFaults(front, listed))
+    findings.push({ check: fault.field, message: fault.message, excerpt: null, line: null });
   if (listed.includes("noindex") && searchFieldsOf(front).noindex) {
-    findings.push({ check: "noindex", message: "Hidden from search: the post asks search engines to leave it out of their results.", excerpt: null, line: null });
+    findings.push({
+      check: "noindex",
+      message: "Hidden from search: the post asks search engines to leave it out of their results.",
+      excerpt: null,
+      line: null,
+    });
   }
   const canonical = listed.includes("canonical") ? value(front, "canonical") : "";
 
-  const absolute = (url: string) => (url.startsWith("/") && page.origin ? `${page.origin.replace(/\/+$/, "")}${url}` : url);
+  const absolute = (url: string) =>
+    url.startsWith("/") && page.origin ? `${page.origin.replace(/\/+$/, "")}${url}` : url;
   return {
     findings,
     preview: {
-      search: { title: truncateForSerp(fullTitle, SERP_TITLE), description: truncateForSerp(description, SERP_DESCRIPTION) },
+      search: {
+        title: truncateForSerp(fullTitle, SERP_TITLE),
+        description: truncateForSerp(description, SERP_DESCRIPTION),
+      },
       card: {
         title: first(front, fields.cardTitle ?? fields.title),
         description: first(front, fields.cardDescription ?? fields.description),

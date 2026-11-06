@@ -10,13 +10,15 @@ import { readForm } from "~/lib/form.server";
 import type { Route } from "./+types/mentions.api";
 
 export async function action({ params, request, context }: Route.ActionArgs) {
-  if (request.method !== "POST") return Response.json({ error: "Method not allowed." }, { status: 405 });
+  if (request.method !== "POST")
+    return Response.json({ error: "Method not allowed." }, { status: 405 });
   const env = getEnv(context);
   const viewer = getViewer(context);
   try {
     await requireSiteProject(env.DB, viewer, params.project, "decide_mention");
   } catch (thrown) {
-    if (thrown instanceof Response && thrown.status === 403) return Response.json({ error: "Deciding mentions is the Owner's step." }, { status: 403 });
+    if (thrown instanceof Response && thrown.status === 403)
+      return Response.json({ error: "Deciding mentions is the Owner's step." }, { status: 403 });
     throw thrown;
   }
   return Response.json(await runIntent(env, viewer, params.project, await readForm(request)));

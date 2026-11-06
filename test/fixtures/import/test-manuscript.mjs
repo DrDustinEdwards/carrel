@@ -32,12 +32,24 @@ export const TEST_MANUSCRIPT = documentXml(
   [
     p(r("The Crossing (a test manuscript)"), { style: "Title" }),
     p(r("Arrival"), { style: "Heading1" }),
-    p(r("The truck quit a mile past the ") + r("low-water", { i: true }) + r(" crossing. I let it roll to the shoulder.")),
-    p(r("I walked the rest of the way. The river was ") + r("loud", { b: true }) + r(", and the cedar smelled like pencil shavings.")),
+    p(
+      r("The truck quit a mile past the ") +
+        r("low-water", { i: true }) +
+        r(" crossing. I let it roll to the shoulder."),
+    ),
+    p(
+      r("I walked the rest of the way. The river was ") +
+        r("loud", { b: true }) +
+        r(", and the cedar smelled like pencil shavings."),
+    ),
     p(r("* * *"), { center: true }),
     p(r("At the gate there was a new lock, brass, and it was shut.")),
     p(r("The Letters"), { style: "Heading1" }),
-    p(r("Wade set the envelope on the table. ") + r("It's got your name on it, ", { i: true }) + r("he said.")),
+    p(
+      r("Wade set the envelope on the table. ") +
+        r("It's got your name on it, ", { i: true }) +
+        r("he said."),
+    ),
     p(r("I did not open it. Not that night.")),
   ].join(""),
 );
@@ -46,11 +58,28 @@ export const PROBLEMS = documentXml(
   [
     p(r("A note before the story, 3 * 4 = 12.")),
     p(r("One"), { style: "Heading 1" }),
-    p(r("Plain ") + '<w:r><w:rPr><w:i w:val="0"/></w:rPr><w:t>not italic</w:t></w:r>' + r(" and ") + '<w:r><w:rPr><w:rStyle w:val="Emphasis"/></w:rPr><w:t>styled</w:t></w:r>' + r(".")),
+    p(
+      r("Plain ") +
+        '<w:r><w:rPr><w:i w:val="0"/></w:rPr><w:t>not italic</w:t></w:r>' +
+        r(" and ") +
+        '<w:r><w:rPr><w:rStyle w:val="Emphasis"/></w:rPr><w:t>styled</w:t></w:r>' +
+        r("."),
+    ),
     p(r("A table follows.")),
     `<w:tbl><w:tr><w:tc>${p(r("cell text"))}</w:tc></w:tr></w:tbl>`,
-    p(r("An image: ") + '<w:r><w:drawing><wp:inline xmlns:wp="x"/></w:drawing></w:r>' + r(" and a note") + '<w:r><w:footnoteReference w:id="1"/></w:r>' + r(".")),
-    p(r("Kept ") + `<w:ins w:id="1" w:author="x"><w:r><w:t>inserted</w:t></w:r></w:ins>` + `<w:del w:id="2" w:author="x"><w:r><w:delText>deleted</w:delText></w:r></w:del>` + r(" text.")),
+    p(
+      r("An image: ") +
+        '<w:r><w:drawing><wp:inline xmlns:wp="x"/></w:drawing></w:r>' +
+        r(" and a note") +
+        '<w:r><w:footnoteReference w:id="1"/></w:r>' +
+        r("."),
+    ),
+    p(
+      r("Kept ") +
+        `<w:ins w:id="1" w:author="x"><w:r><w:t>inserted</w:t></w:r></w:ins>` +
+        `<w:del w:id="2" w:author="x"><w:r><w:delText>deleted</w:delText></w:r></w:del>` +
+        r(" text."),
+    ),
     `<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>${r("a list item")}</w:p>`,
     p(r("Line one") + "<w:r><w:br/></w:r>" + r("line two")),
     p(""),
@@ -91,7 +120,9 @@ function crc32(bytes) {
 
 /** @param {Uint8Array} data */
 async function deflateRaw(data) {
-  const stream = new Blob([data.slice()]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+  const stream = new Blob([data.slice()])
+    .stream()
+    .pipeThrough(new CompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -104,8 +135,10 @@ export async function zip(files, opts = {}) {
   const out = [];
   /** @type {number[]} */
   const central = [];
-  const u16 = (/** @type {number[]} */ a, /** @type {number} */ n) => a.push(n & 0xff, (n >>> 8) & 0xff);
-  const u32 = (/** @type {number[]} */ a, /** @type {number} */ n) => a.push(n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff);
+  const u16 = (/** @type {number[]} */ a, /** @type {number} */ n) =>
+    a.push(n & 0xff, (n >>> 8) & 0xff);
+  const u32 = (/** @type {number[]} */ a, /** @type {number} */ n) =>
+    a.push(n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff);
   let count = 0;
   for (const [name, text] of Object.entries(files)) {
     const nameBytes = new TextEncoder().encode(name);

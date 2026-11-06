@@ -1,11 +1,4 @@
-import {
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-  useRouteLoaderData,
-} from "react-router";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteLoaderData } from "react-router";
 
 import { ErrorPage, errorTitle } from "capsomer/react/error-page";
 import { themeScript } from "capsomer/theme-server";
@@ -24,7 +17,10 @@ import "./app.css";
 const THEME_SCRIPT = themeScript();
 
 export function meta({ error }: Route.MetaArgs): Route.MetaDescriptors {
-  return [{ title: error ? errorTitle(error, "Carrel") : "Carrel" }, { name: "robots", content: "noindex, nofollow" }];
+  return [
+    { title: error ? errorTitle(error, "Carrel") : "Carrel" },
+    { name: "robots", content: "noindex, nofollow" },
+  ];
 }
 
 // Carried through the loader because Layout cannot reach the request context.

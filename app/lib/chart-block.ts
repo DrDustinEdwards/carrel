@@ -36,15 +36,13 @@ function cells(line: string): string[] {
       if (c === '"' && line[i + 1] === '"') {
         cell += '"';
         i++;
-      }
-      else if (c === '"') quoted = false;
+      } else if (c === '"') quoted = false;
       else cell += c;
     } else if (c === '"') quoted = true;
     else if (c === ",") {
       out.push(cell.trim());
       cell = "";
-    }
-    else cell += c;
+    } else cell += c;
   }
   out.push(cell.trim());
   return out;
@@ -62,7 +60,9 @@ export function csvColumns(csv: string): { name: string; numeric: boolean }[] {
   const table = rows.map(cells);
   return names.map((name, i) => ({
     name,
-    numeric: table.length > 0 && table.every((r) => r[i] !== undefined && r[i] !== "" && Number.isFinite(Number(r[i]))),
+    numeric:
+      table.length > 0 &&
+      table.every((r) => r[i] !== undefined && r[i] !== "" && Number.isFinite(Number(r[i]))),
   }));
 }
 
@@ -76,8 +76,19 @@ export function chartBlock(f: ChartFields): string {
   if (f.title.trim()) attrs.push(`title="${attr(f.title)}"`);
   attrs.push(`alt="${attr(f.alt)}"`);
   // A fence inside the data would end the block early; CSV never needs one.
-  const csv = f.csv.replace(/^﻿/, "").replace(/\r\n?/g, "\n").replace(/^```.*$/gm, "").trim();
-  return [`:::chart{${attrs.join(" ")}}`, "```csv", csv, "```", ...(f.caption.trim() ? [f.caption.trim()] : []), ":::"].join("\n");
+  const csv = f.csv
+    .replace(/^﻿/, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/^```.*$/gm, "")
+    .trim();
+  return [
+    `:::chart{${attrs.join(" ")}}`,
+    "```csv",
+    csv,
+    "```",
+    ...(f.caption.trim() ? [f.caption.trim()] : []),
+    ":::",
+  ].join("\n");
 }
 
 /** A fence closes on a run of its own character at least as long, and nothing after it. */

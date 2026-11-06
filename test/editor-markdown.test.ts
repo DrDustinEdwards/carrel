@@ -5,10 +5,21 @@
 
 import { describe, expect, it } from "vitest";
 
-import { fingerprints, fromDoc, pastedBlocks, toDoc, writeChecked, type JsonNode } from "~/lib/editor/markdown.mjs";
+import {
+  fingerprints,
+  fromDoc,
+  pastedBlocks,
+  toDoc,
+  writeChecked,
+  type JsonNode,
+} from "~/lib/editor/markdown.mjs";
 import { editorSchema } from "~/lib/editor/schema.mjs";
 
-const corpus = import.meta.glob("./fixtures/markdown/*.md", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const corpus = import.meta.glob("./fixtures/markdown/*.md", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
 const schema = editorSchema();
 
 /** Open a file as the editor does: parse, load into the schema, take the prints of what loaded. */
@@ -16,7 +27,8 @@ function open(source: string, dialect: "site" | "plain" = "site") {
   const loaded = toDoc(source, dialect);
   const doc = schema.nodeFromJSON(loaded.doc).toJSON() as JsonNode;
   const prints = fingerprints(doc);
-  const save = (edited: JsonNode = doc) => fromDoc(schema.nodeFromJSON(edited).toJSON() as JsonNode, loaded.tail, prints, dialect);
+  const save = (edited: JsonNode = doc) =>
+    fromDoc(schema.nodeFromJSON(edited).toJSON() as JsonNode, loaded.tail, prints, dialect);
   return { doc, save, copy: () => JSON.parse(JSON.stringify(doc)) as JsonNode };
 }
 
@@ -50,7 +62,10 @@ describe("a save with no edit", () => {
       ["paragraph", null],
     ]);
     const text = blocks(doc)[6]!.content!;
-    expect(text.filter((n) => n.type === "sourceInline").map((n) => n.attrs!.text)).toEqual([":pullquote[a raised line]", ":swatch[#4F2D7F]"]);
+    expect(text.filter((n) => n.type === "sourceInline").map((n) => n.attrs!.text)).toEqual([
+      ":pullquote[a raised line]",
+      ":swatch[#4F2D7F]",
+    ]);
     // A ratio and a port are text, as the site reads them.
     expect(text.map((n) => n.text ?? "").join("")).toContain("4.5:1 and localhost:8080");
   });
@@ -63,7 +78,9 @@ describe("an edit", () => {
     const { copy, save } = open(source);
     const edited = copy();
     blocks(edited)[1]!.content!.push({ type: "text", text: " More." });
-    expect(save(edited)).toBe("---\ntitle: T\n---\n\nFirst *one*. More.\n\nSecond  \nline.\n\n| a |\n| - |\n| b |\n");
+    expect(save(edited)).toBe(
+      "---\ntitle: T\n---\n\nFirst *one*. More.\n\nSecond  \nline.\n\n| a |\n| - |\n| b |\n",
+    );
   });
 
   it("puts a new block after a blank line, before what followed the last block", () => {
@@ -97,10 +114,16 @@ describe("an edit", () => {
 });
 
 describe("spelling a changed block", () => {
-  const para = (text: string, marks?: JsonNode["marks"]) => ({ type: "paragraph", content: [{ type: "text", text, ...(marks ? { marks } : {}) }] }) as JsonNode;
+  const para = (text: string, marks?: JsonNode["marks"]) =>
+    ({
+      type: "paragraph",
+      content: [{ type: "text", text, ...(marks ? { marks } : {}) }],
+    }) as JsonNode;
 
   it("escapes what would otherwise be read as Markdown, and leaves the rest alone", () => {
-    expect(writeChecked(para("2*3 is [GPS] & snake_case, not *emphasis*."), "site")).toBe("2\\*3 is [GPS] & snake_case, not \\*emphasis\\*.");
+    expect(writeChecked(para("2*3 is [GPS] & snake_case, not *emphasis*."), "site")).toBe(
+      "2\\*3 is [GPS] & snake_case, not \\*emphasis\\*.",
+    );
     expect(writeChecked(para("# not a heading"), "plain")).toBe("\\# not a heading");
     expect(writeChecked(para("1. not a list"), "plain")).toBe("1\\. not a list");
     expect(writeChecked(para("[text](not a link)"), "plain")).toBe("\\[text](not a link)");
@@ -113,7 +136,10 @@ describe("spelling a changed block", () => {
 
   it("keeps the block's own emphasis spelling and moves edge spaces out of the marks", () => {
     const loaded = toDoc("Use _this_ form.\n", "plain").doc.content![0]!;
-    loaded.content!.push({ type: "text", text: " And ", marks: [{ type: "italic" }] }, { type: "text", text: "more." });
+    loaded.content!.push(
+      { type: "text", text: " And ", marks: [{ type: "italic" }] },
+      { type: "text", text: "more." },
+    );
     expect(writeChecked(loaded, "plain")).toBe("Use _this_ form. _And_ more.");
     expect(writeChecked(para("bold ", [{ type: "bold" }]), "plain")).toBe("**bold** ");
   });
@@ -124,7 +150,12 @@ describe("spelling a changed block", () => {
     expect(writeChecked(list, "plain")).toBe("- a\n- b, edited");
     const quote = toDoc("> one\n> two\n", "plain").doc.content![0]!;
     expect(writeChecked(quote, "plain")).toBe("> one\n> two");
-    expect(writeChecked({ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Title" }] }, "plain")).toBe("## Title");
+    expect(
+      writeChecked(
+        { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Title" }] },
+        "plain",
+      ),
+    ).toBe("## Title");
   });
 
   it("reads pasted Markdown as new blocks, with no origin", () => {

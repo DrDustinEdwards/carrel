@@ -20,7 +20,11 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     if (params.step === "start") return redirect(await startAuth(env, viewer, url.origin));
     if (params.step === "callback") {
       const result = await finishAuth(env, viewer, url.searchParams, url.origin);
-      return done(result.ok ? "Google is connected for Send to Docs and Import (drive.file only)." : result.message);
+      return done(
+        result.ok
+          ? "Google is connected for Send to Docs and Import (drive.file only)."
+          : result.message,
+      );
     }
   } catch (error) {
     if (error instanceof GoogleNotConnected) return done(error.detail);

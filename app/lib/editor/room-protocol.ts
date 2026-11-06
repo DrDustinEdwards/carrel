@@ -4,7 +4,12 @@
 import { can, type Role } from "~/lib/roles";
 
 /** Who a connection is: set by the browser door (rooms.server.ts), never by the browser. */
-export type RoomViewer = { id: number; name: string; role: "reader" | "editor" | "author" | "owner"; access: "edit" | "suggest" };
+export type RoomViewer = {
+  id: number;
+  name: string;
+  role: "reader" | "editor" | "author" | "owner";
+  access: "edit" | "suggest";
+};
 export const ROOM_VIEWER_HEADER = "x-carrel-room-viewer";
 
 /** What a role may do in a room: change the text, only suggest, or nothing (not let in). */
@@ -27,7 +32,13 @@ export type RoomComment = {
   resolvedAt: string | null;
 };
 
-export type RoomPerson = { conn: string; id: number; name: string; access: RoomViewer["access"]; clients: number[] };
+export type RoomPerson = {
+  conn: string;
+  id: number;
+  name: string;
+  access: RoomViewer["access"];
+  clients: number[];
+};
 
 export type ServerMessage =
   | { t: "people"; people: RoomPerson[] }

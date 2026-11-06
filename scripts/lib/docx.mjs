@@ -30,7 +30,9 @@ function u32(bytes, at) {
 /** @param {Uint8Array} data */
 async function inflateRaw(data) {
   // A copy, so the Blob gets an ArrayBuffer-backed view rather than a window into the archive.
-  const stream = new Blob([data.slice()]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const stream = new Blob([data.slice()])
+    .stream()
+    .pipeThrough(new DecompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -52,12 +54,14 @@ export async function readZip(bytes) {
   if (eocd === -1) throw new Error("This is not a ZIP archive, so it is not a .docx file.");
   const count = u16(bytes, eocd + 10);
   let at = u32(bytes, eocd + 16);
-  if (at === 0xffffffff || count === 0xffff) throw new Error("This archive uses ZIP64, which the importer does not read.");
+  if (at === 0xffffffff || count === 0xffff)
+    throw new Error("This archive uses ZIP64, which the importer does not read.");
 
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
   for (let i = 0; i < count; i++) {
-    if (u32(bytes, at) !== 0x02014b50) throw new Error("The archive's central directory is damaged.");
+    if (u32(bytes, at) !== 0x02014b50)
+      throw new Error("The archive's central directory is damaged.");
     const method = u16(bytes, at + 10);
     const size = u32(bytes, at + 20);
     const nameLength = u16(bytes, at + 28);
@@ -72,7 +76,10 @@ export async function readZip(bytes) {
     const data = bytes.subarray(start, start + size);
     if (method === 0) files.set(name, data);
     else if (method === 8) files.set(name, await inflateRaw(data));
-    else throw new Error(`The archive entry ${name} uses compression method ${method}, which the importer does not read.`);
+    else
+      throw new Error(
+        `The archive entry ${name} uses compression method ${method}, which the importer does not read.`,
+      );
   }
   return files;
 }
@@ -88,7 +95,9 @@ function decodeEntities(s) {
     if (lower === "gt") return ">";
     if (lower === "quot") return '"';
     if (lower === "apos") return "'";
-    return String.fromCodePoint(lower.startsWith("#x") ? parseInt(lower.slice(2), 16) : parseInt(lower.slice(1), 10));
+    return String.fromCodePoint(
+      lower.startsWith("#x") ? parseInt(lower.slice(2), 16) : parseInt(lower.slice(1), 10),
+    );
   });
 }
 
@@ -124,7 +133,10 @@ const UNSUPPORTED = /** @type {Record<string, [string, string]>} */ ({
   "w:pict": ["image", "An image or drawing was not converted."],
   "w:object": ["object", "An embedded object was not converted."],
   "w:txbxContent": ["text-box", "A text box was not converted."],
-  "w:footnoteReference": ["footnote", "A footnote was not converted; its text is in the Word file."],
+  "w:footnoteReference": [
+    "footnote",
+    "A footnote was not converted; its text is in the Word file.",
+  ],
   "w:endnoteReference": ["endnote", "An endnote was not converted; its text is in the Word file."],
   "w:commentReference": ["comment", "A comment in the Word file was left out."],
   "w:sdt": ["content-control", "A content control was not converted."],
@@ -184,7 +196,8 @@ export function readDocumentXml(xml) {
     // Unsupported content: flagged once, then skipped to its end.
     if (Object.hasOwn(UNSUPPORTED, name) || name === "w:del" || name === "w:moveFrom") {
       if (!closing) {
-        if (name === "w:del" || name === "w:moveFrom") flag("tracked-change", "A tracked deletion was dropped, as Word's final view shows it.");
+        if (name === "w:del" || name === "w:moveFrom")
+          flag("tracked-change", "A tracked deletion was dropped, as Word's final view shows it.");
         else {
           const [what, detail] = UNSUPPORTED[name] ?? ["", ""];
           flag(what, detail);
@@ -243,18 +256,28 @@ export function readDocumentXml(xml) {
           const style = (attr(attrs, "w:val") ?? "").toLowerCase();
           if (EMPHASIS_STYLES.has(style)) runItalic = true;
           else if (STRONG_STYLES.has(style)) runBold = true;
-          else flag("character-style", `A run uses the character style "${attr(attrs, "w:val")}", whose look was not read; check it.`);
+          else
+            flag(
+              "character-style",
+              `A run uses the character style "${attr(attrs, "w:val")}", whose look was not read; check it.`,
+            );
         }
         break;
       case "w:u":
-        if (inRunProps && isOn(attrs) && attr(attrs, "w:val") !== "none") flag("underline", "Underlined text was converted without the underline.");
+        if (inRunProps && isOn(attrs) && attr(attrs, "w:val") !== "none")
+          flag("underline", "Underlined text was converted without the underline.");
         break;
       case "w:strike":
       case "w:dstrike":
-        if (inRunProps && isOn(attrs)) flag("strikethrough", "Struck-through text was kept as plain text; decide whether it belongs.");
+        if (inRunProps && isOn(attrs))
+          flag(
+            "strikethrough",
+            "Struck-through text was kept as plain text; decide whether it belongs.",
+          );
         break;
       case "w:vertAlign":
-        if (inRunProps && attr(attrs, "w:val") !== "baseline") flag("superscript", "Superscript or subscript text was converted as plain text.");
+        if (inRunProps && attr(attrs, "w:val") !== "baseline")
+          flag("superscript", "Superscript or subscript text was converted as plain text.");
         break;
       case "w:t":
         inText = !closing && !selfClosing;
@@ -288,17 +311,27 @@ export function readDocumentXml(xml) {
         break;
       case "w:ins":
       case "w:moveTo":
-        if (!closing) flag("tracked-change", "A tracked insertion was kept, as Word's final view shows it.");
+        if (!closing)
+          flag("tracked-change", "A tracked insertion was kept, as Word's final view shows it.");
         break;
       case "w:fldChar":
         if (attr(attrs, "w:fldCharType") === "begin") fieldDepth++;
-        else if (attr(attrs, "w:fldCharType") === "separate") fieldDepth = Math.max(0, fieldDepth - 1);
+        else if (attr(attrs, "w:fldCharType") === "separate")
+          fieldDepth = Math.max(0, fieldDepth - 1);
         break;
       case "w:instrText":
-        if (!closing) flag("field", "A field (such as a page number or cross-reference) was converted as its displayed text.");
+        if (!closing)
+          flag(
+            "field",
+            "A field (such as a page number or cross-reference) was converted as its displayed text.",
+          );
         break;
       case "w:fldSimple":
-        if (!closing) flag("field", "A field (such as a page number or cross-reference) was converted as its displayed text.");
+        if (!closing)
+          flag(
+            "field",
+            "A field (such as a page number or cross-reference) was converted as its displayed text.",
+          );
         break;
       default:
         break;
@@ -326,6 +359,7 @@ export function headingOf(p) {
 export async function readDocx(bytes) {
   const files = await readZip(bytes);
   const document = files.get("word/document.xml");
-  if (!document) throw new Error("The archive has no word/document.xml, so it is not a Word document.");
+  if (!document)
+    throw new Error("The archive has no word/document.xml, so it is not a Word document.");
   return readDocumentXml(new TextDecoder().decode(document));
 }

@@ -21,15 +21,34 @@ import { connectedEnv, fakeSite, viewerFor } from "./site";
 const SLUG = "de-info";
 
 const SECTIONS: SharedSection[] = [
-  { key: "hosting", title: "Hosting", body: "{{site_name}} runs on Cloudflare. Questions go to {{contact}}." },
-  { key: "analytics", title: "Analytics", body: "Cloudflare Web Analytics counts visits without tracking cookies." },
+  {
+    key: "hosting",
+    title: "Hosting",
+    body: "{{site_name}} runs on Cloudflare. Questions go to {{contact}}.",
+  },
+  {
+    key: "analytics",
+    title: "Analytics",
+    body: "Cloudflare Web Analytics counts visits without tracking cookies.",
+  },
 ];
 
-const FRONT = ["---", "path: /privacy", 'title: "Privacy"', "legal_type: privacy", 'site_name: "dustinedwards.info"', 'contact: "hello@example.test"', "---", ""].join("\n");
+const FRONT = [
+  "---",
+  "path: /privacy",
+  'title: "Privacy"',
+  "legal_type: privacy",
+  'site_name: "dustinedwards.info"',
+  'contact: "hello@example.test"',
+  "---",
+  "",
+].join("\n");
 
 describe("expandShared", () => {
   it("names an unknown section and a missing field, and leaves both as written", () => {
-    const out = expandShared("<!-- shared:nope -->\n<!-- shared:hosting -->", SECTIONS, { site_name: "A" });
+    const out = expandShared("<!-- shared:nope -->\n<!-- shared:hosting -->", SECTIONS, {
+      site_name: "A",
+    });
     expect(out.unknownSections).toEqual(["nope"]);
     expect(out.missingFields).toEqual(["contact"]);
     expect(out.text).toContain("<!-- shared:nope -->");
@@ -41,30 +60,62 @@ describe("prepareLegalWrite", () => {
   const base = { sections: SECTIONS, today: "2026-10-06" };
 
   it("stamps last_updated when the Owner publishes a changed text", () => {
-    const result = prepareLegalWrite({ ...base, source: `${FRONT}New.\n`, stored: `${FRONT}Old.\n`, storedPublic: true, public: true });
-    expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe("2026-10-06");
+    const result = prepareLegalWrite({
+      ...base,
+      source: `${FRONT}New.\n`,
+      stored: `${FRONT}Old.\n`,
+      storedPublic: true,
+      public: true,
+    });
+    expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe(
+      "2026-10-06",
+    );
   });
 
   it("leaves the date alone when only a field changed", () => {
     const stored = `${FRONT}Same.\n`;
-    const result = prepareLegalWrite({ ...base, source: stored.replace("hello@example.test", "other@example.test"), stored, storedPublic: true, public: true });
+    const result = prepareLegalWrite({
+      ...base,
+      source: stored.replace("hello@example.test", "other@example.test"),
+      stored,
+      storedPublic: true,
+      public: true,
+    });
     expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe("");
   });
 
   it("does not stamp a draft save, and keeps a missing field's token so no work is lost", () => {
-    const source = FRONT.replace('contact: "hello@example.test"\n', "") + "<!-- shared:hosting -->\n";
-    const result = prepareLegalWrite({ ...base, source, stored: null, storedPublic: false, public: false });
+    const source =
+      FRONT.replace('contact: "hello@example.test"\n', "") + "<!-- shared:hosting -->\n";
+    const result = prepareLegalWrite({
+      ...base,
+      source,
+      stored: null,
+      storedPublic: false,
+      public: false,
+    });
     expect(result.ok && result.source).toContain("{{contact}}");
     expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe("");
   });
 
   it("refuses to go public with a field missing or a section unknown, and says which", () => {
-    const missing = prepareLegalWrite({ ...base, source: FRONT.replace('contact: "hello@example.test"\n', "") + "<!-- shared:hosting -->\n", stored: null, storedPublic: false, public: true });
+    const missing = prepareLegalWrite({
+      ...base,
+      source: FRONT.replace('contact: "hello@example.test"\n', "") + "<!-- shared:hosting -->\n",
+      stored: null,
+      storedPublic: false,
+      public: true,
+    });
     expect(!missing.ok && missing.message).toContain("contact");
-    const unknown = prepareLegalWrite({ ...base, source: `${FRONT}<!-- shared:nope -->\n`, stored: null, storedPublic: false, public: true });
+    const unknown = prepareLegalWrite({
+      ...base,
+      source: `${FRONT}<!-- shared:nope -->\n`,
+      stored: null,
+      storedPublic: false,
+      public: true,
+    });
     expect(!unknown.ok && unknown.message).toContain('"nope"');
   });
-
 });
 
 let projectId: number;
@@ -77,7 +128,11 @@ beforeEach(async () => {
   projectId = await addProject(SLUG, "dustinedwards");
   await share(projectId, editor, "editor");
   for (const s of SECTIONS) {
-    await testEnv.DB.prepare("INSERT INTO legal_sections (key, title, body, updated_by) VALUES (?, ?, ?, ?)").bind(s.key, s.title, s.body, ownerId).run();
+    await testEnv.DB.prepare(
+      "INSERT INTO legal_sections (key, title, body, updated_by) VALUES (?, ?, ?, ?)",
+    )
+      .bind(s.key, s.title, s.body, ownerId)
+      .run();
   }
 });
 
@@ -88,23 +143,40 @@ async function as(email: string) {
 
 async function seed(site: ReturnType<typeof fakeSite>, id: string, source: string) {
   const { viewer, project } = await as("owner@test.invalid");
-  const saved = await writeToSite(connectedEnv(), project, viewer, id, { action: "save", source, expectedVersion: null }, site.fetch);
+  const saved = await writeToSite(
+    connectedEnv(),
+    project,
+    viewer,
+    id,
+    { action: "save", source, expectedVersion: null },
+    site.fetch,
+  );
   if (!saved.ok) throw new Error(saved.message);
   return saved.version;
 }
 
-const writes = (site: ReturnType<typeof fakeSite>) => site.requests.filter((r) => !r.startsWith("GET"));
+const writes = (site: ReturnType<typeof fakeSite>) =>
+  site.requests.filter((r) => !r.startsWith("GET"));
 
 describe("a legal page written to the site", () => {
   it("is published with its shared sections filled in and its date stamped, through the real write path", async () => {
     const site = fakeSite();
     const { viewer, project } = await as("owner@test.invalid");
     const version = await seed(site, "page.privacy", `${FRONT}Intro.\n\n<!-- shared:hosting -->\n`);
-    const published = await writeToSite(connectedEnv(), project, viewer, "page.privacy", { action: "publish", expectedVersion: version }, site.fetch);
+    const published = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.privacy",
+      { action: "publish", expectedVersion: version },
+      site.fetch,
+    );
     expect(published.ok).toBe(true);
     // A publish with no text sends the stored text, so the stored text is what the draft save wrote.
     const doc = await site.adapter.content.get("page.privacy");
-    expect(doc?.source).toContain("dustinedwards.info runs on Cloudflare. Questions go to hello@example.test.");
+    expect(doc?.source).toContain(
+      "dustinedwards.info runs on Cloudflare. Questions go to hello@example.test.",
+    );
     expect(doc?.status).toBe("published");
   });
 
@@ -112,18 +184,36 @@ describe("a legal page written to the site", () => {
     const site = fakeSite();
     const { viewer, project } = await as("owner@test.invalid");
     const version = await seed(site, "page.privacy", `${FRONT}Intro.\n`);
-    const published = await writeToSite(connectedEnv(), project, viewer, "page.privacy", { action: "publish", expectedVersion: version, source: `${FRONT}Changed.\n` }, site.fetch);
+    const published = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.privacy",
+      { action: "publish", expectedVersion: version, source: `${FRONT}Changed.\n` },
+      site.fetch,
+    );
     expect(published.ok).toBe(true);
-    expect(readFields(splitSource((await site.adapter.content.get("page.privacy"))!.source).front).last_updated).toBe(new Date().toISOString().slice(0, 10));
+    expect(
+      readFields(splitSource((await site.adapter.content.get("page.privacy"))!.source).front)
+        .last_updated,
+    ).toBe(new Date().toISOString().slice(0, 10));
   });
 
   it("is refused at publish with a field missing, and the site hears no write after the seed", async () => {
     const site = fakeSite();
     const { viewer, project } = await as("owner@test.invalid");
-    const source = FRONT.replace('contact: "hello@example.test"\n', "") + "<!-- shared:hosting -->\n";
+    const source =
+      FRONT.replace('contact: "hello@example.test"\n', "") + "<!-- shared:hosting -->\n";
     const version = await seed(site, "page.privacy", source);
     const before = writes(site).length;
-    const published = await writeToSite(connectedEnv(), project, viewer, "page.privacy", { action: "publish", expectedVersion: version, source }, site.fetch);
+    const published = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.privacy",
+      { action: "publish", expectedVersion: version, source },
+      site.fetch,
+    );
     expect(published).toMatchObject({ ok: false, reason: "refused" });
     expect(writes(site).length).toBe(before);
   });
@@ -131,23 +221,53 @@ describe("a legal page written to the site", () => {
   it("is an ordinary item for an AI session: no special refusal, the same role rules", async () => {
     const site = fakeSite();
     const { viewer, project } = await as("editor@test.invalid");
-    const saved = await writeToSite(connectedEnv(), project, viewer, "page.privacy", { action: "save", source: `${FRONT}Draft text.\n`, expectedVersion: null }, site.fetch, { client: "claude" });
+    const saved = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.privacy",
+      { action: "save", source: `${FRONT}Draft text.\n`, expectedVersion: null },
+      site.fetch,
+      { client: "claude" },
+    );
     expect(saved.ok).toBe(true);
   });
 });
 
 describe("PLANT: the page the site's data license names", () => {
-  const TERMS = ["---", "path: /terms", 'title: "Terms"', "legal_type: terms", "---", "The terms.", ""].join("\n");
+  const TERMS = [
+    "---",
+    "path: /terms",
+    'title: "Terms"',
+    "legal_type: terms",
+    "---",
+    "The terms.",
+    "",
+  ].join("\n");
 
   it("cannot be unpublished through Carrel, and the site hears nothing", async () => {
     expect(siteEntry("dustinedwards").keepPublic).toContain("page.terms");
     const site = fakeSite();
     const { viewer, project } = await as("owner@test.invalid");
     const version = await seed(site, "page.terms", TERMS);
-    const published = await writeToSite(connectedEnv(), project, viewer, "page.terms", { action: "publish", expectedVersion: version }, site.fetch);
+    const published = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.terms",
+      { action: "publish", expectedVersion: version },
+      site.fetch,
+    );
     if (!published.ok) throw new Error(published.message);
     const before = writes(site).length;
-    const result = await writeToSite(connectedEnv(), project, viewer, "page.terms", { action: "unpublish", expectedVersion: published.version }, site.fetch);
+    const result = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.terms",
+      { action: "unpublish", expectedVersion: published.version },
+      site.fetch,
+    );
     expect(result).toMatchObject({ ok: false, reason: "refused" });
     expect(writes(site).length).toBe(before);
     expect((await site.adapter.content.get("page.terms"))?.status).toBe("published");
@@ -157,10 +277,32 @@ describe("PLANT: the page the site's data license names", () => {
     const site = fakeSite();
     const { viewer, project } = await as("owner@test.invalid");
     const version = await seed(site, "page.terms", TERMS);
-    const moved = await writeToSite(connectedEnv(), project, viewer, "page.terms", { action: "save", source: TERMS.replace("path: /terms", "path: /legal"), expectedVersion: version }, site.fetch);
+    const moved = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.terms",
+      {
+        action: "save",
+        source: TERMS.replace("path: /terms", "path: /legal"),
+        expectedVersion: version,
+      },
+      site.fetch,
+    );
     expect(moved).toMatchObject({ ok: false, reason: "refused" });
     expect((moved as { message: string }).message).toContain("/terms");
-    const reworded = await writeToSite(connectedEnv(), project, viewer, "page.terms", { action: "save", source: TERMS.replace("The terms.", "Better terms."), expectedVersion: version }, site.fetch);
+    const reworded = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.terms",
+      {
+        action: "save",
+        source: TERMS.replace("The terms.", "Better terms."),
+        expectedVersion: version,
+      },
+      site.fetch,
+    );
     expect(reworded.ok).toBe(true);
   });
 
@@ -168,7 +310,18 @@ describe("PLANT: the page the site's data license names", () => {
     const site = fakeSite();
     const { viewer, project } = await as("owner@test.invalid");
     const version = await seed(site, "page.terms", TERMS);
-    const moved = await writeToSite(connectedEnv(), project, viewer, "page.terms", { action: "save", source: TERMS.replace("legal_type: terms\n", "").replace("path: /terms", "path: /legal"), expectedVersion: version }, site.fetch);
+    const moved = await writeToSite(
+      connectedEnv(),
+      project,
+      viewer,
+      "page.terms",
+      {
+        action: "save",
+        source: TERMS.replace("legal_type: terms\n", "").replace("path: /terms", "path: /legal"),
+        expectedVersion: version,
+      },
+      site.fetch,
+    );
     expect(moved).toMatchObject({ ok: false, reason: "refused" });
   });
 });
@@ -176,11 +329,29 @@ describe("PLANT: the page the site's data license names", () => {
 describe("the shared sections", () => {
   it("are changed only by the Owner", async () => {
     const editor = await as("editor@test.invalid");
-    await expect(saveSection(testEnv.DB, editor.project, editor.viewer, { key: "x", title: "X", body: "Text." })).rejects.toMatchObject({ status: 403 });
-    await expect(deleteSection(testEnv.DB, editor.project, "hosting")).rejects.toMatchObject({ status: 403 });
+    await expect(
+      saveSection(testEnv.DB, editor.project, editor.viewer, {
+        key: "x",
+        title: "X",
+        body: "Text.",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(deleteSection(testEnv.DB, editor.project, "hosting")).rejects.toMatchObject({
+      status: 403,
+    });
     const owner = await as("owner@test.invalid");
-    expect(await saveSection(testEnv.DB, owner.project, owner.viewer, { key: "x", title: "X", body: "Text." })).toEqual({ ok: true });
-    expect((await listSections(testEnv.DB)).map((s) => s.key)).toEqual(["analytics", "hosting", "x"]);
+    expect(
+      await saveSection(testEnv.DB, owner.project, owner.viewer, {
+        key: "x",
+        title: "X",
+        body: "Text.",
+      }),
+    ).toEqual({ ok: true });
+    expect((await listSections(testEnv.DB)).map((s) => s.key)).toEqual([
+      "analytics",
+      "hosting",
+      "x",
+    ]);
   });
 
   it("refuse a bad name, an empty text and a wide dash", async () => {
@@ -211,13 +382,22 @@ describe("the Legal tab", () => {
     try {
       await seed(site, "page.privacy", `${FRONT}<!-- shared:analytics -->\n`);
       // The shared text changes after the page was written to the site.
-      await testEnv.DB.prepare("UPDATE legal_sections SET body = ? WHERE key = ?").bind("Newer wording.", "analytics").run();
-      const data = (await legalLoader({ params: { project: SLUG }, context: await contextFor("owner@test.invalid"), request: new Request("https://carrel.test/p/de-info/legal") } as never)) as {
+      await testEnv.DB.prepare("UPDATE legal_sections SET body = ? WHERE key = ?")
+        .bind("Newer wording.", "analytics")
+        .run();
+      const data = (await legalLoader({
+        params: { project: SLUG },
+        context: await contextFor("owner@test.invalid"),
+        request: new Request("https://carrel.test/p/de-info/legal"),
+      } as never)) as {
         pages: { type: string; setUp: boolean; behind?: boolean; shared?: string[] }[];
         canManage: boolean;
         sections: unknown[];
       };
-      expect(data.pages.map((p) => [p.type, p.setUp])).toEqual([["privacy", true], ["terms", false]]);
+      expect(data.pages.map((p) => [p.type, p.setUp])).toEqual([
+        ["privacy", true],
+        ["terms", false],
+      ]);
       expect(data.pages[0]).toMatchObject({ behind: true, shared: ["analytics"] });
       expect(data.canManage).toBe(true);
       expect(data.sections).toHaveLength(2);
@@ -232,9 +412,20 @@ describe("the Legal tab", () => {
     body.set("key", "hosting");
     body.set("title", "Hosting");
     body.set("body", "New text.");
-    const request = () => new Request("https://carrel.test/p/de-info/legal", { method: "POST", body });
-    const ok = await legalAction({ params: { project: SLUG }, context: await contextFor("owner@test.invalid"), request: request() } as never);
+    const request = () =>
+      new Request("https://carrel.test/p/de-info/legal", { method: "POST", body });
+    const ok = await legalAction({
+      params: { project: SLUG },
+      context: await contextFor("owner@test.invalid"),
+      request: request(),
+    } as never);
     expect(ok).toMatchObject({ saved: "hosting" });
-    await expect(legalAction({ params: { project: SLUG }, context: await contextFor("editor@test.invalid"), request: request() } as never)).rejects.toMatchObject({ status: 403 });
+    await expect(
+      legalAction({
+        params: { project: SLUG },
+        context: await contextFor("editor@test.invalid"),
+        request: request(),
+      } as never),
+    ).rejects.toMatchObject({ status: 403 });
   });
 });

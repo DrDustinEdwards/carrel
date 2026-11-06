@@ -14,17 +14,34 @@ const BOOK: Assembled = {
   author: "Test Author",
   language: "en",
   chapters: [
-    { slug: "01-arrival", title: "Arrival", scenes: [{ path: "a", body: "Wade opened the *old* gate.\n\nHe said <nothing>." }, { path: "b", body: "Supper, **late**." }] },
-    { slug: "02-letters", title: "Letters", scenes: [{ path: "c", body: "> A letter, read aloud.\n\nThe end." }] },
+    {
+      slug: "01-arrival",
+      title: "Arrival",
+      scenes: [
+        { path: "a", body: "Wade opened the *old* gate.\n\nHe said <nothing>." },
+        { path: "b", body: "Supper, **late**." },
+      ],
+    },
+    {
+      slug: "02-letters",
+      title: "Letters",
+      scenes: [{ path: "c", body: "> A letter, read aloud.\n\nThe end." }],
+    },
   ],
 };
 
 describe("scene headers", () => {
   it("reads strings, inline lists, dash lists, booleans and quotes, and reports what it cannot read", () => {
     const parsed = parseFile(
-      "---\npov: Wade\ncharacters: [Wade, \"Harlan, June\"]\naliases:\n  - Mrs. Harlan\n  - June\nflashback: true\ngoal:\n# a comment\nnonsense here\n---\n\nBody line.\n",
+      '---\npov: Wade\ncharacters: [Wade, "Harlan, June"]\naliases:\n  - Mrs. Harlan\n  - June\nflashback: true\ngoal:\n# a comment\nnonsense here\n---\n\nBody line.\n',
     );
-    expect(parsed.data).toEqual({ pov: "Wade", characters: ["Wade", "Harlan, June"], aliases: ["Mrs. Harlan", "June"], flashback: true, goal: "" });
+    expect(parsed.data).toEqual({
+      pov: "Wade",
+      characters: ["Wade", "Harlan, June"],
+      aliases: ["Mrs. Harlan", "June"],
+      flashback: true,
+      goal: "",
+    });
     expect(parsed.problems).toEqual([{ line: 10, text: "nonsense here" }]);
     expect(parsed.bodyLine).toBe(12);
     expect(parsed.body).toBe("\nBody line.\n");
@@ -40,10 +57,29 @@ describe("scene headers", () => {
 
 describe("the layout", () => {
   it("allows the novels layout and nothing else", () => {
-    for (const ok of ["book.md", "chapters/01-arrival/01-the-gate.md", "chapters/100-late/12-end.md", "bible/characters/wade.md", "bible/world.md", "outline/plan.md"]) {
+    for (const ok of [
+      "book.md",
+      "chapters/01-arrival/01-the-gate.md",
+      "chapters/100-late/12-end.md",
+      "bible/characters/wade.md",
+      "bible/world.md",
+      "outline/plan.md",
+    ]) {
       expect(isBookPath(ok), ok).toBe(true);
     }
-    for (const bad of ["../x.md", "build/x.md", "chapters/arrival/01-a.md", "chapters/01-a/b.md", "bible/other/x.md", "notes.md", "Book.md", "chapters/01-a/01-b.txt", "outline/a/b.md", "chapters/01-arrival/01-the-gateabc", `chapters/01-a/${"x".repeat(200)}.md`]) {
+    for (const bad of [
+      "../x.md",
+      "build/x.md",
+      "chapters/arrival/01-a.md",
+      "chapters/01-a/b.md",
+      "bible/other/x.md",
+      "notes.md",
+      "Book.md",
+      "chapters/01-a/01-b.txt",
+      "outline/a/b.md",
+      "chapters/01-arrival/01-the-gateabc",
+      `chapters/01-a/${"x".repeat(200)}.md`,
+    ]) {
       expect(isBookPath(bad), bad).toBe(false);
     }
   });
@@ -65,18 +101,33 @@ describe("prose Markdown", () => {
       { text: " ", em: false, strong: false },
       { text: "d", em: true, strong: false },
     ]);
-    expect(parseInline("2 * 3 and snake_case_name")).toEqual([{ text: "2 * 3 and snake_case_name", em: false, strong: false }]);
+    expect(parseInline("2 * 3 and snake_case_name")).toEqual([
+      { text: "2 * 3 and snake_case_name", em: false, strong: false },
+    ]);
     expect(parseInline("\\*literal\\*")).toEqual([{ text: "*literal*", em: false, strong: false }]);
   });
 
   it("splits paragraphs, scene breaks, headings and quotes; joins hard-wrapped lines", () => {
-    expect(parseProse("One\ntwo.\n\n* * *\n\n## Part\n\n> q1\n> q2").map((b) => b.type)).toEqual(["p", "break", "h", "quote"]);
-    expect(parseProse("One\ntwo.")[0]).toEqual({ type: "p", inlines: [{ text: "One two.", em: false, strong: false }] });
+    expect(parseProse("One\ntwo.\n\n* * *\n\n## Part\n\n> q1\n> q2").map((b) => b.type)).toEqual([
+      "p",
+      "break",
+      "h",
+      "quote",
+    ]);
+    expect(parseProse("One\ntwo.")[0]).toEqual({
+      type: "p",
+      inlines: [{ text: "One two.", em: false, strong: false }],
+    });
   });
 });
 
 describe("ePub", () => {
-  const files = unzipSync(buildEpub(BOOK, { id: "0f0e7c2a-6a8b-4d1e-9d5e-3a4b5c6d7e8f", modified: new Date("2026-09-27T03:00:00.123Z") }));
+  const files = unzipSync(
+    buildEpub(BOOK, {
+      id: "0f0e7c2a-6a8b-4d1e-9d5e-3a4b5c6d7e8f",
+      modified: new Date("2026-09-27T03:00:00.123Z"),
+    }),
+  );
 
   it("puts an uncompressed mimetype first, as the container format requires", () => {
     const zip = buildEpub(BOOK, { id: "x", modified: new Date() });
@@ -106,9 +157,15 @@ describe("ePub", () => {
     expect(one).toContain("<h1>Arrival</h1>");
     expect(one).toContain("<p>Wade opened the <em>old</em> gate.</p>");
     expect(one).toContain("He said &lt;nothing&gt;.");
-    expect(one).toContain('<p class="scene-break">* * *</p>\n<p>Supper, <strong>late</strong>.</p>');
-    expect(strFromU8(files["OEBPS/chapter-002.xhtml"]!)).toContain("<blockquote><p>A letter, read aloud.</p></blockquote>");
-    expect(strFromU8(files["OEBPS/nav.xhtml"]!)).toContain('<a href="chapter-002.xhtml">Letters</a>');
+    expect(one).toContain(
+      '<p class="scene-break">* * *</p>\n<p>Supper, <strong>late</strong>.</p>',
+    );
+    expect(strFromU8(files["OEBPS/chapter-002.xhtml"]!)).toContain(
+      "<blockquote><p>A letter, read aloud.</p></blockquote>",
+    );
+    expect(strFromU8(files["OEBPS/nav.xhtml"]!)).toContain(
+      '<a href="chapter-002.xhtml">Letters</a>',
+    );
   });
 });
 
@@ -116,7 +173,16 @@ describe("Word", () => {
   it("is a Word document holding the title, each chapter and the formatting", async () => {
     const files = unzipSync(new Uint8Array(await buildDocx(BOOK)));
     const xml = strFromU8(files["word/document.xml"]!);
-    for (const t of ["The Test Book &amp; Co.", "Arrival", "Letters", "Wade opened the ", "old", "* * *", "late"]) expect(xml).toContain(t);
+    for (const t of [
+      "The Test Book &amp; Co.",
+      "Arrival",
+      "Letters",
+      "Wade opened the ",
+      "old",
+      "* * *",
+      "late",
+    ])
+      expect(xml).toContain(t);
     // The emphasis survives as italics on its own run.
     expect(xml).toMatch(/<w:i\/>[\s\S]*?<w:t[^>]*>old<\/w:t>/);
   });

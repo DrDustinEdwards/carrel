@@ -30,7 +30,13 @@ function projectKindOf(row: { site: string | null; book: string | null }): Visib
 /** The active person with this email, or null. Email matching is case-insensitive, as the column is. */
 export async function findViewer(db: D1Database, email: string): Promise<Viewer | null> {
   const row = await drizzle(db)
-    .select({ id: people.id, email: people.email, name: people.name, isOwner: people.isOwner, isReviewer: people.isReviewer })
+    .select({
+      id: people.id,
+      email: people.email,
+      name: people.name,
+      isOwner: people.isOwner,
+      isReviewer: people.isReviewer,
+    })
     .from(people)
     .where(and(eq(people.email, email.trim()), isNull(people.disabledAt)))
     .get();
@@ -54,7 +60,13 @@ export async function deskPeopleEmails(db: D1Database): Promise<string[]> {
   const rows = await drizzle(db)
     .select({ email: people.email })
     .from(people)
-    .where(and(isNull(people.disabledAt), eq(people.isReviewer, false), not(like(people.email, `${agentEmail("")}%`))))
+    .where(
+      and(
+        isNull(people.disabledAt),
+        eq(people.isReviewer, false),
+        not(like(people.email, `${agentEmail("")}%`)),
+      ),
+    )
     .all();
   return rows.map((row) => row.email);
 }
@@ -83,11 +95,18 @@ async function roleOn(db: D1Database, viewer: Viewer, projectId: number): Promis
  * A person's role on a project now, by id: null when they have none or are disabled. A file's room
  * asks this of a connection it already holds, so a role changed or taken away reaches an open editor.
  */
-export async function currentRole(db: D1Database, personId: number, projectId: number): Promise<Role | null> {
+export async function currentRole(
+  db: D1Database,
+  personId: number,
+  projectId: number,
+): Promise<Role | null> {
   const row = await drizzle(db)
     .select({ isOwner: people.isOwner, role: projectMembers.role })
     .from(people)
-    .leftJoin(projectMembers, and(eq(projectMembers.personId, people.id), eq(projectMembers.projectId, projectId)))
+    .leftJoin(
+      projectMembers,
+      and(eq(projectMembers.personId, people.id), eq(projectMembers.projectId, projectId)),
+    )
     .where(and(eq(people.id, personId), isNull(people.disabledAt)))
     .get();
   return row?.isOwner ? "owner" : (row?.role ?? null);
@@ -98,14 +117,31 @@ export async function visibleProjects(db: D1Database, viewer: Viewer): Promise<V
   const d = drizzle(db);
   if (viewer.isOwner) {
     const rows = await d
-      .select({ id: projects.id, slug: projects.slug, name: projects.name, site: projects.site, book: projects.book })
+      .select({
+        id: projects.id,
+        slug: projects.slug,
+        name: projects.name,
+        site: projects.site,
+        book: projects.book,
+      })
       .from(projects)
       .orderBy(asc(projects.name))
       .all();
-    return rows.map(({ site, book, ...r }) => ({ ...r, role: "owner" as const, kind: projectKindOf({ site, book }) }));
+    return rows.map(({ site, book, ...r }) => ({
+      ...r,
+      role: "owner" as const,
+      kind: projectKindOf({ site, book }),
+    }));
   }
   const rows = await d
-    .select({ id: projects.id, slug: projects.slug, name: projects.name, role: projectMembers.role, site: projects.site, book: projects.book })
+    .select({
+      id: projects.id,
+      slug: projects.slug,
+      name: projects.name,
+      role: projectMembers.role,
+      site: projects.site,
+      book: projects.book,
+    })
     .from(projectMembers)
     .innerJoin(projects, eq(projects.id, projectMembers.projectId))
     .where(eq(projectMembers.personId, viewer.id))

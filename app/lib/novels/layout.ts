@@ -24,8 +24,13 @@ export function isBookPath(path: string): boolean {
   if (!parts.every((p) => SEGMENT.test(p))) return false;
   if (parts.length === 1) return parts[0] === "book";
   const [top] = parts;
-  if (top === "chapters") return parts.length === 3 && NUMBERED.test(parts[1]!) && NUMBERED.test(parts[2]!);
-  if (top === "bible") return parts.length === 2 || (parts.length === 3 && ["characters", "places", "rules"].includes(parts[1]!));
+  if (top === "chapters")
+    return parts.length === 3 && NUMBERED.test(parts[1]!) && NUMBERED.test(parts[2]!);
+  if (top === "bible")
+    return (
+      parts.length === 2 ||
+      (parts.length === 3 && ["characters", "places", "rules"].includes(parts[1]!))
+    );
   // Notes (design 4.1): flat like the outline, read by no check and never exported.
   if (top === "outline" || top === "notes") return parts.length === 2;
   return false;
@@ -75,7 +80,13 @@ export type SceneHeader = {
 export type CharacterEntry = { name: string; aliases: string[]; born: string; died: string };
 export type PlaceEntry = { name: string; aliases: string[] };
 export type RuleEntry = { name: string; forbidden: string[] };
-type BookEntry = { title: string; author: string; language: string; target: number | null; deadline: string };
+type BookEntry = {
+  title: string;
+  author: string;
+  language: string;
+  target: number | null;
+  deadline: string;
+};
 
 export type Meta =
   | { kind: "scene"; header: SceneHeader; hasHeader: boolean }
@@ -101,7 +112,11 @@ function wordCount(data: Record<string, HeaderValue>, key: string): number | nul
   return n > 0 ? n : null;
 }
 
-export function readMeta(path: string, data: Record<string, HeaderValue>, hasHeader: boolean): Meta {
+export function readMeta(
+  path: string,
+  data: Record<string, HeaderValue>,
+  hasHeader: boolean,
+): Meta {
   const kind = fileKindOf(path);
   switch (kind) {
     case "scene":
@@ -126,12 +141,26 @@ export function readMeta(path: string, data: Record<string, HeaderValue>, hasHea
     case "character":
       return {
         kind,
-        entry: { name: text(data, "name") || nameFromFile(path), aliases: list(data, "aliases"), born: text(data, "born"), died: text(data, "died") },
+        entry: {
+          name: text(data, "name") || nameFromFile(path),
+          aliases: list(data, "aliases"),
+          born: text(data, "born"),
+          died: text(data, "died"),
+        },
       };
     case "place":
-      return { kind, entry: { name: text(data, "name") || nameFromFile(path), aliases: list(data, "aliases") } };
+      return {
+        kind,
+        entry: { name: text(data, "name") || nameFromFile(path), aliases: list(data, "aliases") },
+      };
     case "rule":
-      return { kind, entry: { name: text(data, "name") || nameFromFile(path), forbidden: list(data, "forbidden") } };
+      return {
+        kind,
+        entry: {
+          name: text(data, "name") || nameFromFile(path),
+          forbidden: list(data, "forbidden"),
+        },
+      };
     case "book":
       return {
         kind,
@@ -150,32 +179,55 @@ export function readMeta(path: string, data: Record<string, HeaderValue>, hasHea
 
 export function describe(path: string, source: string): { meta: Meta; words: number } {
   const parsed = parseFile(source);
-  return { meta: readMeta(path, parsed.data, Object.keys(parsed.data).length > 0), words: countProseWords(parsed.body) };
+  return {
+    meta: readMeta(path, parsed.data, Object.keys(parsed.data).length > 0),
+    words: countProseWords(parsed.body),
+  };
 }
 
 export function countProseWords(body: string): number {
   return body.match(/[\p{L}\p{N}]+(?:['\u2019][\p{L}]+)*/gu)?.length ?? 0;
 }
 
-export const TEMPLATES: Record<"scene" | "character" | "place" | "rule", (name: string) => string> = {
-  scene: () =>
-    ["---", "status:", "summary:", "target:", "pov:", "date:", "location:", "characters: []", "goal:", "conflict:", "outcome:", "---", "", ""].join("\n"),
-  character: (name) => ["---", `name: ${name}`, "aliases: []", "born:", "died:", "---", "", ""].join("\n"),
-  place: (name) => ["---", `name: ${name}`, "aliases: []", "---", "", ""].join("\n"),
-  rule: (name) =>
-    [
-      "---",
-      `name: ${name}`,
-      "# Each pattern is matched against every scene, ignoring case. A match is flagged, never refused.",
-      "forbidden: []",
-      "---",
-      "",
-      "",
-    ].join("\n"),
-};
+export const TEMPLATES: Record<"scene" | "character" | "place" | "rule", (name: string) => string> =
+  {
+    scene: () =>
+      [
+        "---",
+        "status:",
+        "summary:",
+        "target:",
+        "pov:",
+        "date:",
+        "location:",
+        "characters: []",
+        "goal:",
+        "conflict:",
+        "outcome:",
+        "---",
+        "",
+        "",
+      ].join("\n"),
+    character: (name) =>
+      ["---", `name: ${name}`, "aliases: []", "born:", "died:", "---", "", ""].join("\n"),
+    place: (name) => ["---", `name: ${name}`, "aliases: []", "---", "", ""].join("\n"),
+    rule: (name) =>
+      [
+        "---",
+        `name: ${name}`,
+        "# Each pattern is matched against every scene, ignoring case. A match is flagged, never refused.",
+        "forbidden: []",
+        "---",
+        "",
+        "",
+      ].join("\n"),
+  };
 
 function orderKey(path: string): number[] {
-  return path.split("/").slice(1).map((segment) => Number(NUMBERED.exec(segment.replace(/\.md$/, ""))?.[1] ?? 0));
+  return path
+    .split("/")
+    .slice(1)
+    .map((segment) => Number(NUMBERED.exec(segment.replace(/\.md$/, ""))?.[1] ?? 0));
 }
 
 /** Scenes in reading order: chapters by their number, then scenes by theirs (so 100 follows 99). */

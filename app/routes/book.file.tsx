@@ -41,7 +41,13 @@ import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { getEnv, getViewer } from "~/lib/context";
 import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
-import { countProseWords, isBookPath, fileKindOf, TEMPLATES, titleFromSegment } from "~/lib/novels/layout";
+import {
+  countProseWords,
+  isBookPath,
+  fileKindOf,
+  TEMPLATES,
+  titleFromSegment,
+} from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
@@ -58,8 +64,10 @@ function starter(path: string, name: string | null, bookName: string): string {
   const kind = fileKindOf(path);
   const fallback = titleFromSegment(path.split("/").pop()!.replace(/\.md$/, ""));
   if (kind === "scene") return TEMPLATES.scene("");
-  if (kind === "character" || kind === "place" || kind === "rule") return TEMPLATES[kind](name?.trim() || fallback);
-  if (kind === "book") return ["---", `title: ${bookName}`, "author:", "language: en", "---", "", ""].join("\n");
+  if (kind === "character" || kind === "place" || kind === "rule")
+    return TEMPLATES[kind](name?.trim() || fallback);
+  if (kind === "book")
+    return ["---", `title: ${bookName}`, "author:", "language: en", "---", "", ""].join("\n");
   return `# ${fallback}\n\n`;
 }
 
@@ -101,7 +109,12 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     current: file ? { source: file.source, version: file.sha } : null,
     starter: starter(path, new URL(request.url).searchParams.get("name"), project.name),
   });
-  const roomViewer: RoomViewer = { id: viewer.id, name: viewer.name || viewer.email, role: project.role, access: canEdit ? "edit" : "suggest" };
+  const roomViewer: RoomViewer = {
+    id: viewer.id,
+    name: viewer.name || viewer.email,
+    role: project.role,
+    access: canEdit ? "edit" : "suggest",
+  };
 
   const kind = fileKindOf(path);
   const source = opened?.source ?? file?.source ?? "";
@@ -111,19 +124,27 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   let bible: { path: string; name: string; kind: string; body: string }[] = [];
   if (kind === "scene") {
     const { data } = parseFile(source);
-    const names = [data.pov, data.location, ...(Array.isArray(data.characters) ? data.characters : [])]
+    const names = [
+      data.pov,
+      data.location,
+      ...(Array.isArray(data.characters) ? data.characters : []),
+    ]
       .filter((n): n is string => typeof n === "string" && n.trim() !== "")
       .map((n) => n.trim().toLowerCase());
     const matched = indexed.flatMap(({ path, kind, meta }) => {
       if (meta.kind === "rule") return [{ path, kind, name: meta.entry.name }];
       if (meta.kind !== "character" && meta.kind !== "place") return [];
-      const hit = [meta.entry.name, ...meta.entry.aliases].some((n) => names.includes(n.toLowerCase()));
+      const hit = [meta.entry.name, ...meta.entry.aliases].some((n) =>
+        names.includes(n.toLowerCase()),
+      );
       return hit ? [{ path, kind, name: meta.entry.name }] : [];
     });
     bible = await Promise.all(
       matched.map(async (m) => ({
         ...m,
-        body: parseFile((await indexedFile(env.DB, project, m.path))?.source ?? "").body.trim().slice(0, 600),
+        body: parseFile((await indexedFile(env.DB, project, m.path))?.source ?? "")
+          .body.trim()
+          .slice(0, 600),
       })),
     );
   }
@@ -144,14 +165,23 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     ownDraft: opened?.ownDraft ?? null,
     // Git moved on since the room's copy was started: saving it would be refused as stale.
     behind: opened?.behind ?? false,
-    room: opened ? { path: roomPath("b", project.slug, path), viewer: roomViewer, names: await roomNames(env.DB, project.id) } : null,
+    room: opened
+      ? {
+          path: roomPath("b", project.slug, path),
+          viewer: roomViewer,
+          names: await roomNames(env.DB, project.id),
+        }
+      : null,
     findings: await listFindings(env.DB, project, { path }),
     problems: parseFile(source).problems,
     bible,
     binder: binderTree(indexed, `/b/${project.slug}`),
     // AI drafts an AI session saved beside this person's own, with their text: never committed.
     aiDrafts: await Promise.all(
-      (await listAiDrafts(env.DB, project, viewer, path)).map(async (d) => ({ ...d, source: (await readAiDraft(env.DB, project, viewer, path, d.id)).source })),
+      (await listAiDrafts(env.DB, project, viewer, path)).map(async (d) => ({
+        ...d,
+        source: (await readAiDraft(env.DB, project, viewer, path, d.id)).source,
+      })),
     ),
   };
 }
@@ -163,7 +193,11 @@ type ActionResult =
   | { intent: "use-ai-draft"; used: number }
   | { intent: "save"; outcome: BookWrite };
 
-export async function action({ params, request, context }: Route.ActionArgs): Promise<ActionResult> {
+export async function action({
+  params,
+  request,
+  context,
+}: Route.ActionArgs): Promise<ActionResult> {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireBookProject(env.DB, viewer, params.project, "read");
@@ -179,7 +213,8 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       const { repo } = bookRepo(env);
       const git = repo ? await repo.read(`${project.book}/${path}`).catch(() => null) : null;
       const file = git ?? (await indexedFile(env.DB, project, path));
-      if (!file) throw new Response("Only a file in Git has a version to go back to.", { status: 400 });
+      if (!file)
+        throw new Response("Only a file in Git has a version to go back to.", { status: 400 });
       await replaceRoom(env, project, viewer, path, { markdown: file.source, version: file.sha });
       await clearUntyped(env.DB, project.id, viewer.id, path);
       return { intent, discarded: true };
@@ -187,7 +222,11 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
     case "use-own-draft": {
       const own = await readOwnDraft(env.DB, project, viewer, path);
       if (!own) throw new Response("That draft is gone.", { status: 404 });
-      await replaceRoom(env, project, viewer, path, { markdown: own.source, version: (await roomVersion(env, project, path)) ?? own.baseVersion, unsaved: true });
+      await replaceRoom(env, project, viewer, path, {
+        markdown: own.source,
+        version: (await roomVersion(env, project, path)) ?? own.baseVersion,
+        unsaved: true,
+      });
       await discardDraft(env.DB, project, viewer, path);
       return { intent: "discard", discarded: true };
     }
@@ -207,19 +246,42 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       const id = Number(form.get("draft"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       const ai = await readAiDraft(env.DB, project, viewer, path, id);
-      await replaceRoom(env, project, viewer, path, { markdown: ai.source, version: (await roomVersion(env, project, path)) ?? ai.baseVersion, unsaved: true });
+      await replaceRoom(env, project, viewer, path, {
+        markdown: ai.source,
+        version: (await roomVersion(env, project, path)) ?? ai.baseVersion,
+        unsaved: true,
+      });
       // The AI's words were not typed, so they never count toward the day (ruling 6).
-      await addUntyped(env.DB, project.id, viewer.id, path, countProseWords(parseFile(ai.source).body));
+      await addUntyped(
+        env.DB,
+        project.id,
+        viewer.id,
+        path,
+        countProseWords(parseFile(ai.source).body),
+      );
       return { intent, used: id };
     }
     case "save": {
       const { repo, detail } = bookRepo(env);
-      if (!repo) return { intent, outcome: { ok: false, reason: "failed", message: `${detail} The text is kept here in Carrel.` } };
+      if (!repo)
+        return {
+          intent,
+          outcome: {
+            ok: false,
+            reason: "failed",
+            message: `${detail} The text is kept here in Carrel.`,
+          },
+        };
       const untyped = untypedField(form.get("untyped"));
       return {
         intent,
         outcome: await saveRoom(env, project, viewer, path, (text, expectedVersion, others) =>
-          saveBookFile(env.DB, repo, project, viewer, path, { source: text, expectedVersion, untyped, shared: others }),
+          saveBookFile(env.DB, repo, project, viewer, path, {
+            source: text,
+            expectedVersion,
+            untyped,
+            shared: others,
+          }),
         ),
       };
     }
@@ -229,7 +291,10 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
 }
 
 /** A check writes nothing the page shows, so the page has nothing to reload and Git is not asked. */
-export function shouldRevalidate({ formData, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate({
+  formData,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
   const intent = formData?.get("intent");
   if (intent === "check") return false;
   return defaultShouldRevalidate;
@@ -279,12 +344,17 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
   const outcome = writer.data?.intent === "save" ? writer.data.outcome : null;
   useEffect(() => {
-    if (outcome?.ok && writer.state === "idle") untyped.current = Math.max(0, untyped.current - untypedSent.current);
+    if (outcome?.ok && writer.state === "idle")
+      untyped.current = Math.max(0, untyped.current - untypedSent.current);
     if (writer.state === "idle") untypedSent.current = 0;
   }, [outcome, writer.state]);
   // A discard or an AI draft taken replaces the text, and what was pasted into it goes with it.
   useEffect(() => {
-    if (writer.state === "idle" && (writer.data?.intent === "discard" || writer.data?.intent === "use-ai-draft")) untyped.current = 0;
+    if (
+      writer.state === "idle" &&
+      (writer.data?.intent === "discard" || writer.data?.intent === "use-ai-draft")
+    )
+      untyped.current = 0;
   }, [writer.state, writer.data]);
 
   // Said once in the message region, as each save finishes.
@@ -292,14 +362,19 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   useEffect(() => {
     if (!outcome?.ok || writer.state !== "idle" || said.current === outcome) return;
     said.current = outcome;
-    say(`Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${outcome.findings.length} flag${outcome.findings.length === 1 ? "" : "s"}; see the list.`}`);
+    say(
+      `Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${outcome.findings.length} flag${outcome.findings.length === 1 ? "" : "s"}; see the list.`}`,
+    );
   }, [outcome, writer.state, say]);
 
   // Before a save the room is asked to confirm it has every change made here, so the save holds them.
   const send = async (intent: string, extra: Record<string, string> = {}) => {
     await room.flush();
     if (intent === "save") untypedSent.current = untyped.current;
-    return writer.submit({ intent, untyped: String(intent === "save" ? untyped.current : 0), ...extra }, { method: "post" });
+    return writer.submit(
+      { intent, untyped: String(intent === "save" ? untyped.current : 0), ...extra },
+      { method: "post" },
+    );
   };
 
   useSaveShortcut(() => {
@@ -309,12 +384,23 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const busy = writer.state !== "idle";
   const checked = checker.data?.intent === "check" ? checker.data.findings : null;
   const saveState =
-    room.status === "offline" ? "Offline: changes wait here" : room.unsaved ? "Changes kept in Carrel, not yet in Git" : data.version ? "Matches Git" : "";
+    room.status === "offline"
+      ? "Offline: changes wait here"
+      : room.unsaved
+        ? "Changes kept in Carrel, not yet in Git"
+        : data.version
+          ? "Matches Git"
+          : "";
   const openFlags = data.findings.filter((f) => f.status === "open").length;
-  const ask = (kind: Ask["kind"], opener: HTMLElement | null, id?: number) => setAsking({ kind, opener, id });
+  const ask = (kind: Ask["kind"], opener: HTMLElement | null, id?: number) =>
+    setAsking({ kind, opener, id });
 
   const crumbs: { label: string; href?: string }[] = [{ label: data.project.name, href: base }];
-  if (data.kind === "scene") crumbs.push({ label: titleFromSegment(data.path.split("/")[1]!), href: `${base}/c/${data.path.split("/")[1]}` });
+  if (data.kind === "scene")
+    crumbs.push({
+      label: titleFromSegment(data.path.split("/")[1]!),
+      href: `${base}/c/${data.path.split("/")[1]}`,
+    });
   crumbs.push({ label: data.label });
 
   return (
@@ -344,7 +430,8 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         {data.connectionDetail ? <Banner tone="warn">{data.connectionDetail}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="Git moved on">
-            This file changed in Git after this copy was started, so saving it will be refused. Discard the unsaved changes to load Git's version, then make them again.
+            This file changed in Git after this copy was started, so saving it will be refused.
+            Discard the unsaved changes to load Git's version, then make them again.
           </Banner>
         ) : null}
         {data.ownDraft && data.canEdit ? (
@@ -356,18 +443,25 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 <Button size="sm" pending={busy} onClick={() => void send("use-own-draft")}>
                   Put it in for everyone
                 </Button>
-                <Button size="sm" variant="quiet" pending={busy} onClick={() => void send("drop-own-draft")}>
+                <Button
+                  size="sm"
+                  variant="quiet"
+                  pending={busy}
+                  onClick={() => void send("drop-own-draft")}
+                >
                   Delete it
                 </Button>
               </>
             }
           >
-            It was saved <Time at={data.ownDraft.updatedAt} format="exact" />. Putting it in replaces the text everyone here is working on.
+            It was saved <Time at={data.ownDraft.updatedAt} format="exact" />. Putting it in
+            replaces the text everyone here is working on.
           </Banner>
         ) : null}
         {data.problems.length > 0 ? (
           <Banner tone="warn" title="The header has lines Carrel does not read">
-            {data.problems.map((p) => `line ${p.line}`).join(", ")}. Use key: value, key: [a, b], or one - item per line.
+            {data.problems.map((p) => `line ${p.line}`).join(", ")}. Use key: value, key: [a, b], or
+            one - item per line.
           </Banner>
         ) : null}
       </div>
@@ -388,7 +482,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               readOnly={readOnly}
               linkTargets={[]}
               dialect="plain"
-              room={data.room ? { rich: editing.rich, markdownLocked: editing.markdownLocked } : undefined}
+              room={
+                data.room
+                  ? { rich: editing.rich, markdownLocked: editing.markdownLocked }
+                  : undefined
+              }
               onEditor={editing.setEditor}
             />
           </section>
@@ -396,7 +494,12 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
         <aside className="app-editor-side" aria-label="Binder, saving, checks and the bible">
           <Panel title="Binder" src="The book in reading order">
-            <Binder nodes={data.binder} book={data.project.slug} current={data.path} canEdit={data.canEdit && data.connected} />
+            <Binder
+              nodes={data.binder}
+              book={data.project.slug}
+              current={data.path}
+              canEdit={data.canEdit && data.connected}
+            />
           </Panel>
 
           {data.canEdit ? (
@@ -407,14 +510,32 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 </p>
                 {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
                 <div className="app-actions">
-                  <Button variant="primary" pending={busy} disabledReason={!data.connected ? "Git is not connected, so saving waits. The text is kept here in Carrel." : undefined} onClick={() => void send("save")}>
+                  <Button
+                    variant="primary"
+                    pending={busy}
+                    disabledReason={
+                      !data.connected
+                        ? "Git is not connected, so saving waits. The text is kept here in Carrel."
+                        : undefined
+                    }
+                    onClick={() => void send("save")}
+                  >
                     Save to Git
                   </Button>
-                  <Button pending={checker.state !== "idle"} onClick={() => void checker.submit({ intent: "check", source }, { method: "post" })}>
+                  <Button
+                    pending={checker.state !== "idle"}
+                    onClick={() =>
+                      void checker.submit({ intent: "check", source }, { method: "post" })
+                    }
+                  >
                     Check this text
                   </Button>
                   {room.unsaved && data.version ? (
-                    <Button variant="quiet" pending={busy} onClick={(event) => ask("discard", event.currentTarget)}>
+                    <Button
+                      variant="quiet"
+                      pending={busy}
+                      onClick={(event) => ask("discard", event.currentTarget)}
+                    >
                       Discard unsaved changes
                     </Button>
                   ) : null}
@@ -427,19 +548,31 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
           <Panel title="Flags" count={openFlags} src="From the last save" id="flags">
             <div className="app-stack" data-tight>
-              <p className="cap-muted app-note">A flag never stops a save; it holds export until it is fixed or the Owner dismisses it.</p>
+              <p className="cap-muted app-note">
+                A flag never stops a save; it holds export until it is fixed or the Owner dismisses
+                it.
+              </p>
               {data.findings.length === 0 ? (
                 <p>None.</p>
               ) : (
                 <ul className="app-flags" aria-label="Flags on this file">
                   {data.findings.map((f) => (
                     <li key={f.id}>
-                      {f.status === "open" ? <Status tone="warn">Open</Status> : <Pill variant="secondary">Dismissed</Pill>}
+                      {f.status === "open" ? (
+                        <Status tone="warn">Open</Status>
+                      ) : (
+                        <Pill variant="secondary">Dismissed</Pill>
+                      )}
                       <span>
-                        <strong>{f.check}</strong> {f.line ? <span className="cap-muted">line {f.line}</span> : null} {f.message}
+                        <strong>{f.check}</strong>{" "}
+                        {f.line ? <span className="cap-muted">line {f.line}</span> : null}{" "}
+                        {f.message}
                       </span>
                       {f.status === "open" && data.canPublish ? (
-                        <Button size="sm" onClick={(event) => ask("dismiss", event.currentTarget, f.id)}>
+                        <Button
+                          size="sm"
+                          onClick={(event) => ask("dismiss", event.currentTarget, f.id)}
+                        >
                           Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
                         </Button>
                       ) : null}
@@ -458,7 +591,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         <li key={i}>
                           <Status tone="warn">Found</Status>
                           <span>
-                            <strong>{f.check}</strong> {f.line ? <span className="cap-muted">line {f.line}</span> : null} {f.message}
+                            <strong>{f.check}</strong>{" "}
+                            {f.line ? <span className="cap-muted">line {f.line}</span> : null}{" "}
+                            {f.message}
                           </span>
                         </li>
                       ))}
@@ -470,7 +605,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </Panel>
 
           {data.aiDrafts.length > 0 ? (
-            <Panel title="AI drafts beside yours" count={data.aiDrafts.length} src="None has touched the text or Git">
+            <Panel
+              title="AI drafts beside yours"
+              count={data.aiDrafts.length}
+              src="None has touched the text or Git"
+            >
               <div className="app-stack" data-tight>
                 {data.aiDrafts.map((d) => (
                   <Disclosure
@@ -487,11 +626,19 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     {d.note ? <p>{d.note}</p> : null}
                     <p className="app-bible-body">{d.source}</p>
                     <div className="app-actions">
-                      <Link className="cap-btn" data-size="sm" to={`${base}/h/${data.path}?compare=ai&ai=${d.id}`}>
+                      <Link
+                        className="cap-btn"
+                        data-size="sm"
+                        to={`${base}/h/${data.path}?compare=ai&ai=${d.id}`}
+                      >
                         Compare with yours
                       </Link>
                       {data.canEdit ? (
-                        <Button size="sm" pending={busy} onClick={(event) => ask("use-ai", event.currentTarget, d.id)}>
+                        <Button
+                          size="sm"
+                          pending={busy}
+                          onClick={(event) => ask("use-ai", event.currentTarget, d.id)}
+                        >
                           Use as the working copy
                         </Button>
                       ) : null}
@@ -544,11 +691,19 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         open={asking?.kind === "dismiss"}
         title="Dismiss this flag?"
         lead="A dismissed flag no longer holds export, and it cannot be reopened."
-        body={asking?.id !== undefined ? [data.findings.find((f) => f.id === asking.id)?.message ?? ""] : []}
+        body={
+          asking?.id !== undefined
+            ? [data.findings.find((f) => f.id === asking.id)?.message ?? ""]
+            : []
+        }
         action="Dismiss flag"
         returnTo={asking?.opener}
         perform={async () => {
-          if (asking?.id !== undefined) await writer.submit({ intent: "dismiss", finding: String(asking.id) }, { method: "post" });
+          if (asking?.id !== undefined)
+            await writer.submit(
+              { intent: "dismiss", finding: String(asking.id) },
+              { method: "post" },
+            );
         }}
         onClose={() => setAsking(null)}
       />
@@ -560,7 +715,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         action="Replace the text"
         returnTo={asking?.opener}
         perform={async () => {
-          if (asking?.id !== undefined) await writer.submit({ intent: "use-ai-draft", draft: String(asking.id) }, { method: "post" });
+          if (asking?.id !== undefined)
+            await writer.submit(
+              { intent: "use-ai-draft", draft: String(asking.id) },
+              { method: "post" },
+            );
         }}
         onClose={() => setAsking(null)}
       />

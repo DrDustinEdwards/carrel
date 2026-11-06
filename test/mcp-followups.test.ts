@@ -4,7 +4,14 @@
 import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { exportGate, listFindings, refreshBook, requireBookProject, saveBookFile, type BookProject } from "~/lib/books.server";
+import {
+  exportGate,
+  listFindings,
+  refreshBook,
+  requireBookProject,
+  saveBookFile,
+  type BookProject,
+} from "~/lib/books.server";
 import { autosave, readDraft } from "~/lib/content.server";
 import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
 import type { Viewer } from "~/lib/people.server";
@@ -17,7 +24,8 @@ import { fakeNovels } from "./novels";
 import { viewerFor } from "./site";
 
 const SLUG = "test-book";
-const HEADER = "---\npov: Wade\ndate: 2024-04-12\nlocation: Harlan place\ncharacters: [Wade]\ngoal: g\nconflict: c\noutcome: o\n---\n\n";
+const HEADER =
+  "---\npov: Wade\ndate: 2024-04-12\nlocation: Harlan place\ncharacters: [Wade]\ngoal: g\nconflict: c\noutcome: o\n---\n\n";
 const SCENE = "chapters/01-arrival/01-the-gate.md";
 
 let gh: ReturnType<typeof fakeNovels>;
@@ -47,88 +55,176 @@ describe("books through MCP", () => {
   it("lists a book's files with each scene's header, and reads a file with its version", async () => {
     const call = await connect("reader@test.invalid");
     const list = await call("carrel_list_book_files", { project: SLUG });
-    expect(list.structuredContent).toMatchObject({ files: expect.arrayContaining([{ path: SCENE, kind: "scene", words: 4, header: expect.objectContaining({ pov: "Wade" }), openFlags: 0 }]) });
+    expect(list.structuredContent).toMatchObject({
+      files: expect.arrayContaining([
+        {
+          path: SCENE,
+          kind: "scene",
+          words: 4,
+          header: expect.objectContaining({ pov: "Wade" }),
+          openFlags: 0,
+        },
+      ]),
+    });
     const read = await call("carrel_read_book_file", { project: SLUG, path: SCENE });
-    expect(read.structuredContent).toMatchObject({ path: SCENE, source: `${HEADER}Wade opened the gate.\n`, version: gh.files.get(`${SLUG}/${SCENE}`)!.sha });
+    expect(read.structuredContent).toMatchObject({
+      path: SCENE,
+      source: `${HEADER}Wade opened the gate.\n`,
+      version: gh.files.get(`${SLUG}/${SCENE}`)!.sha,
+    });
   });
 
   it("PLANT: a stranger's session, and a site's slug, reach no book", async () => {
     await addPerson("stranger@test.invalid");
-    expect(await (await connect("stranger@test.invalid"))("carrel_list_book_files", { project: SLUG })).toMatchObject({ isError: true });
+    expect(
+      await (
+        await connect("stranger@test.invalid")
+      )("carrel_list_book_files", { project: SLUG }),
+    ).toMatchObject({ isError: true });
     await addProject("a-site", "dustinedwards");
-    expect(await (await connect("owner@test.invalid"))("carrel_list_book_files", { project: "a-site" })).toMatchObject({ isError: true });
+    expect(
+      await (
+        await connect("owner@test.invalid")
+      )("carrel_list_book_files", { project: "a-site" }),
+    ).toMatchObject({ isError: true });
   });
 
   it("runs the checks on text without saving or recording anything", async () => {
     const call = await connect("reader@test.invalid");
-    const result = await call("carrel_check_book_text", { project: SLUG, path: SCENE, source: `${HEADER}A masterpiece.\n` });
-    expect(result.structuredContent).toMatchObject({ findings: [{ check: "voice", excerpt: "masterpiece" }] });
+    const result = await call("carrel_check_book_text", {
+      project: SLUG,
+      path: SCENE,
+      source: `${HEADER}A masterpiece.\n`,
+    });
+    expect(result.structuredContent).toMatchObject({
+      findings: [{ check: "voice", excerpt: "masterpiece" }],
+    });
     const owner = await viewerFor("owner@test.invalid");
-    expect(await listFindings(testEnv.DB, await requireBookProject(testEnv.DB, owner, SLUG, "read"))).toEqual([]);
+    expect(
+      await listFindings(testEnv.DB, await requireBookProject(testEnv.DB, owner, SLUG, "read")),
+    ).toEqual([]);
   });
 
   it("saves an AI draft beside the person's, never over it and never to Git", async () => {
     const owner = await viewerFor("owner@test.invalid");
     const project = await requireBookProject(testEnv.DB, owner, SLUG, "read");
-    await autosave(testEnv.DB, project, owner, SCENE, { source: "Dustin's own draft.", baseVersion: null });
+    await autosave(testEnv.DB, project, owner, SCENE, {
+      source: "Dustin's own draft.",
+      baseVersion: null,
+    });
 
-    const saved = await (await connect("owner@test.invalid"))("carrel_save_book_draft", { project: SLUG, path: SCENE, source: `${HEADER}An AI version.\n`, note: "Tighter." });
-    expect(saved.structuredContent).toMatchObject({ saved: true, basedOnVersion: gh.files.get(`${SLUG}/${SCENE}`)!.sha });
+    const saved = await (
+      await connect("owner@test.invalid")
+    )("carrel_save_book_draft", {
+      project: SLUG,
+      path: SCENE,
+      source: `${HEADER}An AI version.\n`,
+      note: "Tighter.",
+    });
+    expect(saved.structuredContent).toMatchObject({
+      saved: true,
+      basedOnVersion: gh.files.get(`${SLUG}/${SCENE}`)!.sha,
+    });
     expect(await readDraftOnly(project, owner, SCENE)).toBe("Dustin's own draft.");
     expect(gh.commits).toEqual([]);
   });
 
   it("PLANT: a reviewer's and a Reader's sessions cannot save a book draft", async () => {
-    expect(await (await connect("reviewer@test.invalid"))("carrel_save_book_draft", { project: SLUG, path: SCENE, source: "x" })).toMatchObject({
+    expect(
+      await (
+        await connect("reviewer@test.invalid")
+      )("carrel_save_book_draft", { project: SLUG, path: SCENE, source: "x" }),
+    ).toMatchObject({
       isError: true,
       content: [{ text: "A reviewer flags; it does not write text. Use carrel_add_book_finding." }],
     });
-    expect(await (await connect("reader@test.invalid"))("carrel_save_book_draft", { project: SLUG, path: SCENE, source: "x" })).toMatchObject({ isError: true });
+    expect(
+      await (
+        await connect("reader@test.invalid")
+      )("carrel_save_book_draft", { project: SLUG, path: SCENE, source: "x" }),
+    ).toMatchObject({ isError: true });
   });
 
   it("PLANT: a reviewer's flag on a book file survives the recheck a save runs, and holds export", async () => {
     const reviewer = await connect("reviewer@test.invalid", "Grok Build");
-    const flagged = await reviewer("carrel_add_book_finding", { project: SLUG, path: SCENE, message: "Wade could not see the gate from the road.", excerpt: "opened the gate" });
+    const flagged = await reviewer("carrel_add_book_finding", {
+      project: SLUG,
+      path: SCENE,
+      message: "Wade could not see the gate from the road.",
+      excerpt: "opened the gate",
+    });
     expect(flagged.structuredContent).toMatchObject({ flagged: true, alreadyFlagged: false });
 
     const owner = await viewerFor("owner@test.invalid");
     const project = await requireBookProject(testEnv.DB, owner, SLUG, "publish");
     const current = gh.files.get(`${SLUG}/${SCENE}`)!;
-    const saved = await saveBookFile(testEnv.DB, gh.repo, project, owner, SCENE, { source: `${HEADER}Wade opened the old gate.\n`, expectedVersion: current.sha });
+    const saved = await saveBookFile(testEnv.DB, gh.repo, project, owner, SCENE, {
+      source: `${HEADER}Wade opened the old gate.\n`,
+      expectedVersion: current.sha,
+    });
     expect(saved.ok).toBe(true);
-    expect((await listFindings(testEnv.DB, project, { path: SCENE })).map((f) => [f.check, f.status])).toEqual([["review", "open"]]);
+    expect(
+      (await listFindings(testEnv.DB, project, { path: SCENE })).map((f) => [f.check, f.status]),
+    ).toEqual([["review", "open"]]);
     expect(await exportGate(testEnv.DB, project)).toMatchObject({ ok: false, open: 1 });
   });
 
   it("PLANT: a flag on a path outside the layout is refused", async () => {
-    expect(await (await connect("reviewer@test.invalid"))("carrel_add_book_finding", { project: SLUG, path: "../x.md", message: "m" })).toMatchObject({ isError: true });
+    expect(
+      await (
+        await connect("reviewer@test.invalid")
+      )("carrel_add_book_finding", { project: SLUG, path: "../x.md", message: "m" }),
+    ).toMatchObject({ isError: true });
   });
 });
 
 describe("AI drafts in the book editor", () => {
   it("shows them beside the text, and Use as my draft makes one the working copy", async () => {
-    await (await connect("owner@test.invalid"))("carrel_save_book_draft", { project: SLUG, path: SCENE, source: `${HEADER}An AI version.\n` });
+    await (
+      await connect("owner@test.invalid")
+    )("carrel_save_book_draft", {
+      project: SLUG,
+      path: SCENE,
+      source: `${HEADER}An AI version.\n`,
+    });
     vi.stubGlobal("fetch", gh.fetch);
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env: testEnv, ctx: {} as ExecutionContext });
     context.set(viewerContext, await viewerFor("owner@test.invalid"));
     context.set(nonceContext, "n");
     const params = { project: SLUG, "*": SCENE };
-    const data = (await fileLoader({ request: new Request("https://carrel.test/"), params, context } as never)) as Awaited<ReturnType<typeof fileLoader>>;
-    expect(data.aiDrafts).toMatchObject([{ client: "Claude", source: `${HEADER}An AI version.\n` }]);
+    const data = (await fileLoader({
+      request: new Request("https://carrel.test/"),
+      params,
+      context,
+    } as never)) as Awaited<ReturnType<typeof fileLoader>>;
+    expect(data.aiDrafts).toMatchObject([
+      { client: "Claude", source: `${HEADER}An AI version.\n` },
+    ]);
 
     const body = new FormData();
     body.set("intent", "use-ai-draft");
     body.set("draft", String(data.aiDrafts[0]!.id));
-    expect(await fileAction({ request: new Request("https://carrel.test/", { method: "POST", body }), params, context } as never)).toEqual({ intent: "use-ai-draft", used: data.aiDrafts[0]!.id });
+    expect(
+      await fileAction({
+        request: new Request("https://carrel.test/", { method: "POST", body }),
+        params,
+        context,
+      } as never),
+    ).toEqual({ intent: "use-ai-draft", used: data.aiDrafts[0]!.id });
     const owner = await viewerFor("owner@test.invalid");
-    expect(await readDraftOnly(await requireBookProject(testEnv.DB, owner, SLUG, "read"), owner, SCENE)).toBe(`${HEADER}An AI version.\n`);
+    expect(
+      await readDraftOnly(await requireBookProject(testEnv.DB, owner, SLUG, "read"), owner, SCENE),
+    ).toBe(`${HEADER}An AI version.\n`);
   });
 });
 
 describe("export refuses a book with import markers", () => {
   it("PLANT: names each file still holding a marker; clean, it passes", async () => {
-    await gh.commitElsewhere(`${SLUG}/chapters/01-arrival/02-letter.md`, `${HEADER}Before.\n\n<!-- import: table: A table was not converted. -->\n\nAfter.\n`);
+    await gh.commitElsewhere(
+      `${SLUG}/chapters/01-arrival/02-letter.md`,
+      `${HEADER}Before.\n\n<!-- import: table: A table was not converted. -->\n\nAfter.\n`,
+    );
     const owner = await viewerFor("owner@test.invalid");
     const project = await requireBookProject(testEnv.DB, owner, SLUG, "publish");
     await refreshBook(testEnv.DB, gh.repo, project);
@@ -137,7 +233,10 @@ describe("export refuses a book with import markers", () => {
     expect(held.ok || held.message).toBe(
       "1 file still holds an <!-- import: ... --> marker from the Word import: chapters/01-arrival/02-letter.md. Fix the text there and delete each marker before exporting.",
     );
-    await gh.commitElsewhere(`${SLUG}/chapters/01-arrival/02-letter.md`, `${HEADER}Before.\n\nAfter.\n`);
+    await gh.commitElsewhere(
+      `${SLUG}/chapters/01-arrival/02-letter.md`,
+      `${HEADER}Before.\n\nAfter.\n`,
+    );
     await refreshBook(testEnv.DB, gh.repo, project);
     expect(await exportGate(testEnv.DB, project)).toEqual({ ok: true });
   });
@@ -147,34 +246,66 @@ describe("carrel_draft_social_post", () => {
   async function socialAccount() {
     const projectId = await addProject("field-notes", "dustinedwards");
     const owner = await viewerFor("owner@test.invalid");
-    await createAccount(testEnv.DB, owner, { key: "example-bluesky", name: "Example Co", platform: "bluesky", kind: "brand", handle: "g.bsky.social", projectId });
+    await createAccount(testEnv.DB, owner, {
+      key: "example-bluesky",
+      name: "Example Co",
+      platform: "bluesky",
+      kind: "brand",
+      handle: "g.bsky.social",
+      projectId,
+    });
     const row = await testEnv.DB.prepare("SELECT id FROM social_accounts").first<{ id: number }>();
     await setSwitches(testEnv.DB, owner, row!.id, { enabled: true });
-    await recordPublication(testEnv.DB, projectId, { id: "note-1", title: "Field notes 1", url: "https://site.test/note-1", summary: "" });
+    await recordPublication(testEnv.DB, projectId, {
+      id: "note-1",
+      title: "Field notes 1",
+      url: "https://site.test/note-1",
+      summary: "",
+    });
     return (await testEnv.DB.prepare("SELECT id FROM social_events").first<{ id: number }>())!.id;
   }
 
   it("stores the Owner's session's draft by event id, credited to the client", async () => {
     const eventId = await socialAccount();
-    const result = await (await connect("owner@test.invalid", "Claude Code"))("carrel_draft_social_post", { event_id: eventId, text: "Field notes 1 is out: https://site.test/note-1" });
+    const result = await (
+      await connect("owner@test.invalid", "Claude Code")
+    )("carrel_draft_social_post", {
+      event_id: eventId,
+      text: "Field notes 1 is out: https://site.test/note-1",
+    });
     expect(result.structuredContent).toMatchObject({ stored: true });
-    expect(await testEnv.DB.prepare("SELECT source, status, created_by FROM social_posts").first()).toEqual({ source: "predrafted", status: "drafted", created_by: "Claude Code" });
+    expect(
+      await testEnv.DB.prepare("SELECT source, status, created_by FROM social_posts").first(),
+    ).toEqual({ source: "predrafted", status: "drafted", created_by: "Claude Code" });
   });
 
   it("stores by account, project and item too", async () => {
     await socialAccount();
-    const result = await (await connect("owner@test.invalid"))("carrel_draft_social_post", { account: "example-bluesky", project: "field-notes", item: "note-2", text: "Field notes 2." });
+    const result = await (
+      await connect("owner@test.invalid")
+    )("carrel_draft_social_post", {
+      account: "example-bluesky",
+      project: "field-notes",
+      item: "note-2",
+      text: "Field notes 2.",
+    });
     expect(result.structuredContent).toMatchObject({ stored: true });
   });
 
   it("PLANT: an Editor's or a reviewer's session cannot draft social posts", async () => {
     const eventId = await socialAccount();
     for (const email of ["editor@test.invalid", "reviewer@test.invalid"]) {
-      expect(await (await connect(email))("carrel_draft_social_post", { event_id: eventId, text: "x" })).toMatchObject({
+      expect(
+        await (
+          await connect(email)
+        )("carrel_draft_social_post", { event_id: eventId, text: "x" }),
+      ).toMatchObject({
         isError: true,
         content: [{ text: "Social posts are Dustin's: only his own sessions may draft them." }],
       });
     }
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM social_posts").first()).toEqual({ n: 0 });
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM social_posts").first()).toEqual({
+      n: 0,
+    });
   });
 });

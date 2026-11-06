@@ -13,7 +13,7 @@ outcome: Wade lets her in
 
 The truck quit a mile past the low-water crossing. I let it roll to the shoulder and sat there with the engine ticking.
 
-* * *
+---
 
 At the gate there was a new lock. "Brass," I said. "And shut."
 

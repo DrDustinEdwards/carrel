@@ -60,7 +60,11 @@ export function sectionsUsed(body: string): string[] {
  * filled in. Running it again on its own output changes nothing, so a page can be expanded on every
  * write and compared with what is stored.
  */
-export function expandShared(body: string, sections: readonly SharedSection[], values: Partial<Record<Variable, string>>): Expansion {
+export function expandShared(
+  body: string,
+  sections: readonly SharedSection[],
+  values: Partial<Record<Variable, string>>,
+): Expansion {
   const unknownSections: string[] = [];
   const missingFields: string[] = [];
   const text = body.replace(BLOCK, (whole, key: string) => {
@@ -97,18 +101,36 @@ export type LegalWrite = { ok: true; source: string } | { ok: false; message: st
  *
  * `public` is true for a publish, and for a save to a page that is already live.
  */
-export function prepareLegalWrite(input: { source: string; stored: string | null; storedPublic: boolean; sections: readonly SharedSection[]; public: boolean; today: string }): LegalWrite {
+export function prepareLegalWrite(input: {
+  source: string;
+  stored: string | null;
+  storedPublic: boolean;
+  sections: readonly SharedSection[];
+  public: boolean;
+  today: string;
+}): LegalWrite {
   const parts = splitSource(input.source);
-  if (parts.front === null) return { ok: false, message: "A legal page keeps its details in frontmatter, and this text has none." };
+  if (parts.front === null)
+    return {
+      ok: false,
+      message: "A legal page keeps its details in frontmatter, and this text has none.",
+    };
   const expansion = expandShared(parts.body, input.sections, valuesOf(input.source));
   if (input.public && expansion.unknownSections.length > 0) {
-    return { ok: false, message: `There is no shared section called ${expansion.unknownSections.map((k) => `"${k}"`).join(", ")}. Add it on the Legal tab or remove its marker.` };
+    return {
+      ok: false,
+      message: `There is no shared section called ${expansion.unknownSections.map((k) => `"${k}"`).join(", ")}. Add it on the Legal tab or remove its marker.`,
+    };
   }
   if (input.public && expansion.missingFields.length > 0) {
-    return { ok: false, message: `The shared text needs ${expansion.missingFields.join(", ")} filled in on this page before it goes public.` };
+    return {
+      ok: false,
+      message: `The shared text needs ${expansion.missingFields.join(", ")} filled in on this page before it goes public.`,
+    };
   }
   let front = parts.front;
   const storedBody = input.stored === null ? null : splitSource(input.stored).body;
-  if (input.public && (storedBody !== expansion.text || !input.storedPublic)) front = setField(front, "last_updated", input.today);
+  if (input.public && (storedBody !== expansion.text || !input.storedPublic))
+    front = setField(front, "last_updated", input.today);
   return { ok: true, source: joinSource({ ...parts, front, body: expansion.text }) };
 }

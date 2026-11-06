@@ -19,6 +19,12 @@ export function isCspReport(request: Request): boolean {
 /** Receives one report request on the AI door, with CORS for Carrel's own pages. */
 export function cspReport(request: Request, env: Env, carrelOrigin: string): Promise<Response> {
   // Keyed on the edge-set client address, which is counted and never logged.
-  const allow = async (r: Request) => (await env.CSP_REPORT_RATE_LIMIT.limit({ key: r.headers.get("CF-Connecting-IP") ?? "unknown" })).success;
-  return receiveCspReport(request, { allow, allowOrigin: carrelOrigin, headers: doorSecurityHeaders });
+  const allow = async (r: Request) =>
+    (await env.CSP_REPORT_RATE_LIMIT.limit({ key: r.headers.get("CF-Connecting-IP") ?? "unknown" }))
+      .success;
+  return receiveCspReport(request, {
+    allow,
+    allowOrigin: carrelOrigin,
+    headers: doorSecurityHeaders,
+  });
 }

@@ -9,7 +9,13 @@
 // script) and the door refuses a cross-site one by Fetch Metadata, so R4's JSON probe does not apply here and is noted.
 // The report holds findings only: a URL, a status and an item, never a page body or a cookie.
 
-import { crawlApp, guardedCrawl, signedInReport, signedInSummary, SIGNED_IN_MISSING_PATH } from "@dustinedwards/site-runtime/signed-in-crawl";
+import {
+  crawlApp,
+  guardedCrawl,
+  signedInReport,
+  signedInSummary,
+  SIGNED_IN_MISSING_PATH,
+} from "@dustinedwards/site-runtime/signed-in-crawl";
 import { carrelDesk } from "@dustinedwards/site-runtime/sites";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -28,7 +34,13 @@ const R4_NOTE =
 
 async function findOwner(db: D1Database): Promise<Viewer | null> {
   const row = await drizzle(db)
-    .select({ id: people.id, email: people.email, name: people.name, isOwner: people.isOwner, isReviewer: people.isReviewer })
+    .select({
+      id: people.id,
+      email: people.email,
+      name: people.name,
+      isOwner: people.isOwner,
+      isReviewer: people.isReviewer,
+    })
     .from(people)
     .where(and(eq(people.isOwner, true), eq(people.isReviewer, false), isNull(people.disabledAt)))
     .orderBy(asc(people.id))
@@ -37,7 +49,11 @@ async function findOwner(db: D1Database): Promise<Viewer | null> {
 }
 
 /** Crawls Desk as the Owner and stores the report. Returns the log line. */
-export async function runSignedInCrawl(env: Env, deskAs: DeskAs, now = new Date()): Promise<string> {
+export async function runSignedInCrawl(
+  env: Env,
+  deskAs: DeskAs,
+  now = new Date(),
+): Promise<string> {
   const origin = carrelDesk.origin;
   const desk = await guardedCrawl(async () => {
     const owner = await findOwner(env.DB);
@@ -47,13 +63,32 @@ export async function runSignedInCrawl(env: Env, deskAs: DeskAs, now = new Date(
     const projects = await visibleProjects(env.DB, owner);
     const site = projects.find((p) => p.kind === "site");
     const book = projects.find((p) => p.kind === "book");
-    const pages = ["/", "/people", "/social", ...(site ? [`/p/${site.slug}`, `/p/${site.slug}/media`] : []), ...(book ? [`/b/${book.slug}`] : []), SIGNED_IN_MISSING_PATH];
-    return crawlApp({ origin, fetch: (request) => deskAs(request, owner), headers: {}, pages, r4Note: R4_NOTE });
+    const pages = [
+      "/",
+      "/people",
+      "/social",
+      ...(site ? [`/p/${site.slug}`, `/p/${site.slug}/media`] : []),
+      ...(book ? [`/b/${book.slug}`] : []),
+      SIGNED_IN_MISSING_PATH,
+    ];
+    return crawlApp({
+      origin,
+      fetch: (request) => deskAs(request, owner),
+      headers: {},
+      pages,
+      r4Note: R4_NOTE,
+    });
   });
-  const report = signedInReport({ [origin]: desk }, { at: now, ref: `carrel ${deployedSha(env).slice(0, 12)}` });
+  const report = signedInReport(
+    { [origin]: desk },
+    { at: now, ref: `carrel ${deployedSha(env).slice(0, 12)}` },
+  );
   const body = JSON.stringify(report);
   const at = report.at;
-  await drizzle(env.DB).insert(reports).values({ name: SIGNED_IN_REPORT_NAME, body, at }).onConflictDoUpdate({ target: reports.name, set: { body, at } });
+  await drizzle(env.DB)
+    .insert(reports)
+    .values({ name: SIGNED_IN_REPORT_NAME, body, at })
+    .onConflictDoUpdate({ target: reports.name, set: { body, at } });
   const line = signedInSummary(report);
   return line;
 }

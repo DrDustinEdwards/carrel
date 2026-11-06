@@ -19,13 +19,25 @@ import { Meter } from "capsomer/react/meter";
 import { Panel } from "capsomer/react/panel";
 import { Status } from "capsomer/react/status";
 
-import { dayTotals, pace, recentDays, streak, targetFor, WEEKDAYS, dayKey, type Goal, type Pace, type SaveEntry } from "~/lib/writing/progress";
+import {
+  dayTotals,
+  pace,
+  recentDays,
+  streak,
+  targetFor,
+  WEEKDAYS,
+  dayKey,
+  type Goal,
+  type Pace,
+  type SaveEntry,
+} from "~/lib/writing/progress";
 import { useBrowserZone } from "~/lib/hydrated";
 
 const n = (value: number) => value.toLocaleString("en-US");
 
 function paceLine(paced: Pace, deadline: string) {
-  if (paced.ok) return `${n(paced.remaining)} words to go by ${deadline}: ${n(paced.perDay)} a day over ${paced.days} writing day${paced.days === 1 ? "" : "s"}.`;
+  if (paced.ok)
+    return `${n(paced.remaining)} words to go by ${deadline}: ${n(paced.perDay)} a day over ${paced.days} writing day${paced.days === 1 ? "" : "s"}.`;
   switch (paced.reason) {
     case "no-target":
       return `No project target yet. Add target: to the title page (book.md) to work out a pace.`;
@@ -75,7 +87,18 @@ function weekChart(days: Day[], target: number | null) {
       formatValue: n,
       notes: off.length ? `Days off: ${[...new Set(off)].join(", ")}.` : undefined,
       source: "Typed words in Carrel's authorship record",
-      annotations: target === null ? undefined : [{ type: "range", axis: "y", from: target, to: Math.max(target, top.words), label: "Target" }],
+      annotations:
+        target === null
+          ? undefined
+          : [
+              {
+                type: "range",
+                axis: "y",
+                from: target,
+                to: Math.max(target, top.words),
+                label: "Target",
+              },
+            ],
       ...fit,
     });
 }
@@ -121,7 +144,14 @@ export function ProgressPanel({
   const today = dayKey(now, zone);
   const totals = dayTotals(entries, zone, goal.allowNegative);
   const wordsToday = totals.get(today) ?? 0;
-  const paced = pace({ projectTarget, deadline, wordsNow, wordsToday, today, writingDays: goal.writingDays });
+  const paced = pace({
+    projectTarget,
+    deadline,
+    wordsNow,
+    wordsToday,
+    today,
+    writingDays: goal.writingDays,
+  });
   const target = targetFor(goal, today, paced);
   const dayOff = !goal.writingDays.includes(new Date(`${today}T12:00:00Z`).getUTCDay());
   const run = streak(totals, today, target, goal.writingDays);
@@ -143,7 +173,13 @@ export function ProgressPanel({
       ) : (
         <p>
           <strong>{n(wordsToday)}</strong> word{wordsToday === 1 ? "" : "s"} typed today.{" "}
-          <span className="cap-muted">{dayOff ? "A day off: no target today." : goal.mode === "deadline" ? "No pace to work out yet." : "No daily target set."}</span>
+          <span className="cap-muted">
+            {dayOff
+              ? "A day off: no target today."
+              : goal.mode === "deadline"
+                ? "No pace to work out yet."
+                : "No daily target set."}
+          </span>
         </p>
       )}
       {met ? <Status tone="ok">Target met</Status> : null}
@@ -151,7 +187,9 @@ export function ProgressPanel({
         Streak: <strong>{run}</strong> day{run === 1 ? "" : "s"} in a row at the target.
         {target === null ? <span className="cap-muted"> A streak needs a target.</span> : null}
       </p>
-      {goal.mode === "deadline" || deadline || projectTarget ? <p className="cap-muted">{paceLine(paced, deadline)}</p> : null}
+      {goal.mode === "deadline" || deadline || projectTarget ? (
+        <p className="cap-muted">{paceLine(paced, deadline)}</p>
+      ) : null}
       <ChartFrame draw={weekChart(days, target)} width={360} />
     </div>
   );
@@ -160,32 +198,78 @@ export function ProgressPanel({
     <Panel title="Today's writing" src="Typed words only">
       <div className="app-stack" data-tight>
         {body}
-        <p className="cap-muted app-note">Pastes, imports and AI drafts you take as your draft do not count. A day runs midnight to midnight on this device.</p>
-        {error ? <Alert tone="crit">{error}</Alert> : saved ? <p role="status">Your target is saved.</p> : null}
+        <p className="cap-muted app-note">
+          Pastes, imports and AI drafts you take as your draft do not count. A day runs midnight to
+          midnight on this device.
+        </p>
+        {error ? (
+          <Alert tone="crit">{error}</Alert>
+        ) : saved ? (
+          <p role="status">Your target is saved.</p>
+        ) : null}
         {canEdit ? (
           <Disclosure summary="Your target" defaultOpen={Boolean(error)}>
             <Form method="post" className="app-stack" data-tight>
               <input type="hidden" name="intent" value="goal" />
               <fieldset className="app-fieldset">
                 <legend>Set the daily target</legend>
-                <Check type="radio" name="mode" value="daily" label="By hand" checked={mode === "daily"} onChange={() => setMode("daily")} />
-                <Check type="radio" name="mode" value="deadline" label="From the deadline" checked={mode === "deadline"} onChange={() => setMode("deadline")} />
+                <Check
+                  type="radio"
+                  name="mode"
+                  value="daily"
+                  label="By hand"
+                  checked={mode === "daily"}
+                  onChange={() => setMode("daily")}
+                />
+                <Check
+                  type="radio"
+                  name="mode"
+                  value="deadline"
+                  label="From the deadline"
+                  checked={mode === "deadline"}
+                  onChange={() => setMode("deadline")}
+                />
               </fieldset>
-              <Field label="Words a day" help={mode === "deadline" ? "Used only when you set it by hand." : "Leave empty for no target."}>
-                <input className="cap-input" name="dailyTarget" inputMode="numeric" defaultValue={goal.dailyTarget ?? ""} autoComplete="off" />
+              <Field
+                label="Words a day"
+                help={
+                  mode === "deadline"
+                    ? "Used only when you set it by hand."
+                    : "Leave empty for no target."
+                }
+              >
+                <input
+                  className="cap-input"
+                  name="dailyTarget"
+                  inputMode="numeric"
+                  defaultValue={goal.dailyTarget ?? ""}
+                  autoComplete="off"
+                />
               </Field>
               <p className="cap-muted app-note">
-                The deadline and the project target are target: and deadline: in the <Link to={titlePage}>title page</Link>.
+                The deadline and the project target are target: and deadline: in the{" "}
+                <Link to={titlePage}>title page</Link>.
               </p>
               <fieldset className="app-fieldset">
                 <legend>Writing days</legend>
                 <div className="app-days">
                   {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-                    <Check key={d} name="writingDays" value={String(d)} label={WEEKDAYS[d]!} defaultChecked={goal.writingDays.includes(d)} />
+                    <Check
+                      key={d}
+                      name="writingDays"
+                      value={String(d)}
+                      label={WEEKDAYS[d]!}
+                      defaultChecked={goal.writingDays.includes(d)}
+                    />
                   ))}
                 </div>
               </fieldset>
-              <Check name="allowNegative" value="1" label="Let deletions take a day below zero" defaultChecked={goal.allowNegative} />
+              <Check
+                name="allowNegative"
+                value="1"
+                label="Let deletions take a day below zero"
+                defaultChecked={goal.allowNegative}
+              />
               <div className="app-actions">
                 <Button type="submit">Save my target</Button>
               </div>

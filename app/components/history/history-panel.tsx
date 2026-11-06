@@ -20,7 +20,15 @@ type Props = {
   aiDrafts: AiDraftLink[];
 };
 
-export function HistoryPanel({ revisions, revisionCount, historyError, historyPath, noun, againstSite, aiDrafts }: Props) {
+export function HistoryPanel({
+  revisions,
+  revisionCount,
+  historyError,
+  historyPath,
+  noun,
+  againstSite,
+  aiDrafts,
+}: Props) {
   return (
     <Panel
       title="History"
@@ -38,7 +46,11 @@ export function HistoryPanel({ revisions, revisionCount, historyError, historyPa
       <div className="app-stack" data-tight>
         {historyError ? <Banner tone="warn">{historyError}</Banner> : null}
         {revisions && revisions.length > 0 ? (
-          <RevisionPicker revisions={revisions} historyPath={historyPath} label="Recent revisions" />
+          <RevisionPicker
+            revisions={revisions}
+            historyPath={historyPath}
+            label="Recent revisions"
+          />
         ) : revisions ? (
           <p className="cap-muted">The site has no saved revisions of this {noun} yet.</p>
         ) : null}

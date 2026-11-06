@@ -23,7 +23,13 @@ export type Draft = { source: string; baseVersion: string | null; updatedAt: str
 type WriteAction = "save" | "publish" | "schedule" | "unschedule" | "unpublish";
 
 export type WriteOutcome =
-  | { ok: true; action: WriteAction; version: string; status: ContentDoc["status"]; changeId: string }
+  | {
+      ok: true;
+      action: WriteAction;
+      version: string;
+      status: ContentDoc["status"];
+      changeId: string;
+    }
   | { ok: false; reason: "conflict"; currentVersion: string | null; message: string }
   | { ok: false; reason: "refused" | "failed"; message: string };
 
@@ -42,7 +48,12 @@ function requireCan(project: { role: Role }, action: Action) {
  * A 404 from the site means the item is not there yet, which is how a new post starts. The doc carries
  * the update waiting to go live on it, on a site that schedules updates (site-api v0.10.0).
  */
-export async function readDoc(env: Env, project: SiteProject, itemId: string, fetcher?: typeof fetch): Promise<ContentDoc | null> {
+export async function readDoc(
+  env: Env,
+  project: SiteProject,
+  itemId: string,
+  fetcher?: typeof fetch,
+): Promise<ContentDoc | null> {
   requireCan(project, "read");
   try {
     return await siteClient(env, project.site, fetcher).get(itemId);
@@ -57,24 +68,48 @@ export async function readDoc(env: Env, project: SiteProject, itemId: string, fe
  * second behind at most), else the person's own draft from before the room. Null when neither has
  * anything the site or Git does not.
  */
-export async function readDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string): Promise<Draft | null> {
+export async function readDraft(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+): Promise<Draft | null> {
   requireCan(project, "read");
   const room = await drizzle(db)
-    .select({ source: rooms.source, savedSource: rooms.savedSource, baseVersion: rooms.baseVersion, updatedAt: rooms.updatedAt })
+    .select({
+      source: rooms.source,
+      savedSource: rooms.savedSource,
+      baseVersion: rooms.baseVersion,
+      updatedAt: rooms.updatedAt,
+    })
     .from(rooms)
     .where(and(eq(rooms.projectId, project.id), eq(rooms.itemId, itemId)))
     .get();
-  if (room) return room.source !== room.savedSource ? { source: room.source, baseVersion: room.baseVersion, updatedAt: room.updatedAt } : null;
+  if (room)
+    return room.source !== room.savedSource
+      ? { source: room.source, baseVersion: room.baseVersion, updatedAt: room.updatedAt }
+      : null;
   return readOwnDraft(db, project, viewer, itemId);
 }
 
 /** The person's own draft, from before the file's room or for a file nobody has opened since. */
-export async function readOwnDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string): Promise<Draft | null> {
+export async function readOwnDraft(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+): Promise<Draft | null> {
   requireCan(project, "read");
   const row = await drizzle(db)
     .select({ source: drafts.source, baseVersion: drafts.baseVersion, updatedAt: drafts.updatedAt })
     .from(drafts)
-    .where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, itemId), eq(drafts.personId, viewer.id)))
+    .where(
+      and(
+        eq(drafts.projectId, project.id),
+        eq(drafts.itemId, itemId),
+        eq(drafts.personId, viewer.id),
+      ),
+    )
     .get();
   return row ?? null;
 }
@@ -92,7 +127,14 @@ export async function autosave(
   const updatedAt = now.toISOString();
   await drizzle(db)
     .insert(drafts)
-    .values({ projectId: project.id, itemId, personId: viewer.id, source: input.source, baseVersion: input.baseVersion, updatedAt })
+    .values({
+      projectId: project.id,
+      itemId,
+      personId: viewer.id,
+      source: input.source,
+      baseVersion: input.baseVersion,
+      updatedAt,
+    })
     .onConflictDoUpdate({
       target: [drafts.projectId, drafts.itemId, drafts.personId],
       set: { source: input.source, baseVersion: input.baseVersion, updatedAt },
@@ -100,11 +142,22 @@ export async function autosave(
   return { source: input.source, baseVersion: input.baseVersion, updatedAt };
 }
 
-export async function discardDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string) {
+export async function discardDraft(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+) {
   requireCan(project, "edit");
   await drizzle(db)
     .delete(drafts)
-    .where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, itemId), eq(drafts.personId, viewer.id)));
+    .where(
+      and(
+        eq(drafts.projectId, project.id),
+        eq(drafts.itemId, itemId),
+        eq(drafts.personId, viewer.id),
+      ),
+    );
 }
 
 /**
@@ -113,20 +166,37 @@ export async function discardDraft(db: D1Database, project: ProjectRole, viewer:
  * creation counts, and a renamed post keeps the Author of the id it was renamed from. null for a post
  * made anywhere else, which then has no Author, only the Owner.
  */
-async function itemAuthor(db: D1Database, projectId: number, itemId: string): Promise<number | null> {
+async function itemAuthor(
+  db: D1Database,
+  projectId: number,
+  itemId: string,
+): Promise<number | null> {
   const d = drizzle(db);
   for (let id: string | null = itemId, hops = 0; id !== null && hops < 10; hops++) {
     const row = await d
       .select({ personId: changes.personId })
       .from(changes)
-      .where(and(eq(changes.projectId, projectId), eq(changes.itemId, id), eq(changes.action, "save"), isNull(changes.versionBefore)))
+      .where(
+        and(
+          eq(changes.projectId, projectId),
+          eq(changes.itemId, id),
+          eq(changes.action, "save"),
+          isNull(changes.versionBefore),
+        ),
+      )
       .orderBy(desc(changes.createdAt))
       .get();
     if (row) return row.personId;
     const renamed = await d
       .select({ from: changes.renamedFrom })
       .from(changes)
-      .where(and(eq(changes.projectId, projectId), eq(changes.itemId, id), eq(changes.action, "content-rename")))
+      .where(
+        and(
+          eq(changes.projectId, projectId),
+          eq(changes.itemId, id),
+          eq(changes.action, "content-rename"),
+        ),
+      )
       .orderBy(desc(changes.createdAt))
       .get();
     id = renamed?.from ?? null;
@@ -138,7 +208,12 @@ async function itemAuthor(db: D1Database, projectId: number, itemId: string): Pr
  * Whether this person may change what the public sees of this post: the Owner on any post, an Author
  * on a post they wrote (roles.ts, `mayPublish`). The authorship record is read only for an Author.
  */
-export async function mayPublishItem(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string): Promise<boolean> {
+export async function mayPublishItem(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+): Promise<boolean> {
   if (can(project.role, "publish")) return true;
   if (!can(project.role, "publish_own")) return false;
   return mayPublish(project.role, (await itemAuthor(db, project.id, itemId)) === viewer.id);
@@ -177,14 +252,23 @@ export async function writeToSite(
   else if (!can(project.role, "publish") && !can(project.role, "publish_own")) forbid();
   const client = siteClient(env, project.site, fetcher);
   const current = await readDoc(env, project, itemId, fetcher);
-  if (isPublic(request.action, current) && !(await mayPublishItem(env.DB, project, viewer, itemId))) forbid();
+  if (isPublic(request.action, current) && !(await mayPublishItem(env.DB, project, viewer, itemId)))
+    forbid();
 
   // Scheduling a live post keeps it live only on a site that holds the update apart (v0.10.0). An
   // older site would take the post down until the time came, so Carrel does not ask it.
-  if ((request.action === "schedule" || request.action === "unschedule") && current?.status === "published") {
+  if (
+    (request.action === "schedule" || request.action === "unschedule") &&
+    current?.status === "published"
+  ) {
     const { capabilities } = await client.meta();
     if (capabilities.scheduledUpdates !== true) {
-      return { ok: false, reason: "refused", message: "This site cannot keep a post live while an update waits, so scheduling would take it off the site until then. Save the change now, or schedule it once the site supports scheduled updates." };
+      return {
+        ok: false,
+        reason: "refused",
+        message:
+          "This site cannot keep a post live while an update waits, so scheduling would take it off the site until then. Save the change now, or schedule it once the site supports scheduled updates.",
+      };
     }
   }
   if (request.action === "unschedule" && !current?.scheduledUpdate) {
@@ -194,14 +278,24 @@ export async function writeToSite(
   // A legal page has its shared sections written in and its date stamped; a page the site keeps public is not taken down.
   const legal = await checkLegalWrite(env.DB, project, itemId, request, current, new Date());
   if (!legal.ok) return { ok: false, reason: "refused", message: legal.message };
-  if ("source" in request && request.source !== undefined) request = { ...request, source: legal.source };
+  if ("source" in request && request.source !== undefined)
+    request = { ...request, source: legal.source };
 
   // An image with no alt text blocks the text going out (Dustin approved, 2026-10-31): a publish, a
   // schedule, or a save to a post the public already sees. The refusal names each image. So do the two
   // broken search fields: a share image with no alt text, a canonical that is not a full https address.
-  if (request.action === "publish" || request.action === "schedule" || (request.action === "save" && isPublic(request.action, current))) {
-    const outgoing = "source" in request && request.source !== undefined ? request.source : (current?.source ?? "");
-    const refusal = missingAltRefusal(outgoing) ?? searchFieldRefusal(outgoing, await listedSearchFields(env, project, outgoing, fetcher));
+  if (
+    request.action === "publish" ||
+    request.action === "schedule" ||
+    (request.action === "save" && isPublic(request.action, current))
+  ) {
+    const outgoing =
+      "source" in request && request.source !== undefined
+        ? request.source
+        : (current?.source ?? "");
+    const refusal =
+      missingAltRefusal(outgoing) ??
+      searchFieldRefusal(outgoing, await listedSearchFields(env, project, outgoing, fetcher));
     if (refusal) return { ok: false, reason: "refused", message: refusal };
   }
 
@@ -210,10 +304,18 @@ export async function writeToSite(
   try {
     switch (request.action) {
       case "save":
-        result = await client.saveDraft(itemId, { source: request.source, expectedVersion: request.expectedVersion, changeId });
+        result = await client.saveDraft(itemId, {
+          source: request.source,
+          expectedVersion: request.expectedVersion,
+          changeId,
+        });
         break;
       case "publish":
-        result = await client.publish(itemId, { expectedVersion: request.expectedVersion, changeId, source: request.source });
+        result = await client.publish(itemId, {
+          expectedVersion: request.expectedVersion,
+          changeId,
+          source: request.source,
+        });
         break;
       case "schedule":
         result = await client.schedule(itemId, {
@@ -224,10 +326,16 @@ export async function writeToSite(
         });
         break;
       case "unschedule":
-        result = await client.cancelSchedule(itemId, { expectedVersion: request.expectedVersion, changeId });
+        result = await client.cancelSchedule(itemId, {
+          expectedVersion: request.expectedVersion,
+          changeId,
+        });
         break;
       case "unpublish":
-        result = await client.unpublish(itemId, { expectedVersion: request.expectedVersion, changeId });
+        result = await client.unpublish(itemId, {
+          expectedVersion: request.expectedVersion,
+          changeId,
+        });
         break;
     }
   } catch (error) {
@@ -236,33 +344,52 @@ export async function writeToSite(
         ok: false,
         reason: "conflict",
         currentVersion: error.body.currentVersion ?? null,
-        message: "The post changed on the site since you opened it. Your text is kept here; reload the site's version to compare before saving.",
+        message:
+          "The post changed on the site since you opened it. Your text is kept here; reload the site's version to compare before saving.",
       };
     }
     // The site's own words for a refusal, a text it cannot take or a write it does not do for this kind.
-    if (error instanceof SiteApiError && error.body && ["refused", "invalid", "not-implemented"].includes(error.body.error)) {
+    if (
+      error instanceof SiteApiError &&
+      error.body &&
+      ["refused", "invalid", "not-implemented"].includes(error.body.error)
+    ) {
       return { ok: false, reason: "refused", message: error.body.message };
     }
-    console.error(JSON.stringify({ write: "failed", itemId, action: request.action, error: String(error) }));
-    return { ok: false, reason: "failed", message: "The site did not accept the write. Your text is kept here." };
+    console.error(
+      JSON.stringify({ write: "failed", itemId, action: request.action, error: String(error) }),
+    );
+    return {
+      ok: false,
+      reason: "failed",
+      message: "The site did not accept the write. Your text is kept here.",
+    };
   }
 
-  await drizzle(env.DB).insert(changes).values({
-    id: changeId,
-    projectId: project.id,
-    itemId,
-    personId: viewer.id,
-    action: request.action,
-    versionBefore: current?.version ?? null,
-    versionAfter: result.version,
-    client: opts.client ?? null,
-  });
+  await drizzle(env.DB)
+    .insert(changes)
+    .values({
+      id: changeId,
+      projectId: project.id,
+      itemId,
+      personId: viewer.id,
+      action: request.action,
+      versionBefore: current?.version ?? null,
+      versionAfter: result.version,
+      client: opts.client ?? null,
+    });
 
   // The draft is done once its text reached the site; an unpublish sends no text, so it stays.
   if ("source" in request && request.source !== undefined && !opts.keepDraft) {
     await drizzle(env.DB)
       .delete(drafts)
-      .where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, itemId), eq(drafts.personId, viewer.id)));
+      .where(
+        and(
+          eq(drafts.projectId, project.id),
+          eq(drafts.itemId, itemId),
+          eq(drafts.personId, viewer.id),
+        ),
+      );
   }
 
   // The write landed; a failed re-read only leaves the index to the next refresh.
@@ -272,12 +399,26 @@ export async function writeToSite(
     // A piece going live is the one event social posts may announce (design decision 5).
     if (request.action === "publish" && doc.status === "published") {
       const connection = siteConnection(env, project.site);
-      const url = connection.state === "connected" && doc.path ? new URL(doc.path, connection.origin).href : "";
-      await recordPublication(env.DB, project.id, { id: itemId, title: doc.title, url, summary: summaryFrom(doc.source) });
+      const url =
+        connection.state === "connected" && doc.path
+          ? new URL(doc.path, connection.origin).href
+          : "";
+      await recordPublication(env.DB, project.id, {
+        id: itemId,
+        title: doc.title,
+        url,
+        summary: summaryFrom(doc.source),
+      });
     }
   } catch (error) {
     console.error(JSON.stringify({ index: "after-write-failed", itemId, error: String(error) }));
   }
 
-  return { ok: true, action: request.action, version: result.version, status: result.status, changeId };
+  return {
+    ok: true,
+    action: request.action,
+    version: result.version,
+    status: result.status,
+    changeId,
+  };
 }

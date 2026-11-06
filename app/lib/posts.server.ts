@@ -13,7 +13,11 @@
 // - Carrel's own state: a post with unsaved changes in Carrel is left alone by a tag change or a
 //   rename, a copy never takes an id Carrel already uses, and a row says when AI drafts wait on it.
 
-import { runPostsIntent, type ContentSource, type IntentResult } from "@dustinedwards/site-api/admin";
+import {
+  runPostsIntent,
+  type ContentSource,
+  type IntentResult,
+} from "@dustinedwards/site-api/admin";
 import type { SiteClient } from "@dustinedwards/site-api/client";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -41,9 +45,25 @@ const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
   "post-rename": "content-rename",
 };
 
-type Write = { itemId: string; renamedFrom: string | null; versionBefore: string | null; versionAfter: string | null };
+type Write = {
+  itemId: string;
+  renamedFrom: string | null;
+  versionBefore: string | null;
+  versionAfter: string | null;
+};
 
-const WRITES = ["saveDraft", "publish", "schedule", "cancelSchedule", "unpublish", "delete", "setTags", "rename", "trash", "restore"] as const;
+const WRITES = [
+  "saveDraft",
+  "publish",
+  "schedule",
+  "cancelSchedule",
+  "unpublish",
+  "delete",
+  "setTags",
+  "rename",
+  "trash",
+  "restore",
+] as const;
 
 /**
  * The site's client, noting each write it sends by its change id: the kit's record hook names only the
@@ -52,20 +72,37 @@ const WRITES = ["saveDraft", "publish", "schedule", "cancelSchedule", "unpublish
 function noting(client: SiteClient, writes: Map<string, Write>): SiteClient {
   const wrapped: Record<string, unknown> = { ...client };
   for (const name of WRITES) {
-    const send = client[name] as (id: string, input: { changeId: string; expectedVersion?: string | null; newId?: string }) => Promise<{ version?: string }>;
-    wrapped[name] = async (id: string, input: { changeId: string; expectedVersion?: string | null; newId?: string }) => {
+    const send = client[name] as (
+      id: string,
+      input: { changeId: string; expectedVersion?: string | null; newId?: string },
+    ) => Promise<{ version?: string }>;
+    wrapped[name] = async (
+      id: string,
+      input: { changeId: string; expectedVersion?: string | null; newId?: string },
+    ) => {
       const written = await send(id, input);
-      writes.set(input.changeId, { itemId: input.newId ?? id, renamedFrom: input.newId ? id : null, versionBefore: input.expectedVersion ?? null, versionAfter: written.version ?? null });
+      writes.set(input.changeId, {
+        itemId: input.newId ?? id,
+        renamedFrom: input.newId ? id : null,
+        versionBefore: input.expectedVersion ?? null,
+        versionAfter: written.version ?? null,
+      });
       return written;
     };
   }
   return wrapped as SiteClient;
 }
 
-const editorHref = (slug: string, id: string) => `/p/${encodeURIComponent(slug)}/e/${encodeURIComponent(id)}`;
+const editorHref = (slug: string, id: string) =>
+  `/p/${encodeURIComponent(slug)}/e/${encodeURIComponent(id)}`;
 
 /** One site's posts, as the content kit reads and writes them for this person. */
-export function postsSource(env: Env, project: SiteProject, viewer: Viewer, fetcher?: typeof fetch): ContentSource {
+export function postsSource(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  fetcher?: typeof fetch,
+): ContentSource {
   const client = siteClient(env, project.site, fetcher);
   const writes = new Map<string, Write>();
   return {
@@ -73,11 +110,16 @@ export function postsSource(env: Env, project: SiteProject, viewer: Viewer, fetc
     client: noting(client, writes),
     editorHref: (id) => editorHref(project.slug, id),
     async notes(ids) {
-      const waiting = new Map((await waitingWork(env.DB, project, viewer)).map((w) => [w.itemId, w.aiDrafts]));
+      const waiting = new Map(
+        (await waitingWork(env.DB, project, viewer)).map((w) => [w.itemId, w.aiDrafts]),
+      );
       const notes: Record<string, { text: string; tone: "info" }[]> = {};
       for (const id of ids) {
         const n = waiting.get(id) ?? 0;
-        if (n > 0) notes[id] = [{ text: n === 1 ? "1 AI draft waiting" : `${n} AI drafts waiting`, tone: "info" }];
+        if (n > 0)
+          notes[id] = [
+            { text: n === 1 ? "1 AI draft waiting" : `${n} AI drafts waiting`, tone: "info" },
+          ];
       }
       return notes;
     },
@@ -115,10 +157,17 @@ export function postsSource(env: Env, project: SiteProject, viewer: Viewer, fetc
       // The index is a cache; a failed read-back leaves it to the next refresh.
       try {
         if (write.renamedFrom) await removeFromIndex(env.DB, project.id, write.renamedFrom);
-        if (action === "content-delete" || action === "content-trash") await removeFromIndex(env.DB, project.id, write.itemId);
+        if (action === "content-delete" || action === "content-trash")
+          await removeFromIndex(env.DB, project.id, write.itemId);
         else await indexDoc(env.DB, project.id, await client.get(write.itemId));
       } catch (error) {
-        console.error(JSON.stringify({ index: "after-write-failed", itemId: write.itemId, error: String(error) }));
+        console.error(
+          JSON.stringify({
+            index: "after-write-failed",
+            itemId: write.itemId,
+            error: String(error),
+          }),
+        );
       }
     },
   };
@@ -128,12 +177,20 @@ export function postsSource(env: Env, project: SiteProject, viewer: Viewer, fetc
  * One posted intent, as the kit runs it. The same for the list's forms with no script and the posts
  * endpoint's. Refresh, the list's one toolbar action of Carrel's own, reads the site into the index.
  */
-export async function runIntent(env: Env, viewer: Viewer, slug: string | undefined, form: FormData): Promise<IntentResult> {
+export async function runIntent(
+  env: Env,
+  viewer: Viewer,
+  slug: string | undefined,
+  form: FormData,
+): Promise<IntentResult> {
   const project = await requireSiteProject(env.DB, viewer, slug, "read");
   return answer(async () => {
     if (form.get("intent") === "refresh") {
       const done = await refreshIndex(env, { id: project.id, site: project.site });
-      return { ok: true, message: `${done.listed} posts listed, ${done.fetched} read in full${done.pending > 0 ? `, ${done.pending} more on the next refresh` : ""}.` };
+      return {
+        ok: true,
+        message: `${done.listed} posts listed, ${done.fetched} read in full${done.pending > 0 ? `, ${done.pending} more on the next refresh` : ""}.`,
+      };
     }
     return await runPostsIntent(postsSource(env, project, viewer), form);
   }, siteUnreachable);

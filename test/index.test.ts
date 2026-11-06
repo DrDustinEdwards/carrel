@@ -26,8 +26,13 @@ beforeEach(async () => {
 async function seeded(posts: Record<string, string>, published: string[] = []) {
   const adapter = memoryAdapter();
   for (const [id, source] of Object.entries(posts)) {
-    const saved = await adapter.content.saveDraft(id, { source, expectedVersion: null, changeId: "seed" });
-    if (published.includes(id)) await adapter.content.publish(id, { expectedVersion: saved.version, changeId: "seed" });
+    const saved = await adapter.content.saveDraft(id, {
+      source,
+      expectedVersion: null,
+      changeId: "seed",
+    });
+    if (published.includes(id))
+      await adapter.content.publish(id, { expectedVersion: saved.version, changeId: "seed" });
   }
   return fakeSite(adapter);
 }
@@ -37,21 +42,36 @@ describe("refresh", () => {
     const site = await seeded(
       {
         "workers-caching": "---\ntitle: Caching on Workers\n---\nA note on purge tags.\n",
-        "fts-notes": "---\ntitle: Search notes\n---\nPorter stemming makes searching find searches.\n",
+        "fts-notes":
+          "---\ntitle: Search notes\n---\nPorter stemming makes searching find searches.\n",
       },
       ["workers-caching"],
     );
-    const result = await refreshIndex(connectedEnv(), { id: projectId, site: "dustinedwards" }, site.fetch);
+    const result = await refreshIndex(
+      connectedEnv(),
+      { id: projectId, site: "dustinedwards" },
+      site.fetch,
+    );
     expect(result).toEqual({ listed: 2, fetched: 2, removed: 0, pending: 0 });
 
     const env = connectedEnv();
-    expect((await searchItems(env.DB, projectId, { q: "purge" })).map((i) => i.itemId)).toEqual(["workers-caching"]);
-    expect((await searchItems(env.DB, projectId, { q: "search" })).map((i) => i.itemId)).toEqual(["fts-notes"]);
+    expect((await searchItems(env.DB, projectId, { q: "purge" })).map((i) => i.itemId)).toEqual([
+      "workers-caching",
+    ]);
+    expect((await searchItems(env.DB, projectId, { q: "search" })).map((i) => i.itemId)).toEqual([
+      "fts-notes",
+    ]);
     // A prefix while typing. The porter stemmer stores "stemming" as "stem", so "stem" finds it and
     // "stemm" would not: a partial word past the stem misses until the word is complete.
-    expect((await searchItems(env.DB, projectId, { q: "stem" })).map((i) => i.itemId)).toEqual(["fts-notes"]);
-    expect((await searchItems(env.DB, projectId, { q: "stemming" })).map((i) => i.itemId)).toEqual(["fts-notes"]);
-    expect((await searchItems(env.DB, projectId, { status: "published" })).map((i) => i.itemId)).toEqual(["workers-caching"]);
+    expect((await searchItems(env.DB, projectId, { q: "stem" })).map((i) => i.itemId)).toEqual([
+      "fts-notes",
+    ]);
+    expect((await searchItems(env.DB, projectId, { q: "stemming" })).map((i) => i.itemId)).toEqual([
+      "fts-notes",
+    ]);
+    expect(
+      (await searchItems(env.DB, projectId, { status: "published" })).map((i) => i.itemId),
+    ).toEqual(["workers-caching"]);
     expect(await searchItems(env.DB, projectId, { q: "nothing-like-this" })).toEqual([]);
   });
 
@@ -64,14 +84,19 @@ describe("refresh", () => {
     expect(again.fetched).toBe(0);
 
     const current = site.adapter.store.get("a")!.doc.version;
-    await site.adapter.content.saveDraft("a", { source: "# A\nnew words\n", expectedVersion: current, changeId: "x" });
+    await site.adapter.content.saveDraft("a", {
+      source: "# A\nnew words\n",
+      expectedVersion: current,
+      changeId: "x",
+    });
     site.adapter.store.delete("b");
     const third = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, site.fetch);
     expect(third).toMatchObject({ listed: 1, fetched: 1, removed: 1 });
-    expect((await searchItems(env.DB, projectId, { q: "new words" })).map((i) => i.itemId)).toEqual(["a"]);
+    expect((await searchItems(env.DB, projectId, { q: "new words" })).map((i) => i.itemId)).toEqual(
+      ["a"],
+    );
     expect(await searchItems(env.DB, projectId, { q: "B" })).toEqual([]);
   });
-
 });
 
 /**
@@ -122,15 +147,24 @@ function countingD1(db: D1Database) {
 
 describe("the refresh's subrequests (Workers Paid)", () => {
   it("stays under the limit when every post needs its body read: counted, not assumed", async () => {
-    const posts = Object.fromEntries(Array.from({ length: MAX_BODY_FETCHES + 50 }, (_, i) => [`p${String(i).padStart(3, "0")}`, `# P${i}
-`]));
+    const posts = Object.fromEntries(
+      Array.from({ length: MAX_BODY_FETCHES + 50 }, (_, i) => [
+        `p${String(i).padStart(3, "0")}`,
+        `# P${i}
+`,
+      ]),
+    );
     const site = await seeded(posts);
     const counting = countingD1(testEnv.DB);
     const env = connectedEnv({ DB: counting.db });
     const before = site.requests.length;
 
     const result = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, site.fetch);
-    expect(result).toMatchObject({ listed: MAX_BODY_FETCHES + 50, fetched: MAX_BODY_FETCHES, pending: 50 });
+    expect(result).toMatchObject({
+      listed: MAX_BODY_FETCHES + 50,
+      fetched: MAX_BODY_FETCHES,
+      pending: 50,
+    });
 
     const fetches = site.requests.length - before;
     const used = fetches + counting.calls();

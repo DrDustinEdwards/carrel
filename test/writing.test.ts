@@ -5,12 +5,33 @@
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { authorshipRecord, refreshBook, requireBookProject, saveBookFile } from "~/lib/books.server";
+import {
+  authorshipRecord,
+  refreshBook,
+  requireBookProject,
+  saveBookFile,
+} from "~/lib/books.server";
 import { describe as describeFile, readMeta } from "~/lib/novels/layout";
 import { parseFile } from "~/lib/novels/frontmatter";
 import { clearTokenCache } from "~/lib/novels/repo.server";
-import { addUntyped, progressEntries, readGoal, saveGoal, saveStatusList, statusList } from "~/lib/writing.server";
-import { dayKey, dayTotals, pace, recentDays, streak, targetFor, writingDaysBetween, type Goal } from "~/lib/writing/progress";
+import {
+  addUntyped,
+  progressEntries,
+  readGoal,
+  saveGoal,
+  saveStatusList,
+  statusList,
+} from "~/lib/writing.server";
+import {
+  dayKey,
+  dayTotals,
+  pace,
+  recentDays,
+  streak,
+  targetFor,
+  writingDaysBetween,
+  type Goal,
+} from "~/lib/writing/progress";
 import { cleanLabels, labelFor, STARTING_STATUSES } from "~/lib/writing/status";
 import { action as bookAction, loader as bookLoader } from "~/routes/book";
 import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
@@ -21,7 +42,8 @@ import { fakeNovels, githubStyleKey } from "./novels";
 import { viewerFor, routeContext, settle } from "./site";
 
 const SLUG = "test-book";
-const HEADER = (status: string, extra = "") => `---\nstatus: ${status}\nsummary: Wade at the gate\ntarget: 2,000\n${extra}pov: Wade\n---\n\n`;
+const HEADER = (status: string, extra = "") =>
+  `---\nstatus: ${status}\nsummary: Wade at the gate\ntarget: 2,000\n${extra}pov: Wade\n---\n\n`;
 const ONE = "chapters/01-arrival/01-the-gate.md";
 const TWO = "chapters/01-arrival/02-supper.md";
 const THREE = "chapters/02-the-crossing/01-the-chain.md";
@@ -31,8 +53,21 @@ const THREE = "chapters/02-the-crossing/01-the-chain.md";
 describe("the header keys", () => {
   it("reads status, summary, target and limit on a scene, and target and deadline on the title page", () => {
     const scene = readMeta(ONE, parseFile(HEADER("Drafting", "limit: 3_000\n")).data, true);
-    expect(scene).toMatchObject({ kind: "scene", header: { status: "Drafting", summary: "Wade at the gate", target: 2000, limit: 3000, pov: "Wade" } });
-    const book = readMeta("book.md", parseFile("---\ntitle: T\ntarget: 90000\ndeadline: 2027-03-01\n---\n").data, true);
+    expect(scene).toMatchObject({
+      kind: "scene",
+      header: {
+        status: "Drafting",
+        summary: "Wade at the gate",
+        target: 2000,
+        limit: 3000,
+        pov: "Wade",
+      },
+    });
+    const book = readMeta(
+      "book.md",
+      parseFile("---\ntitle: T\ntarget: 90000\ndeadline: 2027-03-01\n---\n").data,
+      true,
+    );
     expect(book).toMatchObject({ kind: "book", entry: { target: 90000, deadline: "2027-03-01" } });
   });
 
@@ -58,9 +93,20 @@ describe("status lists", () => {
   });
 
   it("PLANT: refuses a list with a label twice, or none at all, and drops blank rows", () => {
-    expect(cleanLabels([{ label: "Idea", color: 1 }, { label: "idea", color: 2 }])).toMatchObject({ ok: false });
+    expect(
+      cleanLabels([
+        { label: "Idea", color: 1 },
+        { label: "idea", color: 2 },
+      ]),
+    ).toMatchObject({ ok: false });
     expect(cleanLabels([{ label: " ", color: 1 }])).toMatchObject({ ok: false });
-    expect(cleanLabels([{ label: " Idea ", color: "9" }, { label: "", color: 2 }, { label: "Done", color: "4" }])).toEqual({
+    expect(
+      cleanLabels([
+        { label: " Idea ", color: "9" },
+        { label: "", color: 2 },
+        { label: "Done", color: "4" },
+      ]),
+    ).toEqual({
       ok: true,
       labels: [
         { label: "Idea", color: 1 },
@@ -93,12 +139,22 @@ describe("the local day", () => {
     const entries = [{ at: "2026-10-10T12:00:00Z", typed: 40, removed: 100 }];
     expect(dayTotals(entries, "UTC", false).get("2026-10-10")).toBe(0);
     expect(dayTotals(entries, "UTC", true).get("2026-10-10")).toBe(-60);
-    expect(dayTotals([{ at: "2026-10-10T12:00:00Z", typed: 400, removed: 100 }], "UTC", false).get("2026-10-10")).toBe(300);
+    expect(
+      dayTotals([{ at: "2026-10-10T12:00:00Z", typed: 400, removed: 100 }], "UTC", false).get(
+        "2026-10-10",
+      ),
+    ).toBe(300);
   });
 });
 
 describe("targets and pace", () => {
-  const goal = (g: Partial<Goal>): Goal => ({ mode: "daily", dailyTarget: 500, writingDays: EVERY_DAY, allowNegative: false, ...g });
+  const goal = (g: Partial<Goal>): Goal => ({
+    mode: "daily",
+    dailyTarget: 500,
+    writingDays: EVERY_DAY,
+    allowNegative: false,
+    ...g,
+  });
 
   it("counts only the chosen writing days between today and the deadline", () => {
     // Saturday 10 October to Friday 16 October 2026: five weekdays.
@@ -107,21 +163,56 @@ describe("targets and pace", () => {
   });
 
   it("spreads what was left this morning over the writing days to the deadline, and holds still while you write", () => {
-    const base = { projectTarget: 10_000, deadline: "2026-10-16", today: "2026-10-12", writingDays: WEEKDAYS_ONLY };
+    const base = {
+      projectTarget: 10_000,
+      deadline: "2026-10-16",
+      today: "2026-10-12",
+      writingDays: WEEKDAYS_ONLY,
+    };
     // Monday to Friday is five writing days; 7,500 words were written before today.
-    expect(pace({ ...base, wordsNow: 7_500, wordsToday: 0 })).toEqual({ ok: true, perDay: 500, remaining: 2_500, days: 5 });
-    expect(pace({ ...base, wordsNow: 7_800, wordsToday: 300 })).toEqual({ ok: true, perDay: 500, remaining: 2_500, days: 5 });
-    expect(pace({ ...base, deadline: "2026-10-01", wordsNow: 0, wordsToday: 0 })).toEqual({ ok: false, reason: "past" });
-    expect(pace({ ...base, projectTarget: null, wordsNow: 0, wordsToday: 0 })).toEqual({ ok: false, reason: "no-target" });
-    expect(pace({ ...base, wordsNow: 10_000, wordsToday: 0 })).toEqual({ ok: false, reason: "done" });
+    expect(pace({ ...base, wordsNow: 7_500, wordsToday: 0 })).toEqual({
+      ok: true,
+      perDay: 500,
+      remaining: 2_500,
+      days: 5,
+    });
+    expect(pace({ ...base, wordsNow: 7_800, wordsToday: 300 })).toEqual({
+      ok: true,
+      perDay: 500,
+      remaining: 2_500,
+      days: 5,
+    });
+    expect(pace({ ...base, deadline: "2026-10-01", wordsNow: 0, wordsToday: 0 })).toEqual({
+      ok: false,
+      reason: "past",
+    });
+    expect(pace({ ...base, projectTarget: null, wordsNow: 0, wordsToday: 0 })).toEqual({
+      ok: false,
+      reason: "no-target",
+    });
+    expect(pace({ ...base, wordsNow: 10_000, wordsToday: 0 })).toEqual({
+      ok: false,
+      reason: "done",
+    });
   });
 
   it("has no target on a day off, by hand or from the deadline", () => {
     const saturday = "2026-10-10";
-    expect(targetFor(goal({ writingDays: WEEKDAYS_ONLY }), saturday, { ok: false, reason: "no-target" })).toBeNull();
+    expect(
+      targetFor(goal({ writingDays: WEEKDAYS_ONLY }), saturday, { ok: false, reason: "no-target" }),
+    ).toBeNull();
     expect(targetFor(goal({}), saturday, { ok: false, reason: "no-target" })).toBe(500);
-    expect(targetFor(goal({ mode: "deadline" }), saturday, { ok: true, perDay: 321, remaining: 1, days: 1 })).toBe(321);
-    expect(targetFor(goal({ mode: "deadline" }), saturday, { ok: false, reason: "no-deadline" })).toBeNull();
+    expect(
+      targetFor(goal({ mode: "deadline" }), saturday, {
+        ok: true,
+        perDay: 321,
+        remaining: 1,
+        days: 1,
+      }),
+    ).toBe(321);
+    expect(
+      targetFor(goal({ mode: "deadline" }), saturday, { ok: false, reason: "no-deadline" }),
+    ).toBeNull();
   });
 });
 
@@ -129,9 +220,16 @@ describe("streaks", () => {
   const totals = (days: Record<string, number>) => new Map(Object.entries(days));
 
   it("counts days in a row at the target, and today does not break it before it is met", () => {
-    const t = totals({ "2026-10-07": 600, "2026-10-08": 500, "2026-10-09": 700, "2026-10-10": 100 });
+    const t = totals({
+      "2026-10-07": 600,
+      "2026-10-08": 500,
+      "2026-10-09": 700,
+      "2026-10-10": 100,
+    });
     expect(streak(t, "2026-10-10", 500, EVERY_DAY)).toBe(3);
-    expect(streak(totals({ ...Object.fromEntries(t), "2026-10-10": 500 }), "2026-10-10", 500, EVERY_DAY)).toBe(4);
+    expect(
+      streak(totals({ ...Object.fromEntries(t), "2026-10-10": 500 }), "2026-10-10", 500, EVERY_DAY),
+    ).toBe(4);
   });
 
   it("PLANT: a missed writing day ends the run; a day off does not", () => {
@@ -189,13 +287,29 @@ function body(fields: Record<string, string | string[]>) {
   return form;
 }
 
-const post = async (route: (args: never) => Promise<unknown>, email: string, url: string, fields: Record<string, string | string[]>, params: Record<string, string>) =>
-  settle(route({ request: new Request(`https://carrel.test${url}`, { method: "POST", body: body(fields) }), params, context: await contextFor(email) } as never));
+const post = async (
+  route: (args: never) => Promise<unknown>,
+  email: string,
+  url: string,
+  fields: Record<string, string | string[]>,
+  params: Record<string, string>,
+) =>
+  settle(
+    route({
+      request: new Request(`https://carrel.test${url}`, { method: "POST", body: body(fields) }),
+      params,
+      context: await contextFor(email),
+    } as never),
+  );
 
 async function outliner(email: string, query = "") {
-  return settle(outlinerLoader({ request: new Request(`https://carrel.test/b/${SLUG}/outliner${query}`), params: { project: SLUG }, context: await contextFor(email) } as never)) as Promise<
-    Awaited<ReturnType<typeof outlinerLoader>>
-  >;
+  return settle(
+    outlinerLoader({
+      request: new Request(`https://carrel.test/b/${SLUG}/outliner${query}`),
+      params: { project: SLUG },
+      context: await contextFor(email),
+    } as never),
+  ) as Promise<Awaited<ReturnType<typeof outlinerLoader>>>;
 }
 
 async function refresh() {
@@ -216,21 +330,35 @@ describe("typed words on save", () => {
       untyped: 1,
     });
     expect(saved.ok).toBe(true);
-    const row = await testEnv.DB.prepare("SELECT words_added, words_typed FROM authorship").first<{ words_added: number; words_typed: number }>();
+    const row = await testEnv.DB.prepare("SELECT words_added, words_typed FROM authorship").first<{
+      words_added: number;
+      words_typed: number;
+    }>();
     expect(row).toEqual({ words_added: 10, words_typed: 6 });
     // The count is taken by the save, so the next save starts from nothing.
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM untyped_words").first<{ n: number }>()).toEqual({ n: 0 });
+    expect(
+      await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM untyped_words").first<{ n: number }>(),
+    ).toEqual({ n: 0 });
   });
 
   it("counts nothing for an AI client's save, or a save from a version the index does not hold", async () => {
     await refresh();
     const { viewer, project } = await as("owner@test.invalid", "edit");
     let current = gh.files.get(`${SLUG}/${ONE}`)!;
-    await saveBookFile(testEnv.DB, gh.repo, project, viewer, ONE, { source: `${current.source}More words.\n`, expectedVersion: current.sha, client: "Claude" });
+    await saveBookFile(testEnv.DB, gh.repo, project, viewer, ONE, {
+      source: `${current.source}More words.\n`,
+      expectedVersion: current.sha,
+      client: "Claude",
+    });
     current = gh.files.get(`${SLUG}/${TWO}`)!;
     await testEnv.DB.prepare("UPDATE book_files SET sha = 'stale' WHERE path = ?").bind(TWO).run();
-    await saveBookFile(testEnv.DB, gh.repo, project, viewer, TWO, { source: `${current.source}More words.\n`, expectedVersion: current.sha });
-    const rows = await testEnv.DB.prepare("SELECT words_typed FROM authorship").all<{ words_typed: number | null }>();
+    await saveBookFile(testEnv.DB, gh.repo, project, viewer, TWO, {
+      source: `${current.source}More words.\n`,
+      expectedVersion: current.sha,
+    });
+    const rows = await testEnv.DB.prepare("SELECT words_typed FROM authorship").all<{
+      words_typed: number | null;
+    }>();
     expect(rows.results).toEqual([{ words_typed: null }, { words_typed: null }]);
     expect(await progressEntries(testEnv.DB, project, viewer)).toEqual([]);
     expect((await authorshipRecord(testEnv.DB, project)).length).toBe(2);
@@ -242,14 +370,38 @@ describe("typed words on save", () => {
     const current = gh.files.get(`${SLUG}/${ONE}`)!;
     const url = `/b/${SLUG}/f/${ONE}`;
     const params = { project: SLUG, "*": ONE };
-    await settle(fileLoader({ request: new Request(`https://carrel.test${url}`), params, context: await contextFor("owner@test.invalid") } as never));
-    const ai = await testEnv.DB.prepare("INSERT INTO ai_drafts (project_id, item_id, person_id, client, source, base_version, note) VALUES (?, ?, ?, 'Claude', ?, ?, '') RETURNING id")
-      .bind(project.id, ONE, viewer.id, `${HEADER("Drafting")}An AI wrote these five words.\n`, current.sha)
+    await settle(
+      fileLoader({
+        request: new Request(`https://carrel.test${url}`),
+        params,
+        context: await contextFor("owner@test.invalid"),
+      } as never),
+    );
+    const ai = await testEnv.DB.prepare(
+      "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source, base_version, note) VALUES (?, ?, ?, 'Claude', ?, ?, '') RETURNING id",
+    )
+      .bind(
+        project.id,
+        ONE,
+        viewer.id,
+        `${HEADER("Drafting")}An AI wrote these five words.\n`,
+        current.sha,
+      )
       .first<{ id: number }>();
-    await post(fileAction, "owner@test.invalid", url, { intent: "use-ai-draft", draft: String(ai!.id) }, params);
-    expect(await testEnv.DB.prepare("SELECT words FROM untyped_words").first<{ words: number }>()).toEqual({ words: 6 });
+    await post(
+      fileAction,
+      "owner@test.invalid",
+      url,
+      { intent: "use-ai-draft", draft: String(ai!.id) },
+      params,
+    );
+    expect(
+      await testEnv.DB.prepare("SELECT words FROM untyped_words").first<{ words: number }>(),
+    ).toEqual({ words: 6 });
     await post(fileAction, "owner@test.invalid", url, { intent: "discard" }, params);
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM untyped_words").first<{ n: number }>()).toEqual({ n: 0 });
+    expect(
+      await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM untyped_words").first<{ n: number }>(),
+    ).toEqual({ n: 0 });
   });
 
   it("gives each person their own saves only", async () => {
@@ -257,35 +409,98 @@ describe("typed words on save", () => {
     const owner = await as("owner@test.invalid", "edit");
     const editor = await as("editor@test.invalid", "edit");
     const current = gh.files.get(`${SLUG}/${ONE}`)!;
-    await saveBookFile(testEnv.DB, gh.repo, editor.project, editor.viewer, ONE, { source: `${current.source}Four more words here.\n`, expectedVersion: current.sha });
+    await saveBookFile(testEnv.DB, gh.repo, editor.project, editor.viewer, ONE, {
+      source: `${current.source}Four more words here.\n`,
+      expectedVersion: current.sha,
+    });
     expect(await progressEntries(testEnv.DB, owner.project, owner.viewer)).toEqual([]);
-    expect(await progressEntries(testEnv.DB, editor.project, editor.viewer)).toMatchObject([{ typed: 4, removed: 0 }]);
+    expect(await progressEntries(testEnv.DB, editor.project, editor.viewer)).toMatchObject([
+      { typed: 4, removed: 0 },
+    ]);
   });
 });
 
 describe("goals", () => {
   it("PLANT: a Reader cannot set a goal; an Editor sets their own, checked", async () => {
-    expect(((await post(bookAction, "reader@test.invalid", `/b/${SLUG}`, { intent: "goal", mode: "daily", dailyTarget: "500", writingDays: ["1"] }, { project: SLUG })) as Response).status).toBe(403);
-    const bad = await post(bookAction, "editor@test.invalid", `/b/${SLUG}`, { intent: "goal", mode: "daily", dailyTarget: "lots", writingDays: ["1"] }, { project: SLUG });
-    expect(bad).toMatchObject({ goal: { saved: false, error: expect.stringMatching(/whole number/) } });
-    const none = await post(bookAction, "editor@test.invalid", `/b/${SLUG}`, { intent: "goal", mode: "daily", dailyTarget: "500" }, { project: SLUG });
-    expect(none).toMatchObject({ goal: { saved: false, error: expect.stringMatching(/writing day/) } });
-    const ok = await post(bookAction, "editor@test.invalid", `/b/${SLUG}`, { intent: "goal", mode: "deadline", dailyTarget: "1,500", writingDays: ["1", "3", "5"], allowNegative: "1" }, { project: SLUG });
+    expect(
+      (
+        (await post(
+          bookAction,
+          "reader@test.invalid",
+          `/b/${SLUG}`,
+          { intent: "goal", mode: "daily", dailyTarget: "500", writingDays: ["1"] },
+          { project: SLUG },
+        )) as Response
+      ).status,
+    ).toBe(403);
+    const bad = await post(
+      bookAction,
+      "editor@test.invalid",
+      `/b/${SLUG}`,
+      { intent: "goal", mode: "daily", dailyTarget: "lots", writingDays: ["1"] },
+      { project: SLUG },
+    );
+    expect(bad).toMatchObject({
+      goal: { saved: false, error: expect.stringMatching(/whole number/) },
+    });
+    const none = await post(
+      bookAction,
+      "editor@test.invalid",
+      `/b/${SLUG}`,
+      { intent: "goal", mode: "daily", dailyTarget: "500" },
+      { project: SLUG },
+    );
+    expect(none).toMatchObject({
+      goal: { saved: false, error: expect.stringMatching(/writing day/) },
+    });
+    const ok = await post(
+      bookAction,
+      "editor@test.invalid",
+      `/b/${SLUG}`,
+      {
+        intent: "goal",
+        mode: "deadline",
+        dailyTarget: "1,500",
+        writingDays: ["1", "3", "5"],
+        allowNegative: "1",
+      },
+      { project: SLUG },
+    );
     expect(ok).toMatchObject({ goal: { saved: true } });
     const editor = await as("editor@test.invalid");
-    expect(await readGoal(testEnv.DB, editor.project, editor.viewer)).toEqual({ mode: "deadline", dailyTarget: 1500, writingDays: [1, 3, 5], allowNegative: true });
+    expect(await readGoal(testEnv.DB, editor.project, editor.viewer)).toEqual({
+      mode: "deadline",
+      dailyTarget: 1500,
+      writingDays: [1, 3, 5],
+      allowNegative: true,
+    });
     const owner = await as("owner@test.invalid");
-    expect(await readGoal(testEnv.DB, owner.project, owner.viewer)).toMatchObject({ mode: "daily", dailyTarget: null });
+    expect(await readGoal(testEnv.DB, owner.project, owner.viewer)).toMatchObject({
+      mode: "daily",
+      dailyTarget: null,
+    });
   });
 
   it("hands the book page the saves, the goal, and the title page's target and deadline", async () => {
     await refresh();
     const { viewer, project } = await as("owner@test.invalid", "edit");
-    await saveGoal(testEnv.DB, project, viewer, { mode: "daily", dailyTarget: "300", writingDays: ["0", "6"], allowNegative: false });
-    const data = (await bookLoader({ request: new Request(`https://carrel.test/b/${SLUG}`), params: { project: SLUG }, context: await contextFor("owner@test.invalid") } as never)) as Awaited<
-      ReturnType<typeof bookLoader>
-    >;
-    expect(data.progress).toMatchObject({ projectTarget: 10000, deadline: "2027-01-01", goal: { dailyTarget: 300, writingDays: [0, 6] }, entries: [] });
+    await saveGoal(testEnv.DB, project, viewer, {
+      mode: "daily",
+      dailyTarget: "300",
+      writingDays: ["0", "6"],
+      allowNegative: false,
+    });
+    const data = (await bookLoader({
+      request: new Request(`https://carrel.test/b/${SLUG}`),
+      params: { project: SLUG },
+      context: await contextFor("owner@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof bookLoader>>;
+    expect(data.progress).toMatchObject({
+      projectTarget: 10000,
+      deadline: "2027-01-01",
+      goal: { dailyTarget: 300, writingDays: [0, 6] },
+      entries: [],
+    });
     expect(data.chapters[0]!.scenes.map((s) => s.status)).toEqual(["Drafting", "first draft"]);
   });
 });
@@ -306,18 +521,36 @@ describe("the outliner", () => {
 
   it("filters by a label ignoring case, by no status, and by a status not on the list", async () => {
     await refresh();
-    expect((await outliner("reader@test.invalid", "?status=first+draft")).rows.map((r) => r.path)).toEqual([TWO]);
-    expect((await outliner("reader@test.invalid", "?status=none")).rows.map((r) => r.path)).toEqual([THREE]);
-    expect((await outliner("reader@test.invalid", "?status=other")).rows.map((r) => r.status)).toEqual(["Polished"]);
+    expect(
+      (await outliner("reader@test.invalid", "?status=first+draft")).rows.map((r) => r.path),
+    ).toEqual([TWO]);
+    expect((await outliner("reader@test.invalid", "?status=none")).rows.map((r) => r.path)).toEqual(
+      [THREE],
+    );
+    expect(
+      (await outliner("reader@test.invalid", "?status=other")).rows.map((r) => r.status),
+    ).toEqual(["Polished"]);
     expect((await outliner("reader@test.invalid", "?status=final")).rows).toEqual([]);
   });
 
   it("PLANT: a Reader cannot edit the status list; an Editor replaces it, and the outliner follows", async () => {
     await refresh();
     const url = `/b/${SLUG}/outliner`;
-    const reader = await post(outlinerAction, "reader@test.invalid", url, { intent: "labels", label: ["Polished"], color: ["2"] }, { project: SLUG });
+    const reader = await post(
+      outlinerAction,
+      "reader@test.invalid",
+      url,
+      { intent: "labels", label: ["Polished"], color: ["2"] },
+      { project: SLUG },
+    );
     expect((reader as Response).status).toBe(403);
-    const saved = await post(outlinerAction, "editor@test.invalid", url, { intent: "labels", label: ["Drafting", "Polished", ""], color: ["3", "7", "1"] }, { project: SLUG });
+    const saved = await post(
+      outlinerAction,
+      "editor@test.invalid",
+      url,
+      { intent: "labels", label: ["Drafting", "Polished", ""], color: ["3", "7", "1"] },
+      { project: SLUG },
+    );
     expect(saved).toEqual({ saved: true, error: null });
     const { project } = await as("reader@test.invalid");
     expect(await statusList(testEnv.DB, project)).toEqual({
@@ -329,7 +562,14 @@ describe("the outliner", () => {
     });
     const data = await outliner("reader@test.invalid", "?status=other");
     expect(data.rows.map((r) => r.status)).toEqual(["first draft"]);
-    const twice = await saveStatusList(testEnv.DB, (await as("editor@test.invalid", "edit")).project, [{ label: "A", color: 1 }, { label: "a", color: 1 }]);
+    const twice = await saveStatusList(
+      testEnv.DB,
+      (await as("editor@test.invalid", "edit")).project,
+      [
+        { label: "A", color: 1 },
+        { label: "a", color: 1 },
+      ],
+    );
     expect(twice.ok).toBe(false);
   });
 });

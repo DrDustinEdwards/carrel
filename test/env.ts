@@ -17,11 +17,20 @@ export async function resetDb(): Promise<void> {
   await resetTables(testEnv.DB, { keep: ["mcp_calls"] });
 }
 
-export async function addPerson(email: string, opts: { owner?: boolean; disabled?: boolean; reviewer?: boolean } = {}): Promise<number> {
+export async function addPerson(
+  email: string,
+  opts: { owner?: boolean; disabled?: boolean; reviewer?: boolean } = {},
+): Promise<number> {
   const row = await testEnv.DB.prepare(
     "INSERT INTO people (email, name, is_owner, disabled_at, is_reviewer) VALUES (?, ?, ?, ?, ?) RETURNING id",
   )
-    .bind(email, email.split("@")[0], opts.owner ? 1 : 0, opts.disabled ? "2026-09-26T00:00:00Z" : null, opts.reviewer ? 1 : 0)
+    .bind(
+      email,
+      email.split("@")[0],
+      opts.owner ? 1 : 0,
+      opts.disabled ? "2026-09-26T00:00:00Z" : null,
+      opts.reviewer ? 1 : 0,
+    )
     .first<{ id: number }>();
   return row!.id;
 }
@@ -31,21 +40,31 @@ export async function addPerson(email: string, opts: { owner?: boolean; disabled
 let lastProjectId = Math.floor(Math.random() * 1e9);
 
 export async function addProject(slug: string, site: string | null = null): Promise<number> {
-  const row = await testEnv.DB.prepare("INSERT INTO projects (id, slug, name, site) VALUES (?, ?, ?, ?) RETURNING id")
+  const row = await testEnv.DB.prepare(
+    "INSERT INTO projects (id, slug, name, site) VALUES (?, ?, ?, ?) RETURNING id",
+  )
     .bind(++lastProjectId, slug, slug, site)
     .first<{ id: number }>();
   return row!.id;
 }
 
 export async function addBook(slug: string, folder = slug): Promise<number> {
-  const row = await testEnv.DB.prepare("INSERT INTO projects (id, slug, name, book) VALUES (?, ?, ?, ?) RETURNING id")
+  const row = await testEnv.DB.prepare(
+    "INSERT INTO projects (id, slug, name, book) VALUES (?, ?, ?, ?) RETURNING id",
+  )
     .bind(++lastProjectId, slug, `Book ${slug}`, folder)
     .first<{ id: number }>();
   return row!.id;
 }
 
-export async function share(projectId: number, personId: number, role: "reader" | "editor" | "author"): Promise<void> {
-  await testEnv.DB.prepare("INSERT INTO project_members (project_id, person_id, role) VALUES (?, ?, ?)")
+export async function share(
+  projectId: number,
+  personId: number,
+  role: "reader" | "editor" | "author",
+): Promise<void> {
+  await testEnv.DB.prepare(
+    "INSERT INTO project_members (project_id, person_id, role) VALUES (?, ?, ?)",
+  )
     .bind(projectId, personId, role)
     .run();
 }

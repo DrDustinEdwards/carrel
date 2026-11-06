@@ -13,7 +13,14 @@
 //
 // Nothing here scores a draft against an AI detector. The aim is a post that reads like its author.
 
-import { copiedRuns, instructionFor, slopScan, voiceExcerpts, WRITING_RULES, type SlopFinding } from "@dustinedwards/site-runtime/prose";
+import {
+  copiedRuns,
+  instructionFor,
+  slopScan,
+  voiceExcerpts,
+  WRITING_RULES,
+  type SlopFinding,
+} from "@dustinedwards/site-runtime/prose";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -43,7 +50,10 @@ export type VoicePack = {
 };
 
 /** A finding on a draft: the scan's four kinds, and a run copied from an excerpt (which carries an old post's facts). */
-type DraftFinding = Omit<SlopFinding, "kind" | "line"> & { kind: SlopFinding["kind"] | "copied"; line: number | null };
+type DraftFinding = Omit<SlopFinding, "kind" | "line"> & {
+  kind: SlopFinding["kind"] | "copied";
+  line: number | null;
+};
 
 export type DraftCheck = {
   findings: DraftFinding[];
@@ -70,8 +80,7 @@ function strings(json: string): string[] {
  */
 function proseOf(source: string): string {
   return splitSource(source.replace(/\r\n/g, "\n"))
-    .body
-    .replace(/```[\s\S]*?```/g, "")
+    .body.replace(/```[\s\S]*?```/g, "")
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -85,10 +94,21 @@ function proseOf(source: string): string {
 
 export async function readVoicePack(db: D1Database, project: ProjectRole): Promise<VoicePack> {
   if (!can(project.role, "read")) forbid();
-  const row = await drizzle(db).select().from(voicePacks).where(eq(voicePacks.projectId, project.id)).get();
+  const row = await drizzle(db)
+    .select()
+    .from(voicePacks)
+    .where(eq(voicePacks.projectId, project.id))
+    .get();
   if (!row) return { guide: "", own: "", excerpts: [], from: "posts", pieces: 0, builtAt: null };
   const from: VoiceSource = piecesOf(row.own).length ? "own" : "posts";
-  return { guide: row.guide, own: row.own, excerpts: strings(row.excerpts), from, pieces: row.posts, builtAt: row.builtAt };
+  return {
+    guide: row.guide,
+    own: row.own,
+    excerpts: strings(row.excerpts),
+    from,
+    pieces: row.posts,
+    builtAt: row.builtAt,
+  };
 }
 
 /** The pieces of the author's own writing: the pasted text split at each line holding only ---. */
@@ -101,7 +121,12 @@ function piecesOf(own: string): string[] {
 }
 
 async function storeExcerpts(db: D1Database, projectId: number, texts: string[], now: Date) {
-  const values = { excerpts: JSON.stringify(voiceExcerpts(texts, PACK_EXCERPTS)), posts: texts.length, builtAt: now.toISOString(), updatedAt: now.toISOString() };
+  const values = {
+    excerpts: JSON.stringify(voiceExcerpts(texts, PACK_EXCERPTS)),
+    posts: texts.length,
+    builtAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  };
   await drizzle(db)
     .insert(voicePacks)
     .values({ projectId, ...values })
@@ -110,7 +135,11 @@ async function storeExcerpts(db: D1Database, projectId: number, texts: string[],
 
 /** A project's excerpts with no role check, for Carrel's own lint of a social post; none when the pack is not built. */
 export async function packExcerpts(db: D1Database, projectId: number): Promise<string[]> {
-  const row = await drizzle(db).select({ excerpts: voicePacks.excerpts }).from(voicePacks).where(eq(voicePacks.projectId, projectId)).get();
+  const row = await drizzle(db)
+    .select({ excerpts: voicePacks.excerpts })
+    .from(voicePacks)
+    .where(eq(voicePacks.projectId, projectId))
+    .get();
   return row ? strings(row.excerpts) : [];
 }
 
@@ -119,7 +148,12 @@ export async function packExcerpts(db: D1Database, projectId: number): Promise<s
  * posts the index knows, read from the site. Anyone who may read the project may rebuild: it reads only
  * what the Owner pasted or what is published.
  */
-export async function buildVoicePack(env: Env, project: SiteProject, fetcher?: typeof fetch, now = new Date()): Promise<VoicePack> {
+export async function buildVoicePack(
+  env: Env,
+  project: SiteProject,
+  fetcher?: typeof fetch,
+  now = new Date(),
+): Promise<VoicePack> {
   if (!can(project.role, "read")) forbid();
   const own = piecesOf((await readVoicePack(env.DB, project)).own);
   if (own.length) {
@@ -129,7 +163,13 @@ export async function buildVoicePack(env: Env, project: SiteProject, fetcher?: t
   const rows = await drizzle(env.DB)
     .select({ itemId: siteItems.itemId })
     .from(siteItems)
-    .where(and(eq(siteItems.projectId, project.id), eq(siteItems.status, "published"), isNotNull(siteItems.publishedAt)))
+    .where(
+      and(
+        eq(siteItems.projectId, project.id),
+        eq(siteItems.status, "published"),
+        isNotNull(siteItems.publishedAt),
+      ),
+    )
     .orderBy(desc(siteItems.publishedAt))
     .limit(PACK_POSTS)
     .all();
@@ -153,10 +193,20 @@ export async function buildVoicePack(env: Env, project: SiteProject, fetcher?: t
  * The Owner's part of the pack: the guide and the author's own writing. New own writing becomes the
  * excerpts at once; with none left, the pack is marked unbuilt, so the next brief reads the published posts.
  */
-export async function saveVoiceGuide(db: D1Database, project: ProjectRole, input: { guide: string; own: string }, now = new Date()) {
+export async function saveVoiceGuide(
+  db: D1Database,
+  project: ProjectRole,
+  input: { guide: string; own: string },
+  now = new Date(),
+) {
   if (!can(project.role, "manage")) forbid();
   const own = input.own.replace(/\r\n/g, "\n").trim();
-  const values = { guide: input.guide.trim(), own, updatedAt: now.toISOString(), ...(own ? {} : { builtAt: null }) };
+  const values = {
+    guide: input.guide.trim(),
+    own,
+    updatedAt: now.toISOString(),
+    ...(own ? {} : { builtAt: null }),
+  };
   await drizzle(db)
     .insert(voicePacks)
     .values({ projectId: project.id, ...values })
@@ -170,7 +220,11 @@ const WORD = /[\p{L}]+(?:['’][\p{L}]+)*/gu;
 /** The line a copied run (lower-case words, as copiedRuns gives it) starts on, or null when its opening words break across lines. */
 function lineOf(body: string, run: string, firstLine: number): number | null {
   const opening = run.split(" ").slice(0, 3).join(" ");
-  const at = body.split("\n").findIndex((l) => ` ${(l.toLowerCase().match(WORD) ?? []).join(" ")} `.includes(` ${opening} `));
+  const at = body
+    .split("\n")
+    .findIndex((l) =>
+      ` ${(l.toLowerCase().match(WORD) ?? []).join(" ")} `.includes(` ${opening} `),
+    );
   return at < 0 ? null : firstLine + at;
 }
 
@@ -179,7 +233,12 @@ function lineOf(body: string, run: string, firstLine: number): number | null {
  * copied from an excerpt, and one instruction covering both. `firstLine` is the file line the text starts on.
  * Flags only; the author decides.
  */
-function scanAgainst(excerpts: string[], body: string, firstLine = 1, sources?: string[]): DraftCheck {
+function scanAgainst(
+  excerpts: string[],
+  body: string,
+  firstLine = 1,
+  sources?: string[],
+): DraftCheck {
   const scan = slopScan(body, excerpts, { firstLine, sources });
   const copied: DraftFinding[] = copiedRuns(body, excerpts).map((run) => {
     const ws = run.split(" ");
@@ -218,9 +277,17 @@ export type VoiceBrief = {
 };
 
 /** What the excerpts are for, said where a session reads them. */
-const EXCERPTS_RULE = "- The excerpts show how the author writes. Never copy their facts, names, claims or sentences.";
+const EXCERPTS_RULE =
+  "- The excerpts show how the author writes. Never copy their facts, names, claims or sentences.";
 
 /** Everything a session reads before it drafts: the rules, the author's guide and the excerpts. */
 export function briefOf(pack: VoicePack): VoiceBrief {
-  return { rules: `${WRITING_RULES}\n${EXCERPTS_RULE}`, guide: pack.guide, excerpts: pack.excerpts, from: pack.from, pieces: pack.pieces, builtAt: pack.builtAt };
+  return {
+    rules: `${WRITING_RULES}\n${EXCERPTS_RULE}`,
+    guide: pack.guide,
+    excerpts: pack.excerpts,
+    from: pack.from,
+    pieces: pack.pieces,
+    builtAt: pack.builtAt,
+  };
 }

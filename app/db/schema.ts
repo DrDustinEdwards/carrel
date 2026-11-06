@@ -11,14 +11,18 @@ export const people = sqliteTable("people", {
   isOwner: integer("is_owner", { mode: "boolean" }).notNull().default(false),
   isReviewer: integer("is_reviewer", { mode: "boolean" }).notNull().default(false),
   disabledAt: text("disabled_at"),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const projects = sqliteTable("projects", {
   id: integer("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   site: text("site"),
   book: text("book"),
 });
@@ -26,8 +30,12 @@ export const projects = sqliteTable("projects", {
 export const projectMembers = sqliteTable(
   "project_members",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-    personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["reader", "editor", "author"] }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.projectId, t.personId] })],
@@ -50,7 +58,9 @@ export const reports = sqliteTable("reports", {
 export const siteItems = sqliteTable(
   "site_items",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     itemId: text("item_id").notNull(),
     kind: text("kind").notNull(),
     title: text("title").notNull(),
@@ -70,9 +80,13 @@ export const siteItems = sqliteTable(
 export const drafts = sqliteTable(
   "drafts",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     itemId: text("item_id").notNull(),
-    personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
     source: text("source").notNull(),
     baseVersion: text("base_version"),
     updatedAt: text("updated_at").notNull(),
@@ -82,9 +96,13 @@ export const drafts = sqliteTable(
 
 export const changes = sqliteTable("changes", {
   id: text("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   itemId: text("item_id").notNull(),
-  personId: integer("person_id").notNull().references(() => people.id),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id),
   // Media actions since migration 0007: item_id is then the site's media id, and a file has no version.
   // content-delete since migration 0009: item_id is the post's id, version_before the version deleted, version_after null.
   // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.
@@ -92,11 +110,37 @@ export const changes = sqliteTable("changes", {
   // media-import, media-credit, media-transform, media-revert and media-resize since migration 0024.
   // content-trash, content-restore and content-rename since migration 0027; a rename's row is under the new id.
   action: text("action", {
-    enum: ["save", "publish", "schedule", "unschedule", "unpublish", "media-upload", "media-delete", "content-delete", "media-alt", "media-tags", "media-trash", "media-restore", "media-focus", "media-caption", "media-replace", "media-import", "media-credit", "media-transform", "media-revert", "media-resize", "content-trash", "content-restore", "content-rename"],
+    enum: [
+      "save",
+      "publish",
+      "schedule",
+      "unschedule",
+      "unpublish",
+      "media-upload",
+      "media-delete",
+      "content-delete",
+      "media-alt",
+      "media-tags",
+      "media-trash",
+      "media-restore",
+      "media-focus",
+      "media-caption",
+      "media-replace",
+      "media-import",
+      "media-credit",
+      "media-transform",
+      "media-revert",
+      "media-resize",
+      "content-trash",
+      "content-restore",
+      "content-rename",
+    ],
   }).notNull(),
   versionBefore: text("version_before"),
   versionAfter: text("version_after"),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   client: text("client"),
   /** The id a rename moved the post from (migration 0027); null for every other action. */
   renamedFrom: text("renamed_from"),
@@ -108,16 +152,22 @@ export const changes = sqliteTable("changes", {
 const MENTION_STATUS = ["unverified", "pending", "approved", "rejected", "failed"] as const;
 export const mentionDecisions = sqliteTable("mention_decisions", {
   id: integer("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   mentionId: text("mention_id"),
-  personId: integer("person_id").notNull().references(() => people.id),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id),
   // reset (a decision taken back to waiting) since migration 0027.
   action: text("action", { enum: ["approve", "reject", "reset", "delete", "sweep"] }).notNull(),
   statusBefore: text("status_before", { enum: MENTION_STATUS }),
   statusAfter: text("status_after", { enum: MENTION_STATUS }),
   changeId: text("change_id").notNull().unique(),
   client: text("client"),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 // mcp_calls (0012_mcp_calls.sql) holds the tool calls logged before the call log moved to site-runtime's
@@ -125,26 +175,38 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
 
 export const aiDrafts = sqliteTable("ai_drafts", {
   id: integer("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   itemId: text("item_id").notNull(),
-  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
   client: text("client").notNull(),
   source: text("source").notNull(),
   baseVersion: text("base_version"),
   note: text("note").notNull().default(""),
   // A JSON array of the text of each source the draft drew on; null on drafts saved before sources were asked for.
   sources: text("sources"),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const aiPublications = sqliteTable("ai_publications", {
   changeId: text("change_id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   itemId: text("item_id").notNull(),
-  personId: integer("person_id").notNull().references(() => people.id),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id),
   client: text("client").notNull(),
   version: text("version").notNull(),
-  publishedAt: text("published_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  publishedAt: text("published_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   emailedAt: text("emailed_at"),
   emailError: text("email_error"),
 });
@@ -152,9 +214,13 @@ export const aiPublications = sqliteTable("ai_publications", {
 export const bookFiles = sqliteTable(
   "book_files",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     path: text("path").notNull(),
-    kind: text("kind", { enum: ["scene", "character", "place", "rule", "outline", "book", "note"] }).notNull(),
+    kind: text("kind", {
+      enum: ["scene", "character", "place", "rule", "outline", "book", "note"],
+    }).notNull(),
     sha: text("sha").notNull(),
     source: text("source").notNull(),
     meta: text("meta").notNull().default("{}"),
@@ -173,31 +239,43 @@ export const novelsShared = sqliteTable("novels_shared", {
 
 export const findings = sqliteTable("findings", {
   id: integer("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   path: text("path").notNull(),
   checkName: text("check_name").notNull(),
   message: text("message").notNull(),
   line: integer("line"),
   excerpt: text("excerpt"),
   fingerprint: text("fingerprint").notNull(),
-  status: text("status", { enum: ["open", "dismissed"] }).notNull().default("open"),
+  status: text("status", { enum: ["open", "dismissed"] })
+    .notNull()
+    .default("open"),
   dismissedBy: integer("dismissed_by").references(() => people.id),
   dismissedAt: text("dismissed_at"),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const authorship = sqliteTable("authorship", {
   id: text("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   path: text("path").notNull(),
-  personId: integer("person_id").notNull().references(() => people.id),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id),
   client: text("client"),
   wordsAdded: integer("words_added").notNull(),
   wordsRemoved: integer("words_removed").notNull(),
   versionBefore: text("version_before"),
   versionAfter: text("version_after").notNull(),
   commitSha: text("commit_sha").notNull(),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   /** What the save counts toward the day: typed words only. Empty before 0012 and for an AI client's save. */
   wordsTyped: integer("words_typed"),
 });
@@ -205,7 +283,9 @@ export const authorship = sqliteTable("authorship", {
 export const statusLabels = sqliteTable(
   "status_labels",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     label: text("label").notNull(),
     color: integer("color").notNull(),
@@ -216,9 +296,15 @@ export const statusLabels = sqliteTable(
 export const writingGoals = sqliteTable(
   "writing_goals",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-    personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
-    mode: text("mode", { enum: ["daily", "deadline"] }).notNull().default("daily"),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    mode: text("mode", { enum: ["daily", "deadline"] })
+      .notNull()
+      .default("daily"),
     dailyTarget: integer("daily_target"),
     writingDays: text("writing_days").notNull().default("0123456"),
     allowNegative: integer("allow_negative", { mode: "boolean" }).notNull().default(false),
@@ -229,8 +315,12 @@ export const writingGoals = sqliteTable(
 export const untypedWords = sqliteTable(
   "untyped_words",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-    personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
     path: text("path").notNull(),
     words: integer("words").notNull().default(0),
   },
@@ -240,22 +330,32 @@ export const untypedWords = sqliteTable(
 export const googleKeysSeen = sqliteTable("google_keys_seen", {
   privateKeyId: text("private_key_id").primaryKey(),
   clientEmail: text("client_email").notNull(),
-  firstSeenAt: text("first_seen_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  firstSeenAt: text("first_seen_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const googleTokens = sqliteTable("google_tokens", {
-  personId: integer("person_id").primaryKey().references(() => people.id, { onDelete: "cascade" }),
+  personId: integer("person_id")
+    .primaryKey()
+    .references(() => people.id, { onDelete: "cascade" }),
   refreshToken: text("refresh_token").notNull(),
   iv: text("iv").notNull(),
   scope: text("scope").notNull(),
-  connectedAt: text("connected_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  connectedAt: text("connected_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   lastError: text("last_error"),
 });
 
 export const googleOauthStates = sqliteTable("google_oauth_states", {
   state: text("state").primaryKey(),
-  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const manuscripts = sqliteTable("manuscripts", {
@@ -272,19 +372,27 @@ export const manuscripts = sqliteTable("manuscripts", {
 
 export const sentDocs = sqliteTable("sent_docs", {
   id: integer("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   itemId: text("item_id").notNull(),
-  personId: integer("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
   docId: text("doc_id").notNull(),
   docUrl: text("doc_url").notNull(),
   frontmatter: text("frontmatter").notNull().default(""),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const searchConsolePages = sqliteTable(
   "search_console_pages",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     page: text("page").notNull(),
     clicks: integer("clicks").notNull(),
     impressions: integer("impressions").notNull(),
@@ -305,14 +413,18 @@ export const socialAccounts = sqliteTable("social_accounts", {
   kind: text("kind", { enum: ["personal", "brand"] }).notNull(),
   handle: text("handle").notNull(),
   projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
-  mode: text("mode", { enum: ["approval", "auto"] }).notNull().default("approval"),
+  mode: text("mode", { enum: ["approval", "auto"] })
+    .notNull()
+    .default("approval"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
   dailyCap: integer("daily_cap").notNull().default(3),
   minGapMinutes: integer("min_gap_minutes").notNull().default(60),
   monthlyBudgetMills: integer("monthly_budget_mills").notNull().default(0),
   template: text("template").notNull().default(""),
   voiceGuide: text("voice_guide").notNull().default(""),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const socialRoutineRuns = sqliteTable("social_routine_runs", {
@@ -327,32 +439,48 @@ export const socialRoutineRuns = sqliteTable("social_routine_runs", {
 
 export const socialEvents = sqliteTable("social_events", {
   id: integer("id").primaryKey(),
-  accountId: integer("account_id").notNull().references(() => socialAccounts.id, { onDelete: "cascade" }),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  accountId: integer("account_id")
+    .notNull()
+    .references(() => socialAccounts.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   itemId: text("item_id").notNull(),
   title: text("title").notNull().default(""),
   url: text("url").notNull().default(""),
   summary: text("summary").notNull().default(""),
   publishedAt: text("published_at"),
-  state: text("state", { enum: ["waiting", "routine", "covered", "templated", "closed"] }).notNull().default("waiting"),
+  state: text("state", { enum: ["waiting", "routine", "covered", "templated", "closed"] })
+    .notNull()
+    .default("waiting"),
   routineRunId: integer("routine_run_id").references(() => socialRoutineRuns.id),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const socialPosts = sqliteTable("social_posts", {
   id: integer("id").primaryKey(),
-  accountId: integer("account_id").notNull().references(() => socialAccounts.id, { onDelete: "cascade" }),
-  eventId: integer("event_id").notNull().references(() => socialEvents.id, { onDelete: "cascade" }),
+  accountId: integer("account_id")
+    .notNull()
+    .references(() => socialAccounts.id, { onDelete: "cascade" }),
+  eventId: integer("event_id")
+    .notNull()
+    .references(() => socialEvents.id, { onDelete: "cascade" }),
   text: text("text").notNull(),
   source: text("source", { enum: ["predrafted", "routine", "template"] }).notNull(),
-  status: text("status", { enum: ["drafted", "held", "awaiting", "queued", "sent", "by-hand", "failed", "rejected"] }).notNull(),
+  status: text("status", {
+    enum: ["drafted", "held", "awaiting", "queued", "sent", "by-hand", "failed", "rejected"],
+  }).notNull(),
   lint: text("lint").notNull().default("[]"),
   createdBy: text("created_by").notNull(),
   approvedBy: integer("approved_by").references(() => people.id),
   costMills: integer("cost_mills").notNull().default(0),
   platformPostId: text("platform_post_id"),
   error: text("error"),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   sentAt: text("sent_at"),
   acknowledgedAt: text("acknowledged_at"),
 });
@@ -361,19 +489,29 @@ export const legalSections = sqliteTable("legal_sections", {
   key: text("key").primaryKey(),
   title: text("title").notNull(),
   body: text("body").notNull(),
-  updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-  updatedBy: integer("updated_by").notNull().references(() => people.id),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  updatedBy: integer("updated_by")
+    .notNull()
+    .references(() => people.id),
 });
 
 export const bookMoves = sqliteTable("book_moves", {
   id: integer("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   changeId: text("change_id").notNull(),
   fromPath: text("from_path").notNull(),
   toPath: text("to_path").notNull(),
   commitSha: text("commit_sha").notNull(),
-  personId: integer("person_id").notNull().references(() => people.id),
-  createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 // The voice pack (0018_voice.sql, 0019_voice_own.sql, voice.server.ts): the Owner's guide, the author's own
@@ -381,7 +519,9 @@ export const bookMoves = sqliteTable("book_moves", {
 // replaced word lists and averages). They stay so the lists the Owner typed are not lost: a migration dropping them runs before the deploy, and a
 // rollback of the code would not bring them back.
 export const voicePacks = sqliteTable("voice_packs", {
-  projectId: integer("project_id").primaryKey().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .primaryKey()
+    .references(() => projects.id, { onDelete: "cascade" }),
   guide: text("guide").notNull().default(""),
   own: text("own").notNull().default(""),
   phrases: text("phrases").notNull().default("[]"),
@@ -390,19 +530,25 @@ export const voicePacks = sqliteTable("voice_packs", {
   excerpts: text("excerpts").notNull().default("[]"),
   posts: integer("posts").notNull().default(0),
   builtAt: text("built_at"),
-  updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 /** @public drizzle-kit reads the export; unexported, it would write a migration dropping the table. */
 export const voiceCuts = sqliteTable(
   "voice_cuts",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     phrase: text("phrase").notNull(),
     items: text("items").notNull().default("[]"),
     kept: integer("kept").notNull().default(0),
     setAside: integer("set_aside", { mode: "boolean" }).notNull().default(false),
-    lastCutAt: text("last_cut_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+    lastCutAt: text("last_cut_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   },
   (t) => [primaryKey({ columns: [t.projectId, t.phrase] })],
 );
@@ -425,7 +571,9 @@ export const accessSync = sqliteTable("access_sync", {
 export const rooms = sqliteTable(
   "rooms",
   {
-    projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     itemId: text("item_id").notNull(),
     source: text("source").notNull(),
     baseVersion: text("base_version"),
@@ -437,10 +585,14 @@ export const rooms = sqliteTable(
 
 export const comments = sqliteTable("comments", {
   id: text("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
   itemId: text("item_id").notNull(),
   parentId: text("parent_id"),
-  personId: integer("person_id").notNull().references(() => people.id),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id),
   body: text("body").notNull(),
   anchor: text("anchor"),
   quote: text("quote").notNull().default(""),
@@ -455,7 +607,9 @@ export const changeContributors = sqliteTable(
   "change_contributors",
   {
     changeId: text("change_id").notNull(),
-    personId: integer("person_id").notNull().references(() => people.id),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id),
   },
   (t) => [primaryKey({ columns: [t.changeId, t.personId] })],
 );

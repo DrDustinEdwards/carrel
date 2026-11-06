@@ -13,22 +13,49 @@
 // extension, with the others' carets, suggesting and the comment marks (room-extensions.ts). The
 // Markdown is then the room's to work out (use-room.ts), and `value` only feeds the word count.
 
-import { disableSuggestChanges, enableSuggestChanges, isSuggestChangesEnabled } from "@handlewithcare/prosemirror-suggest-changes";
+import {
+  disableSuggestChanges,
+  enableSuggestChanges,
+  isSuggestChangesEnabled,
+} from "@handlewithcare/prosemirror-suggest-changes";
 import { Editor, type JSONContent } from "@tiptap/core";
 import Collaboration from "@tiptap/extension-collaboration";
 import { Placeholder } from "@tiptap/extensions";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { countWords, filterLinkTargets, looksLikeUrl, minutesForWords, type ImageDescription, type LinkTarget, type Scaffold } from "capsomer/behavior/markdown-editor";
+import {
+  countWords,
+  filterLinkTargets,
+  looksLikeUrl,
+  minutesForWords,
+  type ImageDescription,
+  type LinkTarget,
+  type Scaffold,
+} from "capsomer/behavior/markdown-editor";
 import { place } from "capsomer/behavior/popover";
 
 import { FRAGMENT, markdownOf } from "~/lib/editor/collab";
-import { fingerprints, fromDoc, pastedBlocks, toDoc, type Dialect, type JsonNode } from "~/lib/editor/markdown.mjs";
+import {
+  fingerprints,
+  fromDoc,
+  pastedBlocks,
+  toDoc,
+  type Dialect,
+  type JsonNode,
+} from "~/lib/editor/markdown.mjs";
 import { baseExtensions } from "~/lib/editor/schema.mjs";
 import type { JsonDoc, Suggester } from "~/lib/editor/suggest";
 
-import { commentMarks, commentsKey, refreshCarets, roomCarets, suggesting, type Anchored, type Who } from "./room-extensions";
+import {
+  commentMarks,
+  commentsKey,
+  refreshCarets,
+  roomCarets,
+  suggesting,
+  type Anchored,
+  type Who,
+} from "./room-extensions";
 import { sourceBlockView, SourceInlineView } from "./source-views";
 import { GLYPH, Icon } from "./toolbar-icons";
 
@@ -70,14 +97,20 @@ export type RichEditorProps = {
   linkTargets?: LinkTarget[];
   /** Called once the image is described, as Capsomer's markdown editor calls it. */
   onUpload?: (file: File, image: ImageDescription, signal: AbortSignal) => Promise<{ url: string }>;
-  imageMarkdown?: (image: { url: string; alt: string; decorative: boolean; name: string }) => string;
+  imageMarkdown?: (image: {
+    url: string;
+    alt: string;
+    decorative: boolean;
+    name: string;
+  }) => string;
   accept?: string;
   onReady?: (handle: RichEditorHandle) => void;
   room?: RichRoom;
 };
 
 // An empty alt is a decorative pick; Prelum reads ![""](x) as decorative and refuses ![](x).
-const defaultImage = ({ url, alt }: { url: string; alt: string }) => `![${alt.replace(/[[\]]/g, "").trim() || '""'}](${url})`;
+const defaultImage = ({ url, alt }: { url: string; alt: string }) =>
+  `![${alt.replace(/[[\]]/g, "").trim() || '""'}](${url})`;
 
 type Palette = { from: number; to: number; query: string; active: number };
 // An image is described before it is sent (ATAG 2.0 B.2.3; site-api 0.19+ refuses an undescribed
@@ -85,10 +118,25 @@ type Palette = { from: number; to: number; query: string; active: number };
 type Upload = { file: File; preview: string; sending: AbortController | null } | null;
 
 export function RichEditor(props: RichEditorProps) {
-  const { ariaLabel, value, readOnly, dialect, placeholder = "Write here.", scaffolds = [], linkTargets = [], onUpload, accept, room } = props;
+  const {
+    ariaLabel,
+    value,
+    readOnly,
+    dialect,
+    placeholder = "Write here.",
+    scaffolds = [],
+    linkTargets = [],
+    onUpload,
+    accept,
+    room,
+  } = props;
   const host = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
-  const origin = useRef<{ tail: string; prints: Map<number, string>; last: string }>({ tail: "", prints: new Map(), last: value });
+  const origin = useRef<{ tail: string; prints: Map<number, string>; last: string }>({
+    tail: "",
+    prints: new Map(),
+    last: value,
+  });
   // The latest props, for the editor's callbacks, which it made once; set after each render, not during it.
   const propsRef = useRef(props);
   const readOnlyRef = useRef(readOnly);
@@ -115,17 +163,30 @@ export function RichEditor(props: RichEditorProps) {
 
   /** The Markdown the document stands for: unchanged blocks as their bytes, the rest spelled again. */
   const markdown = (editor: Editor) =>
-    room ? markdownOf(room.doc, editor.getJSON() as JsonDoc) : fromDoc(editor.getJSON() as JsonNode, origin.current.tail, origin.current.prints, dialect);
+    room
+      ? markdownOf(room.doc, editor.getJSON() as JsonDoc)
+      : fromDoc(editor.getJSON() as JsonNode, origin.current.tail, origin.current.prints, dialect);
   const roomRef = useRef(room);
   /** Source blocks are Markdown, which a suggestion cannot mark: while suggesting they are read only. */
-  const sourceLocked = () => readOnlyRef.current || Boolean(editorRef.current && isSuggestChangesEnabled(editorRef.current.state));
+  const sourceLocked = () =>
+    readOnlyRef.current ||
+    Boolean(editorRef.current && isSuggestChangesEnabled(editorRef.current.state));
 
   const load = (editor: Editor, source: string) => {
     const loaded = toDoc(source, dialect);
     const doc = editor.schema.nodeFromJSON(loaded.doc);
     // Not an edit: no undo step, and no change reported.
-    editor.view.dispatch(editor.state.tr.replaceWith(0, editor.state.doc.content.size, doc.content).setMeta("addToHistory", false).setMeta("preventUpdate", true));
-    origin.current = { tail: loaded.tail, prints: fingerprints(editor.getJSON() as JsonNode), last: source };
+    editor.view.dispatch(
+      editor.state.tr
+        .replaceWith(0, editor.state.doc.content.size, doc.content)
+        .setMeta("addToHistory", false)
+        .setMeta("preventUpdate", true),
+    );
+    origin.current = {
+      tail: loaded.tail,
+      prints: fingerprints(editor.getJSON() as JsonNode),
+      last: source,
+    };
     setWords(countWords(source));
   };
 
@@ -137,7 +198,9 @@ export function RichEditor(props: RichEditorProps) {
     const editor = new Editor({
       element: host.current,
       extensions: [
-        ...baseExtensions({ room: Boolean(inRoom) }).filter((e) => e.name !== "sourceBlock" && e.name !== "sourceInline"),
+        ...baseExtensions({ room: Boolean(inRoom) }).filter(
+          (e) => e.name !== "sourceBlock" && e.name !== "sourceInline",
+        ),
         sourceBlockView(sourceLocked),
         SourceInlineView,
         Placeholder.configure({ placeholder }),
@@ -146,7 +209,10 @@ export function RichEditor(props: RichEditorProps) {
               Collaboration.configure({ document: inRoom.doc, field: FRAGMENT }),
               roomCarets(inRoom.awareness, () => roomRef.current!.who),
               suggesting(inRoom.suggester),
-              commentMarks(() => ({ threads: roomRef.current!.threads, active: roomRef.current!.activeThread })),
+              commentMarks(() => ({
+                threads: roomRef.current!.threads,
+                active: roomRef.current!.activeThread,
+              })),
             ]
           : []),
       ],
@@ -166,7 +232,8 @@ export function RichEditor(props: RichEditorProps) {
         },
         handleClickOn: (_view, _pos, _node, _nodePos, event) => {
           const mark = (event.target as HTMLElement | null)?.closest?.("[data-comment]");
-          if (mark && roomRef.current) roomRef.current.onThreadClick(mark.getAttribute("data-comment")!);
+          if (mark && roomRef.current)
+            roomRef.current.onThreadClick(mark.getAttribute("data-comment")!);
           return false;
         },
         handleKeyDown: (_view, event) => {
@@ -187,7 +254,9 @@ export function RichEditor(props: RichEditorProps) {
           return false;
         },
         handlePaste: (_view, event) => {
-          const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+          const files = [...(event.clipboardData?.files ?? [])].filter((f) =>
+            f.type.startsWith("image/"),
+          );
           if (files[0] && propsRef.current.onUpload) {
             startUpload(files[0]);
             return true;
@@ -204,7 +273,9 @@ export function RichEditor(props: RichEditorProps) {
           return false;
         },
         handleDrop: (_view, event) => {
-          const files = [...((event as DragEvent).dataTransfer?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+          const files = [...((event as DragEvent).dataTransfer?.files ?? [])].filter((f) =>
+            f.type.startsWith("image/"),
+          );
           if (files[0] && propsRef.current.onUpload) {
             event.preventDefault();
             startUpload(files[0]);
@@ -225,7 +296,11 @@ export function RichEditor(props: RichEditorProps) {
       },
       onSelectionUpdate: ({ editor: e }) => syncSlash(e),
     });
-    origin.current = { tail: loaded.tail, prints: fingerprints(editor.getJSON() as JsonNode), last: value };
+    origin.current = {
+      tail: loaded.tail,
+      prints: fingerprints(editor.getJSON() as JsonNode),
+      last: value,
+    };
     editorRef.current = editor;
     if (inRoom?.suggest) enableSuggestChanges(editor.state, editor.view.dispatch);
     setReady(true);
@@ -252,7 +327,11 @@ export function RichEditor(props: RichEditorProps) {
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor || !roomRef.current) return;
-    if (suggestOn !== isSuggestChangesEnabled(editor.state)) (suggestOn ? enableSuggestChanges : disableSuggestChanges)(editor.state, editor.view.dispatch);
+    if (suggestOn !== isSuggestChangesEnabled(editor.state))
+      (suggestOn ? enableSuggestChanges : disableSuggestChanges)(
+        editor.state,
+        editor.view.dispatch,
+      );
   }, [suggestOn, ready]);
 
   // The room's list of people changed: the carets are drawn again under the names it gives.
@@ -263,10 +342,15 @@ export function RichEditor(props: RichEditorProps) {
   }, [peopleKey]);
 
   // The threads or the open one changed: their marks are drawn again.
-  const threadsKey = room ? `${room.activeThread}|${room.threads.map((t) => `${t.id}:${t.anchor}`).join(",")}` : "";
+  const threadsKey = room
+    ? `${room.activeThread}|${room.threads.map((t) => `${t.id}:${t.anchor}`).join(",")}`
+    : "";
   useEffect(() => {
     const editor = editorRef.current;
-    if (editor && roomRef.current) editor.view.dispatch(editor.state.tr.setMeta(commentsKey, true).setMeta("addToHistory", false));
+    if (editor && roomRef.current)
+      editor.view.dispatch(
+        editor.state.tr.setMeta(commentsKey, true).setMeta("addToHistory", false),
+      );
   }, [threadsKey]);
 
   useEffect(() => {
@@ -283,7 +367,14 @@ export function RichEditor(props: RichEditorProps) {
   });
   function syncSlash(editor: Editor) {
     const { $from, empty: collapsed } = editor.state.selection;
-    const lone = collapsed && !readOnlyRef.current && scaffolds.length > 0 && $from.depth === 1 && $from.parent.type.name === "paragraph" && $from.parent.textContent === "/" && $from.parentOffset === 1;
+    const lone =
+      collapsed &&
+      !readOnlyRef.current &&
+      scaffolds.length > 0 &&
+      $from.depth === 1 &&
+      $from.parent.type.name === "paragraph" &&
+      $from.parent.textContent === "/" &&
+      $from.parentOffset === 1;
     setSlash(lone ? $from.before() : null);
   }
   useEffect(() => {
@@ -292,7 +383,13 @@ export function RichEditor(props: RichEditorProps) {
     if (!menu || !editor || slash === null) return;
     menu.showPopover?.();
     const at = editor.view.coordsAtPos(slash + 1);
-    place({ getBoundingClientRect: () => new DOMRect(at.left, at.top, 0, at.bottom - at.top) } as Element, menu, { side: "bottom", align: "start" });
+    place(
+      {
+        getBoundingClientRect: () => new DOMRect(at.left, at.top, 0, at.bottom - at.top),
+      } as Element,
+      menu,
+      { side: "bottom", align: "start" },
+    );
     say("Block menu open. Press Down arrow to choose a block, Escape to close.");
     return () => {
       try {
@@ -308,7 +405,13 @@ export function RichEditor(props: RichEditorProps) {
     if (!editor) return;
     const block = { type: "sourceBlock", attrs: { text: s.text, kind: s.label } };
     const chain = editor.chain().focus();
-    if (fromSlash && slash !== null) chain.insertContentAt({ from: slash, to: slash + editor.state.doc.nodeAt(slash)!.nodeSize }, block).run();
+    if (fromSlash && slash !== null)
+      chain
+        .insertContentAt(
+          { from: slash, to: slash + editor.state.doc.nodeAt(slash)!.nodeSize },
+          block,
+        )
+        .run();
     else chain.insertContent(block).run();
     setSlash(null);
     focusSourceBlock(editor, s);
@@ -318,10 +421,13 @@ export function RichEditor(props: RichEditorProps) {
   function focusSourceBlock(editor: Editor, s: Scaffold) {
     requestAnimationFrame(() => {
       const areas = [...editor.view.dom.querySelectorAll<HTMLTextAreaElement>(".app-src-text")];
-      const area = areas.find((a) => a.value === s.text && document.activeElement !== a) ?? areas.at(-1);
+      const area =
+        areas.find((a) => a.value === s.text && document.activeElement !== a) ?? areas.at(-1);
       if (!area) return;
       area.focus();
-      const at = s.cursorAfter ? s.text.indexOf(s.cursorAfter) + s.cursorAfter.length : (s.cursor ?? s.text.length);
+      const at = s.cursorAfter
+        ? s.text.indexOf(s.cursorAfter) + s.cursorAfter.length
+        : (s.cursor ?? s.text.length);
       area.setSelectionRange(at, at);
     });
   }
@@ -329,7 +435,11 @@ export function RichEditor(props: RichEditorProps) {
   function insertMarkdown(md: string) {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.chain().focus().insertContent(pastedBlocks(md, dialect) as JSONContent[]).run();
+    editor
+      .chain()
+      .focus()
+      .insertContent(pastedBlocks(md, dialect) as JSONContent[])
+      .run();
   }
 
   // ---- the link palette
@@ -346,7 +456,13 @@ export function RichEditor(props: RichEditorProps) {
     if (!panel || !editor || !palette) return;
     panel.showPopover?.();
     const at = editor.view.coordsAtPos(palette.from);
-    place({ getBoundingClientRect: () => new DOMRect(at.left, at.top, 0, at.bottom - at.top) } as Element, panel, { side: "bottom", align: "start" });
+    place(
+      {
+        getBoundingClientRect: () => new DOMRect(at.left, at.top, 0, at.bottom - at.top),
+      } as Element,
+      panel,
+      { side: "bottom", align: "start" },
+    );
     panel.querySelector<HTMLInputElement>("input")?.focus();
     return () => {
       try {
@@ -356,7 +472,7 @@ export function RichEditor(props: RichEditorProps) {
       }
     };
     // Opened once per palette; typing in it does not move it.
-  // oxlint-disable-next-line react/exhaustive-deps -- opened once per palette; typing in it does not move it
+    // oxlint-disable-next-line react/exhaustive-deps -- opened once per palette; typing in it does not move it
   }, [palette !== null]);
   const matches = palette ? filterLinkTargets(linkTargets, palette.query) : [];
   const typedUrl = palette && looksLikeUrl(palette.query) ? palette.query.trim() : null;
@@ -364,7 +480,8 @@ export function RichEditor(props: RichEditorProps) {
     const editor = editorRef.current;
     const p = palette;
     setPalette(null);
-    if (editor && p && restore) editor.chain().focus().setTextSelection({ from: p.from, to: p.to }).run();
+    if (editor && p && restore)
+      editor.chain().focus().setTextSelection({ from: p.from, to: p.to }).run();
   }
   function applyLink(href: string, title: string) {
     const editor = editorRef.current;
@@ -372,7 +489,10 @@ export function RichEditor(props: RichEditorProps) {
     setPalette(null);
     if (!editor || !p) return;
     const chain = editor.chain().focus().setTextSelection({ from: p.from, to: p.to });
-    if (p.from === p.to) chain.insertContent({ type: "text", text: title, marks: [{ type: "link", attrs: { href } }] }).run();
+    if (p.from === p.to)
+      chain
+        .insertContent({ type: "text", text: title, marks: [{ type: "link", attrs: { href } }] })
+        .run();
     else chain.setLink({ href }).run();
     // The cursor lands after the link, outside it.
     editor.commands.unsetMark("link", { extendEmptyMarkRange: false });
@@ -417,7 +537,12 @@ export function RichEditor(props: RichEditorProps) {
     try {
       const { url } = await send(current.file, { alt: text, decorative }, sending.signal);
       if (uploadRef.current !== busy) return;
-      const md = (propsRef.current.imageMarkdown ?? defaultImage)({ url, alt: text, decorative, name: current.file.name });
+      const md = (propsRef.current.imageMarkdown ?? defaultImage)({
+        url,
+        alt: text,
+        decorative,
+        name: current.file.name,
+      });
       uploadRef.current = null;
       setUploadState(null);
       insertMarkdown(md);
@@ -439,21 +564,59 @@ export function RichEditor(props: RichEditorProps) {
     if (editor) fn(editor);
   };
   const tools = [
-    { id: "bold", label: "Bold", hint: "Ctrl or Cmd + B", keys: "Control+B Meta+B", paths: GLYPH.bold, run: run((e) => e.chain().focus().toggleBold().run()) },
-    { id: "italic", label: "Italic", hint: "Ctrl or Cmd + I", keys: "Control+I Meta+I", paths: GLYPH.italic, run: run((e) => e.chain().focus().toggleItalic().run()) },
-    { id: "link", label: "Link", hint: "Ctrl or Cmd + K, searches pages", keys: "Control+K Meta+K", paths: GLYPH.link, run: openPalette },
+    {
+      id: "bold",
+      label: "Bold",
+      hint: "Ctrl or Cmd + B",
+      keys: "Control+B Meta+B",
+      paths: GLYPH.bold,
+      run: run((e) => e.chain().focus().toggleBold().run()),
+    },
+    {
+      id: "italic",
+      label: "Italic",
+      hint: "Ctrl or Cmd + I",
+      keys: "Control+I Meta+I",
+      paths: GLYPH.italic,
+      run: run((e) => e.chain().focus().toggleItalic().run()),
+    },
+    {
+      id: "link",
+      label: "Link",
+      hint: "Ctrl or Cmd + K, searches pages",
+      keys: "Control+K Meta+K",
+      paths: GLYPH.link,
+      run: openPalette,
+    },
     {
       id: "heading",
       label: "Heading level",
       hint: "Cycles h2, h3, h4, none",
       paths: GLYPH.heading,
       run: run((e) => {
-        const level = e.isActive("heading", { level: 2 }) ? 3 : e.isActive("heading", { level: 3 }) ? 4 : e.isActive("heading", { level: 4 }) ? 0 : 2;
+        const level = e.isActive("heading", { level: 2 })
+          ? 3
+          : e.isActive("heading", { level: 3 })
+            ? 4
+            : e.isActive("heading", { level: 4 })
+              ? 0
+              : 2;
         if (level === 0) e.chain().focus().setParagraph().run();
-        else e.chain().focus().setHeading({ level: level as 2 | 3 | 4 }).run();
+        else
+          e.chain()
+            .focus()
+            .setHeading({ level: level as 2 | 3 | 4 })
+            .run();
       }),
     },
-    { id: "code", label: "Code", hint: "Ctrl or Cmd + E", keys: "Control+E Meta+E", paths: GLYPH.code, run: run((e) => e.chain().focus().toggleCode().run()) },
+    {
+      id: "code",
+      label: "Code",
+      hint: "Ctrl or Cmd + E",
+      keys: "Control+E Meta+E",
+      paths: GLYPH.code,
+      run: run((e) => e.chain().focus().toggleCode().run()),
+    },
     {
       id: "footnote",
       label: "Footnote",
@@ -462,20 +625,58 @@ export function RichEditor(props: RichEditorProps) {
       run: run((e) => {
         const md = markdown(e);
         const n = Math.max(0, ...[...md.matchAll(/\[\^(\d+)\]/g)].map((m) => Number(m[1]))) + 1;
-        e.chain().focus().insertContent({ type: "sourceInline", attrs: { text: `[^${n}]` } }).run();
+        e.chain()
+          .focus()
+          .insertContent({ type: "sourceInline", attrs: { text: `[^${n}]` } })
+          .run();
         const end = e.state.doc.content.size;
-        e.chain().insertContentAt(end, { type: "sourceBlock", attrs: { text: `[^${n}]: `, kind: "Footnote" } }).run();
+        e.chain()
+          .insertContentAt(end, {
+            type: "sourceBlock",
+            attrs: { text: `[^${n}]: `, kind: "Footnote" },
+          })
+          .run();
         focusSourceBlock(e, { id: "footnote", label: "Footnote", hint: "", text: `[^${n}]: ` });
       }),
     },
-    ...(onUpload ? [{ id: "image", label: "Insert image", hint: "Asks for alt text, then uploads the file", paths: GLYPH.image, run: () => fileRef.current?.click() }] : []),
+    ...(onUpload
+      ? [
+          {
+            id: "image",
+            label: "Insert image",
+            hint: "Asks for alt text, then uploads the file",
+            paths: GLYPH.image,
+            run: () => fileRef.current?.click(),
+          },
+        ]
+      : []),
   ];
-  const blocks = scaffolds.map((s) => ({ id: `scaffold-${s.id}`, label: s.label, hint: s.hint, keys: undefined, paths: s.icon ? [s.icon] : [], glyph: s.label.slice(0, 1), run: () => insertScaffold(s, false) }));
+  const blocks = scaffolds.map((s) => ({
+    id: `scaffold-${s.id}`,
+    label: s.label,
+    hint: s.hint,
+    keys: undefined,
+    paths: s.icon ? [s.icon] : [],
+    glyph: s.label.slice(0, 1),
+    run: () => insertScaffold(s, false),
+  }));
   const all = [...tools, ...blocks];
   const onToolbarKey = (event: React.KeyboardEvent) => {
-    const buttons = [...(toolbar.current?.querySelectorAll<HTMLButtonElement>(".cap-md-tool:not(:disabled)") ?? [])];
+    const buttons = [
+      ...(toolbar.current?.querySelectorAll<HTMLButtonElement>(".cap-md-tool:not(:disabled)") ??
+        []),
+    ];
     const at = buttons.findIndex((b) => b === document.activeElement);
-    const next = event.key === "ArrowRight" ? (at + 1) % buttons.length : event.key === "ArrowLeft" ? (at - 1 + buttons.length) % buttons.length : event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : null;
+    const next =
+      event.key === "ArrowRight"
+        ? (at + 1) % buttons.length
+        : event.key === "ArrowLeft"
+          ? (at - 1 + buttons.length) % buttons.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? buttons.length - 1
+              : null;
     if (next === null || at < 0) return;
     event.preventDefault();
     buttons[next]?.focus();
@@ -483,14 +684,26 @@ export function RichEditor(props: RichEditorProps) {
   const off = readOnly || !ready;
 
   return (
-    <div className="cap-md app-rich" data-ready={ready ? "" : undefined} data-hide-front={room?.hideFrontMatter ? "" : undefined}>
+    <div
+      className="cap-md app-rich"
+      data-ready={ready ? "" : undefined}
+      data-hide-front={room?.hideFrontMatter ? "" : undefined}
+    >
       <div className="cap-md-frame">
         {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- a roving-tabindex toolbar: its buttons take focus, the arrow keys move between them */}
-        <div className="cap-md-toolbar" role="toolbar" aria-label="Formatting" ref={toolbar} onKeyDown={onToolbarKey}>
+        <div
+          className="cap-md-toolbar"
+          role="toolbar"
+          aria-label="Formatting"
+          ref={toolbar}
+          onKeyDown={onToolbarKey}
+        >
           // oxlint-disable-next-line react/refs -- read when a tool runs, not while rendering
           {all.map((t, i) => (
             <span key={t.id} className="app-tool-slot">
-              {i === tools.length && blocks.length > 0 ? <span className="cap-md-sep" aria-hidden="true" /> : null}
+              {i === tools.length && blocks.length > 0 ? (
+                <span className="cap-md-sep" aria-hidden="true" />
+              ) : null}
               <button
                 type="button"
                 className="cap-md-tool"
@@ -513,11 +726,19 @@ export function RichEditor(props: RichEditorProps) {
               </button>
             </span>
           ))}
-          {blocks.length > 0 ? <span className="cap-md-toolbar-hint">Type / on an empty line</span> : null}
+          {blocks.length > 0 ? (
+            <span className="cap-md-toolbar-hint">Type / on an empty line</span>
+          ) : null}
         </div>
         {!ready ? (
           // Before the script: the Markdown itself, readable and selectable.
-          <textarea className="cap-input cap-md-source" aria-label={ariaLabel} value={value} readOnly rows={12} />
+          <textarea
+            className="cap-input cap-md-source"
+            aria-label={ariaLabel}
+            value={value}
+            readOnly
+            rows={12}
+          />
         ) : null}
         <div ref={host} className="cap-md-surface app-rich-host" hidden={!ready} />
         <div className="cap-md-foot">
@@ -593,19 +814,33 @@ export function RichEditor(props: RichEditorProps) {
               }}
             />
             <p className="cap-field-help" id="rich-alt-help">
-              Describe {upload.file.name} for a person who cannot see it, or insert it as decorative if it adds nothing. It is uploaded when you insert it.
+              Describe {upload.file.name} for a person who cannot see it, or insert it as decorative
+              if it adds nothing. It is uploaded when you insert it.
             </p>
-            {upload.sending ? <p className="cap-md-upload-wait">Uploading {upload.file.name}</p> : null}
+            {upload.sending ? (
+              <p className="cap-md-upload-wait">Uploading {upload.file.name}</p>
+            ) : null}
             {uploadError ? (
               <p className="cap-field-error cap-md-upload-error" role="alert">
                 {uploadError}
               </p>
             ) : null}
             <div className="cap-md-upload-actions">
-              <button type="button" className="cap-btn" data-variant="primary" disabled={!alt.trim() || Boolean(upload.sending)} onClick={() => void insertImage(false)}>
+              <button
+                type="button"
+                className="cap-btn"
+                data-variant="primary"
+                disabled={!alt.trim() || Boolean(upload.sending)}
+                onClick={() => void insertImage(false)}
+              >
                 Insert image
               </button>
-              <button type="button" className="cap-btn" disabled={Boolean(upload.sending)} onClick={() => void insertImage(true)}>
+              <button
+                type="button"
+                className="cap-btn"
+                disabled={Boolean(upload.sending)}
+                onClick={() => void insertImage(true)}
+              >
                 Insert as decorative
               </button>
               <button type="button" className="cap-btn" data-variant="quiet" onClick={cancelUpload}>
@@ -627,7 +862,8 @@ export function RichEditor(props: RichEditorProps) {
           data-side="bottom"
           data-align="start"
           onBlur={(e) => {
-            if (!(e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget))) closePalette(false);
+            if (!(e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)))
+              closePalette(false);
           }}
         >
           <label className="cap-md-palette-label" htmlFor="rich-link">
@@ -654,15 +890,28 @@ export function RichEditor(props: RichEditorProps) {
                 closePalette(true);
               } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                 e.preventDefault();
-                if (matches.length) setPalette({ ...palette, active: (palette.active + (e.key === "ArrowDown" ? 1 : matches.length - 1)) % matches.length });
+                if (matches.length)
+                  setPalette({
+                    ...palette,
+                    active:
+                      (palette.active + (e.key === "ArrowDown" ? 1 : matches.length - 1)) %
+                      matches.length,
+                  });
               } else if (e.key === "Enter") {
                 e.preventDefault();
                 if (typedUrl) applyLink(typedUrl, typedUrl);
-                else if (matches[palette.active]) applyLink(matches[palette.active]!.href, matches[palette.active]!.title);
+                else if (matches[palette.active])
+                  applyLink(matches[palette.active]!.href, matches[palette.active]!.title);
               }
             }}
           />
-          <div className="cap-listbox" role="listbox" id="rich-link-list" aria-label="Pages" data-wrap="">
+          <div
+            className="cap-listbox"
+            role="listbox"
+            id="rich-link-list"
+            aria-label="Pages"
+            data-wrap=""
+          >
             {matches.map((m, i) => (
               // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- a listbox option chosen by pointer; the palette's input drives it from the keyboard (aria-activedescendant)
               <div
@@ -682,7 +931,11 @@ export function RichEditor(props: RichEditorProps) {
             ))}
           </div>
           <p className="cap-md-palette-note" role="status">
-            {typedUrl ? `Enter links to ${typedUrl}.` : matches.length === 0 ? "No page matches. Type a full address to link to it." : `${matches.length} page${matches.length === 1 ? "" : "s"}.`}
+            {typedUrl
+              ? `Enter links to ${typedUrl}.`
+              : matches.length === 0
+                ? "No page matches. Type a full address to link to it."
+                : `${matches.length} page${matches.length === 1 ? "" : "s"}.`}
           </p>
         </div>
       ) : null}
@@ -698,23 +951,40 @@ export function RichEditor(props: RichEditorProps) {
           data-side="bottom"
           data-align="start"
           onKeyDown={(e) => {
-            const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>(".cap-md-slash-item")];
+            const items = [
+              ...e.currentTarget.querySelectorAll<HTMLButtonElement>(".cap-md-slash-item"),
+            ];
             const at = items.findIndex((b) => b === document.activeElement);
             if (e.key === "Escape") {
               e.preventDefault();
               e.stopPropagation();
               setSlash(null);
               editorRef.current?.commands.focus();
-            } else if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
+            } else if (
+              e.key === "ArrowDown" ||
+              e.key === "ArrowUp" ||
+              e.key === "Home" ||
+              e.key === "End"
+            ) {
               e.preventDefault();
-              const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (at + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+              const next =
+                e.key === "Home"
+                  ? 0
+                  : e.key === "End"
+                    ? items.length - 1
+                    : (at + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
               items[next]?.focus();
             }
           }}
         >
           {scaffolds.map((s) => (
             <li key={s.id}>
-              <button type="button" className="cap-md-slash-item" tabIndex={-1} onClick={() => insertScaffold(s, true)}>
+              <button
+                type="button"
+                className="cap-md-slash-item"
+                tabIndex={-1}
+                onClick={() => insertScaffold(s, true)}
+              >
                 <strong>{s.label}</strong>
                 <span className="cap-md-slash-hint">{s.hint}</span>
               </button>

@@ -20,12 +20,18 @@ export function connectedEnv(overrides: Partial<Env> = {}): Env {
 export function fakeSite<A extends SiteAdapter = ReturnType<typeof memoryAdapter>>(
   adapter: A = memoryAdapter() as SiteAdapter as A,
 ) {
-  const api = createSiteApi({ adapter, key: SITE_KEY, limiter: { limit: async () => ({ success: true }) }, log: () => {} });
+  const api = createSiteApi({
+    adapter,
+    key: SITE_KEY,
+    limiter: { limit: async () => ({ success: true }) },
+    log: () => {},
+  });
   const requests: string[] = [];
   const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
     requests.push(`${request.method} ${new URL(request.url).pathname}`);
-    if (!request.url.startsWith(SITE_ORIGIN)) throw new Error(`the tests reach only the fake site, not ${request.url}`);
+    if (!request.url.startsWith(SITE_ORIGIN))
+      throw new Error(`the tests reach only the fake site, not ${request.url}`);
     return api.matches(request) ? api.handle(request) : new Response("site page", { status: 404 });
   }) as typeof globalThis.fetch;
   return { adapter, fetch, requests };
@@ -49,21 +55,42 @@ const SITE_KINDS = {
 } as const satisfies Record<string, ((name: string) => string) | null>;
 
 /** The reference adapter with the kinds and paths of the real site, for a walk over every kind. */
-export function kindedAdapter(base: ReturnType<typeof memoryAdapter> = memoryAdapter()): ReturnType<typeof memoryAdapter> {
+export function kindedAdapter(
+  base: ReturnType<typeof memoryAdapter> = memoryAdapter(),
+): ReturnType<typeof memoryAdapter> {
   const split = (id: string) => {
     const dot = id.indexOf(".");
     const kind = dot > 0 ? id.slice(0, dot) : "";
-    return Object.hasOwn(SITE_KINDS, kind) ? { kind: kind as keyof typeof SITE_KINDS, name: id.slice(dot + 1) } : null;
+    return Object.hasOwn(SITE_KINDS, kind)
+      ? { kind: kind as keyof typeof SITE_KINDS, name: id.slice(dot + 1) }
+      : null;
   };
-  const dress = <T extends { id: string; kind: string; status: string; path: string | null; publishedAt: string | null }>(doc: T): T => {
+  const dress = <
+    T extends {
+      id: string;
+      kind: string;
+      status: string;
+      path: string | null;
+      publishedAt: string | null;
+    },
+  >(
+    doc: T,
+  ): T => {
     const k = split(doc.id);
     if (!k) return { ...doc, path: doc.path?.replace("/blog/", "/writing/") ?? null };
     const page = SITE_KINDS[k.kind];
-    return { ...doc, kind: k.kind, path: page && (doc.status === "published" || doc.publishedAt) ? page(k.name) : null };
+    return {
+      ...doc,
+      kind: k.kind,
+      path: page && (doc.status === "published" || doc.publishedAt) ? page(k.name) : null,
+    };
   };
   const refuseData = (id: string) => {
     const k = split(id);
-    if (k && SITE_KINDS[k.kind] === null) throw new RefusedError(`The site's ${k.kind} entries are edited in the site's repository, not through Carrel.`);
+    if (k && SITE_KINDS[k.kind] === null)
+      throw new RefusedError(
+        `The site's ${k.kind} entries are edited in the site's repository, not through Carrel.`,
+      );
   };
   const content = base.content;
   return {
@@ -91,10 +118,18 @@ export function kindedAdapter(base: ReturnType<typeof memoryAdapter> = memoryAda
 }
 
 export async function viewerFor(email: string): Promise<Viewer> {
-  const row = await testEnv.DB.prepare("SELECT id, email, name, is_owner, is_reviewer FROM people WHERE email = ?")
+  const row = await testEnv.DB.prepare(
+    "SELECT id, email, name, is_owner, is_reviewer FROM people WHERE email = ?",
+  )
     .bind(email)
     .first<{ id: number; email: string; name: string; is_owner: number; is_reviewer: number }>();
-  return { id: row!.id, email: row!.email, name: row!.name, isOwner: row!.is_owner === 1, isReviewer: row!.is_reviewer === 1 };
+  return {
+    id: row!.id,
+    email: row!.email,
+    name: row!.name,
+    isOwner: row!.is_owner === 1,
+    isReviewer: row!.is_reviewer === 1,
+  };
 }
 
 /** The context a route's loader or action gets: the env, the signed-in person and a nonce. */
@@ -133,10 +168,16 @@ export async function refusal(promise: Promise<unknown>): Promise<number> {
  * has not shipped it (without `media`, a file takes no writes at all). Its replace says sizes may be
  * stale, as a site with an image cache (dustinedwards.info) does.
  */
-export function nextSite(offers: { scheduledUpdates?: boolean; media?: boolean } = {}): ReturnType<typeof fakeSite<ReturnType<typeof memoryAdapter>>> {
-  const adapter = memoryAdapter({ schedules: offers.scheduledUpdates === true, mediaWrites: offers.media === true });
+export function nextSite(
+  offers: { scheduledUpdates?: boolean; media?: boolean } = {},
+): ReturnType<typeof fakeSite<ReturnType<typeof memoryAdapter>>> {
+  const adapter = memoryAdapter({
+    schedules: offers.scheduledUpdates === true,
+    mediaWrites: offers.media === true,
+  });
   const media = adapter.media!;
   const replace = media.replace?.bind(media);
-  if (replace) media.replace = async (id, input) => ({ ...(await replace(id, input)), sizesNeedPurge: true });
+  if (replace)
+    media.replace = async (id, input) => ({ ...(await replace(id, input)), sizesNeedPurge: true });
   return fakeSite(adapter);
 }

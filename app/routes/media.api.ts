@@ -11,7 +11,12 @@
 // does not allow before the site hears anything.
 
 import { UPLOAD_HEADERS } from "@dustinedwards/site-runtime/headers";
-import { loadMedia, loadMediaChanges, readMediaQuery, runMediaIntent } from "@dustinedwards/site-api/admin";
+import {
+  loadMedia,
+  loadMediaChanges,
+  readMediaQuery,
+  runMediaIntent,
+} from "@dustinedwards/site-api/admin";
 import { mediaDataOfKit, readMediaView } from "capsomer/behavior/media-library";
 
 import { getEnv, getViewer } from "~/lib/context";
@@ -32,14 +37,33 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     const bytesOf = search.get("bytes");
     if (bytesOf) {
       const file = await mediaBytes(source, bytesOf);
-      if (!file) return Response.json({ error: "The site has no image by that id that Carrel can open." }, { status: 404 });
-      return new Response(file.bytes, { headers: { ...UPLOAD_HEADERS, "content-type": file.type, "cache-control": "private, no-store", "content-disposition": "attachment" } });
+      if (!file)
+        return Response.json(
+          { error: "The site has no image by that id that Carrel can open." },
+          { status: 404 },
+        );
+      return new Response(file.bytes, {
+        headers: {
+          ...UPLOAD_HEADERS,
+          "content-type": file.type,
+          "cache-control": "private, no-store",
+          "content-disposition": "attachment",
+        },
+      });
     }
     const since = search.get("changes");
-    if (since !== null) return Response.json(await loadMediaChanges(source, since.slice(0, 500)), { headers: { "cache-control": "private, no-store" } });
+    if (since !== null)
+      return Response.json(await loadMediaChanges(source, since.slice(0, 500)), {
+        headers: { "cache-control": "private, no-store" },
+      });
     const kit = await loadMedia(source, readMediaQuery(search));
     const pick = search.get("pick") ?? "";
-    return Response.json(mediaDataOfKit(kit, { usedHref: (use) => usageHref(project.slug, use), view: { ...readMediaView(search), ...(pick ? { pick } : {}) } }));
+    return Response.json(
+      mediaDataOfKit(kit, {
+        usedHref: (use) => usageHref(project.slug, use),
+        view: { ...readMediaView(search), ...(pick ? { pick } : {}) },
+      }),
+    );
   } catch (error) {
     const message = unreachable(error);
     if (message === null) throw error;
@@ -48,7 +72,8 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 }
 
 export async function action({ params, request, context }: Route.ActionArgs) {
-  if (request.method !== "POST") return Response.json({ error: "Method not allowed." }, { status: 405 });
+  if (request.method !== "POST")
+    return Response.json({ error: "Method not allowed." }, { status: 405 });
   const env = getEnv(context);
   const viewer = getViewer(context);
   const form = await readForm(request, UPLOAD_MAX_BYTES);
@@ -62,7 +87,10 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     const id = uploaded.ok ? uploaded.outcomes?.[0]?.id : undefined;
     if (!id) return Response.json({ error: uploaded.message }, { status: 422 });
     const item = await source.client.media.get(id);
-    return Response.json({ id, url: item.url, src: absoluteMediaUrl(source.site.origin, item.url) }, { status: 201 });
+    return Response.json(
+      { id, url: item.url, src: absoluteMediaUrl(source.site.origin, item.url) },
+      { status: 201 },
+    );
   } catch (error) {
     const message = unreachable(error);
     if (message === null) throw error;

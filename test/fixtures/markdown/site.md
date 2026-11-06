@@ -3,7 +3,7 @@ title: Site dialect constructs
 ---
 
 :::figure{src="/media/a.png" alt="A figure, &quot;quoted&quot;"}
-A caption with *emphasis*.
+A caption with _emphasis_.
 :::
 
 :::chart{type=bar x=name y=value_kib title="Sizes" alt="Bar chart"}
@@ -11,6 +11,7 @@ A caption with *emphasis*.
 name,value_kib
 first,1
 ```
+
 An optional caption.
 :::
 

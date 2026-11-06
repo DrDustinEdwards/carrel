@@ -19,15 +19,38 @@ import type { MentionFilter } from "@dustinedwards/site-api/admin";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { outsideResult } from "@dustinedwards/site-runtime/mcp-server";
 
-import { addFinding, aiDraftSocialPost, AiRefusal, aiPublish, itemFindings, listAiDrafts, saveAiDraft, type AiSession } from "~/lib/ai.server";
-import { bookVoice, checkDraft, indexedFile, listFiles, listFindings, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
+import {
+  addFinding,
+  aiDraftSocialPost,
+  AiRefusal,
+  aiPublish,
+  itemFindings,
+  listAiDrafts,
+  saveAiDraft,
+  type AiSession,
+} from "~/lib/ai.server";
+import {
+  bookVoice,
+  checkDraft,
+  indexedFile,
+  listFiles,
+  listFindings,
+  requireBookProject,
+  saveBookAiDraft,
+} from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { readMentions, runIntent as runMentionsIntent } from "~/lib/mentions.server";
 import { DELETE_LIMIT, deleteMediaFiles, importMediaFile } from "~/lib/media.server";
 import { searchItemsPage } from "~/lib/index.server";
 import { isBookPath } from "~/lib/novels/layout";
 import { visibleProjects } from "~/lib/people.server";
-import { briefOf, buildVoicePack, checkAgainstPack, readVoicePack, type VoicePack } from "~/lib/voice.server";
+import {
+  briefOf,
+  buildVoicePack,
+  checkAgainstPack,
+  readVoicePack,
+  type VoicePack,
+} from "~/lib/voice.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
 import { seoOf } from "~/lib/seo.server";
 import type { Action } from "~/lib/roles";
@@ -41,9 +64,18 @@ export type McpSession = AiSession & { scopes: readonly string[]; clientId?: str
 /** `signal` is the request's abort signal (P11); server.ts also hands it to `deps.fetcher`, so a closed stream stops the outbound calls. */
 type ToolContext = { env: Env; session: McpSession; deps: ToolDeps; signal?: AbortSignal };
 
-type JsonSchema = { type: "object"; properties: Record<string, unknown>; required?: string[]; additionalProperties?: false };
+type JsonSchema = {
+  type: "object";
+  properties: Record<string, unknown>;
+  required?: string[];
+  additionalProperties?: false;
+};
 
-export type ToolResult = { content: { type: "text"; text: string }[]; structuredContent?: Record<string, unknown>; isError?: boolean };
+export type ToolResult = {
+  content: { type: "text"; text: string }[];
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+};
 
 type Tool = {
   name: string;
@@ -55,7 +87,12 @@ type Tool = {
   /** The scope a call needs, declared here and never read from an annotation (site-runtime's toolScope). */
   scope: "read" | "write";
   /** All four, set honestly, so a client can confirm before acting (rule 6). */
-  annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: boolean };
+  annotations: {
+    readOnlyHint: boolean;
+    destructiveHint: boolean;
+    idempotentHint: boolean;
+    openWorldHint: boolean;
+  };
   /**
    * The answer carries text from outside Carrel: the site's posts, the novels repository, flags and
    * drafts other sessions wrote. It goes back marked as data (rule 12.5).
@@ -79,13 +116,28 @@ const PAGE_DEFAULT = 50;
 const PAGE_MAX = 100;
 
 /** Longest accepted inputs, in characters: a whole file or post, a finding's message and excerpt, a draft's note, a path or id. */
-const MAX = { source: 500_000, message: 2000, excerpt: 1000, note: 500, path: 200, sources: 20 } as const;
+const MAX = {
+  source: 500_000,
+  message: 2000,
+  excerpt: 1000,
+  note: 500,
+  path: 200,
+  sources: 20,
+} as const;
 
 /** Read-only, and nothing outside Carrel changes. */
-const READ = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+const READ = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
 
 /** An answer's shape: the fields always present, then those that may be null or absent. */
-function shape(always: Record<string, unknown>, sometimes: Record<string, unknown> = {}): JsonSchema {
+function shape(
+  always: Record<string, unknown>,
+  sometimes: Record<string, unknown> = {},
+): JsonSchema {
   return { type: "object", properties: { ...always, ...sometimes }, required: Object.keys(always) };
 }
 const ANY = {};
@@ -98,13 +150,29 @@ const FLAGGED = shape({ flagged: YES, findingId: ID, alreadyFlagged: YES });
 /** The outputSchema a client sees: an answer carrying outside text also carries the notice. */
 export function outputSchemaOf(tool: Tool): JsonSchema {
   const { properties, required = [] } = tool.outputSchema;
-  return tool.outside ? { type: "object", properties: { notice: TEXT, ...properties }, required: ["notice", ...required] } : tool.outputSchema;
+  return tool.outside
+    ? {
+        type: "object",
+        properties: { notice: TEXT, ...properties },
+        required: ["notice", ...required],
+      }
+    : tool.outputSchema;
 }
 
 const PROJECT = { type: "string", description: "The project's slug, from carrel_list_projects." };
-const ITEM = { type: "string", description: "The post's id (its slug on the site), from carrel_search_items." };
-const BOOK = { type: "string", description: "The book's project slug, from carrel_list_projects (kind book)." };
-const BOOK_PATH = { type: "string", description: "The file's path in the book, such as chapters/01-arrival/01-the-gate.md, from carrel_list_book_files." };
+const ITEM = {
+  type: "string",
+  description: "The post's id (its slug on the site), from carrel_search_items.",
+};
+const BOOK = {
+  type: "string",
+  description: "The book's project slug, from carrel_list_projects (kind book).",
+};
+const BOOK_PATH = {
+  type: "string",
+  description:
+    "The file's path in the book, such as chapters/01-arrival/01-the-gate.md, from carrel_list_book_files.",
+};
 
 /** An opaque cursor: the offset of the next page, so a client never builds one itself. */
 function encodeCursor(offset: number): string {
@@ -119,25 +187,42 @@ function decodeCursor(cursor: string): number {
     /* refused below */
   }
   const match = /^o:(\d{1,6})$/.exec(decoded);
-  if (!match) throw new AiRefusal("cursor is not one this tool gave. Leave it out to start from the first page.");
+  if (!match)
+    throw new AiRefusal(
+      "cursor is not one this tool gave. Leave it out to start from the first page.",
+    );
   return Number(match[1]);
 }
 
-function str(args: Record<string, unknown>, key: string, opts: { optional?: boolean; max?: number } = {}): string {
+function str(
+  args: Record<string, unknown>,
+  key: string,
+  opts: { optional?: boolean; max?: number } = {},
+): string {
   const value = args[key];
   if (value === undefined || value === null || value === "") {
     if (opts.optional) return "";
     throw new AiRefusal(`${key} is required.`);
   }
   if (typeof value !== "string") throw new AiRefusal(`${key} must be a string.`);
-  if (opts.max && value.length > opts.max) throw new AiRefusal(`${key} is longer than ${opts.max} characters.`);
+  if (opts.max && value.length > opts.max)
+    throw new AiRefusal(`${key} is longer than ${opts.max} characters.`);
   return value;
 }
 
 /** A list of strings, each at most `max` characters, at most `limit` of them. */
-function stringList(args: Record<string, unknown>, key: string, limit: number, max: number): string[] {
+function stringList(
+  args: Record<string, unknown>,
+  key: string,
+  limit: number,
+  max: number,
+): string[] {
   const value = args[key];
-  if (!Array.isArray(value) || value.length > limit || value.some((v) => typeof v !== "string" || v.length > max)) {
+  if (
+    !Array.isArray(value) ||
+    value.length > limit ||
+    value.some((v) => typeof v !== "string" || v.length > max)
+  ) {
     throw new AiRefusal(`${key} is a list of at most ${limit} strings.`);
   }
   return value as string[];
@@ -150,10 +235,16 @@ const DECIDE_LIMIT = 50;
 /** The sources a draft drew on: up to twenty texts, together no longer than a post may be. */
 function sourcesOf(args: Record<string, unknown>): string[] {
   const value = args.sources;
-  if (value === undefined || value === null) throw new AiRefusal("sources is required: the text of each paper or page the draft drew on, or [] when it drew on none.");
-  if (!Array.isArray(value) || value.some((s) => typeof s !== "string")) throw new AiRefusal("sources must be a list of strings.");
-  if (value.length > MAX.sources) throw new AiRefusal(`sources holds more than ${MAX.sources} texts.`);
-  if (value.reduce((n: number, s: string) => n + s.length, 0) > MAX.source) throw new AiRefusal(`sources is longer than ${MAX.source} characters in all.`);
+  if (value === undefined || value === null)
+    throw new AiRefusal(
+      "sources is required: the text of each paper or page the draft drew on, or [] when it drew on none.",
+    );
+  if (!Array.isArray(value) || value.some((s) => typeof s !== "string"))
+    throw new AiRefusal("sources must be a list of strings.");
+  if (value.length > MAX.sources)
+    throw new AiRefusal(`sources holds more than ${MAX.sources} texts.`);
+  if (value.reduce((n: number, s: string) => n + s.length, 0) > MAX.source)
+    throw new AiRefusal(`sources is longer than ${MAX.source} characters in all.`);
   return value.map((s: string) => s.trim()).filter(Boolean);
 }
 
@@ -188,7 +279,9 @@ export const TOOLS: Tool[] = [
     annotations: READ,
     outputSchema: shape({ projects: LIST }),
     outside: false,
-    run: async (_args, ctx) => ({ projects: await visibleProjects(ctx.env.DB, ctx.session.viewer) }),
+    run: async (_args, ctx) => ({
+      projects: await visibleProjects(ctx.env.DB, ctx.session.viewer),
+    }),
   },
   {
     name: "carrel_search_items",
@@ -202,8 +295,16 @@ export const TOOLS: Tool[] = [
         q: { type: "string", description: "Words to search for." },
         status: { type: "string", enum: ["draft", "scheduled", "published"] },
         kind: { type: "string" },
-        limit: { type: "integer", minimum: 1, maximum: PAGE_MAX, description: `How many posts to a page, ${PAGE_DEFAULT} if left out.` },
-        cursor: { type: "string", description: "next_cursor from the previous page, to read the page after it." },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: PAGE_MAX,
+          description: `How many posts to a page, ${PAGE_DEFAULT} if left out.`,
+        },
+        cursor: {
+          type: "string",
+          description: "next_cursor from the previous page, to read the page after it.",
+        },
       },
       required: ["project"],
       additionalProperties: false,
@@ -214,9 +315,11 @@ export const TOOLS: Tool[] = [
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
       const status = str(args, "status", { optional: true });
-      if (status && !["draft", "scheduled", "published"].includes(status)) throw new AiRefusal("status is draft, scheduled or published.");
+      if (status && !["draft", "scheduled", "published"].includes(status))
+        throw new AiRefusal("status is draft, scheduled or published.");
       const limit = args.limit ?? PAGE_DEFAULT;
-      if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > PAGE_MAX) throw new AiRefusal(`limit is a whole number from 1 to ${PAGE_MAX}.`);
+      if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > PAGE_MAX)
+        throw new AiRefusal(`limit is a whole number from 1 to ${PAGE_MAX}.`);
       const cursor = str(args, "cursor", { optional: true, max: 40 });
       const offset = cursor ? decodeCursor(cursor) : 0;
       const page = await searchItemsPage(
@@ -229,7 +332,11 @@ export const TOOLS: Tool[] = [
         },
         { offset, limit },
       );
-      return { items: page.items, has_more: page.hasMore, next_cursor: page.hasMore ? encodeCursor(offset + page.items.length) : null };
+      return {
+        items: page.items,
+        has_more: page.hasMore,
+        next_cursor: page.hasMore ? encodeCursor(offset + page.items.length) : null,
+      };
     },
   },
   {
@@ -237,7 +344,12 @@ export const TOOLS: Tool[] = [
     title: "Read a post",
     scope: "read",
     description: `Reads a post as the site holds it (its Markdown source and version), with Dustin's own working draft if he has one, the AI drafts saved beside it, and its flags. ${RULE}`,
-    inputSchema: { type: "object", properties: { project: PROJECT, item: ITEM }, required: ["project", "item"], additionalProperties: false },
+    inputSchema: {
+      type: "object",
+      properties: { project: PROJECT, item: ITEM },
+      required: ["project", "item"],
+      additionalProperties: false,
+    },
     annotations: READ,
     outputSchema: shape({ aiDrafts: LIST, flags: LIST }, { site: ANY, dustinsDraft: ANY }),
     outside: true,
@@ -250,7 +362,8 @@ export const TOOLS: Tool[] = [
         listAiDrafts(ctx.env.DB, p, ctx.session.viewer, item),
         itemFindings(ctx.env.DB, p, item),
       ]);
-      if (!doc && !draft) throw new AiRefusal(`There is no post ${item} on the site and no draft of it in Carrel.`);
+      if (!doc && !draft)
+        throw new AiRefusal(`There is no post ${item} on the site and no draft of it in Carrel.`);
       return { site: doc, dustinsDraft: draft, aiDrafts, flags };
     },
   },
@@ -264,24 +377,52 @@ export const TOOLS: Tool[] = [
       properties: {
         project: PROJECT,
         item: ITEM,
-        source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." },
-        note: { type: "string", description: "One line for Dustin on what this draft changes and why." },
+        source: {
+          type: "string",
+          description: "The whole post, in the site's Markdown with its frontmatter.",
+        },
+        note: {
+          type: "string",
+          description: "One line for Dustin on what this draft changes and why.",
+        },
         sources: SOURCES,
       },
       required: ["project", "item", "source", "sources"],
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    outputSchema: shape({ saved: YES, aiDraftId: ID, where: TEXT, checks: { type: "object" } }, { basedOnVersion: ANY, seo: ANY }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
+    outputSchema: shape(
+      { saved: YES, aiDraftId: ID, where: TEXT, checks: { type: "object" } },
+      { basedOnVersion: ANY, seo: ANY },
+    ),
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
       const source = str(args, "source", { max: MAX.source });
       const sources = sourcesOf(args);
-      const saved = await saveAiDraft(ctx.env, p, ctx.session, str(args, "item"), { source, note: str(args, "note", { optional: true, max: MAX.note }), sources }, ctx.deps.fetcher);
+      const saved = await saveAiDraft(
+        ctx.env,
+        p,
+        ctx.session,
+        str(args, "item"),
+        { source, note: str(args, "note", { optional: true, max: MAX.note }), sources },
+        ctx.deps.fetcher,
+      );
       const checks = checkAgainstPack(await packFor(ctx, p), source, sources);
       const seo = await seoOf(ctx.env, p, source, { id: str(args, "item") }, ctx.deps.fetcher);
-      return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in Carrel's editor, under AI drafts.", checks, seo };
+      return {
+        saved: true,
+        aiDraftId: saved.id,
+        basedOnVersion: saved.baseVersion,
+        where: "Beside Dustin's draft in Carrel's editor, under AI drafts.",
+        checks,
+        seo,
+      };
     },
   },
   {
@@ -289,10 +430,18 @@ export const TOOLS: Tool[] = [
     title: "Read the voice brief",
     scope: "read",
     description: `What to read before drafting a post for this project, so the draft reads like Dustin and not like a model: a few writing rules, Dustin's own guide, and excerpts of his own writing (what he pasted in Carrel, or his published posts while there is none; from says which), among them one of his long sentences and one of his short ones. Read the guide and the excerpts and write from them. After drafting, run carrel_check_post_text and fix only the spans it names. Built the first time it is asked for. ${RULE}`,
-    inputSchema: { type: "object", properties: { project: PROJECT }, required: ["project"], additionalProperties: false },
+    inputSchema: {
+      type: "object",
+      properties: { project: PROJECT },
+      required: ["project"],
+      additionalProperties: false,
+    },
     // Reads the site's published posts the first time; it stores what it measured, which changes nothing anyone wrote.
     annotations: READ,
-    outputSchema: shape({ rules: TEXT, guide: TEXT, excerpts: LIST }, { from: ANY, pieces: ANY, builtAt: ANY }),
+    outputSchema: shape(
+      { rules: TEXT, guide: TEXT, excerpts: LIST },
+      { from: ANY, pieces: ANY, builtAt: ANY },
+    ),
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
@@ -308,9 +457,16 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         project: PROJECT,
-        source: { type: "string", description: "The whole post, in the site's Markdown with its frontmatter." },
+        source: {
+          type: "string",
+          description: "The whole post, in the site's Markdown with its frontmatter.",
+        },
         sources: SOURCES,
-        item: { type: "string", description: "The post's id, when it has one, so the preview carries its address on the site." },
+        item: {
+          type: "string",
+          description:
+            "The post's id, when it has one, so the preview carries its address on the site.",
+        },
       },
       required: ["project", "source", "sources"],
       additionalProperties: false,
@@ -323,7 +479,16 @@ export const TOOLS: Tool[] = [
       const p = await project(ctx, args, "read");
       const source = str(args, "source", { max: MAX.source });
       const scan = checkAgainstPack(await packFor(ctx, p), source, sourcesOf(args));
-      return { ...scan, seo: await seoOf(ctx.env, p, source, { id: str(args, "item", { optional: true, max: MAX.path }) || null }, ctx.deps.fetcher) };
+      return {
+        ...scan,
+        seo: await seoOf(
+          ctx.env,
+          p,
+          source,
+          { id: str(args, "item", { optional: true, max: MAX.path }) || null },
+          ctx.deps.fetcher,
+        ),
+      };
     },
   },
   {
@@ -333,7 +498,11 @@ export const TOOLS: Tool[] = [
     description: `The site's own rendering of a post, as HTML: the given source, or else Dustin's working draft, or else the site's text. ${RULE}`,
     inputSchema: {
       type: "object",
-      properties: { project: PROJECT, item: ITEM, source: { type: "string", description: "Markdown to render instead of the saved text." } },
+      properties: {
+        project: PROJECT,
+        item: ITEM,
+        source: { type: "string", description: "Markdown to render instead of the saved text." },
+      },
       required: ["project", "item"],
       additionalProperties: false,
     },
@@ -349,8 +518,16 @@ export const TOOLS: Tool[] = [
         (await readDraft(ctx.env.DB, p, ctx.session.viewer, item))?.source ||
         (await readDoc(ctx.env, p, item, ctx.deps.fetcher))?.source;
       if (!source) throw new AiRefusal("There is nothing to preview yet.");
-      const html = await siteClient(ctx.env, p.site, ctx.deps.fetcher).preview({ id: item, source });
-      return { html: html.length > PREVIEW_LIMIT ? `${html.slice(0, PREVIEW_LIMIT)}\n<!-- truncated -->` : html };
+      const html = await siteClient(ctx.env, p.site, ctx.deps.fetcher).preview({
+        id: item,
+        source,
+      });
+      return {
+        html:
+          html.length > PREVIEW_LIMIT
+            ? `${html.slice(0, PREVIEW_LIMIT)}\n<!-- truncated -->`
+            : html,
+      };
     },
   },
   {
@@ -358,21 +535,37 @@ export const TOOLS: Tool[] = [
     title: "Get a post's flags",
     scope: "read",
     description: `The flags on a post from checks and reviewers, open and dismissed, and seo: the search and sharing checks on Dustin's working draft (or the site's text) with a preview of the post as a search result and a link card. An open flag holds publish until Dustin fixes the text or dismisses it; the search and sharing checks only flag. ${RULE}`,
-    inputSchema: { type: "object", properties: { project: PROJECT, item: ITEM }, required: ["project", "item"], additionalProperties: false },
+    inputSchema: {
+      type: "object",
+      properties: { project: PROJECT, item: ITEM },
+      required: ["project", "item"],
+      additionalProperties: false,
+    },
     annotations: READ,
     outputSchema: shape({ open: ID, flags: LIST }, { seo: ANY }),
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
       const item = str(args, "item");
-      const [flags, draft] = await Promise.all([itemFindings(ctx.env.DB, p, item), readDraft(ctx.env.DB, p, ctx.session.viewer, item)]);
+      const [flags, draft] = await Promise.all([
+        itemFindings(ctx.env.DB, p, item),
+        readDraft(ctx.env.DB, p, ctx.session.viewer, item),
+      ]);
       // A site that does not answer leaves the flags to answer with, checked against the draft alone.
       const doc = await readDoc(ctx.env, p, item, ctx.deps.fetcher).catch((error: unknown) => {
         if (error instanceof SiteNotConnected || error instanceof SiteApiError) return null;
         throw error;
       });
       const source = draft?.source ?? doc?.source;
-      const seo = source ? await seoOf(ctx.env, p, source, { id: item, ...(doc ? { kind: doc.kind, path: doc.path } : {}) }, ctx.deps.fetcher) : null;
+      const seo = source
+        ? await seoOf(
+            ctx.env,
+            p,
+            source,
+            { id: item, ...(doc ? { kind: doc.kind, path: doc.path } : {}) },
+            ctx.deps.fetcher,
+          )
+        : null;
       return { open: flags.filter((f) => f.status === "open").length, flags, seo };
     },
   },
@@ -387,13 +580,21 @@ export const TOOLS: Tool[] = [
         project: PROJECT,
         item: ITEM,
         message: { type: "string", description: "What the problem is, in a sentence or two." },
-        excerpt: { type: "string", description: "The words in the post the flag is about, quoted exactly." },
+        excerpt: {
+          type: "string",
+          description: "The words in the post the flag is about, quoted exactly.",
+        },
       },
       required: ["project", "item", "message"],
       additionalProperties: false,
     },
     // The same flag twice is one flag (alreadyFlagged).
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
     outputSchema: FLAGGED,
     outside: false,
     run: async (args, ctx) => {
@@ -415,16 +616,30 @@ export const TOOLS: Tool[] = [
       properties: {
         project: PROJECT,
         item: ITEM,
-        expected_version: { type: "string", description: "The site's version of the post, from carrel_read_item, so an older version is never published by mistake." },
+        expected_version: {
+          type: "string",
+          description:
+            "The site's version of the post, from carrel_read_item, so an older version is never published by mistake.",
+        },
         // A string of digits: a client holding the tool list from before ai_draft_id existed sends it as text.
-        ai_draft_id: { type: "string", pattern: "^[1-9][0-9]*$", description: "The aiDraftId carrel_save_draft returned, as digits, to publish that draft's text. Leave out to publish the site's text as it stands." },
+        ai_draft_id: {
+          type: "string",
+          pattern: "^[1-9][0-9]*$",
+          description:
+            "The aiDraftId carrel_save_draft returned, as digits, to publish that draft's text. Leave out to publish the site's text as it stands.",
+        },
       },
       required: ["project", "item", "expected_version"],
       additionalProperties: false,
     },
     // Destructive: the live page is replaced for every reader of the site, so a client should confirm
     // first. Idempotent: the same version published twice is one publish. Open world: the public site.
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     outputSchema: shape({ published: YES }, { version: ANY, changeId: ANY, dustinEmailed: ANY }),
     outside: false,
     run: async (args, ctx) => {
@@ -432,14 +647,30 @@ export const TOOLS: Tool[] = [
       const p = await project(ctx, args, "read");
       const raw = args.ai_draft_id;
       const draftId = raw === undefined ? undefined : Number(raw);
-      if (draftId !== undefined && (!/^[1-9][0-9]*$/.test(String(raw)) || !Number.isSafeInteger(draftId))) throw new AiRefusal("ai_draft_id is the number carrel_save_draft returned.");
-      const result = await aiPublish(ctx.env, p, ctx.session, str(args, "item"), str(args, "expected_version", { max: MAX.path }), {
-        fetcher: ctx.deps.fetcher,
-        carrelOrigin: ctx.deps.carrelOrigin,
-        aiDraftId: draftId,
-      });
+      if (
+        draftId !== undefined &&
+        (!/^[1-9][0-9]*$/.test(String(raw)) || !Number.isSafeInteger(draftId))
+      )
+        throw new AiRefusal("ai_draft_id is the number carrel_save_draft returned.");
+      const result = await aiPublish(
+        ctx.env,
+        p,
+        ctx.session,
+        str(args, "item"),
+        str(args, "expected_version", { max: MAX.path }),
+        {
+          fetcher: ctx.deps.fetcher,
+          carrelOrigin: ctx.deps.carrelOrigin,
+          aiDraftId: draftId,
+        },
+      );
       if (!result.ok) throw new AiRefusal(result.message);
-      return { published: true, version: result.version, changeId: result.changeId, dustinEmailed: result.emailed };
+      return {
+        published: true,
+        version: result.version,
+        changeId: result.changeId,
+        dustinEmailed: result.emailed,
+      };
     },
   },
 
@@ -452,14 +683,28 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         project: PROJECT,
-        url: { type: "string", pattern: "^https://", maxLength: 2000, description: "The picture's https address." },
+        url: {
+          type: "string",
+          pattern: "^https://",
+          maxLength: 2000,
+          description: "The picture's https address.",
+        },
         alt: { type: "string", maxLength: 500, description: "The picture's alt text." },
-        filename: { type: "string", maxLength: MAX.path, description: "A name for the file; leave out to take it from the address." },
+        filename: {
+          type: "string",
+          maxLength: MAX.path,
+          description: "A name for the file; leave out to take it from the address.",
+        },
       },
       required: ["project", "url", "alt"],
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST }),
     outside: false,
     run: async (args, ctx) => {
@@ -467,7 +712,11 @@ export const TOOLS: Tool[] = [
         ctx.env,
         ctx.session.viewer,
         str(args, "project"),
-        { url: str(args, "url", { max: 2000 }), alt: str(args, "alt", { max: 500 }), filename: str(args, "filename", { optional: true, max: MAX.path }) },
+        {
+          url: str(args, "url", { max: 2000 }),
+          alt: str(args, "alt", { max: 500 }),
+          filename: str(args, "filename", { optional: true, max: MAX.path }),
+        },
         ctx.deps.fetcher,
       );
       return { ok: done.ok, message: done.message, outcomes: done.outcomes ?? [] };
@@ -482,20 +731,42 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         project: PROJECT,
-        ids: { type: "array", items: { type: "string", pattern: "^[A-Za-z0-9._~/-]{1,200}$", maxLength: MAX.path }, minItems: 1, maxItems: DELETE_LIMIT, description: `The library file ids to delete, from the media library (at most ${DELETE_LIMIT}).` },
+        ids: {
+          type: "array",
+          items: { type: "string", pattern: "^[A-Za-z0-9._~/-]{1,200}$", maxLength: MAX.path },
+          minItems: 1,
+          maxItems: DELETE_LIMIT,
+          description: `The library file ids to delete, from the media library (at most ${DELETE_LIMIT}).`,
+        },
       },
       required: ["project", "ids"],
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST }),
     outside: false,
     run: async (args, ctx) => {
       const ids = args.ids;
-      if (!Array.isArray(ids) || ids.length === 0 || ids.length > DELETE_LIMIT || ids.some((id) => typeof id !== "string" || id.length > MAX.path)) {
+      if (
+        !Array.isArray(ids) ||
+        ids.length === 0 ||
+        ids.length > DELETE_LIMIT ||
+        ids.some((id) => typeof id !== "string" || id.length > MAX.path)
+      ) {
         throw new AiRefusal(`ids is a list of 1 to ${DELETE_LIMIT} file ids.`);
       }
-      const done = await deleteMediaFiles(ctx.env, ctx.session.viewer, str(args, "project"), ids as string[], ctx.deps.fetcher);
+      const done = await deleteMediaFiles(
+        ctx.env,
+        ctx.session.viewer,
+        str(args, "project"),
+        ids as string[],
+        ctx.deps.fetcher,
+      );
       return { ok: done.ok, message: done.message, outcomes: done.outcomes ?? [] };
     },
   },
@@ -511,21 +782,48 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         project: PROJECT,
-        status: { type: "string", enum: ["unverified", "pending", "approved", "rejected", "failed", "all"], description: "One status, or all. Leave out to open on pending, or on all when nothing waits." },
-        q: { type: "string", maxLength: 200, description: "Words in the source address, the sender's name or the excerpt." },
-        item: { type: "string", maxLength: MAX.path, description: "Only the mentions of this post (its id)." },
-        cursor: { type: "string", maxLength: 500, description: "next_cursor from the previous page, to read the page after it." },
+        status: {
+          type: "string",
+          enum: ["unverified", "pending", "approved", "rejected", "failed", "all"],
+          description:
+            "One status, or all. Leave out to open on pending, or on all when nothing waits.",
+        },
+        q: {
+          type: "string",
+          maxLength: 200,
+          description: "Words in the source address, the sender's name or the excerpt.",
+        },
+        item: {
+          type: "string",
+          maxLength: MAX.path,
+          description: "Only the mentions of this post (its id).",
+        },
+        cursor: {
+          type: "string",
+          maxLength: 500,
+          description: "next_cursor from the previous page, to read the page after it.",
+        },
       },
       required: ["project"],
       additionalProperties: false,
     },
     annotations: READ,
-    outputSchema: shape({ status: TEXT, mentions: LIST, counts: { type: "object" }, expiring: { type: "object" }, next_cursor: { type: ["string", "null"] } }, { filtered_on_page: ANY }),
+    outputSchema: shape(
+      {
+        status: TEXT,
+        mentions: LIST,
+        counts: { type: "object" },
+        expiring: { type: "object" },
+        next_cursor: { type: ["string", "null"] },
+      },
+      { filtered_on_page: ANY },
+    ),
     outside: true,
     run: async (args, ctx) => {
       const status = str(args, "status", { optional: true });
       const statuses = ["unverified", "pending", "approved", "rejected", "failed", "all"];
-      if (status && !statuses.includes(status)) throw new AiRefusal(`status is one of ${statuses.join(", ")}.`);
+      if (status && !statuses.includes(status))
+        throw new AiRefusal(`status is one of ${statuses.join(", ")}.`);
       const q = str(args, "q", { optional: true, max: 200 });
       const item = str(args, "item", { optional: true, max: MAX.path });
       const cursor = str(args, "cursor", { optional: true, max: 500 });
@@ -533,10 +831,16 @@ export const TOOLS: Tool[] = [
         ctx.env,
         ctx.session.viewer,
         str(args, "project"),
-        { ...(status ? { status: status as MentionFilter } : {}), ...(q ? { q } : {}), ...(item ? { targetId: item } : {}), ...(cursor ? { cursor } : {}) },
+        {
+          ...(status ? { status: status as MentionFilter } : {}),
+          ...(q ? { q } : {}),
+          ...(item ? { targetId: item } : {}),
+          ...(cursor ? { cursor } : {}),
+        },
         ctx.deps.fetcher,
       );
-      if (!kit.offers.mentions) throw new AiRefusal("This site does not receive webmentions through Carrel.");
+      if (!kit.offers.mentions)
+        throw new AiRefusal("This site does not receive webmentions through Carrel.");
       return {
         status: kit.filter,
         mentions: kit.rows.map(({ postHref: _href, ...m }) => m),
@@ -556,26 +860,65 @@ export const TOOLS: Tool[] = [
       type: "object",
       properties: {
         project: PROJECT,
-        decision: { type: "string", enum: ["approve", "reject", "reset"], description: "approve, reject, or reset (back to waiting)." },
-        ids: { type: "array", items: { type: "string", pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$" }, minItems: 1, maxItems: DECIDE_LIMIT, description: `The mentions' ids, from carrel_review_mentions (at most ${DECIDE_LIMIT}).` },
-        versions: { type: "array", items: { type: "string", maxLength: 200 }, maxItems: DECIDE_LIMIT, description: "Each mention's version from carrel_review_mentions, in the same order as ids." },
+        decision: {
+          type: "string",
+          enum: ["approve", "reject", "reset"],
+          description: "approve, reject, or reset (back to waiting).",
+        },
+        ids: {
+          type: "array",
+          items: { type: "string", pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$" },
+          minItems: 1,
+          maxItems: DECIDE_LIMIT,
+          description: `The mentions' ids, from carrel_review_mentions (at most ${DECIDE_LIMIT}).`,
+        },
+        versions: {
+          type: "array",
+          items: { type: "string", maxLength: 200 },
+          maxItems: DECIDE_LIMIT,
+          description:
+            "Each mention's version from carrel_review_mentions, in the same order as ids.",
+        },
       },
       required: ["project", "decision", "ids"],
       additionalProperties: false,
     },
     // Not destructive: approve, reject and reset each undo the others. The site's public post page changes.
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST, undo: ANY, conflict: ANY }),
     outside: false,
     run: async (args, ctx) => {
       const decision = str(args, "decision");
-      if (!["approve", "reject", "reset"].includes(decision)) throw new AiRefusal("decision is approve, reject or reset.");
+      if (!["approve", "reject", "reset"].includes(decision))
+        throw new AiRefusal("decision is approve, reject or reset.");
       const ids = stringList(args, "ids", DECIDE_LIMIT, 200);
-      const versions = args.versions === undefined ? [] : stringList(args, "versions", DECIDE_LIMIT, 200);
-      if (ids.length === 0) throw new AiRefusal(`ids is a list of 1 to ${DECIDE_LIMIT} mention ids.`);
-      if (versions.length > 0 && versions.length !== ids.length) throw new AiRefusal("versions has one entry for each id, in the same order, or is left out.");
-      const done = await runMentionsIntent(ctx.env, ctx.session.viewer, str(args, "project"), { intent: decision, ids, ...(versions.length ? { versions } : {}) }, ctx.deps.fetcher);
-      return { ok: done.ok, message: done.message, outcomes: done.outcomes ?? [], ...(done.undo ? { undo: done.undo } : {}), ...(done.conflict ? { conflict: done.conflict } : {}) };
+      const versions =
+        args.versions === undefined ? [] : stringList(args, "versions", DECIDE_LIMIT, 200);
+      if (ids.length === 0)
+        throw new AiRefusal(`ids is a list of 1 to ${DECIDE_LIMIT} mention ids.`);
+      if (versions.length > 0 && versions.length !== ids.length)
+        throw new AiRefusal(
+          "versions has one entry for each id, in the same order, or is left out.",
+        );
+      const done = await runMentionsIntent(
+        ctx.env,
+        ctx.session.viewer,
+        str(args, "project"),
+        { intent: decision, ids, ...(versions.length ? { versions } : {}) },
+        ctx.deps.fetcher,
+      );
+      return {
+        ok: done.ok,
+        message: done.message,
+        outcomes: done.outcomes ?? [],
+        ...(done.undo ? { undo: done.undo } : {}),
+        ...(done.conflict ? { conflict: done.conflict } : {}),
+      };
     },
   },
 
@@ -586,13 +929,21 @@ export const TOOLS: Tool[] = [
     title: "List a book's files",
     scope: "read",
     description: `A book's chapters, scenes, bible and outline files from Carrel's index of the writing repository, with each scene's header and open flags. ${RULE}`,
-    inputSchema: { type: "object", properties: { project: BOOK }, required: ["project"], additionalProperties: false },
+    inputSchema: {
+      type: "object",
+      properties: { project: BOOK },
+      required: ["project"],
+      additionalProperties: false,
+    },
     annotations: READ,
     outputSchema: shape({ files: LIST }),
     outside: true,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
-      const [files, open] = await Promise.all([listFiles(ctx.env.DB, b), listFindings(ctx.env.DB, b, { status: "open" })]);
+      const [files, open] = await Promise.all([
+        listFiles(ctx.env.DB, b),
+        listFindings(ctx.env.DB, b, { status: "open" }),
+      ]);
       return {
         files: files.map((f) => ({
           path: f.path,
@@ -609,9 +960,17 @@ export const TOOLS: Tool[] = [
     title: "Read a book file",
     scope: "read",
     description: `A scene, bible entry or outline file as the index last had it from Git, with its version, its flags, the AI drafts saved beside it, and excerpts of Dustin's own writing (his shared/voice/ passages and this book's finished scenes, among them a long sentence of his and a short one). Before drafting a scene, read the excerpts and write from them; then run carrel_check_book_text and fix only the spans its voice findings name. ${RULE}`,
-    inputSchema: { type: "object", properties: { project: BOOK, path: BOOK_PATH }, required: ["project", "path"], additionalProperties: false },
+    inputSchema: {
+      type: "object",
+      properties: { project: BOOK, path: BOOK_PATH },
+      required: ["project", "path"],
+      additionalProperties: false,
+    },
     annotations: READ,
-    outputSchema: shape({ path: TEXT, source: TEXT, flags: LIST, aiDrafts: LIST }, { version: ANY, voice: ANY }),
+    outputSchema: shape(
+      { path: TEXT, source: TEXT, flags: LIST, aiDrafts: LIST },
+      { version: ANY, voice: ANY },
+    ),
     outside: true,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
@@ -621,8 +980,18 @@ export const TOOLS: Tool[] = [
         listFindings(ctx.env.DB, b, { path }),
         listAiDrafts(ctx.env.DB, b, ctx.session.viewer, path),
       ]);
-      if (!file) throw new AiRefusal(`There is no ${path} in this book's index. List the files with carrel_list_book_files, or ask Dustin to refresh the book from Git.`);
-      return { path, source: file.source, version: file.sha, flags, aiDrafts, voice: await bookVoice(ctx.env.DB, b, path) };
+      if (!file)
+        throw new AiRefusal(
+          `There is no ${path} in this book's index. List the files with carrel_list_book_files, or ask Dustin to refresh the book from Git.`,
+        );
+      return {
+        path,
+        source: file.source,
+        version: file.sha,
+        flags,
+        aiDrafts,
+        voice: await bookVoice(ctx.env.DB, b, path),
+      };
     },
   },
   {
@@ -632,7 +1001,11 @@ export const TOOLS: Tool[] = [
     description: `Runs the checks on save (header, continuity, timeline, world rules, and the voice scan against Dustin's own excerpts) on the given text for a book file, without saving or recording anything. The checks flag; Dustin decides. ${RULE}`,
     inputSchema: {
       type: "object",
-      properties: { project: BOOK, path: BOOK_PATH, source: { type: "string", description: "The whole file, header included." } },
+      properties: {
+        project: BOOK,
+        path: BOOK_PATH,
+        source: { type: "string", description: "The whole file, header included." },
+      },
       required: ["project", "path", "source"],
       additionalProperties: false,
     },
@@ -642,7 +1015,14 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
-      return { findings: await checkDraft(ctx.env.DB, b, str(args, "path", { max: MAX.path }), str(args, "source", { max: MAX.source })) };
+      return {
+        findings: await checkDraft(
+          ctx.env.DB,
+          b,
+          str(args, "path", { max: MAX.path }),
+          str(args, "source", { max: MAX.source }),
+        ),
+      };
     },
   },
   {
@@ -656,21 +1036,40 @@ export const TOOLS: Tool[] = [
         project: BOOK,
         path: BOOK_PATH,
         source: { type: "string", description: "The whole file, header included." },
-        note: { type: "string", description: "One line for Dustin on what this draft changes and why." },
+        note: {
+          type: "string",
+          description: "One line for Dustin on what this draft changes and why.",
+        },
       },
       required: ["project", "path", "source"],
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
     outputSchema: shape({ saved: YES, aiDraftId: ID, where: TEXT }, { basedOnVersion: ANY }),
     outside: false,
     run: async (args, ctx) => {
       const b = await book(ctx, args, "read");
-      const saved = await saveBookAiDraft(ctx.env.DB, b, ctx.session, str(args, "path", { max: MAX.path }), {
-        source: str(args, "source", { max: MAX.source }),
-        note: str(args, "note", { optional: true, max: MAX.note }),
-      });
-      return { saved: true, aiDraftId: saved.id, basedOnVersion: saved.baseVersion, where: "Beside Dustin's draft in the book file's editor, under AI drafts." };
+      const saved = await saveBookAiDraft(
+        ctx.env.DB,
+        b,
+        ctx.session,
+        str(args, "path", { max: MAX.path }),
+        {
+          source: str(args, "source", { max: MAX.source }),
+          note: str(args, "note", { optional: true, max: MAX.note }),
+        },
+      );
+      return {
+        saved: true,
+        aiDraftId: saved.id,
+        basedOnVersion: saved.baseVersion,
+        where: "Beside Dustin's draft in the book file's editor, under AI drafts.",
+      };
     },
   },
   {
@@ -689,7 +1088,12 @@ export const TOOLS: Tool[] = [
       required: ["project", "path", "message"],
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
     outputSchema: FLAGGED,
     outside: false,
     run: async (args, ctx) => {
@@ -714,18 +1118,32 @@ export const TOOLS: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        event_id: { type: "integer", description: "The event id from the routine's list of waiting items." },
-        account: { type: "string", description: "The account key, such as example-bluesky, when there is no event id." },
+        event_id: {
+          type: "integer",
+          description: "The event id from the routine's list of waiting items.",
+        },
+        account: {
+          type: "string",
+          description: "The account key, such as example-bluesky, when there is no event id.",
+        },
         project: PROJECT,
         item: { type: "string", description: "The piece's id in that project." },
-        text: { type: "string", description: "The post, in the account's voice, announcing the piece and linking it." },
+        text: {
+          type: "string",
+          description: "The post, in the account's voice, announcing the piece and linking it.",
+        },
       },
       required: ["text"],
       additionalProperties: false,
     },
     // A newer draft for the same piece replaces the waiting one, and nothing is sent from here: Carrel's
     // queue sends it later, under the account's own switch.
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
     outputSchema: shape({ stored: YES, postId: ID, next: TEXT }),
     outside: false,
     run: async (args, ctx) => {
@@ -733,13 +1151,23 @@ export const TOOLS: Tool[] = [
       const eventId = args.event_id;
       let result;
       if (eventId !== undefined) {
-        if (typeof eventId !== "number" || !Number.isInteger(eventId)) throw new AiRefusal("event_id must be a whole number.");
+        if (typeof eventId !== "number" || !Number.isInteger(eventId))
+          throw new AiRefusal("event_id must be a whole number.");
         result = await aiDraftSocialPost(ctx.env.DB, ctx.session, { eventId, text });
       } else {
         const p = await project(ctx, args, "read");
-        result = await aiDraftSocialPost(ctx.env.DB, ctx.session, { accountKey: str(args, "account", { max: 80 }), projectId: p.id, itemId: str(args, "item", { max: MAX.path }), text });
+        result = await aiDraftSocialPost(ctx.env.DB, ctx.session, {
+          accountKey: str(args, "account", { max: 80 }),
+          projectId: p.id,
+          itemId: str(args, "item", { max: MAX.path }),
+          text,
+        });
       }
-      return { stored: true, postId: result.postId, next: "Carrel lints it and, by the account's switch, queues it or holds it for Dustin's approval once the piece is live." };
+      return {
+        stored: true,
+        postId: result.postId,
+        next: "Carrel lints it and, by the account's switch, queues it or holds it for Dustin's approval once the piece is live.",
+      };
     },
   },
 ];
@@ -748,19 +1176,32 @@ export const TOOLS: Tool[] = [
  * Runs a tool, once site-runtime's invokeTool (server.ts) has checked its scope and logged the start.
  * Every refusal comes back as a tool error the client can read, never as a protocol failure.
  */
-export async function runTool(tool: Tool, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+export async function runTool(
+  tool: Tool,
+  args: Record<string, unknown>,
+  ctx: ToolContext,
+): Promise<ToolResult> {
   try {
     const value = (await tool.run(args, ctx)) as Record<string, unknown>;
     // Outside content is data (rule 12.5, checklist S2): site-runtime's outsideResult leads with the shared notice, puts
     // the value inside its <data> delimiters, and carries the notice in the structured answer.
     if (tool.outside) return outsideResult(OUTSIDE_LABEL, value) as ToolResult;
-    return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }], structuredContent: value };
+    return {
+      content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
+      structuredContent: value,
+    };
   } catch (error) {
     let message: string;
     if (error instanceof AiRefusal) message = error.message;
-    else if (error instanceof Response) message = error.status === 404 ? "Not found, or not shared with this person." : "Forbidden: this person's role does not allow that.";
-    else if (error instanceof SiteNotConnected) message = `The site is not connected: ${error.detail}`;
-    else if (error instanceof SiteApiError && error.body) message = `The site refused: ${error.body.message}`;
+    else if (error instanceof Response)
+      message =
+        error.status === 404
+          ? "Not found, or not shared with this person."
+          : "Forbidden: this person's role does not allow that.";
+    else if (error instanceof SiteNotConnected)
+      message = `The site is not connected: ${error.detail}`;
+    else if (error instanceof SiteApiError && error.body)
+      message = `The site refused: ${error.body.message}`;
     else {
       console.error(JSON.stringify({ mcp: "tool-failed", tool: tool.name, error: String(error) }));
       message = "The tool failed unexpectedly. Check the post in Carrel before trying again.";

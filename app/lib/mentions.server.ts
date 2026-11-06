@@ -12,7 +12,14 @@
 // mention in. A refused write writes nothing. The write and the site's cache purge are one unit on the
 // site's side; Carrel reports its answer.
 
-import { loadMentions, runMentionsIntent, type ContentSource, type IntentResult, type MentionsData as KitMentions, type MentionsQuery } from "@dustinedwards/site-api/admin";
+import {
+  loadMentions,
+  runMentionsIntent,
+  type ContentSource,
+  type IntentResult,
+  type MentionsData as KitMentions,
+  type MentionsQuery,
+} from "@dustinedwards/site-api/admin";
 import { SiteApiError, type SiteClient } from "@dustinedwards/site-api/client";
 import type { MentionStatus } from "@dustinedwards/site-api";
 import { drizzle } from "drizzle-orm/d1";
@@ -48,7 +55,12 @@ function noting(client: SiteClient, after: Map<string, MentionStatus>): SiteClie
 }
 
 /** One site's mention queue, as the content kit reads and decides it for this person. */
-export function mentionsSource(env: Env, project: SiteProject, viewer: Viewer, fetcher?: typeof fetch): ContentSource {
+export function mentionsSource(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  fetcher?: typeof fetch,
+): ContentSource {
   const after = new Map<string, MentionStatus>();
   return {
     ...kitBase(env, project),
@@ -59,7 +71,14 @@ export function mentionsSource(env: Env, project: SiteProject, viewer: Viewer, f
       if (!action) return;
       await drizzle(env.DB)
         .insert(mentionDecisions)
-        .values({ projectId: project.id, personId: viewer.id, mentionId: action === "sweep" ? null : (ids[0] ?? null), action, statusAfter: after.get(changeId) ?? null, changeId });
+        .values({
+          projectId: project.id,
+          personId: viewer.id,
+          mentionId: action === "sweep" ? null : (ids[0] ?? null),
+          action,
+          statusAfter: after.get(changeId) ?? null,
+          changeId,
+        });
     },
   };
 }
@@ -67,20 +86,36 @@ export function mentionsSource(env: Env, project: SiteProject, viewer: Viewer, f
 /** A site that is not connected or cannot be reached, said plainly instead of a crash. null for anything else. */
 export function unreachable(error: unknown): string | null {
   if (error instanceof SiteNotConnected) return error.detail;
-  if (error instanceof SiteApiError) return "The site did not answer, so its mentions cannot be listed. Try again in a moment.";
+  if (error instanceof SiteApiError)
+    return "The site did not answer, so its mentions cannot be listed. Try again in a moment.";
   return null;
 }
 
 /** One posted intent, as the kit runs it. The same for the list's forms with no script, the mentions endpoint's and the MCP tools'. */
-export async function runIntent(env: Env, viewer: Viewer, slug: string | undefined, form: FormData | Record<string, string | string[]>, fetcher?: typeof fetch): Promise<IntentResult> {
+export async function runIntent(
+  env: Env,
+  viewer: Viewer,
+  slug: string | undefined,
+  form: FormData | Record<string, string | string[]>,
+  fetcher?: typeof fetch,
+): Promise<IntentResult> {
   // Refused on the role before the site is asked anything: only the Owner reaches it. The kit asks before a delete or a
   // sweep, and reads the versions and statuses a form did not post (site-api v0.26.0).
   const project = await requireSiteProject(env.DB, viewer, slug, "decide_mention");
-  return answer(() => runMentionsIntent(mentionsSource(env, project, viewer, fetcher), form), unreachable);
+  return answer(
+    () => runMentionsIntent(mentionsSource(env, project, viewer, fetcher), form),
+    unreachable,
+  );
 }
 
 /** One page of a site's queue for the Owner, as the kit reads it: the mentions tools' read. */
-export async function readMentions(env: Env, viewer: Viewer, slug: string, query: MentionsQuery, fetcher?: typeof fetch): Promise<KitMentions> {
+export async function readMentions(
+  env: Env,
+  viewer: Viewer,
+  slug: string,
+  query: MentionsQuery,
+  fetcher?: typeof fetch,
+): Promise<KitMentions> {
   const project = await requireSiteProject(env.DB, viewer, slug, "read_mentions");
   return loadMentions(mentionsSource(env, project, viewer, fetcher), query);
 }

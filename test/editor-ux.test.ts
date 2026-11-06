@@ -32,14 +32,19 @@ const context = (email: string) => routeContext(env, email);
 async function aiDraftFor(email: string, item: string) {
   const viewer = await viewerFor(email);
   const project = await requireSiteProject(env.DB, viewer, SLUG, "edit");
-  const { id } = await saveAiDraft(env, project, { viewer, client: "Claude" }, item, { source: THEIR_SOURCE });
+  const { id } = await saveAiDraft(env, project, { viewer, client: "Claude" }, item, {
+    source: THEIR_SOURCE,
+  });
   return { id, viewer, project };
 }
 
 describe("the AI draft's rendered view", () => {
   it("renders the draft through the site for its owner", async () => {
     const { id } = await aiDraftFor("owner@test.invalid", "post-one");
-    const response = (await aiPreviewLoader({ params: { project: SLUG, item: "post-one", id: String(id) }, context: await context("owner@test.invalid") } as never)) as Response;
+    const response = (await aiPreviewLoader({
+      params: { project: SLUG, item: "post-one", id: String(id) },
+      context: await context("owner@test.invalid"),
+    } as never)) as Response;
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Security-Policy")).toMatch(/^sandbox; default-src 'none'/);
     expect(await response.text()).toContain("The AI's take");
@@ -47,6 +52,11 @@ describe("the AI draft's rendered view", () => {
 
   it("PLANT: is never shown to another person, whose request answers 404", async () => {
     const { id } = await aiDraftFor("owner@test.invalid", "post-one");
-    await expect(aiPreviewLoader({ params: { project: SLUG, item: "post-one", id: String(id) }, context: await context("editor@test.invalid") } as never)).rejects.toMatchObject({ status: 404 });
+    await expect(
+      aiPreviewLoader({
+        params: { project: SLUG, item: "post-one", id: String(id) },
+        context: await context("editor@test.invalid"),
+      } as never),
+    ).rejects.toMatchObject({ status: 404 });
   });
 });

@@ -5,9 +5,25 @@
 // figure takes the file's own caption, which the post can change like any other text. The search and
 // sharing fields use the same picker for the share image, with their own words and their own onPick.
 
-import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { Button } from "capsomer/react/button";
-import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "capsomer/react/dialog";
 import { Empty } from "capsomer/react/empty";
 import { MediaLibrary, type FormComponent, type MediaData } from "capsomer/react/media-library";
 
@@ -39,8 +55,13 @@ export function LibraryInsert({
   // The library's answer for a query, into data or error (after the fetch, so never synchronously).
   const fetchLibrary = async (query: string) => {
     try {
-      const response = await fetch(`${media.endpoint}${query}`, { headers: { accept: "application/json" } });
-      const body = (await response.json().catch(() => null)) as (MediaData & { error?: undefined }) | { error?: string } | null;
+      const response = await fetch(`${media.endpoint}${query}`, {
+        headers: { accept: "application/json" },
+      });
+      const body = (await response.json().catch(() => null)) as
+        | (MediaData & { error?: undefined })
+        | { error?: string }
+        | null;
       if (body && "rows" in body) setData(body);
       else setError((body && body.error) || `The library answered ${response.status}.`);
     } catch (thrown) {
@@ -89,7 +110,8 @@ export function LibraryInsert({
               if (event.defaultPrevented || (props.method ?? "get").toLowerCase() !== "get") return;
               event.preventDefault();
               const query = new URLSearchParams();
-              for (const [k, v] of new FormData(event.currentTarget)) if (typeof v === "string" && v) query.append(k, v);
+              for (const [k, v] of new FormData(event.currentTarget))
+                if (typeof v === "string" && v) query.append(k, v);
               void loadRef.current(`?${query}`);
             }}
           />
@@ -116,7 +138,14 @@ export function LibraryInsert({
       >
         {words.label}
       </Button>
-      <Dialog open={open} onOpenChange={(o) => !o && close()} placement="center" size="lg" returnTo={opener} aria-labelledby="library-title">
+      <Dialog
+        open={open}
+        onOpenChange={(o) => !o && close()}
+        placement="center"
+        size="lg"
+        returnTo={opener}
+        aria-labelledby="library-title"
+      >
         <DialogHeader divider>
           <DialogTitle id="library-title">{words.title}</DialogTitle>
           <DialogDescription>{words.lead}</DialogDescription>

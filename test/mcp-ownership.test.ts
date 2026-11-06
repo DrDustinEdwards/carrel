@@ -21,7 +21,11 @@ const SCENE = "chapters/01-arrival/01-the-gate.md";
 const CALLS: Record<string, Record<string, unknown>> = {
   carrel_search_items: { project: SITE },
   carrel_read_item: { project: SITE, item: "post-one" },
-  carrel_save_draft: { project: SITE, item: "post-one", source: "---\ntitle: Post one\n---\nNot yours.\n" },
+  carrel_save_draft: {
+    project: SITE,
+    item: "post-one",
+    source: "---\ntitle: Post one\n---\nNot yours.\n",
+  },
   carrel_voice_brief: { project: SITE },
   carrel_check_post_text: { project: SITE, source: "# x" },
   carrel_preview_item: { project: SITE, item: "post-one", source: "# x" },
@@ -37,7 +41,12 @@ const CALLS: Record<string, Record<string, unknown>> = {
   carrel_check_book_text: { project: BOOK, path: SCENE, source: "x" },
   carrel_save_book_draft: { project: BOOK, path: SCENE, source: "x" },
   carrel_add_book_finding: { project: BOOK, path: SCENE, message: "m" },
-  carrel_draft_social_post: { account: "example-bluesky", project: SITE, item: "post-one", text: "x" },
+  carrel_draft_social_post: {
+    account: "example-bluesky",
+    project: SITE,
+    item: "post-one",
+    text: "x",
+  },
 };
 
 let site: ReturnType<typeof fakeSite>;
@@ -56,15 +65,29 @@ beforeEach(async () => {
   await share(siteId, editor, "editor");
   await share(other, elsewhere, "editor");
   site = fakeSite();
-  await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Post one\n---\nWords.\n", expectedVersion: null, changeId: "seed" });
-  const account = await testEnv.DB.prepare("INSERT INTO social_accounts (key, name, platform, kind, handle, project_id) VALUES ('example-bluesky', 'Example Co', 'bluesky', 'brand', 'x', ?) RETURNING id")
+  await site.adapter.content.saveDraft("post-one", {
+    source: "---\ntitle: Post one\n---\nWords.\n",
+    expectedVersion: null,
+    changeId: "seed",
+  });
+  const account = await testEnv.DB.prepare(
+    "INSERT INTO social_accounts (key, name, platform, kind, handle, project_id) VALUES ('example-bluesky', 'Example Co', 'bluesky', 'brand', 'x', ?) RETURNING id",
+  )
     .bind(siteId)
     .first<{ id: number }>();
-  const event = await testEnv.DB.prepare("INSERT INTO social_events (account_id, project_id, item_id) VALUES (?, ?, 'post-one') RETURNING id").bind(account!.id, siteId).first<{ id: number }>();
+  const event = await testEnv.DB.prepare(
+    "INSERT INTO social_events (account_id, project_id, item_id) VALUES (?, ?, 'post-one') RETURNING id",
+  )
+    .bind(account!.id, siteId)
+    .first<{ id: number }>();
   eventId = event!.id;
 });
 
-const connect = (email: string) => connectAs(email, "Claude", { env: connectedEnv(), deps: { fetcher: site.fetch, carrelOrigin: "https://carrel.test" } });
+const connect = (email: string) =>
+  connectAs(email, "Claude", {
+    env: connectedEnv(),
+    deps: { fetcher: site.fetch, carrelOrigin: "https://carrel.test" },
+  });
 
 async function written() {
   const counts = await testEnv.DB.batch([
@@ -78,7 +101,9 @@ async function written() {
 
 describe("every id-taking tool proves the caller may reach the id", () => {
   it("covers every tool that takes a project, an item, a path or an event id", () => {
-    const takesId = TOOLS.filter((t) => ["project", "item", "path", "event_id"].some((key) => key in t.inputSchema.properties)).map((t) => t.name);
+    const takesId = TOOLS.filter((t) =>
+      ["project", "item", "path", "event_id"].some((key) => key in t.inputSchema.properties),
+    ).map((t) => t.name);
     expect(Object.keys(CALLS).sort()).toEqual(takesId.sort());
   });
 
@@ -95,7 +120,9 @@ describe("every id-taking tool proves the caller may reach the id", () => {
 
   it("PLANT: a social event id is reachable by the Owner's sessions only, even by an editor of its project", async () => {
     for (const email of ["editor@test.invalid", "stranger@test.invalid"]) {
-      const result = await (await connect(email)).call("carrel_draft_social_post", { event_id: eventId, text: "x" });
+      const result = await (
+        await connect(email)
+      ).call("carrel_draft_social_post", { event_id: eventId, text: "x" });
       expect(result.isError, email).toBe(true);
     }
     expect(await written()).toEqual([0, 0, 0, 0]);

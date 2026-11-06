@@ -24,7 +24,8 @@ export function lintPost(text: string, platform: Platform, excerpts: string[]): 
   const t = text.trim();
   if (!t) return ["The post is empty."];
   const n = length(t, platform);
-  if (n > LIMIT[platform]) out.push(`${n} characters, over ${platform === "x" ? "X" : "Bluesky"}'s ${LIMIT[platform]}.`);
+  if (n > LIMIT[platform])
+    out.push(`${n} characters, over ${platform === "x" ? "X" : "Bluesky"}'s ${LIMIT[platform]}.`);
   // A post that opens on a handle is threaded as a reply by readers, and replies are never Carrel's.
   if (/^[.\s]*@\w/.test(t)) out.push("It opens with an @handle, which reads as a reply.");
   for (const f of slopScan(t, excerpts).findings) out.push(`"${f.excerpt}": ${f.say}`);

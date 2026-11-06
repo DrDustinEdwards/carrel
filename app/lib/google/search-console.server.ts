@@ -29,27 +29,46 @@ function day(d: Date): string {
 
 export type ScRefresh = { pages: number; skipped: boolean; start: string; end: string };
 
-export async function refreshSearchConsole(env: Env, project: { id: number; site: SiteId }, fetcher?: Fetch, now = new Date()): Promise<ScRefresh> {
+export async function refreshSearchConsole(
+  env: Env,
+  project: { id: number; site: SiteId },
+  fetcher?: Fetch,
+  now = new Date(),
+): Promise<ScRefresh> {
   const d = drizzle(env.DB);
-  const last = await d.select({ fetchedAt: searchConsolePages.fetchedAt }).from(searchConsolePages).where(eq(searchConsolePages.projectId, project.id)).get();
+  const last = await d
+    .select({ fetchedAt: searchConsolePages.fetchedAt })
+    .from(searchConsolePages)
+    .where(eq(searchConsolePages.projectId, project.id))
+    .get();
   const end = day(new Date(now.getTime() - LAG_DAYS * DAY));
   const start = day(new Date(now.getTime() - (LAG_DAYS + WINDOW_DAYS - 1) * DAY));
-  if (last && now.getTime() - Date.parse(last.fetchedAt) < DAY) return { pages: 0, skipped: true, start, end };
+  if (last && now.getTime() - Date.parse(last.fetchedAt) < DAY)
+    return { pages: 0, skipped: true, start, end };
 
   const property = propertyFor(env, project.site);
   const sa = saClient(env, fetcher);
-  const res = await sa.request("POST", `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`, {
-    startDate: start,
-    endDate: end,
-    dimensions: ["page"],
-    rowLimit: 25000,
-    dataState: "final",
-  });
+  const res = await sa.request(
+    "POST",
+    `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`,
+    {
+      startDate: start,
+      endDate: end,
+      dimensions: ["page"],
+      rowLimit: 25000,
+      dataState: "final",
+    },
+  );
   if (!res.ok) {
-    const hint = res.status === 403 ? " Add the service account as a user on the property in Search Console." : "";
+    const hint =
+      res.status === 403
+        ? " Add the service account as a user on the property in Search Console."
+        : "";
     throw new Error(`Search Console refused the query for ${property} (${res.status}).${hint}`);
   }
-  const body = (await res.json()) as { rows?: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[] };
+  const body = (await res.json()) as {
+    rows?: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[];
+  };
   const at = now.toISOString();
   await d.delete(searchConsolePages).where(eq(searchConsolePages.projectId, project.id));
   for (const r of body.rows ?? []) {

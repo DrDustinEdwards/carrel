@@ -32,7 +32,14 @@ const SOURCE = [
 describe("the fields", () => {
   it("reads them, quoted or not, with tags and takeaways as lists", () => {
     const fields = readFields(splitSource(SOURCE).front);
-    expect(fields).toMatchObject({ title: "Every product", description: "One table.", date: "2026-07-30", tags: "cloudflare, workers", key_takeaways: "First.\nSecond.", assumed_audience: "" });
+    expect(fields).toMatchObject({
+      title: "Every product",
+      description: "One table.",
+      date: "2026-07-30",
+      tags: "cloudflare, workers",
+      key_takeaways: "First.\nSecond.",
+      assumed_audience: "",
+    });
   });
 
   it("changes only the edited block and keeps unknown keys, comments and lists exactly", () => {
@@ -41,7 +48,14 @@ describe("the fields", () => {
     const out = joinSource({ ...parts, front: edited });
     expect(out).toContain('title: "A \\"new\\" title"');
     expect(out).toContain("tags: [a, b, c]");
-    for (const kept of ["slug: every-product", "# kept: a comment", "further_reading:\n  - https://example.test/a", "weird_key: some value: with a colon", "draft: false", '  - "Second."']) {
+    for (const kept of [
+      "slug: every-product",
+      "# kept: a comment",
+      "further_reading:\n  - https://example.test/a",
+      "weird_key: some value: with a colon",
+      "draft: false",
+      '  - "Second."',
+    ]) {
       expect(out).toContain(kept);
     }
     expect(out.endsWith("---\n\nThe body.\n")).toBe(true);
@@ -49,8 +63,12 @@ describe("the fields", () => {
 
   it("adds a field the frontmatter lacks and removes one that is emptied", () => {
     const front = splitSource(SOURCE).front!;
-    expect(setField(front, "assumed_audience", "Developers.")).toContain('assumed_audience: "Developers."');
+    expect(setField(front, "assumed_audience", "Developers.")).toContain(
+      'assumed_audience: "Developers."',
+    );
     expect(setField(front, "description", "")).not.toContain("description:");
-    expect(setField(front, "key_takeaways", "One\nTwo")).toContain('key_takeaways:\n  - "One"\n  - "Two"');
+    expect(setField(front, "key_takeaways", "One\nTwo")).toContain(
+      'key_takeaways:\n  - "One"\n  - "Two"',
+    );
   });
 });

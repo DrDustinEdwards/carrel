@@ -20,15 +20,22 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   if (!Number.isInteger(id) || id <= 0) throw new Response("Not found", { status: 404 });
   const draft = await readAiDraft(env.DB, project, viewer, params.item, id);
   const connection = siteConnection(env, project.site);
-  if (connection.state !== "connected") return previewFailure(`The site is not connected: ${connection.detail}`);
+  if (connection.state !== "connected")
+    return previewFailure(`The site is not connected: ${connection.detail}`);
 
   try {
-    const html = await siteClient(env, project.site).preview({ id: params.item, source: draft.source });
+    const html = await siteClient(env, project.site).preview({
+      id: params.item,
+      source: draft.source,
+    });
     return previewResponse(html, connection.origin);
   } catch (error) {
     if (error instanceof SiteNotConnected) return previewFailure(error.detail);
-    if (error instanceof SiteApiError && error.body) return previewFailure(`The site could not render this: ${error.body.message}`);
-    console.error(JSON.stringify({ preview: "failed", itemId: params.item, aiDraft: id, error: String(error) }));
+    if (error instanceof SiteApiError && error.body)
+      return previewFailure(`The site could not render this: ${error.body.message}`);
+    console.error(
+      JSON.stringify({ preview: "failed", itemId: params.item, aiDraft: id, error: String(error) }),
+    );
     return previewFailure("The site did not answer the preview request.");
   }
 }

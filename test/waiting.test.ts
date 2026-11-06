@@ -43,7 +43,13 @@ async function aiDraft(email: string, item: string, source: string) {
 /** What the posts page lists that the site does not have yet. */
 async function list(email: string, query = "") {
   const request = new Request(`https://carrel.test/p/${SLUG}${query}`);
-  return (await projectLoader({ request, params: { project: SLUG }, context: await context(email) } as never)).fresh;
+  return (
+    await projectLoader({
+      request,
+      params: { project: SLUG },
+      context: await context(email),
+    } as never)
+  ).fresh;
 }
 
 const NEW_POST = "---\ntitle: A desk apart\n---\nWords for a new post.\n";
@@ -55,7 +61,10 @@ describe("the project's Posts list", () => {
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ itemId: "a-desk-apart", title: "A desk apart", aiDrafts: 1 });
 
-    const page = await editorLoader({ params: { project: SLUG, item: "a-desk-apart" }, context: await context("owner@test.invalid") } as never);
+    const page = await editorLoader({
+      params: { project: SLUG, item: "a-desk-apart" },
+      context: await context("owner@test.invalid"),
+    } as never);
     expect(page.source).toBe("");
     expect(page.aiDrafts).toHaveLength(1);
   });
@@ -72,26 +81,44 @@ describe("the project's Posts list", () => {
   it("lists a draft of the person's own for a new post too", async () => {
     const owner = await viewerFor("owner@test.invalid");
     const project = await requireSiteProject(env.DB, owner, SLUG, "edit");
-    await autosave(env.DB, project, owner, "mine", { source: "---\ntitle: Mine\n---\nx\n", baseVersion: null });
+    await autosave(env.DB, project, owner, "mine", {
+      source: "---\ntitle: Mine\n---\nx\n",
+      baseVersion: null,
+    });
     const items = await list("owner@test.invalid");
     expect(items[0]).toMatchObject({ itemId: "mine", title: "Mine", ownDraft: true, aiDrafts: 0 });
   });
 
   it("marks a post on the site that has AI drafts waiting, with the count", async () => {
-    await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Post one\n---\nOn the site.\n", expectedVersion: null, changeId: "s" });
+    await site.adapter.content.saveDraft("post-one", {
+      source: "---\ntitle: Post one\n---\nOn the site.\n",
+      expectedVersion: null,
+      changeId: "s",
+    });
     await refreshIndex(env, { id: projectId, site: "dustinedwards" });
     await aiDraft("owner@test.invalid", "post-one", "A better take.");
     await aiDraft("owner@test.invalid", "post-one", "Another take.");
     expect(await list("owner@test.invalid")).toHaveLength(0);
     const request = new Request(`https://carrel.test/p/${SLUG}`);
-    const { data } = await projectLoader({ request, params: { project: SLUG }, context: await context("owner@test.invalid") } as never);
-    expect(data?.rows.find((r) => r.id === "post-one")?.notes).toEqual([{ text: "2 AI drafts waiting", tone: "info" }]);
+    const { data } = await projectLoader({
+      request,
+      params: { project: SLUG },
+      context: await context("owner@test.invalid"),
+    } as never);
+    expect(data?.rows.find((r) => r.id === "post-one")?.notes).toEqual([
+      { text: "2 AI drafts waiting", tone: "info" },
+    ]);
   });
 
   it("PLANT: shows nobody else's AI drafts, and the editor of one still answers 404", async () => {
     await aiDraft("editor@test.invalid", "a-desk-apart", NEW_POST);
     expect(await list("owner@test.invalid")).toHaveLength(0);
-    await expect(editorLoader({ params: { project: SLUG, item: "a-desk-apart" }, context: await context("owner@test.invalid") } as never)).rejects.toMatchObject({ status: 404 });
+    await expect(
+      editorLoader({
+        params: { project: SLUG, item: "a-desk-apart" },
+        context: await context("owner@test.invalid"),
+      } as never),
+    ).rejects.toMatchObject({ status: 404 });
   });
 });
 
@@ -99,7 +126,11 @@ describe("the preview of an AI-draft-only post", () => {
   it("renders the AI draft through the site, labeled as an AI draft", async () => {
     await aiDraft("owner@test.invalid", "a-desk-apart", NEW_POST);
     const request = new Request(`https://carrel.test/p/${SLUG}/e/a-desk-apart/preview`);
-    const response = (await previewLoader({ request, params: { project: SLUG, item: "a-desk-apart" }, context: await context("owner@test.invalid") } as never)) as Response;
+    const response = (await previewLoader({
+      request,
+      params: { project: SLUG, item: "a-desk-apart" },
+      context: await context("owner@test.invalid"),
+    } as never)) as Response;
     const html = await response.text();
     expect(html).toContain("A desk apart");
     expect(html).toContain("AI draft from Claude. It is not your draft and it is not on the site.");
@@ -107,7 +138,11 @@ describe("the preview of an AI-draft-only post", () => {
 
   it("still says there is nothing to preview when there is no AI draft either", async () => {
     const request = new Request(`https://carrel.test/p/${SLUG}/e/none/preview`);
-    const response = (await previewLoader({ request, params: { project: SLUG, item: "none" }, context: await context("owner@test.invalid") } as never)) as Response;
+    const response = (await previewLoader({
+      request,
+      params: { project: SLUG, item: "none" },
+      context: await context("owner@test.invalid"),
+    } as never)) as Response;
     expect(await response.text()).toContain("There is nothing to preview yet.");
   });
 });

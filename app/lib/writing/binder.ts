@@ -4,10 +4,22 @@
 // one commit. Pure, so the browser, the server and the tests share it.
 
 import { kindPlural } from "~/lib/kind-words";
-import { chapterOf, fileKindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
+import {
+  chapterOf,
+  fileKindOf,
+  readingOrder,
+  titleFromSegment,
+  type Meta,
+} from "~/lib/novels/layout";
 
 /** A row of the binder as the loader sends it; the page turns `meta` into the row's muted note. */
-export type BinderNode = { id: string; label: string; href?: string; meta?: string; children?: BinderNode[] };
+export type BinderNode = {
+  id: string;
+  label: string;
+  href?: string;
+  meta?: string;
+  children?: BinderNode[];
+};
 
 /** One chapter in a desired order: its folder as it is now, and its scenes' paths as they are now. */
 export type ChapterOrder = { chapter: string; scenes: string[] };
@@ -16,7 +28,12 @@ export type Rename = { from: string; to: string };
 
 const NUMBERED = /^(\d{2,3})-([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 
-export const ROOT = { chapters: "group:chapters", bible: "group:bible", outline: "group:outline", notes: "group:notes" } as const;
+export const ROOT = {
+  chapters: "group:chapters",
+  bible: "group:bible",
+  outline: "group:outline",
+  notes: "group:notes",
+} as const;
 const chapterId = (slug: string) => `ch:${slug}`;
 export const fileId = (path: string) => `f:${path}`;
 const pathOf = (id: string) => (id.startsWith("f:") ? id.slice(2) : null);
@@ -24,7 +41,8 @@ const chapterOfId = (id: string) => (id.startsWith("ch:") ? id.slice(3) : null);
 
 type IndexedLike = { path: string; words: number; meta: Meta };
 
-const entryName = (meta: Meta) => (meta.kind === "character" || meta.kind === "place" || meta.kind === "rule" ? meta.entry.name : "");
+const entryName = (meta: Meta) =>
+  meta.kind === "character" || meta.kind === "place" || meta.kind === "rule" ? meta.entry.name : "";
 
 const fileName = (path: string) => path.split("/").pop()!.replace(/\.md$/, "");
 const words = (n: number) => `${n.toLocaleString("en-US")} word${n === 1 ? "" : "s"}`;
@@ -33,22 +51,35 @@ const words = (n: number) => `${n.toLocaleString("en-US")} word${n === 1 ? "" : 
 export function binderTree(files: IndexedLike[], base: string): BinderNode[] {
   const href = (path: string) => `${base}/f/${path}`;
   const nodes: BinderNode[] = [];
-  if (files.some((f) => f.path === "book.md")) nodes.push({ id: fileId("book.md"), label: "Title page", href: href("book.md") });
+  if (files.some((f) => f.path === "book.md"))
+    nodes.push({ id: fileId("book.md"), label: "Title page", href: href("book.md") });
 
   const chapters: BinderNode[] = [];
   for (const scene of readingOrder(files)) {
     const slug = chapterOf(scene.path)!;
     let chapter = chapters.at(-1);
     if (!chapter || chapter.id !== chapterId(slug)) {
-      chapter = { id: chapterId(slug), label: titleFromSegment(slug), href: `${base}/c/${slug}`, children: [] };
+      chapter = {
+        id: chapterId(slug),
+        label: titleFromSegment(slug),
+        href: `${base}/c/${slug}`,
+        children: [],
+      };
       chapters.push(chapter);
     }
     // An index row from before the status key has no status until it is read again.
     const status = scene.meta.kind === "scene" ? (scene.meta.header.status ?? "") : "";
-    chapter.children!.push({ id: fileId(scene.path), label: titleFromSegment(fileName(scene.path)), href: href(scene.path), meta: [status, words(scene.words)].filter(Boolean).join(", ") });
+    chapter.children!.push({
+      id: fileId(scene.path),
+      label: titleFromSegment(fileName(scene.path)),
+      href: href(scene.path),
+      meta: [status, words(scene.words)].filter(Boolean).join(", "),
+    });
   }
   for (const c of chapters) {
-    const total = files.filter((f) => chapterOf(f.path) === chapterOfId(c.id)).reduce((n, f) => n + f.words, 0);
+    const total = files
+      .filter((f) => chapterOf(f.path) === chapterOfId(c.id))
+      .reduce((n, f) => n + f.words, 0);
     c.meta = words(total);
   }
   nodes.push({ id: ROOT.chapters, label: "Chapters", children: chapters });
@@ -58,13 +89,31 @@ export function binderTree(files: IndexedLike[], base: string): BinderNode[] {
     label,
     children: files
       .filter((f) => f.path.startsWith(`bible/${folder}/`))
-      .map((f) => ({ id: fileId(f.path), label: entryName(f.meta) || titleFromSegment(fileName(f.path)), href: href(f.path) })),
+      .map((f) => ({
+        id: fileId(f.path),
+        label: entryName(f.meta) || titleFromSegment(fileName(f.path)),
+        href: href(f.path),
+      })),
   });
-  nodes.push({ id: ROOT.bible, label: "Bible", children: [bible("characters", "Characters"), bible("places", "Places"), bible("rules", "World rules")] });
+  nodes.push({
+    id: ROOT.bible,
+    label: "Bible",
+    children: [
+      bible("characters", "Characters"),
+      bible("places", "Places"),
+      bible("rules", "World rules"),
+    ],
+  });
   const flat = (top: "outline" | "notes", id: string, label: string): BinderNode => ({
     id,
     label,
-    children: files.filter((f) => f.path.startsWith(`${top}/`)).map((f) => ({ id: fileId(f.path), label: titleFromSegment(fileName(f.path)), href: href(f.path) })),
+    children: files
+      .filter((f) => f.path.startsWith(`${top}/`))
+      .map((f) => ({
+        id: fileId(f.path),
+        label: titleFromSegment(fileName(f.path)),
+        href: href(f.path),
+      })),
   });
   nodes.push(flat("outline", ROOT.outline, "Outline"));
   nodes.push(flat("notes", ROOT.notes, "Notes"));
@@ -82,7 +131,10 @@ export function canMoveTo(id: string, parent: string | null): boolean {
 /** The order a binder tree shows, read back as chapters and their scenes. */
 export function orderFromTree(nodes: readonly BinderNode[]): ChapterOrder[] {
   const chapters = nodes.find((n) => n.id === ROOT.chapters)?.children ?? [];
-  return chapters.map((c) => ({ chapter: chapterOfId(c.id) ?? "", scenes: (c.children ?? []).map((s) => pathOf(s.id) ?? "") }));
+  return chapters.map((c) => ({
+    chapter: chapterOfId(c.id) ?? "",
+    scenes: (c.children ?? []).map((s) => pathOf(s.id) ?? ""),
+  }));
 }
 
 /** The order the index holds now. */
@@ -96,7 +148,8 @@ export function currentOrder(paths: string[]): ChapterOrder[] {
   return out;
 }
 
-const numbered = (i: number, width: number, name: string) => `${String(i + 1).padStart(width, "0")}-${name}`;
+const numbered = (i: number, width: number, name: string) =>
+  `${String(i + 1).padStart(width, "0")}-${name}`;
 const nameOf = (segment: string) => NUMBERED.exec(segment)?.[2] ?? segment;
 
 /**
@@ -105,11 +158,17 @@ const nameOf = (segment: string) => NUMBERED.exec(segment)?.[2] ?? segment;
  * Chapters and scenes are numbered from 01 in their new order, keeping their names; a chapter left
  * with no scenes has no folder in Git, so it drops out and the rest close up.
  */
-export function planRenames(paths: string[], desired: ChapterOrder[]): { ok: true; renames: Rename[] } | { ok: false; error: string } {
+export function planRenames(
+  paths: string[],
+  desired: ChapterOrder[],
+): { ok: true; renames: Rename[] } | { ok: false; error: string } {
   const now = currentOrder(paths);
   const chapters = new Set(now.map((c) => c.chapter));
   const scenes = new Set(now.flatMap((c) => c.scenes));
-  const stale = { ok: false as const, error: "The book changed since this page was loaded. Reload it and move again." };
+  const stale = {
+    ok: false as const,
+    error: "The book changed since this page was loaded. Reload it and move again.",
+  };
 
   const seenChapters = new Set<string>();
   const seenScenes = new Set<string>();
@@ -138,13 +197,20 @@ export function planRenames(paths: string[], desired: ChapterOrder[]): { ok: tru
 }
 
 /** The desired order with one chapter's scenes put in `order` (the corkboard's move). */
-export function withChapterOrder(paths: string[], chapter: string, order: string[]): ChapterOrder[] {
+export function withChapterOrder(
+  paths: string[],
+  chapter: string,
+  order: string[],
+): ChapterOrder[] {
   return currentOrder(paths).map((c) => (c.chapter === chapter ? { chapter, scenes: order } : c));
 }
 
 /** The first sentence of a scene's text, for a card with no summary: at most 160 characters. */
 export function firstSentence(body: string): string {
-  const text = body.replace(/^#+\s.*$/gm, "").replace(/\s+/g, " ").trim();
+  const text = body
+    .replace(/^#+\s.*$/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
   const sentence = /^.+?[.!?](?=\s|$)/.exec(text)?.[0] ?? text;
   return sentence.length > 160 ? `${sentence.slice(0, 159).trimEnd()}...` : sentence;
 }
@@ -162,7 +228,12 @@ export function parseOrder(raw: string): ChapterOrder[] | null {
   for (const c of value) {
     if (!c || typeof c !== "object") return null;
     const { chapter, scenes } = c as Record<string, unknown>;
-    if (typeof chapter !== "string" || !Array.isArray(scenes) || !scenes.every((s) => typeof s === "string")) return null;
+    if (
+      typeof chapter !== "string" ||
+      !Array.isArray(scenes) ||
+      !scenes.every((s) => typeof s === "string")
+    )
+      return null;
     out.push({ chapter, scenes: scenes as string[] });
   }
   return out;
@@ -173,13 +244,23 @@ export function parseOrder(raw: string): ChapterOrder[] | null {
  * with its state. Series join it when the site-api contract carries them (ruling point 5, build step
  * 7); until then there is nothing to order, so a site's binder only finds and opens.
  */
-export function siteBinderTree(items: { itemId: string; kind: string; title: string; status: string }[], base: string): BinderNode[] {
-  const kinds = [...new Set(items.map((i) => i.kind))].sort((a, b) => (a === "post" ? -1 : b === "post" ? 1 : a < b ? -1 : 1));
+export function siteBinderTree(
+  items: { itemId: string; kind: string; title: string; status: string }[],
+  base: string,
+): BinderNode[] {
+  const kinds = [...new Set(items.map((i) => i.kind))].sort((a, b) =>
+    a === "post" ? -1 : b === "post" ? 1 : a < b ? -1 : 1,
+  );
   return kinds.map((kind) => ({
     id: `kind:${kind}`,
     label: kindPlural(kind),
     children: items
       .filter((i) => i.kind === kind)
-      .map((i) => ({ id: `item:${i.itemId}`, label: i.title || i.itemId, href: `${base}/e/${encodeURIComponent(i.itemId)}`, meta: i.status.charAt(0).toUpperCase() + i.status.slice(1) })),
+      .map((i) => ({
+        id: `item:${i.itemId}`,
+        label: i.title || i.itemId,
+        href: `${base}/e/${encodeURIComponent(i.itemId)}`,
+        meta: i.status.charAt(0).toUpperCase() + i.status.slice(1),
+      })),
   }));
 }

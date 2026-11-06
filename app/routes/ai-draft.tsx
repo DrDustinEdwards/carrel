@@ -47,10 +47,22 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   return {
     project: { slug: project.slug, name: project.name },
     itemId: params.item,
-    draft: { id: draft.id, client: draft.client, note: draft.note, createdAt: draft.createdAt, source: draft.source, baseVersion: draft.baseVersion, sources: draft.sources },
+    draft: {
+      id: draft.id,
+      client: draft.client,
+      note: draft.note,
+      createdAt: draft.createdAt,
+      source: draft.source,
+      baseVersion: draft.baseVersion,
+      sources: draft.sources,
+    },
     canEdit: can(project.role, "edit"),
     // The writing checks against this project's voice pack, run on every view: the pack may have changed since it was saved.
-    checks: checkAgainstPack(await readVoicePack(env.DB, project), draft.source, draft.sources ?? undefined),
+    checks: checkAgainstPack(
+      await readVoicePack(env.DB, project),
+      draft.source,
+      draft.sources ?? undefined,
+    ),
     seo: await seoOf(env, project, draft.source, { id: params.item }),
   };
 }
@@ -60,7 +72,10 @@ export async function action({ params, context }: Route.ActionArgs) {
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
   const draft = await readAiDraft(env.DB, project, viewer, params.item, draftId(params.id));
-  await autosave(env.DB, project, viewer, params.item, { source: draft.source, baseVersion: draft.baseVersion });
+  await autosave(env.DB, project, viewer, params.item, {
+    source: draft.source,
+    baseVersion: draft.baseVersion,
+  });
   return redirect(`/p/${project.slug}/e/${encodeURIComponent(params.item)}`);
 }
 
@@ -75,7 +90,11 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
     <div className="app-page">
       <PageHead
         renderLink={RouterLink}
-        crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: itemId, href: editor }, { label: "AI draft" }]}
+        crumbs={[
+          { label: project.name, href: `/p/${project.slug}` },
+          { label: itemId, href: editor },
+          { label: "AI draft" },
+        ]}
         title={`AI draft from ${draft.client}`}
         lead={
           <>
@@ -110,26 +129,43 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
         }
       />
       <Banner tone="info">
-        Written by an AI session, beside your own draft. It has not changed your draft or the site. Using it replaces your working draft in Carrel with this text, which you then edit
-        and save to the site as usual.
+        Written by an AI session, beside your own draft. It has not changed your draft or the site.
+        Using it replaces your working draft in Carrel with this text, which you then edit and save
+        to the site as usual.
       </Banner>
       <FrontmatterFields source={draft.source} readOnly />
-      <Panel title="Writing checks" count={checks.findings.length} src="Against excerpts of your published posts" flush>
+      <Panel
+        title="Writing checks"
+        count={checks.findings.length}
+        src="Against excerpts of your published posts"
+        flush
+      >
         {checks.findings.length === 0 ? (
           <Empty kind="all-clear" flush title="Nothing flagged">
-            Nothing reads unlike your own posts. Read it anyway: the scan catches habits, not whether it says something.
+            Nothing reads unlike your own posts. Read it anyway: the scan catches habits, not
+            whether it says something.
           </Empty>
         ) : (
           <RowList label="Writing checks on this draft">
             {checks.findings.map((f, i) => (
-              <Row key={i} title={f.say} detail={<q>{f.excerpt}</q>} meta={f.line ? `Line ${f.line}` : undefined} />
+              <Row
+                key={i}
+                title={f.say}
+                detail={<q>{f.excerpt}</q>}
+                meta={f.line ? `Line ${f.line}` : undefined}
+              />
             ))}
           </RowList>
         )}
       </Panel>
       {seo ? <SearchSharingPanel check={seo} /> : null}
       {draft.sources ? (
-        <Panel title="Sources" count={draft.sources.length} src="What the session says the draft drew on" flush>
+        <Panel
+          title="Sources"
+          count={draft.sources.length}
+          src="What the session says the draft drew on"
+          flush
+        >
           {draft.sources.length === 0 ? (
             <Empty kind="nothing-yet" flush title="No sources given">
               The session listed none, so nothing in the draft can be checked against one.
@@ -137,7 +173,11 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
           ) : (
             <RowList label="Sources of this draft">
               {draft.sources.map((s, i) => (
-                <Row key={i} title={s.split("\n")[0]!.slice(0, 160)} detail={<pre className="app-ai-draft">{s}</pre>} />
+                <Row
+                  key={i}
+                  title={s.split("\n")[0]!.slice(0, 160)}
+                  detail={<pre className="app-ai-draft">{s}</pre>}
+                />
               ))}
             </RowList>
           )}
@@ -146,12 +186,28 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
       <Panel
         title="The draft"
         src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}
-        actions={<Segmented legend="View" hideLegend size="sm" value={view} onChange={setView} options={[{ value: "rendered", label: "As it reads" }, { value: "source", label: "Source" }]} />}
+        actions={
+          <Segmented
+            legend="View"
+            hideLegend
+            size="sm"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "rendered", label: "As it reads" },
+              { value: "source", label: "Source" },
+            ]}
+          />
+        }
       >
         {view === "rendered" ? (
           <div className="app-preview-pane">
             {/* Sandboxed with no permissions, as the editor's preview is: the site's page runs no script. */}
-            <iframe title={`This AI draft as the site renders it`} src={`${editor}/ai/${draft.id}/preview`} sandbox="" />
+            <iframe
+              title={`This AI draft as the site renders it`}
+              src={`${editor}/ai/${draft.id}/preview`}
+              sandbox=""
+            />
           </div>
         ) : (
           <pre className="app-ai-draft">{draft.source}</pre>

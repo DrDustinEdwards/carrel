@@ -1,10 +1,5 @@
 {
-  "files": [
-    "app/**/*.{ts,tsx}",
-    "workers/**/*.ts",
-    "www/worker.mjs",
-    "www/headers.mjs"
-  ],
+  "files": ["app/**/*.{ts,tsx}", "workers/**/*.ts", "www/worker.mjs", "www/headers.mjs"],
   "baseline": {
     "measured_at": "d8b18eb",
     "calls": 21,

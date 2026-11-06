@@ -3,7 +3,12 @@
 // may only suggest sees the same list and withdraws their own. A save leaves every pending suggestion
 // out (lib/editor/suggest.ts `settle`), so a suggestion reaches the site or Git only once accepted.
 
-import { applySuggestion, applySuggestions, revertSuggestion, revertSuggestions } from "@handlewithcare/prosemirror-suggest-changes";
+import {
+  applySuggestion,
+  applySuggestions,
+  revertSuggestion,
+  revertSuggestions,
+} from "@handlewithcare/prosemirror-suggest-changes";
 import type { Editor } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { useEffect, useState } from "react";
@@ -58,8 +63,12 @@ export function SuggestionsPanel({
   }, [editor]);
 
   const rounds = [...new Set(list.map((s) => s.round).filter((r): r is string => Boolean(r)))];
-  const visible = shown === "all" ? list : list.filter((s) => (s.round ?? "") === (shown === "none" ? "" : shown));
-  const who = (s: Suggestion) => (s.by === String(me) ? "You" : (names[s.by] ?? "Someone no longer on this project"));
+  const visible =
+    shown === "all"
+      ? list
+      : list.filter((s) => (s.round ?? "") === (shown === "none" ? "" : shown));
+  const who = (s: Suggestion) =>
+    s.by === String(me) ? "You" : (names[s.by] ?? "Someone no longer on this project");
   const each = (fn: (id: string) => Command, items: Suggestion[]) => {
     if (!editor) return;
     for (const s of items) direct(editor, fn(s.id));
@@ -67,10 +76,25 @@ export function SuggestionsPanel({
   const all = shown === "all";
 
   return (
-    <Panel title="Suggestions" count={list.length} src="Saved to the site or Git only once accepted" id="suggestions">
+    <Panel
+      title="Suggestions"
+      count={list.length}
+      src="Saved to the site or Git only once accepted"
+      id="suggestions"
+    >
       <div className="app-stack">
-        <Field label="Revision round for your suggestions" help="Optional. Each suggestion you make from now on carries it, so a round can be accepted at once.">
-          <input id="suggest-round" className="cap-input" placeholder="For example, Second draft" value={round} maxLength={60} onChange={(e) => onRound(e.target.value)} />
+        <Field
+          label="Revision round for your suggestions"
+          help="Optional. Each suggestion you make from now on carries it, so a round can be accepted at once."
+        >
+          <input
+            id="suggest-round"
+            className="cap-input"
+            placeholder="For example, Second draft"
+            value={round}
+            maxLength={60}
+            onChange={(e) => onRound(e.target.value)}
+          />
         </Field>
         {list.length === 0 ? (
           <p className="app-note">No suggestions are waiting.</p>
@@ -83,16 +107,35 @@ export function SuggestionsPanel({
                   size="sm"
                   value={shown}
                   onChange={(e) => setShown(e.target.value)}
-                  options={[{ value: "all", label: "Every round" }, ...rounds.map((r) => ({ value: r, label: r })), { value: "none", label: "No round" }]}
+                  options={[
+                    { value: "all", label: "Every round" },
+                    ...rounds.map((r) => ({ value: r, label: r })),
+                    { value: "none", label: "No round" },
+                  ]}
                 />
               </Field>
             ) : null}
             {mayDecide ? (
               <div className="app-actions">
-                <Button size="sm" onClick={() => (all ? editor && direct(editor, applySuggestions) : each(applySuggestion, visible))}>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    all
+                      ? editor && direct(editor, applySuggestions)
+                      : each(applySuggestion, visible)
+                  }
+                >
                   {all ? "Accept all" : "Accept this round"}
                 </Button>
-                <Button size="sm" variant="quiet" onClick={() => (all ? editor && direct(editor, revertSuggestions) : each(revertSuggestion, visible))}>
+                <Button
+                  size="sm"
+                  variant="quiet"
+                  onClick={() =>
+                    all
+                      ? editor && direct(editor, revertSuggestions)
+                      : each(revertSuggestion, visible)
+                  }
+                >
                   {all ? "Reject all" : "Reject this round"}
                 </Button>
               </div>
@@ -118,23 +161,47 @@ export function SuggestionsPanel({
                         {clip(s.inserted)}
                       </ins>
                     ) : null}
-                    {s.formatting && !s.inserted && !s.deleted ? <span>Formatting changed</span> : null}
+                    {s.formatting && !s.inserted && !s.deleted ? (
+                      <span>Formatting changed</span>
+                    ) : null}
                   </p>
                   <div className="app-actions">
-                    <Button size="xs" variant="quiet" onClick={() => editor?.chain().focus().setTextSelection({ from: s.from, to: s.to }).scrollIntoView().run()}>
+                    <Button
+                      size="xs"
+                      variant="quiet"
+                      onClick={() =>
+                        editor
+                          ?.chain()
+                          .focus()
+                          .setTextSelection({ from: s.from, to: s.to })
+                          .scrollIntoView()
+                          .run()
+                      }
+                    >
                       Show
                     </Button>
                     {mayDecide ? (
                       <>
-                        <Button size="xs" onClick={() => editor && direct(editor, applySuggestion(s.id))}>
+                        <Button
+                          size="xs"
+                          onClick={() => editor && direct(editor, applySuggestion(s.id))}
+                        >
                           Accept
                         </Button>
-                        <Button size="xs" variant="quiet" onClick={() => editor && direct(editor, revertSuggestion(s.id))}>
+                        <Button
+                          size="xs"
+                          variant="quiet"
+                          onClick={() => editor && direct(editor, revertSuggestion(s.id))}
+                        >
                           Reject
                         </Button>
                       </>
                     ) : s.by === String(me) ? (
-                      <Button size="xs" variant="quiet" onClick={() => editor && direct(editor, revertSuggestion(s.id))}>
+                      <Button
+                        size="xs"
+                        variant="quiet"
+                        onClick={() => editor && direct(editor, revertSuggestion(s.id))}
+                      >
                         Withdraw
                       </Button>
                     ) : null}

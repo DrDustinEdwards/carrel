@@ -17,7 +17,10 @@ const KEY = /^([A-Za-z][A-Za-z0-9_-]*):(?:\s+(.*))?$/;
 
 function unquote(value: string): string {
   const v = value.trim();
-  if (v.length >= 2 && ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))) {
+  if (
+    v.length >= 2 &&
+    ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))
+  ) {
     return v.slice(1, -1);
   }
   return v;
@@ -56,10 +59,16 @@ function scalar(raw: string): HeaderValue {
 
 export function parseFile(source: string): Parsed {
   const lines = source.replace(/\r\n/g, "\n").split("\n");
-  if (lines[0]?.trim() !== "---") return { data: {}, body: lines.join("\n"), bodyLine: 1, problems: [] };
+  if (lines[0]?.trim() !== "---")
+    return { data: {}, body: lines.join("\n"), bodyLine: 1, problems: [] };
   const end = lines.findIndex((line, i) => i > 0 && line.trim() === "---");
   if (end === -1) {
-    return { data: {}, body: lines.join("\n"), bodyLine: 1, problems: [{ line: 1, text: "The header opens with --- and never closes." }] };
+    return {
+      data: {},
+      body: lines.join("\n"),
+      bodyLine: 1,
+      problems: [{ line: 1, text: "The header opens with --- and never closes." }],
+    };
   }
 
   const data: Record<string, HeaderValue> = {};

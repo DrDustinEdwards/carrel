@@ -6,14 +6,36 @@
 import { and, asc, desc, eq, inArray, like, notInArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiDrafts, authorship, bookFiles, drafts, findings, novelsShared, people, projects } from "~/db/schema";
+import {
+  aiDrafts,
+  authorship,
+  bookFiles,
+  drafts,
+  findings,
+  novelsShared,
+  people,
+  projects,
+} from "~/db/schema";
 import { AiRefusal, type AiSession } from "~/lib/ai.server";
 import { requireAction, type Viewer } from "~/lib/people.server";
 import { can, type Action, type Role } from "~/lib/roles";
 import { checkFile, fingerprints, type BookContext, type Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
-import { describe, isBookFolder, isBookPath, fileKindOf, readingOrder, titleFromSegment, type Meta } from "~/lib/novels/layout";
-import { GitConflict, novelsConnection, novelsRepo, type NovelsRepo } from "~/lib/novels/repo.server";
+import {
+  describe,
+  isBookFolder,
+  isBookPath,
+  fileKindOf,
+  readingOrder,
+  titleFromSegment,
+  type Meta,
+} from "~/lib/novels/layout";
+import {
+  GitConflict,
+  novelsConnection,
+  novelsRepo,
+  type NovelsRepo,
+} from "~/lib/novels/repo.server";
 import { voiceExcerpts } from "@dustinedwards/site-runtime/prose";
 import { takeUntyped } from "~/lib/writing.server";
 
@@ -28,10 +50,21 @@ function requireCan(project: BookProject, action: Action) {
 }
 
 /** As requireSiteProject: a book that does not exist, is not shared, or is not a book all answer 404. */
-export async function requireBookProject(db: D1Database, viewer: Viewer, slug: string | undefined, action: Action): Promise<BookProject> {
+export async function requireBookProject(
+  db: D1Database,
+  viewer: Viewer,
+  slug: string | undefined,
+  action: Action,
+): Promise<BookProject> {
   const row = slug
     ? await drizzle(db)
-        .select({ id: projects.id, slug: projects.slug, name: projects.name, book: projects.book, site: projects.site })
+        .select({
+          id: projects.id,
+          slug: projects.slug,
+          name: projects.name,
+          book: projects.book,
+          site: projects.site,
+        })
         .from(projects)
         .where(eq(projects.slug, slug))
         .get()
@@ -43,18 +76,30 @@ export async function requireBookProject(db: D1Database, viewer: Viewer, slug: s
 }
 
 /** The repository, or why there is none yet: until the App is set up, books open read-only from the index. */
-export function bookRepo(env: Env): { repo: NovelsRepo; detail: null } | { repo: null; detail: string } {
+export function bookRepo(
+  env: Env,
+): { repo: NovelsRepo; detail: null } | { repo: null; detail: string } {
   const connection = novelsConnection(env);
   if (connection.state !== "connected") return { repo: null, detail: connection.detail };
   return { repo: novelsRepo(env), detail: null };
 }
 
 /** A new book: a project whose folder in the writing repository is `folder`. Nothing is written to Git. */
-export async function createBook(db: D1Database, viewer: Viewer, input: { name: string; folder: string }) {
+export async function createBook(
+  db: D1Database,
+  viewer: Viewer,
+  input: { name: string; folder: string },
+) {
   if (!viewer.isOwner) forbid();
   const name = input.name.trim();
-  if (!name || name.length > 120) return { ok: false as const, error: "Give the book a name of up to 120 characters." };
-  if (!isBookFolder(input.folder)) return { ok: false as const, error: "Use lower-case letters, digits and single hyphens for the folder, such as paluxy-portal." };
+  if (!name || name.length > 120)
+    return { ok: false as const, error: "Give the book a name of up to 120 characters." };
+  if (!isBookFolder(input.folder))
+    return {
+      ok: false as const,
+      error:
+        "Use lower-case letters, digits and single hyphens for the folder, such as paluxy-portal.",
+    };
   const d = drizzle(db);
   const taken = await d
     .select({ id: projects.id })
@@ -62,15 +107,26 @@ export async function createBook(db: D1Database, viewer: Viewer, input: { name: 
     .where(eq(projects.slug, input.folder))
     .get();
   if (taken) return { ok: false as const, error: `A project already uses ${input.folder}.` };
-  const clash = await d.select({ id: projects.id }).from(projects).where(eq(projects.book, input.folder)).get();
-  if (clash) return { ok: false as const, error: `Another book already uses the folder ${input.folder}.` };
+  const clash = await d
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.book, input.folder))
+    .get();
+  if (clash)
+    return { ok: false as const, error: `Another book already uses the folder ${input.folder}.` };
   await d.insert(projects).values({ slug: input.folder, name, book: input.folder });
   return { ok: true as const, slug: input.folder };
 }
 
 // ---------- the index
 
-export type IndexedFile = { path: string; kind: Meta["kind"]; sha: string; meta: Meta; words: number };
+export type IndexedFile = {
+  path: string;
+  kind: Meta["kind"];
+  sha: string;
+  meta: Meta;
+  words: number;
+};
 
 function parseMeta(json: string): Meta {
   try {
@@ -84,7 +140,13 @@ function parseMeta(json: string): Meta {
 export async function listFiles(db: D1Database, project: BookProject): Promise<IndexedFile[]> {
   requireCan(project, "read");
   const rows = await drizzle(db)
-    .select({ path: bookFiles.path, kind: bookFiles.kind, sha: bookFiles.sha, meta: bookFiles.meta, words: bookFiles.words })
+    .select({
+      path: bookFiles.path,
+      kind: bookFiles.kind,
+      sha: bookFiles.sha,
+      meta: bookFiles.meta,
+      words: bookFiles.words,
+    })
     .from(bookFiles)
     .where(eq(bookFiles.projectId, project.id))
     .orderBy(asc(bookFiles.path))
@@ -102,9 +164,22 @@ export async function indexedFile(db: D1Database, project: BookProject, path: st
   return row ?? null;
 }
 
-async function indexFile(db: D1Database, projectId: number, path: string, file: { source: string; sha: string }, now: string) {
+async function indexFile(
+  db: D1Database,
+  projectId: number,
+  path: string,
+  file: { source: string; sha: string },
+  now: string,
+) {
   const { meta, words } = describe(path, file.source);
-  const values = { kind: fileKindOf(path), sha: file.sha, source: file.source, meta: JSON.stringify(meta), words, syncedAt: now };
+  const values = {
+    kind: fileKindOf(path),
+    sha: file.sha,
+    source: file.source,
+    meta: JSON.stringify(meta),
+    words,
+    syncedAt: now,
+  };
   await drizzle(db)
     .insert(bookFiles)
     .values({ projectId, path, ...values })
@@ -122,9 +197,18 @@ async function bookContext(db: D1Database, projectId: number): Promise<BookConte
   const rows = await d
     .select({ path: bookFiles.path, meta: bookFiles.meta, source: bookFiles.source })
     .from(bookFiles)
-    .where(and(eq(bookFiles.projectId, projectId), inArray(bookFiles.kind, ["scene", "character", "place", "rule"])))
+    .where(
+      and(
+        eq(bookFiles.projectId, projectId),
+        inArray(bookFiles.kind, ["scene", "character", "place", "rule"]),
+      ),
+    )
     .all();
-  const context: BookContext = { bible: { characters: [], places: [], rules: [] }, scenes: [], examples: [] };
+  const context: BookContext = {
+    bible: { characters: [], places: [], rules: [] },
+    scenes: [],
+    examples: [],
+  };
   const sources = new Map<string, string>();
   for (const row of rows) {
     const meta = parseMeta(row.meta);
@@ -135,7 +219,10 @@ async function bookContext(db: D1Database, projectId: number): Promise<BookConte
     else if (meta.kind === "place") context.bible.places.push(meta.entry);
     else if (meta.kind === "rule") context.bible.rules.push(meta.entry);
   }
-  const shared = await d.select({ path: novelsShared.path, source: novelsShared.source }).from(novelsShared).all();
+  const shared = await d
+    .select({ path: novelsShared.path, source: novelsShared.source })
+    .from(novelsShared)
+    .all();
   const passages = shared
     .filter((s) => s.path.startsWith("shared/voice/") && !s.path.endsWith("README.md"))
     .map((s) => ({ path: s.path, text: parseFile(s.source).body }));
@@ -156,7 +243,10 @@ export async function bookVoice(db: D1Database, project: BookProject, path: stri
   requireCan(project, "read");
   const { examples } = await bookContext(db, project.id);
   return {
-    excerpts: voiceExcerpts(examples.filter((e) => e.path !== path).map((e) => e.text), 6),
+    excerpts: voiceExcerpts(
+      examples.filter((e) => e.path !== path).map((e) => e.text),
+      6,
+    ),
     rule: "Write from these excerpts; never copy their sentences. After drafting, run carrel_check_book_text and fix only the spans its voice findings name.",
   };
 }
@@ -178,17 +268,39 @@ async function recordFindings(db: D1Database, projectId: number, byPath: Map<str
     const existing = await d
       .select({ fingerprint: findings.fingerprint })
       .from(findings)
-      .where(and(eq(findings.projectId, projectId), eq(findings.path, path), notInArray(findings.checkName, SESSION_FLAGS)))
+      .where(
+        and(
+          eq(findings.projectId, projectId),
+          eq(findings.path, path),
+          notInArray(findings.checkName, SESSION_FLAGS),
+        ),
+      )
       .all();
     const have = new Set(existing.map((e) => e.fingerprint));
     const keep = new Set(keys);
     const gone = [...have].filter((k) => !keep.has(k));
     if (gone.length > 0) {
-      await d.delete(findings).where(and(eq(findings.projectId, projectId), eq(findings.path, path), inArray(findings.fingerprint, gone)));
+      await d
+        .delete(findings)
+        .where(
+          and(
+            eq(findings.projectId, projectId),
+            eq(findings.path, path),
+            inArray(findings.fingerprint, gone),
+          ),
+        );
     }
     const fresh = found.map((f, i) => ({ f, key: keys[i]! })).filter(({ key }) => !have.has(key));
     for (const { f, key } of fresh) {
-      await d.insert(findings).values({ projectId, path, checkName: f.check, message: f.message, line: f.line, excerpt: f.excerpt, fingerprint: key });
+      await d.insert(findings).values({
+        projectId,
+        path,
+        checkName: f.check,
+        message: f.message,
+        line: f.line,
+        excerpt: f.excerpt,
+        fingerprint: key,
+      });
     }
   }
 }
@@ -201,7 +313,11 @@ export async function recheck(db: D1Database, projectId: number, paths: string[]
   const rows = await d
     .select({ path: bookFiles.path, source: bookFiles.source })
     .from(bookFiles)
-    .where(paths === "all" ? eq(bookFiles.projectId, projectId) : and(eq(bookFiles.projectId, projectId), inArray(bookFiles.path, paths)))
+    .where(
+      paths === "all"
+        ? eq(bookFiles.projectId, projectId)
+        : and(eq(bookFiles.projectId, projectId), inArray(bookFiles.path, paths)),
+    )
     .all();
   const byPath = new Map<string, Finding[]>();
   for (const row of rows) byPath.set(row.path, checkFile(row.path, row.source, context));
@@ -219,7 +335,11 @@ export type FindingRow = {
   status: "open" | "dismissed";
 };
 
-export async function listFindings(db: D1Database, project: BookProject, opts: { path?: string; status?: "open" | "dismissed" } = {}): Promise<FindingRow[]> {
+export async function listFindings(
+  db: D1Database,
+  project: BookProject,
+  opts: { path?: string; status?: "open" | "dismissed" } = {},
+): Promise<FindingRow[]> {
   requireCan(project, "read");
   const where = [eq(findings.projectId, project.id)];
   if (opts.path) where.push(eq(findings.path, opts.path));
@@ -241,7 +361,13 @@ export async function listFindings(db: D1Database, project: BookProject, opts: {
 }
 
 /** Checks flag; a person decides. Dismissing a flag clears it for export, so it is the Owner's call. */
-export async function dismissFinding(db: D1Database, project: BookProject, viewer: Viewer, id: number, now = new Date()) {
+export async function dismissFinding(
+  db: D1Database,
+  project: BookProject,
+  viewer: Viewer,
+  id: number,
+  now = new Date(),
+) {
   requireCan(project, "publish");
   const result = await drizzle(db)
     .update(findings)
@@ -253,7 +379,13 @@ export async function dismissFinding(db: D1Database, project: BookProject, viewe
 
 // ---------- refresh from Git
 
-export type BookRefresh = { files: number; read: number; removed: number; shared: number; more: boolean };
+export type BookRefresh = {
+  files: number;
+  read: number;
+  removed: number;
+  shared: number;
+  more: boolean;
+};
 
 /** How many files one refresh reads from Git; the rest wait for the next one. */
 const REFRESH_READ_CAP = 150;
@@ -262,14 +394,25 @@ const REFRESH_READ_CAP = 150;
  * Brings the index in line with Git: files whose blob sha changed are read again, files gone from
  * Git are dropped, and the checks run again if anything changed. Git is the authority throughout.
  */
-export async function refreshBook(db: D1Database, repo: NovelsRepo, project: BookProject, now = new Date()): Promise<BookRefresh> {
+export async function refreshBook(
+  db: D1Database,
+  repo: NovelsRepo,
+  project: BookProject,
+  now = new Date(),
+): Promise<BookRefresh> {
   requireCan(project, "read");
   const d = drizzle(db);
   const at = now.toISOString();
   const [tree, sharedTree] = await Promise.all([repo.tree(project.book), repo.tree("shared")]);
   const wanted = tree.filter((f) => isBookPath(f.path));
   const known = new Map(
-    (await d.select({ path: bookFiles.path, sha: bookFiles.sha }).from(bookFiles).where(eq(bookFiles.projectId, project.id)).all()).map((r) => [r.path, r.sha]),
+    (
+      await d
+        .select({ path: bookFiles.path, sha: bookFiles.sha })
+        .from(bookFiles)
+        .where(eq(bookFiles.projectId, project.id))
+        .all()
+    ).map((r) => [r.path, r.sha]),
   );
   const stale = wanted.filter((f) => known.get(f.path) !== f.sha);
   const batch = stale.slice(0, REFRESH_READ_CAP);
@@ -280,15 +423,23 @@ export async function refreshBook(db: D1Database, repo: NovelsRepo, project: Boo
   const present = new Set(wanted.map((f) => f.path));
   const removed = [...known.keys()].filter((p) => !present.has(p));
   if (removed.length > 0) {
-    await d.delete(bookFiles).where(and(eq(bookFiles.projectId, project.id), inArray(bookFiles.path, removed)));
-    await d.delete(findings).where(and(eq(findings.projectId, project.id), inArray(findings.path, removed)));
+    await d
+      .delete(bookFiles)
+      .where(and(eq(bookFiles.projectId, project.id), inArray(bookFiles.path, removed)));
+    await d
+      .delete(findings)
+      .where(and(eq(findings.projectId, project.id), inArray(findings.path, removed)));
   }
 
   // shared/voice/, which every book's voice check reads.
   const sharedWanted = sharedTree
     .filter((f) => f.path.endsWith(".md") && f.path.startsWith("voice/"))
     .map((f) => ({ path: `shared/${f.path}`, sha: f.sha }));
-  const sharedKnown = new Map((await d.select({ path: novelsShared.path, sha: novelsShared.sha }).from(novelsShared).all()).map((r) => [r.path, r.sha]));
+  const sharedKnown = new Map(
+    (
+      await d.select({ path: novelsShared.path, sha: novelsShared.sha }).from(novelsShared).all()
+    ).map((r) => [r.path, r.sha]),
+  );
   let sharedRead = 0;
   for (const f of sharedWanted) {
     if (sharedKnown.get(f.path) === f.sha) continue;
@@ -298,14 +449,25 @@ export async function refreshBook(db: D1Database, repo: NovelsRepo, project: Boo
     await d
       .insert(novelsShared)
       .values({ path: f.path, sha: file.sha, source: file.source, syncedAt: at })
-      .onConflictDoUpdate({ target: novelsShared.path, set: { sha: file.sha, source: file.source, syncedAt: at } });
+      .onConflictDoUpdate({
+        target: novelsShared.path,
+        set: { sha: file.sha, source: file.source, syncedAt: at },
+      });
   }
   const sharedPresent = new Set(sharedWanted.map((f) => f.path));
   const sharedGone = [...sharedKnown.keys()].filter((p) => !sharedPresent.has(p));
-  if (sharedGone.length > 0) await d.delete(novelsShared).where(inArray(novelsShared.path, sharedGone));
+  if (sharedGone.length > 0)
+    await d.delete(novelsShared).where(inArray(novelsShared.path, sharedGone));
 
-  if (batch.length > 0 || removed.length > 0 || sharedRead > 0 || sharedGone.length > 0) await recheck(db, project.id, "all");
-  return { files: wanted.length, read: batch.length, removed: removed.length, shared: sharedRead, more: stale.length > batch.length };
+  if (batch.length > 0 || removed.length > 0 || sharedRead > 0 || sharedGone.length > 0)
+    await recheck(db, project.id, "all");
+  return {
+    files: wanted.length,
+    read: batch.length,
+    removed: removed.length,
+    shared: sharedRead,
+    more: stale.length > batch.length,
+  };
 }
 
 // ---------- saving
@@ -317,7 +479,10 @@ export type BookWrite =
 
 function wordBag(text: string): Map<string, number> {
   const bag = new Map<string, number>();
-  for (const w of parseFile(text).body.toLowerCase().match(/[\p{L}\p{N}]+(?:['\u2019][\p{L}]+)*/gu) ?? []) bag.set(w, (bag.get(w) ?? 0) + 1);
+  for (const w of parseFile(text)
+    .body.toLowerCase()
+    .match(/[\p{L}\p{N}]+(?:['\u2019][\p{L}]+)*/gu) ?? [])
+    bag.set(w, (bag.get(w) ?? 0) + 1);
   return bag;
 }
 
@@ -326,7 +491,10 @@ function wordBag(text: string): Map<string, number> {
  * counts as neither, a changed word as one of each. Approximate on purpose; it is a record of how
  * much each person or AI changed, not a diff.
  */
-export function wordDelta(before: string | null, after: string): { added: number; removed: number } {
+export function wordDelta(
+  before: string | null,
+  after: string,
+): { added: number; removed: number } {
   const a = wordBag(before ?? "");
   const b = wordBag(after);
   let added = 0;
@@ -376,23 +544,31 @@ export async function saveBookFile(
         ok: false,
         reason: "conflict",
         currentVersion: error.currentSha,
-        message: "This file changed in Git since you opened it. Your text is kept here as your draft; refresh the book to see Git's version before saving.",
+        message:
+          "This file changed in Git since you opened it. Your text is kept here as your draft; refresh the book to see Git's version before saving.",
       };
     }
     console.error(JSON.stringify({ book: "save-failed", path, error: String(error) }));
-    return { ok: false, reason: "failed", message: "Git did not accept the save. Your text is kept here as your draft." };
+    return {
+      ok: false,
+      reason: "failed",
+      message: "Git did not accept the save. Your text is kept here as your draft.",
+    };
   }
 
   const d = drizzle(db);
   // The index may not hold the version this replaced (a refresh was due); then the words are all counted as added.
-  const known = input.expectedVersion === null || (before !== null && before.sha === input.expectedVersion);
+  const known =
+    input.expectedVersion === null || (before !== null && before.sha === input.expectedVersion);
   const delta = wordDelta(known ? (before?.source ?? null) : null, input.source);
   // Only typed words count toward the day (ruling 6). Pastes, drops and an AI draft taken as the
   // working draft were counted as they arrived, and come off here. An AI client's save counts for
   // nothing, and so does a save whose starting text the index does not hold: every word would read
   // as added, and one of text several people wrote in its room: whose word is whose is not known.
-  const untyped = (await takeUntyped(db, project.id, viewer.id, path)) + Math.max(0, input.untyped ?? 0);
-  const wordsTyped = input.client || !known || input.shared ? null : Math.max(0, delta.added - untyped);
+  const untyped =
+    (await takeUntyped(db, project.id, viewer.id, path)) + Math.max(0, input.untyped ?? 0);
+  const wordsTyped =
+    input.client || !known || input.shared ? null : Math.max(0, delta.added - untyped);
   await d.insert(authorship).values({
     id: changeId,
     projectId: project.id,
@@ -406,25 +582,56 @@ export async function saveBookFile(
     commitSha: written.commit,
     wordsTyped,
   });
-  await indexFile(db, project.id, path, { source: input.source, sha: written.sha }, new Date().toISOString());
-  await d.delete(drafts).where(and(eq(drafts.projectId, project.id), eq(drafts.itemId, path), eq(drafts.personId, viewer.id)));
+  await indexFile(
+    db,
+    project.id,
+    path,
+    { source: input.source, sha: written.sha },
+    new Date().toISOString(),
+  );
+  await d
+    .delete(drafts)
+    .where(
+      and(
+        eq(drafts.projectId, project.id),
+        eq(drafts.itemId, path),
+        eq(drafts.personId, viewer.id),
+      ),
+    );
 
   // A bible entry can change what every scene's checks say; a scene can change its successor's timeline.
   const kind = fileKindOf(path);
   let paths: string[] | "all" = [path];
   if (kind === "character" || kind === "place" || kind === "rule") paths = "all";
   else if (kind === "scene") {
-    const order = readingOrder((await d.select({ path: bookFiles.path }).from(bookFiles).where(eq(bookFiles.projectId, project.id)).all()));
+    const order = readingOrder(
+      await d
+        .select({ path: bookFiles.path })
+        .from(bookFiles)
+        .where(eq(bookFiles.projectId, project.id))
+        .all(),
+    );
     const at = order.findIndex((s) => s.path === path);
     const next = order[at + 1];
     if (next) paths = [path, next.path];
   }
   const found = await recheck(db, project.id, paths);
-  return { ok: true, version: written.sha, commit: written.commit, changeId, findings: found.get(path) ?? [] };
+  return {
+    ok: true,
+    version: written.sha,
+    commit: written.commit,
+    changeId,
+    findings: found.get(path) ?? [],
+  };
 }
 
 /** The checks on text that has not been saved: nothing is recorded, nothing is committed. */
-export async function checkDraft(db: D1Database, project: BookProject, path: string, source: string): Promise<Finding[]> {
+export async function checkDraft(
+  db: D1Database,
+  project: BookProject,
+  path: string,
+  source: string,
+): Promise<Finding[]> {
   requireCan(project, "read");
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
   const context = await bookContext(db, project.id);
@@ -437,7 +644,10 @@ export async function checkDraft(db: D1Database, project: BookProject, path: str
 const IMPORT_MARKER = "<!-- import:";
 
 /** Export sends a book out, so, like publish, it is the Owner's, and waits while any flag is open. */
-export async function exportGate(db: D1Database, project: BookProject): Promise<{ ok: true } | { ok: false; open: number; message: string }> {
+export async function exportGate(
+  db: D1Database,
+  project: BookProject,
+): Promise<{ ok: true } | { ok: false; open: number; message: string }> {
   requireCan(project, "publish");
   const d = drizzle(db);
   // The manuscript importer marks what it could not convert with these; none may reach a reader.
@@ -475,7 +685,11 @@ export type Assembled = {
 };
 
 /** The book in reading order, from the index (refresh first to export what Git holds). */
-export async function assembleBook(db: D1Database, project: BookProject, viewer: Viewer): Promise<Assembled> {
+export async function assembleBook(
+  db: D1Database,
+  project: BookProject,
+  viewer: Viewer,
+): Promise<Assembled> {
   requireCan(project, "publish");
   const rows = await drizzle(db)
     .select({ path: bookFiles.path, source: bookFiles.source, meta: bookFiles.meta })
@@ -495,7 +709,12 @@ export async function assembleBook(db: D1Database, project: BookProject, viewer:
     }
     chapter.scenes.push({ path: scene.path, body: parseFile(scene.source).body.trim() });
   }
-  return { title: entry?.title || project.name, author: entry?.author || viewer.name || viewer.email, language: entry?.language || "en", chapters };
+  return {
+    title: entry?.title || project.name,
+    author: entry?.author || viewer.name || viewer.email,
+    language: entry?.language || "en",
+    chapters,
+  };
 }
 
 export type AuthorshipRow = {
@@ -509,7 +728,10 @@ export type AuthorshipRow = {
   at: string;
 };
 
-export async function authorshipRecord(db: D1Database, project: BookProject): Promise<AuthorshipRow[]> {
+export async function authorshipRecord(
+  db: D1Database,
+  project: BookProject,
+): Promise<AuthorshipRow[]> {
   requireCan(project, "read");
   const rows = await drizzle(db)
     .select({
@@ -532,7 +754,11 @@ export async function authorshipRecord(db: D1Database, project: BookProject): Pr
 }
 
 /** The record as a readable Markdown report: totals per person or AI client, then every change. */
-export function authorshipReport(project: BookProject, rows: AuthorshipRow[], now = new Date()): string {
+export function authorshipReport(
+  project: BookProject,
+  rows: AuthorshipRow[],
+  now = new Date(),
+): string {
   const byWho = new Map<string, { changes: number; added: number; removed: number }>();
   for (const r of rows) {
     const who = r.client ? `${r.client} (AI, on ${r.who}'s instruction)` : r.who;
@@ -567,7 +793,11 @@ export function authorshipReport(project: BookProject, rows: AuthorshipRow[], no
 }
 
 /** The Carrel drafts people are working on in this book, so the book view can show them before Git has them. */
-export async function draftPaths(db: D1Database, project: BookProject, viewer: Viewer): Promise<string[]> {
+export async function draftPaths(
+  db: D1Database,
+  project: BookProject,
+  viewer: Viewer,
+): Promise<string[]> {
   requireCan(project, "read");
   const rows = await drizzle(db)
     .select({ path: drafts.itemId })
@@ -581,8 +811,15 @@ export async function draftPaths(db: D1Database, project: BookProject, viewer: V
  * An AI draft of a book file, saved beside the person's own and never committed (design: AI never
  * rewrites Dustin's prose unasked). The same table as posts' AI drafts, keyed by the file's path.
  */
-export async function saveBookAiDraft(db: D1Database, project: BookProject, session: AiSession, path: string, input: { source: string; note?: string }) {
-  if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_book_finding.");
+export async function saveBookAiDraft(
+  db: D1Database,
+  project: BookProject,
+  session: AiSession,
+  path: string,
+  input: { source: string; note?: string },
+) {
+  if (session.viewer.isReviewer)
+    throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_book_finding.");
   requireCan(project, "edit");
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
   if (!input.source.trim()) throw new Response("The draft is empty.", { status: 400 });

@@ -1,6 +1,15 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["vite.config.ts", "vite.harness.config.ts", "vitest.config.ts", "react-router.config.ts", "scripts/**/*", "app/lib/editor/*.mjs", "www/*.mjs", "workers/security-headers.ts"],
+  "include": [
+    "vite.config.ts",
+    "vite.harness.config.ts",
+    "vitest.config.ts",
+    "react-router.config.ts",
+    "scripts/**/*",
+    "app/lib/editor/*.mjs",
+    "www/*.mjs",
+    "workers/security-headers.ts"
+  ],
   "compilerOptions": {
     "composite": true,
     "allowImportingTsExtensions": true,

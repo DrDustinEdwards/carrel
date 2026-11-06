@@ -13,7 +13,10 @@ import { applyHeaderSet } from "@dustinedwards/site-runtime/headers";
 const DEMO_PATHS = new Set(["/demos/progress"]);
 
 export function isDemo(request: Request): boolean {
-  return (request.method === "GET" || request.method === "HEAD") && DEMO_PATHS.has(new URL(request.url).pathname);
+  return (
+    (request.method === "GET" || request.method === "HEAD") &&
+    DEMO_PATHS.has(new URL(request.url).pathname)
+  );
 }
 
 /** The demo page's caching and indexing: never stored, never indexed. */

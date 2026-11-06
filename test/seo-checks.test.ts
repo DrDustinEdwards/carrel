@@ -9,7 +9,8 @@ import { SEARCH_FIELDS } from "@dustinedwards/site-api/frontmatter";
 import { searchFieldRefusal, seoCheck } from "~/lib/seo-checks";
 
 const PAGE = { kind: "post", origin: "https://site.test", path: "/writing/pump" };
-const DESCRIPTION = "How a map of one London street traced a cholera outbreak to a single water pump in 1854.";
+const DESCRIPTION =
+  "How a map of one London street traced a cholera outbreak to a single water pump in 1854.";
 
 describe("the search and sharing checks", () => {
   it("PLANT: flags a long search title, a short description, images with no alt and no card image", () => {
@@ -36,7 +37,9 @@ describe("the search and sharing checks", () => {
       ["image-alt", 7],
       ["card-image", null],
     ]);
-    expect(check.findings[0]!.excerpt).toBe("Giving an AI agent write access to a live site and every draft on it | Dustin Edwards");
+    expect(check.findings[0]!.excerpt).toBe(
+      "Giving an AI agent write access to a live site and every draft on it | Dustin Edwards",
+    );
     expect(check.preview.card.image).toBeNull();
   });
 
@@ -58,7 +61,11 @@ describe("the search and sharing checks", () => {
       findings: [],
       preview: {
         search: { title: "The Broad Street pump | Dustin Edwards", description: DESCRIPTION },
-        card: { title: "One pump, one street, 1854", description: DESCRIPTION, image: "https://site.test/media/pump.webp" },
+        card: {
+          title: "One pump, one street, 1854",
+          description: DESCRIPTION,
+          image: "https://site.test/media/pump.webp",
+        },
         host: "site.test",
         url: "https://site.test/writing/pump",
       },
@@ -66,21 +73,50 @@ describe("the search and sharing checks", () => {
   });
 
   it("reads a JSON-source site's null as empty, and checks only a post", () => {
-    const foxing = ["---", 'title: ""', "excerpt: null", "cover_image_url: null", "---", ""].join("\n");
-    expect(seoCheck("foxing", foxing, PAGE)!.findings.map((f) => f.check)).toEqual(["title", "description", "card-image"]);
+    const foxing = ["---", 'title: ""', "excerpt: null", "cover_image_url: null", "---", ""].join(
+      "\n",
+    );
+    expect(seoCheck("foxing", foxing, PAGE)!.findings.map((f) => f.check)).toEqual([
+      "title",
+      "description",
+      "card-image",
+    ]);
     // Foxhound has no per-post image, so there is nothing to flag for it.
-    expect(seoCheck("foxhound", `---\ntitle: "A title"\nexcerpt: ${JSON.stringify(DESCRIPTION)}\n---\n`, PAGE)!.findings).toEqual([]);
-    expect(seoCheck("dustinedwards", "---\ntitle: x\n---\n", { ...PAGE, kind: "phage" })).toBeNull();
+    expect(
+      seoCheck(
+        "foxhound",
+        `---\ntitle: "A title"\nexcerpt: ${JSON.stringify(DESCRIPTION)}\n---\n`,
+        PAGE,
+      )!.findings,
+    ).toEqual([]);
+    expect(
+      seoCheck("dustinedwards", "---\ntitle: x\n---\n", { ...PAGE, kind: "phage" }),
+    ).toBeNull();
     expect(seoCheck("dustinedwards", "---\nlegal_type: privacy\ntitle: x\n---\n", PAGE)).toBeNull();
   });
 
   it("PLANT: refuses a share image with no alt text and a canonical that is not a full https address, on a site that lists them", () => {
-    const front = (lines: string[]) => ["---", 'title: "The Broad Street pump"', ...lines, "---", ""].join("\n");
-    const broken = front(['image: "/media/pump.webp"', 'canonical: "http://elsewhere.example.com/pump"']);
-    expect(searchFieldRefusal(broken, SEARCH_FIELDS)).toMatch(/share image has no alt text.*not a full https:\/\/ address/);
+    const front = (lines: string[]) =>
+      ["---", 'title: "The Broad Street pump"', ...lines, "---", ""].join("\n");
+    const broken = front([
+      'image: "/media/pump.webp"',
+      'canonical: "http://elsewhere.example.com/pump"',
+    ]);
+    expect(searchFieldRefusal(broken, SEARCH_FIELDS)).toMatch(
+      /share image has no alt text.*not a full https:\/\/ address/,
+    );
     expect(searchFieldRefusal(front(['canonical: "/writing/pump"']), SEARCH_FIELDS)).not.toBeNull();
     // TWIN: sound fields, and the same faults on a site that does not render the fields.
-    expect(searchFieldRefusal(front(['image: "/media/pump.webp"', 'imageAlt: "The pump"', 'canonical: "https://elsewhere.example.com/pump"']), SEARCH_FIELDS)).toBeNull();
+    expect(
+      searchFieldRefusal(
+        front([
+          'image: "/media/pump.webp"',
+          'imageAlt: "The pump"',
+          'canonical: "https://elsewhere.example.com/pump"',
+        ]),
+        SEARCH_FIELDS,
+      ),
+    ).toBeNull();
     expect(searchFieldRefusal(broken, [])).toBeNull();
   });
 });

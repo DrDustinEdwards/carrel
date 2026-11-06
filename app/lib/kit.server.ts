@@ -10,7 +10,11 @@ import { siteConnection, siteEntry } from "~/lib/sites.server";
 export function kitBase(env: Env, project: SiteProject): Pick<ContentSource, "site" | "can"> {
   const connection = siteConnection(env, project.site);
   return {
-    site: { id: project.site, name: siteEntry(project.site).name, origin: connection.state === "connected" ? connection.origin : "" },
+    site: {
+      id: project.site,
+      name: siteEntry(project.site).name,
+      origin: connection.state === "connected" ? connection.origin : "",
+    },
     can: {
       edit: can(project.role, "edit"),
       publish: can(project.role, "publish"),
@@ -22,7 +26,10 @@ export function kitBase(env: Env, project: SiteProject): Pick<ContentSource, "si
 }
 
 /** Runs one posted intent; a site that is not connected or cannot be reached is answered in words, anything else is thrown. */
-export async function answer(run: () => Promise<IntentResult>, words: (error: unknown) => string | null): Promise<IntentResult> {
+export async function answer(
+  run: () => Promise<IntentResult>,
+  words: (error: unknown) => string | null,
+): Promise<IntentResult> {
   try {
     return await run();
   } catch (error) {

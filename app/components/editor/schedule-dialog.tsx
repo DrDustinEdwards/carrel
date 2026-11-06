@@ -3,7 +3,15 @@
 
 import { useState } from "react";
 import { Button } from "capsomer/react/button";
-import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "capsomer/react/dialog";
 import { Field } from "capsomer/react/field";
 import { Time } from "capsomer/react/time";
 import { useBrowserZone } from "~/lib/hydrated";
@@ -29,7 +37,15 @@ function localValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function ScheduleDialog({ open, noun, update = false, current = null, returnTo, onClose, schedule }: Props) {
+export function ScheduleDialog({
+  open,
+  noun,
+  update = false,
+  current = null,
+  returnTo,
+  onClose,
+  schedule,
+}: Props) {
   const [scheduleAt, setScheduleAt] = useState(current ? localValue(current) : "");
   // The input reads and writes the browser's own time zone, and shows the time in the browser's
   // format, so the field names the zone and the line under it says the time in Carrel's words.
@@ -39,9 +55,22 @@ export function ScheduleDialog({ open, noun, update = false, current = null, ret
   const at = scheduleAt ? new Date(scheduleAt) : null;
   const past = at !== null && at.getTime() <= chosenAt;
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()} placement="center" size="sm" returnTo={returnTo} aria-labelledby="schedule-title">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      placement="center"
+      size="sm"
+      returnTo={returnTo}
+      aria-labelledby="schedule-title"
+    >
       <DialogHeader divider>
-        <DialogTitle id="schedule-title">{update ? (current ? "Replace the scheduled update" : `Schedule an update to this ${noun}`) : `Schedule this ${noun}`}</DialogTitle>
+        <DialogTitle id="schedule-title">
+          {update
+            ? current
+              ? "Replace the scheduled update"
+              : `Schedule an update to this ${noun}`
+            : `Schedule this ${noun}`}
+        </DialogTitle>
         <DialogDescription>
           {update
             ? `The live ${noun} stays as it is. The site publishes the text in the editor at the time you choose${current ? ", in place of the update scheduled now" : ""}. You can cancel it before then.`
@@ -49,11 +78,21 @@ export function ScheduleDialog({ open, noun, update = false, current = null, ret
         </DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <Field label="Publish at" required help={zone ? `In your time zone, ${zone}.` : undefined} error={past ? "Choose a time in the future." : undefined}>
-          <input className="cap-input" type="datetime-local" value={scheduleAt} onChange={(e) => {
+        <Field
+          label="Publish at"
+          required
+          help={zone ? `In your time zone, ${zone}.` : undefined}
+          error={past ? "Choose a time in the future." : undefined}
+        >
+          <input
+            className="cap-input"
+            type="datetime-local"
+            value={scheduleAt}
+            onChange={(e) => {
               setScheduleAt(e.target.value);
               setChosenAt(Date.now());
-            }} />
+            }}
+          />
         </Field>
         {at && !past && !Number.isNaN(at.getTime()) ? (
           <p className="cap-muted app-note">
@@ -67,7 +106,9 @@ export function ScheduleDialog({ open, noun, update = false, current = null, ret
           variant="primary"
           // Why it is refused is said once, under the field (a past time) or by the field's Required
           // (no time yet); the button's own reason is for a screen reader (app.css).
-          disabledReason={!scheduleAt ? "Choose a time first." : past ? "Choose a time in the future." : undefined}
+          disabledReason={
+            !scheduleAt ? "Choose a time first." : past ? "Choose a time in the future." : undefined
+          }
           onClick={() => void schedule(new Date(scheduleAt).toISOString())}
         >
           {update ? (current ? "Replace the update" : "Schedule update") : "Schedule"}

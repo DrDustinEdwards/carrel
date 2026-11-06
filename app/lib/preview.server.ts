@@ -32,14 +32,17 @@ export function previewPolicy(siteOrigin: string): string {
 export function withSiteBase(html: string, siteOrigin: string): string {
   const base = `<base href="${siteOrigin}/">`;
   const stripped = html.replace(/<base\b[^>]*>/gi, "");
-  if (/<head\b[^>]*>/i.test(stripped)) return stripped.replace(/<head\b[^>]*>/i, (head) => `${head}${base}`);
+  if (/<head\b[^>]*>/i.test(stripped))
+    return stripped.replace(/<head\b[^>]*>/i, (head) => `${head}${base}`);
   return `${base}${stripped}`;
 }
 
 /** A line of plain text at the top of the page saying whose text this is, for a preview of something other than the person's own draft. */
 export function withLabel(html: string, label: string): string {
   const note = `<p style="margin:0;padding:8px 12px;font:14px/1.4 system-ui,sans-serif;background:#fff3cd;color:#333;border-bottom:1px solid #d9c27a">${label.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)}</p>`;
-  return /<body\b[^>]*>/i.test(html) ? html.replace(/<body\b[^>]*>/i, (body) => `${body}${note}`) : `${note}${html}`;
+  return /<body\b[^>]*>/i.test(html)
+    ? html.replace(/<body\b[^>]*>/i, (body) => `${body}${note}`)
+    : `${note}${html}`;
 }
 
 export function previewResponse(html: string, siteOrigin: string): Response {
@@ -62,7 +65,10 @@ export function previewFailure(message: string): Response {
         "Content-Type": "text/html; charset=utf-8",
         // Inert, as an uploaded file is, and framed by Carrel alone (previewPolicy's frame-ancestors).
         ...UPLOAD_HEADERS,
-        "Content-Security-Policy": buildPolicy([UPLOAD_HEADERS["Content-Security-Policy"] ?? "", "frame-ancestors 'self'"]),
+        "Content-Security-Policy": buildPolicy([
+          UPLOAD_HEADERS["Content-Security-Policy"] ?? "",
+          "frame-ancestors 'self'",
+        ]),
       },
     },
   );

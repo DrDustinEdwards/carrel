@@ -29,7 +29,8 @@ async function openPost({ params, context }: Route.LoaderArgs | Route.ActionArgs
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "publish_own");
-  if (!(await mayPublishItem(env.DB, project, viewer, params.item))) throw new Response("Forbidden", { status: 403 });
+  if (!(await mayPublishItem(env.DB, project, viewer, params.item)))
+    throw new Response("Forbidden", { status: 403 });
   const doc = await readDoc(env, project, params.item);
   if (!doc) throw new Response("Not found", { status: 404 });
   return { env, viewer, project, doc };
@@ -41,7 +42,13 @@ export async function loader(args: Route.LoaderArgs) {
   const ai = await lastAiPublication(env.DB, project, params.item);
   return {
     project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
-    item: { id: doc.id, title: doc.title || doc.id, status: doc.status, path: doc.path, version: doc.version },
+    item: {
+      id: doc.id,
+      title: doc.title || doc.id,
+      status: doc.status,
+      path: doc.path,
+      version: doc.version,
+    },
     publishedBy: ai ? { line: publishedByLine(ai.client), at: ai.publishedAt } : null,
   };
 }
@@ -49,9 +56,15 @@ export async function loader(args: Route.LoaderArgs) {
 export async function action(args: Route.ActionArgs) {
   const { env, viewer, project, doc } = await openPost(args);
   const { params } = args;
-  if (doc.status === "draft") return { ok: true as const, already: true, message: "It is already a draft." };
-  const outcome = await writeToSite(env, project, viewer, params.item, { action: "unpublish", expectedVersion: doc.version });
-  return outcome.ok ? { ok: true as const, already: false, message: "Returned to draft. It is off the site." } : { ok: false as const, already: false, message: outcome.message };
+  if (doc.status === "draft")
+    return { ok: true as const, already: true, message: "It is already a draft." };
+  const outcome = await writeToSite(env, project, viewer, params.item, {
+    action: "unpublish",
+    expectedVersion: doc.version,
+  });
+  return outcome.ok
+    ? { ok: true as const, already: false, message: "Returned to draft. It is off the site." }
+    : { ok: false as const, already: false, message: outcome.message };
 }
 
 export default function Unpublish({ loaderData, actionData }: Route.ComponentProps) {
@@ -66,7 +79,14 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
         title={item.title}
         lead={
           <>
-            {item.status === "published" ? <Pill tone="ok">Published</Pill> : item.status === "scheduled" ? <Pill tone="info">Scheduled</Pill> : <Pill variant="secondary">Draft</Pill>} on {project.site}
+            {item.status === "published" ? (
+              <Pill tone="ok">Published</Pill>
+            ) : item.status === "scheduled" ? (
+              <Pill tone="info">Scheduled</Pill>
+            ) : (
+              <Pill variant="secondary">Draft</Pill>
+            )}{" "}
+            on {project.site}
             {item.path ? <span className="cap-mono"> {item.path}</span> : null}
           </>
         }
@@ -76,7 +96,13 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
           {publishedBy.line} <Time at={publishedBy.at} format="exact" />
         </Banner>
       ) : null}
-      {actionData ? actionData.ok ? <Banner tone="ok">{actionData.message}</Banner> : <Alert tone="crit">{actionData.message}</Alert> : null}
+      {actionData ? (
+        actionData.ok ? (
+          <Banner tone="ok">{actionData.message}</Banner>
+        ) : (
+          <Alert tone="crit">{actionData.message}</Alert>
+        )
+      ) : null}
       <div className="app-actions">
         {!done && item.status !== "draft" ? (
           <Form method="post">

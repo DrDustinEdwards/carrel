@@ -36,12 +36,21 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
   const search = new URL(request.url).searchParams;
-  const head = { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") };
+  const head = {
+    slug: project.slug,
+    name: project.name,
+    site: siteEntry(project.site).name,
+    mentions: can(project.role, "read_mentions"),
+  };
   try {
     const kit = await loadMedia(mediaSource(env, project, viewer), readMediaQuery(search));
-    if (!kit.offers.media) return { project: head, data: null, unavailable: "This site has no media library yet." };
+    if (!kit.offers.media)
+      return { project: head, data: null, unavailable: "This site has no media library yet." };
     const pick = search.get("pick") ?? "";
-    const data = mediaDataOfKit(kit, { usedHref: (use) => usageHref(project.slug, use), view: { ...readMediaView(search), ...(pick ? { pick } : {}) } });
+    const data = mediaDataOfKit(kit, {
+      usedHref: (use) => usageHref(project.slug, use),
+      view: { ...readMediaView(search), ...(pick ? { pick } : {}) },
+    });
     return { project: head, data, unavailable: null };
   } catch (error) {
     const message = unreachable(error);
@@ -50,35 +59,65 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ params, request, context }: Route.ActionArgs): Promise<IntentResult> {
-  return runIntent(getEnv(context), getViewer(context), params.project, await readForm(request, UPLOAD_MAX_BYTES));
+export async function action({
+  params,
+  request,
+  context,
+}: Route.ActionArgs): Promise<IntentResult> {
+  return runIntent(
+    getEnv(context),
+    getViewer(context),
+    params.project,
+    await readForm(request, UPLOAD_MAX_BYTES),
+  );
 }
-
 
 export default function MediaPage({ loaderData, actionData }: Route.ComponentProps) {
   const { project, data, unavailable } = loaderData;
   const base = `/p/${encodeURIComponent(project.slug)}/media`;
   const submit = useKitSubmit(`${base}/api`);
   const search = async (q: string, signal: AbortSignal): Promise<MediaRecord[]> => {
-    const response = await fetch(`${base}/api?q=${encodeURIComponent(q)}`, { signal, headers: { accept: "application/json" } });
+    const response = await fetch(`${base}/api?q=${encodeURIComponent(q)}`, {
+      signal,
+      headers: { accept: "application/json" },
+    });
     const body = (await response.json().catch(() => null)) as { rows?: MediaRecord[] } | null;
     return body?.rows ?? [];
   };
   // Live updates, where the site offers them: what others changed since the cursor, asked of the
   // media endpoint. A failed answer throws, and the library asks again later.
-  const changes = async (cursor: string, signal: AbortSignal): Promise<KitMediaChanges | { reload: true }> => {
-    const response = await fetch(`${base}/api?changes=${encodeURIComponent(cursor)}`, { signal, headers: { accept: "application/json" } });
+  const changes = async (
+    cursor: string,
+    signal: AbortSignal,
+  ): Promise<KitMediaChanges | { reload: true }> => {
+    const response = await fetch(`${base}/api?changes=${encodeURIComponent(cursor)}`, {
+      signal,
+      headers: { accept: "application/json" },
+    });
     if (!response.ok) throw new Error(`The server answered ${response.status}.`);
     return (await response.json()) as KitMediaChanges | { reload: true };
   };
   return (
     <div className="app-page">
-      <PageHead title={project.name} lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`} />
+      <PageHead
+        title={project.name}
+        lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`}
+      />
       <ProjectTabs slug={project.slug} current="media" mentions={project.mentions} />
       {unavailable || !data ? (
         <Banner tone="warn">{unavailable}</Banner>
       ) : (
-        <MediaLibrary data={data} action={base} Form={KitForm} submit={submit} result={actionData ?? null} inspector="form" search={search} bytesHref={(id) => `${base}/api?bytes=${encodeURIComponent(id)}`} changes={changes} />
+        <MediaLibrary
+          data={data}
+          action={base}
+          Form={KitForm}
+          submit={submit}
+          result={actionData ?? null}
+          inspector="form"
+          search={search}
+          bytesHref={(id) => `${base}/api?bytes=${encodeURIComponent(id)}`}
+          changes={changes}
+        />
       )}
     </div>
   );

@@ -30,9 +30,23 @@ import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
 import { RouterLink } from "~/components/frame";
 import { SiteBinder } from "~/components/writing/binder";
-import { dismissItemFinding, itemFindings, lastAiPublication, listAiDrafts, publishedByLine } from "~/lib/ai.server";
+import {
+  dismissItemFinding,
+  itemFindings,
+  lastAiPublication,
+  listAiDrafts,
+  publishedByLine,
+} from "~/lib/ai.server";
 import { roomNames } from "~/lib/comments.server";
-import { discardDraft, mayPublishItem, readDoc, readDraft, readOwnDraft, writeToSite, type WriteOutcome } from "~/lib/content.server";
+import {
+  discardDraft,
+  mayPublishItem,
+  readDoc,
+  readDraft,
+  readOwnDraft,
+  writeToSite,
+  type WriteOutcome,
+} from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions } from "~/lib/history.server";
 import { joinSource, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
@@ -49,7 +63,16 @@ import { transitionsFor } from "capsomer/publish-transition";
 import { PageHead } from "capsomer/react/page-head";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { can } from "~/lib/roles";
-import { openRoom, rebaseRoom, replaceRoom, roomPath, roomVersion, saveRoom, siteCoauthors, withOthers } from "~/lib/rooms.server";
+import {
+  openRoom,
+  rebaseRoom,
+  replaceRoom,
+  roomPath,
+  roomVersion,
+  saveRoom,
+  siteCoauthors,
+  withOthers,
+} from "~/lib/rooms.server";
 import type { ChartFinding } from "~/lib/chart-check.client";
 import { imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
@@ -77,11 +100,20 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   try {
     doc = await readDoc(env, project, itemId);
   } catch (error) {
-    siteError = error instanceof SiteNotConnected ? error.detail : "The site did not answer, so this shows your Carrel draft only.";
+    siteError =
+      error instanceof SiteNotConnected
+        ? error.detail
+        : "The site did not answer, so this shows your Carrel draft only.";
   }
   // An item that exists only as an AI draft is still the person's to open: the list shows it.
   const aiDrafts = await listAiDrafts(env.DB, project, viewer, itemId);
-  if (!doc && !siteError && aiDrafts.length === 0 && !(await readDraft(env.DB, project, viewer, itemId))) throw new Response("Not found", { status: 404 });
+  if (
+    !doc &&
+    !siteError &&
+    aiDrafts.length === 0 &&
+    !(await readDraft(env.DB, project, viewer, itemId))
+  )
+    throw new Response("Not found", { status: 404 });
   // Everyone on the item works in its room. A site that did not answer leaves a room not started yet
   // unstarted, and the page read only.
   const opened = await openRoom(env, project, viewer, itemId, {
@@ -89,7 +121,12 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     current: doc ? { source: doc.source, version: doc.version } : null,
     unknown: Boolean(siteError),
   });
-  const roomViewer: RoomViewer = { id: viewer.id, name: viewer.name || viewer.email, role: project.role, access: can(project.role, "edit") ? "edit" : "suggest" };
+  const roomViewer: RoomViewer = {
+    id: viewer.id,
+    name: viewer.name || viewer.email,
+    role: project.role,
+    access: can(project.role, "edit") ? "edit" : "suggest",
+  };
 
   // The site's revisions of this item, for the History panel. A site that does not answer leaves the
   // panel saying so, never the editor failing.
@@ -99,21 +136,25 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     try {
       revisions = await listRevisions(env, project, itemId);
     } catch (error) {
-      historyError = error instanceof SiteNotConnected ? error.detail : "The site did not answer, so its history is not shown.";
+      historyError =
+        error instanceof SiteNotConnected
+          ? error.detail
+          : "The site did not answer, so its history is not shown.";
     }
   }
 
-  const [targets, flags, aiPublished, sentDoc, googleConnected, search, sections, canPublish] = await Promise.all([
-    searchItems(env.DB, project.id, {}),
-    itemFindings(env.DB, project, itemId),
-    lastAiPublication(env.DB, project, itemId),
-    lastSentDoc(env.DB, project, itemId),
-    can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
-    pageStats(env, project, doc?.path ?? null),
-    listSections(env.DB),
-    // The Owner publishes any post; an Author only one they wrote (roles.ts).
-    mayPublishItem(env.DB, project, viewer, itemId),
-  ]);
+  const [targets, flags, aiPublished, sentDoc, googleConnected, search, sections, canPublish] =
+    await Promise.all([
+      searchItems(env.DB, project.id, {}),
+      itemFindings(env.DB, project, itemId),
+      lastAiPublication(env.DB, project, itemId),
+      lastSentDoc(env.DB, project, itemId),
+      can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
+      pageStats(env, project, doc?.path ?? null),
+      listSections(env.DB),
+      // The Owner publishes any post; an Author only one they wrote (roles.ts).
+      mayPublishItem(env.DB, project, viewer, itemId),
+    ]);
   // Images go in only for someone who may edit, and only on a site with a media library; scheduling an
   // update to a live post only on a site that keeps it live meanwhile. A site that does not answer
   // leaves the editor without them rather than failing the page.
@@ -133,26 +174,39 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   if ((can(project.role, "edit") || canPublish) && !siteError) {
     try {
       const { capabilities } = await siteClient(env, project.site).meta();
-      mediaAccept = can(project.role, "edit") && capabilities.media ? (capabilities.mediaUpload?.types.join(",") ?? null) : null;
+      mediaAccept =
+        can(project.role, "edit") && capabilities.media
+          ? (capabilities.mediaUpload?.types.join(",") ?? null)
+          : null;
       scheduledUpdates = capabilities.scheduledUpdates === true;
       searchFields = capabilities.searchFields ?? [];
     } catch {
       mediaAccept = null;
     }
   }
-  const coauthors = revisions ? await siteCoauthors(env.DB, project.id, itemId) : new Map<string, string[]>();
+  const coauthors = revisions
+    ? await siteCoauthors(env.DB, project.id, itemId)
+    : new Map<string, string[]>();
   const paths = sitePaths(targets);
   const connection = siteConnection(env, project.site);
-  const linkTargets: { href: string; title: string; state: "published" | "scheduled" | "draft" }[] = targets
-    .filter((t) => t.itemId !== itemId && paths.has(t.itemId))
-    .map((t) => ({ href: paths.get(t.itemId)!, title: t.title || t.itemId, state: t.status }));
+  const linkTargets: { href: string; title: string; state: "published" | "scheduled" | "draft" }[] =
+    targets
+      .filter((t) => t.itemId !== itemId && paths.has(t.itemId))
+      .map((t) => ({ href: paths.get(t.itemId)!, title: t.title || t.itemId, state: t.status }));
 
   return {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, siteId: project.site },
+    project: {
+      slug: project.slug,
+      name: project.name,
+      site: siteEntry(project.site).name,
+      siteId: project.site,
+    },
     itemId,
     binder: siteBinderTree(targets, `/p/${project.slug}`),
     canEdit: can(project.role, "edit") && opened !== null,
-    media: mediaAccept ? { endpoint: `/p/${encodeURIComponent(project.slug)}/media/api`, accept: mediaAccept } : null,
+    media: mediaAccept
+      ? { endpoint: `/p/${encodeURIComponent(project.slug)}/media/api`, accept: mediaAccept }
+      : null,
     canPublish,
     // Dismissing a flag clears it for publish on any post, so it stays the Owner's.
     canDismiss: can(project.role, "publish"),
@@ -166,7 +220,10 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     everPublished: Boolean(doc?.publishedAt),
     publishedAt: doc?.publishedAt ?? null,
     // Where the post lives, for the publish controls' View link: the site's origin and the post's path.
-    liveUrl: doc?.path && connection.state === "connected" ? new URL(doc.path, connection.origin).href : null,
+    liveUrl:
+      doc?.path && connection.state === "connected"
+        ? new URL(doc.path, connection.origin).href
+        : null,
     // For the search and sharing preview: the site's origin, and the post's address, or the one its published siblings show.
     origin: connection.state === "connected" ? connection.origin : null,
     address: doc?.path ?? paths.get(itemId) ?? null,
@@ -179,21 +236,42 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     ownDraft: opened?.ownDraft ?? null,
     // The site moved on since the room's copy was started: saving it would be refused as stale.
     behind: opened?.behind ?? false,
-    room: opened ? { path: roomPath("p", project.slug, itemId), viewer: roomViewer, names: await roomNames(env.DB, project.id) } : null,
+    room: opened
+      ? {
+          path: roomPath("p", project.slug, itemId),
+          viewer: roomViewer,
+          names: await roomNames(env.DB, project.id),
+        }
+      : null,
     siteError,
-    revisions: revisions ? revisions.slice(0, HISTORY_SHOWN).map((r) => ({ version: r.version, at: r.at, author: withOthers(r.author, coauthors.get(r.version)), message: r.message })) : null,
+    revisions: revisions
+      ? revisions.slice(0, HISTORY_SHOWN).map((r) => ({
+          version: r.version,
+          at: r.at,
+          author: withOthers(r.author, coauthors.get(r.version)),
+          message: r.message,
+        }))
+      : null,
     revisionCount: revisions?.length ?? 0,
     historyError,
     linkTargets,
     sections: sections.map((s) => ({ key: s.key, title: s.title })),
     flags,
     aiDrafts,
-    aiPublished: aiPublished ? { line: publishedByLine(aiPublished.client), at: aiPublished.publishedAt } : null,
+    aiPublished: aiPublished
+      ? { line: publishedByLine(aiPublished.client), at: aiPublished.publishedAt }
+      : null,
     canSend: can(project.role, "send_external"),
     googleConnected,
     sentDoc: sentDoc ? { url: sentDoc.url, at: sentDoc.createdAt } : null,
     search: search
-      ? { clicks: search.clicks, impressions: search.impressions, position: Math.round(search.position * 10) / 10, start: search.startDate, end: search.endDate }
+      ? {
+          clicks: search.clicks,
+          impressions: search.impressions,
+          position: Math.round(search.position * 10) / 10,
+          start: search.startDate,
+          end: search.endDate,
+        }
       : null,
   };
 }
@@ -205,7 +283,11 @@ type ActionResult =
   | { intent: "write"; outcome: WriteOutcome }
   | { intent: "google"; ok: boolean; message: string; url?: string; imported?: boolean };
 
-export async function action({ params, request, context }: Route.ActionArgs): Promise<ActionResult> {
+export async function action({
+  params,
+  request,
+  context,
+}: Route.ActionArgs): Promise<ActionResult> {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
@@ -213,7 +295,9 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   // Every write sends the room's text at that moment, checked against the room's version.
-  const fromRoom = (write: (source: string, expectedVersion: string | null) => Promise<WriteOutcome>) => saveRoom(env, project, viewer, itemId, write);
+  const fromRoom = (
+    write: (source: string, expectedVersion: string | null) => Promise<WriteOutcome>,
+  ) => saveRoom(env, project, viewer, itemId, write);
   const onSiteVersion = (version: string | null) => {
     if (!version) throw new Response("Save the post to the site first.", { status: 400 });
     return version;
@@ -221,8 +305,17 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
   /** A write with no text, then the room takes the site's new version if nothing else changed. */
   const withoutText = async (action: "unschedule" | "unpublish") => {
     const version = await roomVersion(env, project, itemId);
-    if (!version) throw new Response(action === "unpublish" ? "Only a post on the site can be unpublished." : "Only a post on the site has a scheduled update.", { status: 400 });
-    const outcome = await writeToSite(env, project, viewer, itemId, { action, expectedVersion: version });
+    if (!version)
+      throw new Response(
+        action === "unpublish"
+          ? "Only a post on the site can be unpublished."
+          : "Only a post on the site has a scheduled update.",
+        { status: 400 },
+      );
+    const outcome = await writeToSite(env, project, viewer, itemId, {
+      action,
+      expectedVersion: version,
+    });
     const now = outcome.ok ? await readDoc(env, project, itemId) : null;
     if (now) await rebaseRoom(env, project, itemId, { version: now.version, source: now.source });
     return outcome;
@@ -232,15 +325,23 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
     case "discard": {
       // Everyone in the room goes back to the site's text.
       const current = await readDoc(env, project, itemId);
-      if (!current) throw new Response("Only a post on the site has a version to go back to.", { status: 400 });
-      await replaceRoom(env, project, viewer, itemId, { markdown: current.source, version: current.version });
+      if (!current)
+        throw new Response("Only a post on the site has a version to go back to.", { status: 400 });
+      await replaceRoom(env, project, viewer, itemId, {
+        markdown: current.source,
+        version: current.version,
+      });
       return { intent, discarded: true };
     }
     case "use-own-draft": {
       // The person's own draft from before live editing, put in the room for everyone.
       const own = await readOwnDraft(env.DB, project, viewer, itemId);
       if (!own) throw new Response("That draft is gone.", { status: 404 });
-      await replaceRoom(env, project, viewer, itemId, { markdown: own.source, version: (await roomVersion(env, project, itemId)) ?? own.baseVersion, unsaved: true });
+      await replaceRoom(env, project, viewer, itemId, {
+        markdown: own.source,
+        version: (await roomVersion(env, project, itemId)) ?? own.baseVersion,
+        unsaved: true,
+      });
       await discardDraft(env.DB, project, viewer, itemId);
       return { intent: "discard", discarded: true };
     }
@@ -258,35 +359,66 @@ export async function action({ params, request, context }: Route.ActionArgs): Pr
       try {
         if (intent === "send-to-docs") {
           const sent = await sendToDocs(env, project, viewer, itemId);
-          return sent.ok ? { intent: "google", ok: true, message: "Sent to Google Docs.", url: sent.url } : { intent: "google", ok: false, message: sent.message };
+          return sent.ok
+            ? { intent: "google", ok: true, message: "Sent to Google Docs.", url: sent.url }
+            : { intent: "google", ok: false, message: sent.message };
         }
         const imported = await importFromDocs(env, project, viewer, itemId);
         return imported.ok
-          ? { intent: "google", ok: true, imported: true, message: `Imported ${imported.words} words from Google Docs as your draft.` }
+          ? {
+              intent: "google",
+              ok: true,
+              imported: true,
+              message: `Imported ${imported.words} words from Google Docs as your draft.`,
+            }
           : { intent: "google", ok: false, message: imported.message };
       } catch (error) {
-        if (error instanceof GoogleNotConnected) return { intent: "google", ok: false, message: error.detail };
+        if (error instanceof GoogleNotConnected)
+          return { intent: "google", ok: false, message: error.detail };
         throw error;
       }
     }
     case "save":
-      return { intent: "write", outcome: await fromRoom((source, expectedVersion) => writeToSite(env, project, viewer, itemId, { action: "save", source, expectedVersion })) };
-    case "publish": {
-      // Refused before the ceremony, so a person who may not publish is never asked to confirm.
-      if (!(await mayPublishItem(env.DB, project, viewer, itemId))) throw new Response("Forbidden", { status: 403 });
-      if (!(await roomVersion(env, project, itemId))) throw new Response("Save the post to the site before publishing it.", { status: 400 });
-      const current = await readDoc(env, project, itemId);
-      // The site's ceremony, kept: a post that has never been public is published only on a second, explicit ask.
-      if (current && !current.publishedAt && form.get("confirm") !== "first-publish") return { intent, needsConfirm: true };
-      return { intent: "write", outcome: await fromRoom((source, expectedVersion) => writeToSite(env, project, viewer, itemId, { action: "publish", source, expectedVersion: onSiteVersion(expectedVersion) })) };
-    }
-    case "schedule": {
-      const publishAt = String(form.get("publishAt") ?? "");
-      if (!(await roomVersion(env, project, itemId)) || Number.isNaN(Date.parse(publishAt))) throw new Response("A schedule needs a saved post and a time.", { status: 400 });
       return {
         intent: "write",
         outcome: await fromRoom((source, expectedVersion) =>
-          writeToSite(env, project, viewer, itemId, { action: "schedule", source, expectedVersion: onSiteVersion(expectedVersion), publishAt: new Date(publishAt).toISOString() }),
+          writeToSite(env, project, viewer, itemId, { action: "save", source, expectedVersion }),
+        ),
+      };
+    case "publish": {
+      // Refused before the ceremony, so a person who may not publish is never asked to confirm.
+      if (!(await mayPublishItem(env.DB, project, viewer, itemId)))
+        throw new Response("Forbidden", { status: 403 });
+      if (!(await roomVersion(env, project, itemId)))
+        throw new Response("Save the post to the site before publishing it.", { status: 400 });
+      const current = await readDoc(env, project, itemId);
+      // The site's ceremony, kept: a post that has never been public is published only on a second, explicit ask.
+      if (current && !current.publishedAt && form.get("confirm") !== "first-publish")
+        return { intent, needsConfirm: true };
+      return {
+        intent: "write",
+        outcome: await fromRoom((source, expectedVersion) =>
+          writeToSite(env, project, viewer, itemId, {
+            action: "publish",
+            source,
+            expectedVersion: onSiteVersion(expectedVersion),
+          }),
+        ),
+      };
+    }
+    case "schedule": {
+      const publishAt = String(form.get("publishAt") ?? "");
+      if (!(await roomVersion(env, project, itemId)) || Number.isNaN(Date.parse(publishAt)))
+        throw new Response("A schedule needs a saved post and a time.", { status: 400 });
+      return {
+        intent: "write",
+        outcome: await fromRoom((source, expectedVersion) =>
+          writeToSite(env, project, viewer, itemId, {
+            action: "schedule",
+            source,
+            expectedVersion: onSiteVersion(expectedVersion),
+            publishAt: new Date(publishAt).toISOString(),
+          }),
         ),
       };
     }
@@ -308,7 +440,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const hydrated = useHydrated();
   const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
   const [layout, chooseLayout] = useEditorLayout();
-  const [asking, setAsking] = useState<null | { kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule"; flag?: number; opener: HTMLElement | null }>(null);
+  const [asking, setAsking] = useState<null | {
+    kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule";
+    flag?: number;
+    opener: HTMLElement | null;
+  }>(null);
   const writer = useFetcher<ActionResult>();
   const { say } = useMessage();
   useTypingRecede();
@@ -345,7 +481,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   // The preview reads the room's copy, which the room keeps a second behind the typing.
   const [previewAt, setPreviewAt] = useState(data.baseVersion ?? "");
   useEffect(() => {
-    const timer = window.setTimeout(() => setPreviewAt(String(source.length) + ":" + Date.now().toString(36)), 2000);
+    const timer = window.setTimeout(
+      () => setPreviewAt(String(source.length) + ":" + Date.now().toString(36)),
+      2000,
+    );
     return () => window.clearTimeout(timer);
   }, [source]);
 
@@ -403,7 +542,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   });
 
   const busy = writer.state !== "idle";
-  const transitions = data.status ? transitionsFor(data.status === "draft" ? "draft" : "published", data.everPublished) : [];
+  const transitions = data.status
+    ? transitionsFor(data.status === "draft" ? "draft" : "published", data.everPublished)
+    : [];
   const saveTransition = transitions.find((t) => t.id === "save-draft" || t.id === "save");
   const saveState =
     room.status === "offline"
@@ -425,12 +566,28 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     id: data.project.siteId,
     name: data.project.site,
     first: !data.everPublished,
-    published: data.status === "published" && data.liveUrl ? { at: data.publishedAt ?? "", url: data.liveUrl } : null,
-    hold: data.status === "scheduled" && data.publishAt ? { reason: "scheduled", untilLabel: exactTime(data.publishAt), text: `Scheduled for ${exactTime(data.publishAt)}` } : null,
+    published:
+      data.status === "published" && data.liveUrl
+        ? { at: data.publishedAt ?? "", url: data.liveUrl }
+        : null,
+    hold:
+      data.status === "scheduled" && data.publishAt
+        ? {
+            reason: "scheduled",
+            untilLabel: exactTime(data.publishAt),
+            text: `Scheduled for ${exactTime(data.publishAt)}`,
+          }
+        : null,
   };
   // The search and sharing checks, on the text as it is typed (none for a legal page or another kind).
   const seo = useMemo(
-    () => seoCheck(data.project.siteId, source, { kind: data.kind, origin: data.origin, path: data.address, searchFields: data.searchFields }),
+    () =>
+      seoCheck(data.project.siteId, source, {
+        kind: data.kind,
+        origin: data.origin,
+        path: data.address,
+        searchFields: data.searchFields,
+      }),
     [source, data.kind, data.project.siteId, data.origin, data.address, data.searchFields],
   );
   // The chart check runs on Prelum's own chart code, loaded only when the text holds a chart, a moment
@@ -443,7 +600,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (!hasChart) return;
     let live = true;
     const timer = setTimeout(() => {
-      void import("~/lib/chart-check.client").then((m) => live && setChartFindings(m.checkCharts(body)));
+      void import("~/lib/chart-check.client").then(
+        (m) => live && setChartFindings(m.checkCharts(body)),
+      );
     }, 800);
     return () => {
       live = false;
@@ -463,25 +622,70 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   }));
   // An image with no alt text blocks the publish (writeToSite refuses it too), one required check per image.
   for (const [i, image] of imagesWithoutAlt(source).entries()) {
-    gateChecks.push({ id: `alt-${i}`, name: "Alt text", required: true, ok: false, cause: `${image.src || image.excerpt} has no alt text (line ${image.line})`, pass: "Every image has alt text", href: "#seo", fix: "Describe what the image shows, in a sentence." });
+    gateChecks.push({
+      id: `alt-${i}`,
+      name: "Alt text",
+      required: true,
+      ok: false,
+      cause: `${image.src || image.excerpt} has no alt text (line ${image.line})`,
+      pass: "Every image has alt text",
+      href: "#seo",
+      fix: "Describe what the image shows, in a sentence.",
+    });
   }
   // A share image with no alt text and a canonical that is not a full https address block it too (writeToSite refuses them).
   for (const fault of seo ? searchFieldFaults(splitSource(source).front, data.searchFields) : []) {
-    gateChecks.push({ id: `search-${fault.field}`, name: fault.field === "imageAlt" ? "Share image alt text" : "Canonical address", required: true, ok: false, cause: fault.message, pass: "Sound", href: "#search-fields", fix: fault.field === "imageAlt" ? "Describe the share image, or remove it." : "Enter the original's full https:// address, or clear the box." });
+    gateChecks.push({
+      id: `search-${fault.field}`,
+      name: fault.field === "imageAlt" ? "Share image alt text" : "Canonical address",
+      required: true,
+      ok: false,
+      cause: fault.message,
+      pass: "Sound",
+      href: "#search-fields",
+      fix:
+        fault.field === "imageAlt"
+          ? "Describe the share image, or remove it."
+          : "Enter the original's full https:// address, or clear the box.",
+    });
   }
   // The other search and sharing checks are advisory: the gate names each and points to the panel.
   for (const [i, f] of (seo?.findings ?? []).entries()) {
     if (f.check === "image-alt" || f.check === "imageAlt" || f.check === "canonical") continue;
-    gateChecks.push({ id: `seo-${i}`, name: "Search and sharing", required: false, ok: false, cause: f.message, pass: "Fits", href: "#seo", fix: "Change the post's details or the image." });
+    gateChecks.push({
+      id: `seo-${i}`,
+      name: "Search and sharing",
+      required: false,
+      ok: false,
+      cause: f.message,
+      pass: "Fits",
+      href: "#seo",
+      fix: "Change the post's details or the image.",
+    });
   }
 
   // The chart check (E4): Prelum's strictCharts problems and its warnings, one advisory line each.
   for (const [i, f] of chartFindings.entries()) {
-    gateChecks.push({ id: `chart-${i}`, name: "Chart", required: false, ok: false, cause: `${f.message} (line ${f.line})`, pass: "Reads well", href: "#write", fix: f.strict ? "Change the chart's directive: its title, its series or its words." : "Change the chart's directive if it helps the reader." });
+    gateChecks.push({
+      id: `chart-${i}`,
+      name: "Chart",
+      required: false,
+      ok: false,
+      cause: `${f.message} (line ${f.line})`,
+      pass: "Reads well",
+      href: "#write",
+      fix: f.strict
+        ? "Change the chart's directive: its title, its series or its words."
+        : "Change the chart's directive if it helps the reader.",
+    });
   }
 
   const historyPath = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/history`;
-  const ask = (kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule", opener: HTMLElement | null, flag?: number) => setAsking({ kind, opener, flag });
+  const ask = (
+    kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule",
+    opener: HTMLElement | null,
+    flag?: number,
+  ) => setAsking({ kind, opener, flag });
   // A save to a live post with an update waiting changes the live post now, and the update's own text
   // still replaces it when it runs (site-api v0.10.0), so the person is told first.
   function saveToSite(opener: HTMLElement | null) {
@@ -493,22 +697,47 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     <div className="app-page app-editor" data-layout={layout}>
       <PageHead
         renderLink={RouterLink}
-        crumbs={[{ label: data.project.name, href: `/p/${data.project.slug}` }, { label: kindWord(data.kind) }]}
+        crumbs={[
+          { label: data.project.name, href: `/p/${data.project.slug}` },
+          { label: kindWord(data.kind) },
+        ]}
         title={data.title || data.itemId}
         lead={
           <>
-            {data.status === "published" ? <Pill tone="ok">Published</Pill> : data.status === "scheduled" ? <Pill tone="info">Scheduled</Pill> : data.status === "draft" ? <Pill variant="secondary">Draft</Pill> : <Pill variant="outline">Not on the site yet</Pill>}{" "}
+            {data.status === "published" ? (
+              <Pill tone="ok">Published</Pill>
+            ) : data.status === "scheduled" ? (
+              <Pill tone="info">Scheduled</Pill>
+            ) : data.status === "draft" ? (
+              <Pill variant="secondary">Draft</Pill>
+            ) : (
+              <Pill variant="outline">Not on the site yet</Pill>
+            )}{" "}
             {data.path ? <span className="cap-mono">{data.path}</span> : null}
           </>
         }
-        actions={<Segmented legend="Layout" hideLegend size="sm" value={layout} onChange={chooseLayout} options={[{ value: "write", label: "Write" }, { value: "split", label: "Split" }, { value: "preview", label: "Preview" }]} />}
+        actions={
+          <Segmented
+            legend="Layout"
+            hideLegend
+            size="sm"
+            value={layout}
+            onChange={chooseLayout}
+            options={[
+              { value: "write", label: "Write" },
+              { value: "split", label: "Split" },
+              { value: "preview", label: "Preview" },
+            ]}
+          />
+        }
       />
 
       <div className="app-notices">
         {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="The site's copy changed">
-            It changed after this copy was started, so saving it will be refused. Discard the unsaved changes to load the site's version, then make them again.
+            It changed after this copy was started, so saving it will be refused. Discard the
+            unsaved changes to load the site's version, then make them again.
           </Banner>
         ) : null}
         {data.ownDraft && mayEdit ? (
@@ -520,13 +749,19 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 <Button size="sm" pending={busy} onClick={() => void send("use-own-draft")}>
                   Put it in for everyone
                 </Button>
-                <Button size="sm" variant="quiet" pending={busy} onClick={() => void send("drop-own-draft")}>
+                <Button
+                  size="sm"
+                  variant="quiet"
+                  pending={busy}
+                  onClick={() => void send("drop-own-draft")}
+                >
                   Delete it
                 </Button>
               </>
             }
           >
-            It was saved <Time at={data.ownDraft.updatedAt} format="exact" />. Putting it in replaces the text everyone here is working on.
+            It was saved <Time at={data.ownDraft.updatedAt} format="exact" />. Putting it in
+            replaces the text everyone here is working on.
           </Banner>
         ) : null}
         {data.aiPublished && data.status === "published" ? (
@@ -535,7 +770,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </Banner>
         ) : null}
         {data.canEdit && live && !data.canPublish ? (
-          <Banner tone="info">This {kindNoun(data.kind)} is live. Changes stay in Carrel, where everyone on it sees them; sending them to the site is the Owner's step, or its Author's.</Banner>
+          <Banner tone="info">
+            This {kindNoun(data.kind)} is live. Changes stay in Carrel, where everyone on it sees
+            them; sending them to the site is the Owner's step, or its Author's.
+          </Banner>
         ) : null}
         {data.pendingUpdate && data.status === "published" ? (
           <Banner
@@ -553,14 +791,20 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       Edit the update
                     </Button>
                   ) : null}
-                  <Button size="sm" variant="danger" pending={busy} onClick={(event) => ask("unschedule", event.currentTarget)}>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    pending={busy}
+                    onClick={(event) => ask("unschedule", event.currentTarget)}
+                  >
                     Cancel the update
                   </Button>
                 </>
               ) : undefined
             }
           >
-            The live {kindNoun(data.kind)} stays as it is until then, when the site publishes the scheduled text.
+            The live {kindNoun(data.kind)} stays as it is until then, when the site publishes the
+            scheduled text.
           </Banner>
         ) : null}
       </div>
@@ -572,27 +816,66 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               <section className="app-editor-pane" id="write" aria-label="Write">
                 {data.room ? editing.bar : null}
                 {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
-                <FrontmatterFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} sections={data.sections} kind={data.kind} searchFields={seo ? data.searchFields : []} />
+                <FrontmatterFields
+                  source={source}
+                  onChange={setSource}
+                  readOnly={readOnly || !mayEdit}
+                  sections={data.sections}
+                  kind={data.kind}
+                  searchFields={seo ? data.searchFields : []}
+                />
                 {seo && data.searchFields.length > 0 ? (
-                  <SearchFields source={source} onChange={setSource} readOnly={readOnly || !mayEdit} listed={data.searchFields} site={data.project.siteId} origin={data.origin} media={data.media} />
+                  <SearchFields
+                    source={source}
+                    onChange={setSource}
+                    readOnly={readOnly || !mayEdit}
+                    listed={data.searchFields}
+                    site={data.project.siteId}
+                    origin={data.origin}
+                    media={data.media}
+                  />
                 ) : null}
                 <WritingSurface
                   label={kindWord(data.kind)}
                   value={splitSource(source).body}
                   onChange={(body) => setSource(joinSource({ ...splitSource(source), body }))}
                   readOnly={readOnly}
-                  room={data.room ? { rich: editing.rich, markdownLocked: editing.markdownLocked } : undefined}
+                  room={
+                    data.room
+                      ? { rich: editing.rich, markdownLocked: editing.markdownLocked }
+                      : undefined
+                  }
                   onEditor={editing.setEditor}
-                  linkTargets={data.linkTargets.map((t) => ({ href: t.href, title: t.title, hint: t.href, note: t.state !== "published" ? `not live yet (${t.state})` : undefined }))}
-                  media={data.media ? { ...data.media, figure: (url: string, alt: string, caption?: string) => figureMarkup(data.project.siteId, url, alt, caption) } : null}
-                  chart={{ action: previewBase, source: (block) => joinSource({ ...splitSource(source), body: block }) }}
+                  linkTargets={data.linkTargets.map((t) => ({
+                    href: t.href,
+                    title: t.title,
+                    hint: t.href,
+                    note: t.state !== "published" ? `not live yet (${t.state})` : undefined,
+                  }))}
+                  media={
+                    data.media
+                      ? {
+                          ...data.media,
+                          figure: (url: string, alt: string, caption?: string) =>
+                            figureMarkup(data.project.siteId, url, alt, caption),
+                        }
+                      : null
+                  }
+                  chart={{
+                    action: previewBase,
+                    source: (block) => joinSource({ ...splitSource(source), body: block }),
+                  }}
                 />
               </section>
             ) : null}
             {layout !== "write" ? (
               <section className="app-preview-pane" aria-label="Preview">
                 {/* Sandboxed with no permissions: the site's page runs no script and has an opaque origin. */}
-                <iframe title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`} src={previewSrc} sandbox="" />
+                <iframe
+                  title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`}
+                  src={previewSrc}
+                  sandbox=""
+                />
               </section>
             ) : null}
           </div>
@@ -603,14 +886,24 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             <SiteBinder nodes={data.binder} current={data.itemId} />
           </Panel>
           {data.canEdit ? (
-            <Panel title="This draft" src={data.version ? (data.status === "draft" ? "Draft on the site" : "On the site") : "Only in Carrel so far"}>
+            <Panel
+              title="This draft"
+              src={
+                data.version
+                  ? data.status === "draft"
+                    ? "Draft on the site"
+                    : "On the site"
+                  : "Only in Carrel so far"
+              }
+            >
               <div className="app-stack" data-tight>
                 <p role="status" className="app-savestate">
                   {saveState}
                 </p>
                 {data.pendingUpdate && data.status === "published" ? (
                   <p className="app-note">
-                    An update waits to go live <Time at={data.pendingUpdate.publishAt} format="exact" />.
+                    An update waits to go live{" "}
+                    <Time at={data.pendingUpdate.publishAt} format="exact" />.
                   </p>
                 ) : null}
                 {failure ? <Alert tone="crit">{failure.message}</Alert> : null}
@@ -630,14 +923,24 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 ) : null}
                 <div className="app-actions">
                   {!onSite && maySave ? (
-                    <Button variant="primary" pending={busy} onClick={(event) => saveToSite(event.currentTarget)}>
+                    <Button
+                      variant="primary"
+                      pending={busy}
+                      onClick={(event) => saveToSite(event.currentTarget)}
+                    >
                       Save draft to the site
                     </Button>
                   ) : null}
                   {onSite && maySave && saveTransition ? (
-                    <Button variant={data.status === "draft" ? "default" : "primary"} pending={busy} onClick={(event) => saveToSite(event.currentTarget)}>
+                    <Button
+                      variant={data.status === "draft" ? "default" : "primary"}
+                      pending={busy}
+                      onClick={(event) => saveToSite(event.currentTarget)}
+                    >
                       {/* Beside a scheduled update, plain "Update" could mean either; this one changes the live post now. */}
-                      {data.status === "published" && data.scheduledUpdates && data.canPublish ? "Update the live post now" : saveTransition.label}
+                      {data.status === "published" && data.scheduledUpdates && data.canPublish
+                        ? "Update the live post now"
+                        : saveTransition.label}
                     </Button>
                   ) : null}
                   {onSite && data.canPublish && data.status === "scheduled" ? (
@@ -646,24 +949,45 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     </Button>
                   ) : null}
                   {onSite && data.canPublish && data.status !== "published" ? (
-                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>Schedule</Button>
+                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>
+                      Schedule
+                    </Button>
                   ) : null}
-                  {onSite && data.canPublish && data.status === "published" && data.scheduledUpdates ? (
-                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>{data.pendingUpdate ? "Replace the scheduled update" : "Schedule as an update"}</Button>
+                  {onSite &&
+                  data.canPublish &&
+                  data.status === "published" &&
+                  data.scheduledUpdates ? (
+                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>
+                      {data.pendingUpdate
+                        ? "Replace the scheduled update"
+                        : "Schedule as an update"}
+                    </Button>
                   ) : null}
                   {room.unsaved && onSite ? (
-                    <Button variant="quiet" pending={busy} onClick={(event) => ask("discard", event.currentTarget)}>
+                    <Button
+                      variant="quiet"
+                      pending={busy}
+                      onClick={(event) => ask("discard", event.currentTarget)}
+                    >
                       Discard unsaved changes
                     </Button>
                   ) : null}
                 </div>
                 {data.canSend && data.googleConnected ? (
                   <div className="app-actions">
-                    <Button variant="quiet" pending={busy} onClick={() => void send("send-to-docs")}>
+                    <Button
+                      variant="quiet"
+                      pending={busy}
+                      onClick={() => void send("send-to-docs")}
+                    >
                       Send to Google Docs
                     </Button>
                     {data.sentDoc ? (
-                      <Button variant="quiet" pending={busy} onClick={(event) => ask("import", event.currentTarget)}>
+                      <Button
+                        variant="quiet"
+                        pending={busy}
+                        onClick={(event) => ask("import", event.currentTarget)}
+                      >
                         Import from Docs
                       </Button>
                     ) : null}
@@ -707,7 +1031,12 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             publishing come right after the text; on a wide screen they sit under the text (app.css). */}
         <div className="app-editor-more">
           {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
-            <FlagsPanel flags={data.flags} aiDrafts={data.aiDrafts} canPublish={data.canDismiss} onDismiss={(button, flag) => ask("dismiss", button, flag)} />
+            <FlagsPanel
+              flags={data.flags}
+              aiDrafts={data.aiDrafts}
+              canPublish={data.canDismiss}
+              onDismiss={(button, flag) => ask("dismiss", button, flag)}
+            />
           ) : null}
           {seo ? <SearchSharingPanel check={seo} /> : null}
           {data.revisions || data.historyError ? (
@@ -748,11 +1077,19 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         open={asking?.kind === "dismiss"}
         title="Dismiss this flag?"
         lead="A dismissed flag no longer holds publish, and it cannot be reopened."
-        body={asking?.flag !== undefined ? [data.flags.find((f) => f.id === asking.flag)?.message ?? ""] : []}
+        body={
+          asking?.flag !== undefined
+            ? [data.flags.find((f) => f.id === asking.flag)?.message ?? ""]
+            : []
+        }
         action="Dismiss flag"
         returnTo={asking?.opener}
         perform={async () => {
-          if (asking?.flag !== undefined) await writer.submit({ intent: "dismiss-flag", flag: String(asking.flag) }, { method: "post" });
+          if (asking?.flag !== undefined)
+            await writer.submit(
+              { intent: "dismiss-flag", flag: String(asking.flag) },
+              { method: "post" },
+            );
         }}
         onClose={() => setAsking(null)}
       />
@@ -773,7 +1110,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       <ConfirmDialog
         open={asking?.kind === "unschedule"}
         title="Cancel the scheduled update?"
-        lead={data.pendingUpdate ? `The live ${kindNoun(data.kind)} stays as it is, and the update's text is dropped from the site. This cannot be undone.` : ""}
+        lead={
+          data.pendingUpdate
+            ? `The live ${kindNoun(data.kind)} stays as it is, and the update's text is dropped from the site. This cannot be undone.`
+            : ""
+        }
         body={[]}
         action="Cancel the update"
         cancelLabel="Keep the update"
