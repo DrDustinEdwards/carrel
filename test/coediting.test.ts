@@ -7,13 +7,14 @@
 import { EditorState } from "@tiptap/pm/state";
 import { enableSuggestChanges } from "@handlewithcare/prosemirror-suggest-changes";
 import { initProseMirrorDoc, prosemirrorToYXmlFragment } from "@tiptap/y-tiptap";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
 import { FRAGMENT, loadMarkdown, patchMarkdown, roomMarkdown, roomSchema } from "~/lib/editor/collab";
 import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
 import { listSuggestions, settle, suggestingDispatch, suggestionPlugins } from "~/lib/editor/suggest";
 import { openRoom, saveRoom } from "~/lib/rooms.server";
+import { ROLE_RECHECK_MS } from "../workers/doc-room";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { join } from "./room";
@@ -172,6 +173,36 @@ describe("a coauthor who suggests", () => {
       ["2", " friend", null],
     ]);
     expect(settle(schema, state.doc.toJSON())).toEqual(schema.nodeFromJSON({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }] }).toJSON());
+  });
+});
+
+describe("a person whose role changes while the file is open", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("PLANT: is closed out when removed, and has plain edits refused when made a Reader", async () => {
+    const itemId = item();
+    const owner = await viewerFor("owner@test.invalid");
+    await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "The cat sat.\n", version: "v1" } });
+    const owners = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
+    const editor = await join(projectId, itemId, as(ids.editor, "editor", "editor", "edit"));
+    const reader = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
+
+    await testEnv.DB.prepare("UPDATE project_members SET role = 'reader' WHERE project_id = ? AND person_id = ?").bind(projectId, ids.editor).run();
+    await testEnv.DB.prepare("DELETE FROM project_members WHERE project_id = ? AND person_id = ?").bind(projectId, ids.reader).run();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + ROLE_RECHECK_MS + 1);
+
+    reader.send({ t: "comment", body: "Still here?", anchor: null, quote: "" });
+    for (let i = 0; i < 100 && reader.closed.code === undefined; i++) await new Promise((r) => setTimeout(r, 10));
+    expect(reader.closed.code).toBe(4403);
+
+    edit(editor.doc, typeAtEnd(" Plainly."));
+    await editor.flush();
+    expect(editor.said.some((m) => m.t === "refused")).toBe(true);
+    await owners.flush();
+    expect(roomMarkdown(owners.doc)).toBe("The cat sat.\n");
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM comments WHERE item_id = ?").bind(itemId).first("n")).toBe(0);
+    for (const c of [owners, editor]) c.close();
   });
 });
 

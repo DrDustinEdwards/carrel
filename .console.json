@@ -6,8 +6,8 @@
     "www/headers.mjs"
   ],
   "baseline": {
-    "measured_at": "319d9ca",
-    "calls": 22,
+    "measured_at": "d8b18eb",
+    "calls": 21,
     "files": {
       "app/entry.server.tsx": 1,
       "app/lib/access-sync.server.ts": 2,
@@ -25,8 +25,7 @@
       "app/routes/ai-draft.preview.ts": 1,
       "app/routes/mentions.tsx": 1,
       "app/routes/preview.ts": 1,
-      "app/routes/project.not-found.tsx": 1,
-      "workers/doc-room.ts": 1
+      "app/routes/project.not-found.tsx": 1
     }
   }
 }

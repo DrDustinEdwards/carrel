@@ -10,6 +10,8 @@
 //   nothing but suggestions, and touches nobody else's (`suggestOnly`). Anything else is refused and
 //   their editor is told to load the room again.
 // - Everyone in the room may comment; resolving takes edit, or being the comment's writer.
+// What a connection may do is checked again against D1 while it is open (`#recheck`), so a person the
+// Owner removes, disables or demotes loses it on an editor already open, not only on the next load.
 //
 // The working copy is kept in the object's own SQLite storage after every change (debounced), so it
 // outlives the people in it, hibernation and deploys, and mirrored as Markdown into D1's `rooms`
@@ -17,6 +19,7 @@
 // A save is the editor route's: it reads the room's Markdown, sends it through site-api's version
 // check (or Git's), and tells the room what it wrote (`saved`), with who had a hand in it.
 
+import { logEvent } from "@dustinedwards/site-runtime/log";
 import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as decoding from "lib0/decoding";
@@ -28,8 +31,9 @@ import { comments, rooms } from "~/db/schema";
 import { listComments } from "~/lib/comments.server";
 import { isSeeded, loadMarkdown, markSaved, parseRoomName, readMeta, roomJson, roomMarkdown, roomSchema, type RoomMeta } from "~/lib/editor/collab";
 import type { Dialect } from "~/lib/editor/markdown.mjs";
-import { ROOM_VIEWER_HEADER, type ClientMessage, type RoomViewer, type ServerMessage } from "~/lib/editor/room-protocol";
+import { ROOM_VIEWER_HEADER, roomAccess, type ClientMessage, type RoomViewer, type ServerMessage } from "~/lib/editor/room-protocol";
 import { settle, suggestionCounts } from "~/lib/editor/suggest";
+import { currentRole } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 
 const MAX_BODY = 10_000;
@@ -38,10 +42,23 @@ const MAX_ANCHOR = 2_000;
 const SYNC = 0;
 const SYNC_STEP2 = 1;
 const SYNC_UPDATE = 2;
+/**
+ * The largest change a suggester sends, in bytes. Each one is tried on a copy of the whole document
+ * (`suggestOnly`), so one huge message would cost the room a great deal for one person; a suggestion
+ * is a few words to a few paragraphs, far below this.
+ */
+const MAX_SUGGESTION = 256 * 1024;
+/**
+ * How long a connection's role holds before the room asks D1 again. Every message from an open editor
+ * (its changes, and the presence it renews every 15 seconds while idle) waits on that check once a
+ * window, so a role taken away stops working within about this long plus 15 seconds.
+ */
+export const ROLE_RECHECK_MS = 10_000;
+
+type ConnState = { viewer?: RoomViewer; checkedAt?: number };
 
 function viewerOf(conn: Connection): RoomViewer | null {
-  const state = conn.state as { viewer?: RoomViewer } | null;
-  return state?.viewer ?? null;
+  return (conn.state as ConnState | null)?.viewer ?? null;
 }
 
 const bytesOf = (message: WSMessage): Uint8Array | null =>
@@ -70,6 +87,8 @@ export class DocRoom extends YServer<Env> {
   static options = { hibernate: true };
   // A second after typing stops, and at least every five while it goes on.
   static callbackOptions = { debounceWait: 1000, debounceMaxWait: 5000, timeout: 5000 };
+  /** Each connection's messages, handled one after another while a role check waits on D1. */
+  #inbox = new Map<string, Promise<void>>();
 
   #where(): { projectId: number; itemId: string } {
     const where = parseRoomName(this.name);
@@ -223,13 +242,15 @@ export class DocRoom extends YServer<Env> {
       conn.close(4403, viewer ? "This file is not open yet. Reload the page." : "Forbidden");
       return;
     }
-    conn.setState((prev: unknown) => ({ ...(prev as object | null), viewer }));
+    // The door looked the role up just now.
+    conn.setState((prev: unknown) => ({ ...(prev as object | null), viewer, checkedAt: Date.now() }));
     void super.onConnect(conn, ctx);
     this.#sendPeople();
     void this.#sendComments(conn);
   }
 
   onClose(conn: Connection, code: number, reason: string, wasClean: boolean) {
+    this.#inbox.delete(conn.id);
     void super.onClose(conn, code, reason, wasClean);
     this.#sendPeople();
   }
@@ -238,22 +259,65 @@ export class DocRoom extends YServer<Env> {
     return viewerOf(conn)?.access !== "edit";
   }
 
-  onMessage(conn: Connection, message: WSMessage) {
-    const viewer = viewerOf(conn);
+  onMessage(conn: Connection, message: WSMessage): Promise<void> {
+    // Awaiting D1 lets the room's other events in (Rules of Durable Objects, input gates: only the
+    // object's own storage holds them back), so one socket's messages are chained to keep their order.
+    const next = (this.#inbox.get(conn.id) ?? Promise.resolve())
+      .then(() => this.#receive(conn, message))
+      .catch((error: unknown) => logEvent("room_message_failed", { error: String(error) }, { level: "error" }));
+    this.#inbox.set(conn.id, next);
+    return next;
+  }
+
+  async #receive(conn: Connection, message: WSMessage) {
+    const viewer = await this.#recheck(conn);
+    if (!viewer) return;
     const bytes = bytesOf(message);
-    if (viewer?.access === "suggest" && bytes) {
+    if (viewer.access === "suggest" && bytes) {
       const decoder = decoding.createDecoder(bytes);
       if (decoding.readVarUint(decoder) === SYNC) {
         const step = decoding.readVarUint(decoder);
         if (step === SYNC_STEP2 || step === SYNC_UPDATE) {
           const update = decoding.readVarUint8Array(decoder);
-          if (suggestOnly(this.document, update, viewer.id)) Y.applyUpdate(this.document, update, conn);
-          else this.#send(conn, { t: "refused", reason: "Only suggestions can be made here. Your editor loads the room again." });
+          if (update.byteLength <= MAX_SUGGESTION && suggestOnly(this.document, update, viewer.id)) Y.applyUpdate(this.document, update, conn);
+          else this.#send(conn, { t: "refused", reason: update.byteLength > MAX_SUGGESTION ? "That suggestion is too large. Your editor loads the room again." : "Only suggestions can be made here. Your editor loads the room again." });
           return;
         }
       }
     }
     this.handleMessage(conn, message);
+  }
+
+  /**
+   * The connection's viewer with the role they hold now, looked up in D1 at most once a
+   * ROLE_RECHECK_MS, or null after closing a connection whose person has no role left. A demoted
+   * person keeps the socket at their new access, so an Editor made a Reader has their next plain edit
+   * refused and their editor reloads as a suggester. The time of the check rides in the connection's
+   * state, which survives hibernation (serializeAttachment, Durable Objects "Use WebSockets").
+   */
+  async #recheck(conn: Connection): Promise<RoomViewer | null> {
+    const state = conn.state as ConnState | null;
+    const viewer = state?.viewer;
+    if (!viewer) return null;
+    if (state.checkedAt !== undefined && Date.now() - state.checkedAt < ROLE_RECHECK_MS) return viewer;
+    let role: RoomViewer["role"] | null;
+    try {
+      role = await currentRole(this.env.DB, viewer.id, this.#where().projectId);
+    } catch (error) {
+      // Unchecked is not allowed: the editor reconnects through the door, which checks again.
+      logEvent("room_role_check_failed", { error: String(error) }, { level: "error" });
+      conn.close(1011, "Could not check your access. Reconnecting.");
+      return null;
+    }
+    const access = roomAccess(role);
+    if (!role || !access) {
+      conn.close(4403, "You no longer have access to this file.");
+      return null;
+    }
+    const now: RoomViewer = { ...viewer, role, access };
+    conn.setState((prev: unknown) => ({ ...(prev as object | null), viewer: now, checkedAt: Date.now() }));
+    if (access !== viewer.access) this.#sendPeople();
+    return now;
   }
 
   onCustomMessage(conn: Connection, raw: string) {
@@ -268,7 +332,7 @@ export class DocRoom extends YServer<Env> {
     // Messages on one socket arrive in order, so the answer comes after every change sent before it.
     if (message.t === "flush") return this.#send(conn, { t: "flushed", n: Number(message.n) || 0 });
     void this.#comment(conn, viewer, message).catch((error: unknown) => {
-      console.error(JSON.stringify({ room: "comment-failed", error: String(error) }));
+      logEvent("room_comment_failed", { error: String(error) }, { level: "error" });
       this.#send(conn, { t: "error", message: "The comment was not saved. Try again." });
     });
   }

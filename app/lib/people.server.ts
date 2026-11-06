@@ -79,6 +79,20 @@ async function roleOn(db: D1Database, viewer: Viewer, projectId: number): Promis
   return row?.role ?? null;
 }
 
+/**
+ * A person's role on a project now, by id: null when they have none or are disabled. A file's room
+ * asks this of a connection it already holds, so a role changed or taken away reaches an open editor.
+ */
+export async function currentRole(db: D1Database, personId: number, projectId: number): Promise<Role | null> {
+  const row = await drizzle(db)
+    .select({ isOwner: people.isOwner, role: projectMembers.role })
+    .from(people)
+    .leftJoin(projectMembers, and(eq(projectMembers.personId, people.id), eq(projectMembers.projectId, projectId)))
+    .where(and(eq(people.id, personId), isNull(people.disabledAt)))
+    .get();
+  return row?.isOwner ? "owner" : (row?.role ?? null);
+}
+
 /** Every project the viewer may read: all of them for the Owner, shared ones for everyone else. */
 export async function visibleProjects(db: D1Database, viewer: Viewer): Promise<VisibleProject[]> {
   const d = drizzle(db);
