@@ -4,6 +4,7 @@
 // its reference adapter; the email binding is a mailbox the tests read. The session is what the door
 // hands over from the OAuth grant: the person and the client, credited by the client's name.
 
+import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { autosave, readDraft } from "~/lib/content.server";
@@ -70,7 +71,7 @@ describe("the protocol", () => {
     );
     expect(init.result).toMatchObject({ protocolVersion: LEGACY, serverInfo: { name: "carrel" }, capabilities: { tools: {} } });
     const legacy = await connectAs("reader@test.invalid", "Claude", { env, deps: { fetcher: site.fetch, carrelOrigin: CARREL }, era: "legacy" });
-    expect((await legacy.list()).length).toBe(16);
+    expect((await legacy.list()).length).toBe(18);
     expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "reader" }] });
   });
 
@@ -155,6 +156,23 @@ describe("reading, drafting, flagging", () => {
     const result = await (await connect("reader@test.invalid")).call("carrel_preview_item", { project: SLUG, item: "post-one", source: "---\ntitle: T\n---\nHello." });
     expect(result.isError).toBeUndefined();
     expect(String(result.structuredContent?.html)).toContain("Hello.");
+  });
+});
+
+/** The files the reference adapter deleted: fakeSite types its adapter as the plain SiteAdapter. */
+const deletedOn = (s: typeof site) => (s.adapter as ReturnType<typeof memoryAdapter>).deleted;
+
+describe("delete library photos", () => {
+  const PNG = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="), (c) => c.charCodeAt(0));
+
+  it("PLANT: only the Owner's session deletes, and it removes the file from the site", async () => {
+    const file = await site.adapter.media!.upload({ bytes: PNG, contentType: "image/png", filename: "river.png", alt: "The river", changeId: "seed" });
+    const refused = await (await connect("editor@test.invalid")).call("carrel_delete_media", { project: SLUG, ids: [file.id] });
+    expect(JSON.stringify(refused)).toContain("Owner");
+    expect(deletedOn(site)).toEqual([]);
+    const done = await (await connect("owner@test.invalid")).call("carrel_delete_media", { project: SLUG, ids: [file.id] });
+    expect(done.structuredContent).toMatchObject({ ok: true });
+    expect(deletedOn(site)).toContain(file.id);
   });
 });
 

@@ -21,6 +21,7 @@ import { outsideResult } from "@dustinedwards/site-runtime/mcp-server";
 import { addFinding, aiDraftSocialPost, AiRefusal, aiPublish, itemFindings, listAiDrafts, saveAiDraft, type AiSession } from "~/lib/ai.server";
 import { bookVoice, checkDraft, indexedFile, listFiles, listFindings, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
+import { DELETE_LIMIT, deleteMediaFiles, importMediaFile } from "~/lib/media.server";
 import { searchItemsPage } from "~/lib/index.server";
 import { isBookPath } from "~/lib/novels/layout";
 import { visibleProjects } from "~/lib/people.server";
@@ -424,6 +425,63 @@ export const TOOLS: Tool[] = [
       });
       if (!result.ok) throw new AiRefusal(result.message);
       return { published: true, version: result.version, changeId: result.changeId, dustinEmailed: result.emailed };
+    },
+  },
+
+  {
+    name: "carrel_import_media",
+    title: "Add a library photo from its web address",
+    scope: "write",
+    description: `Adds a picture to a site's media library from its https address, as the Desk's Import does: the site fetches and checks it and stores it as an upload. A file already in the library is reported, not stored twice. The alt text is required and describes the picture for someone who cannot see it; write only what the picture shows. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: PROJECT,
+        url: { type: "string", pattern: "^https://", maxLength: 2000, description: "The picture's https address." },
+        alt: { type: "string", maxLength: 500, description: "The picture's alt text." },
+        filename: { type: "string", maxLength: MAX.path, description: "A name for the file; leave out to take it from the address." },
+      },
+      required: ["project", "url", "alt"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST }),
+    outside: false,
+    run: async (args, ctx) => {
+      const done = await importMediaFile(
+        ctx.env,
+        ctx.session.viewer,
+        str(args, "project"),
+        { url: str(args, "url", { max: 2000 }), alt: str(args, "alt", { max: 500 }), filename: str(args, "filename", { optional: true, max: MAX.path }) },
+        ctx.deps.fetcher,
+      );
+      return { ok: done.ok, message: done.message, outcomes: done.outcomes ?? [] };
+    },
+  },
+  {
+    name: "carrel_delete_media",
+    title: "Delete library photos for good (Owner only)",
+    scope: "write",
+    description: `Deletes pictures from a site's media library for good, on Dustin's instruction in this conversation: asking for a delete is that instruction. It takes the same steps as the Desk's Delete: each file goes to the trash first on a site that has one, then leaves the site's storage. The site refuses a file a page still uses and says which; every other id ends as deleted. Where the site keeps earlier versions in a separate bucket, the last bytes stay there. Only Dustin's own sessions may delete. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: PROJECT,
+        ids: { type: "array", items: { type: "string", pattern: "^[A-Za-z0-9._~/-]{1,200}$", maxLength: MAX.path }, minItems: 1, maxItems: DELETE_LIMIT, description: `The library file ids to delete, from the media library (at most ${DELETE_LIMIT}).` },
+      },
+      required: ["project", "ids"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST }),
+    outside: false,
+    run: async (args, ctx) => {
+      const ids = args.ids;
+      if (!Array.isArray(ids) || ids.length === 0 || ids.length > DELETE_LIMIT || ids.some((id) => typeof id !== "string" || id.length > MAX.path)) {
+        throw new AiRefusal(`ids is a list of 1 to ${DELETE_LIMIT} file ids.`);
+      }
+      const done = await deleteMediaFiles(ctx.env, ctx.session.viewer, str(args, "project"), ids as string[], ctx.deps.fetcher);
+      return { ok: done.ok, message: done.message, outcomes: done.outcomes ?? [] };
     },
   },
 
