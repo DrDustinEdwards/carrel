@@ -19,6 +19,7 @@
 // A save is the editor route's: it reads the room's Markdown, sends it through site-api's version
 // check (or Git's), and tells the room what it wrote (`saved`), with who had a hand in it.
 
+import { logEvent } from "@dustinedwards/site-runtime/log";
 import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as decoding from "lib0/decoding";
@@ -263,7 +264,7 @@ export class DocRoom extends YServer<Env> {
     // object's own storage holds them back), so one socket's messages are chained to keep their order.
     const next = (this.#inbox.get(conn.id) ?? Promise.resolve())
       .then(() => this.#receive(conn, message))
-      .catch((error: unknown) => console.error(JSON.stringify({ room: "message-failed", error: String(error) })));
+      .catch((error: unknown) => logEvent("room_message_failed", { error: String(error) }, { level: "error" }));
     this.#inbox.set(conn.id, next);
     return next;
   }
@@ -304,7 +305,7 @@ export class DocRoom extends YServer<Env> {
       role = await currentRole(this.env.DB, viewer.id, this.#where().projectId);
     } catch (error) {
       // Unchecked is not allowed: the editor reconnects through the door, which checks again.
-      console.error(JSON.stringify({ room: "role-check-failed", error: String(error) }));
+      logEvent("room_role_check_failed", { error: String(error) }, { level: "error" });
       conn.close(1011, "Could not check your access. Reconnecting.");
       return null;
     }
@@ -331,7 +332,7 @@ export class DocRoom extends YServer<Env> {
     // Messages on one socket arrive in order, so the answer comes after every change sent before it.
     if (message.t === "flush") return this.#send(conn, { t: "flushed", n: Number(message.n) || 0 });
     void this.#comment(conn, viewer, message).catch((error: unknown) => {
-      console.error(JSON.stringify({ room: "comment-failed", error: String(error) }));
+      logEvent("room_comment_failed", { error: String(error) }, { level: "error" });
       this.#send(conn, { t: "error", message: "The comment was not saved. Try again." });
     });
   }
