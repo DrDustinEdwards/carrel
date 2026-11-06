@@ -52,6 +52,7 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
   const flushes = useRef({ n: 0, waiting: new Map<number, () => void>() });
 
   useEffect(() => {
+    const waiting = flushes.current.waiting;
     const doc = new Y.Doc();
     const provider = withoutUnload(
       () =>
@@ -62,6 +63,7 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
           disableBc: true,
         }),
     );
+    // oxlint-disable-next-line react/set-state-in-effect -- the doc and its provider are made here, in the effect that owns their lifetime, and handed to render.
     setLive({ doc, provider });
     setSynced(false);
     let frame = 0;
@@ -106,8 +108,8 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
     provider.on("custom-message", onMessage);
     return () => {
       cancelAnimationFrame(frame);
-      for (const done of flushes.current.waiting.values()) done();
-      flushes.current.waiting.clear();
+      for (const done of waiting.values()) done();
+      waiting.clear();
       withoutUnload(() => provider.destroy());
       doc.destroy();
     };

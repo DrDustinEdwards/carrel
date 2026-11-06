@@ -36,8 +36,8 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
   const [title, setTitle] = useState("");
   const [alt, setAlt] = useState("");
   const [caption, setCaption] = useState("");
-  const [findings, setFindings] = useState<ChartFinding[] | null>(null);
-  const [suggestion, setSuggestion] = useState<string | null>(null);
+  // The check of one block; shown only while that block is the one in the dialog.
+  const [checked, setChecked] = useState<{ block: string; findings: ChartFinding[]; suggestion: string | null } | null>(null);
   const [previewed, setPreviewed] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const frame = `chart-preview-${useId().replace(/[^a-z0-9]/gi, "")}`;
@@ -45,14 +45,18 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
   const columns = useMemo(() => csvColumns(csv), [csv]);
   // A new header picks the first column for x and every numeric one after it for y; a choice that
   // is still a column is kept.
-  useEffect(() => {
+  // Adjusted while rendering, not in an effect
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [seenColumns, setSeenColumns] = useState(columns);
+  if (columns !== seenColumns) {
+    setSeenColumns(columns);
     const names = columns.map((c) => c.name);
     setX((cur) => (names.includes(cur) ? cur : (names[0] ?? "")));
     setY((cur) => {
       const kept = cur.filter((n) => names.includes(n));
       return kept.length ? kept : columns.filter((c, i) => i > 0 && c.numeric).map((c) => c.name);
     });
-  }, [columns]);
+  }
 
   const ready = columns.length >= 2 && x !== "" && y.length > 0 && !y.includes(x);
   // The check reads the block as written, so a blank alt is flagged by Prelum's required-alt rule (B52).
@@ -63,17 +67,12 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
 
   // The check and the drafted finding, on Prelum's code, loaded only once the dialog has a chart.
   useEffect(() => {
-    if (!block) {
-      setFindings(null);
-      setSuggestion(null);
-      return;
-    }
+    if (!block) return;
     let live = true;
     const timer = setTimeout(() => {
       void import("~/lib/chart-check.client").then((m) => {
         if (!live) return;
-        setFindings(m.checkCharts(block));
-        setSuggestion(m.suggestFinding(drawable));
+        setChecked({ block, findings: m.checkCharts(block), suggestion: m.suggestFinding(drawable) });
       });
     }, 300);
     return () => {
@@ -81,6 +80,9 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
       clearTimeout(timer);
     };
   }, [block, drawable]);
+  const current = block && checked?.block === block ? checked : null;
+  const findings = current?.findings ?? null;
+  const suggestion = current?.suggestion ?? null;
 
   const close = () => {
     setOpen(false);

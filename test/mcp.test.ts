@@ -83,7 +83,7 @@ describe("the protocol", () => {
     expect((await ai.send(new Request(MCP_URL, { method: "DELETE", headers: { Host: MCP_HOST } }))).status).toBe(405);
     const one = modernRequest(1, "tools/list");
     const body = [JSON.parse(await one.clone().text()), JSON.parse(await one.clone().text())];
-    const batch = await ai.send(new Request(one, { body: JSON.stringify(body) }));
+    const batch = await ai.send(new Request(one, { method: one.method, body: JSON.stringify(body) }));
     // Refused in the design-center era. The legacy shim answers 2025-era batches as that era allowed;
     // each message in one still runs as this same session, so a batch widens nothing.
     expect(batch.status).toBe(400);

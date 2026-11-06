@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - name: Lint
+        run: npm run lint
       - run: npm test
       # The public site (www/) builds, so a Capsomer or Prelum bump cannot break it unseen.
       - run: npm run www

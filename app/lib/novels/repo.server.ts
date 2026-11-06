@@ -157,7 +157,12 @@ function base64ToUtf8(b64: string): string {
 
 export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedFetch): NovelsRepo {
   const repoUrl = `${API}/repos/${NOVELS_REPO}`;
-  const call = async (url: string, init: RequestInit = {}) => fetcher(url, { ...init, headers: { ...headers(await token()), ...init.headers } });
+  const call = async (url: string, init: RequestInit = {}) => {
+    // The call's own headers win, in any form of HeadersInit (an object spread would turn an array into indices).
+    const merged = new Headers(headers(await token()));
+    for (const [name, value] of new Headers(init.headers)) merged.set(name, value);
+    return fetcher(url, { ...init, headers: merged });
+  };
 
   const repo: NovelsRepo = {
     async tree(prefix) {

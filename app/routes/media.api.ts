@@ -15,7 +15,7 @@ import { loadMedia, loadMediaChanges, readMediaQuery, runMediaIntent } from "@du
 import { mediaDataOfKit, readMediaView } from "capsomer/behavior/media-library";
 
 import { getEnv, getViewer } from "~/lib/context";
-import { mediaBytes, mediaSource, runIntent, unreachable, useHref } from "~/lib/media.server";
+import { mediaBytes, mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { absoluteMediaUrl } from "~/lib/sites.server";
 import { readForm, UPLOAD_MAX_BYTES } from "~/lib/form.server";
@@ -39,7 +39,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     if (since !== null) return Response.json(await loadMediaChanges(source, since.slice(0, 500)), { headers: { "cache-control": "private, no-store" } });
     const kit = await loadMedia(source, readMediaQuery(search));
     const pick = search.get("pick") ?? "";
-    return Response.json(mediaDataOfKit(kit, { usedHref: (use) => useHref(project.slug, use), view: { ...readMediaView(search), ...(pick ? { pick } : {}) } }));
+    return Response.json(mediaDataOfKit(kit, { usedHref: (use) => usageHref(project.slug, use), view: { ...readMediaView(search), ...(pick ? { pick } : {}) } }));
   } catch (error) {
     const message = unreachable(error);
     if (message === null) throw error;

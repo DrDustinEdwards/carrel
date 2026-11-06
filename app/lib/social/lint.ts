@@ -12,6 +12,7 @@ import { graphemes, type Platform } from "./platforms.server";
 /** X counts every link as 23 characters, however long; Bluesky counts graphemes. */
 function length(text: string, platform: Platform): number {
   if (platform === "bluesky") return graphemes(text);
+  // oxlint-disable-next-line typescript/no-misused-spread -- X counts code points, not graphemes: the spread is the count.
   return [...text.replace(/https?:\/\/\S+/g, "x".repeat(23))].length;
 }
 

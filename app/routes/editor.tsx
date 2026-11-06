@@ -3,8 +3,9 @@
 // with comments and suggestions; the site's own render in a sandboxed preview; and the writes the
 // viewer's role allows, each sending the room's text through site-api's version check.
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router";
+import { useHydrated } from "~/lib/hydrated";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -302,13 +303,8 @@ export default function EditorRoute({ loaderData }: Route.ComponentProps) {
   return <Editor key={`${loaderData.project.slug}/${loaderData.itemId}`} data={loaderData} />;
 }
 
-const noSubscribe = () => () => {};
-/** False on the server and in the render that hydrates, true after: a time in a string prop is in UTC until then, as Capsomer's Time draws one. */
-function useHydrated(): boolean {
-  return useSyncExternalStore(noSubscribe, () => true, () => false);
-}
-
 function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
+  // A time in a string prop is in UTC until hydrated, as Capsomer's Time draws one.
   const hydrated = useHydrated();
   const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
   const [layout, chooseLayout] = useEditorLayout();
@@ -441,9 +437,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   // after the typing stops (lib/chart-check.client.ts).
   const body = splitSource(source).body;
   const hasChart = body.includes(":::chart");
-  const [chartFindings, setChartFindings] = useState<ChartFinding[]>([]);
+  const [checkedFindings, setChartFindings] = useState<ChartFinding[]>([]);
+  const chartFindings = hasChart ? checkedFindings : [];
   useEffect(() => {
-    if (!hasChart) return setChartFindings([]);
+    if (!hasChart) return;
     let live = true;
     const timer = setTimeout(() => {
       void import("~/lib/chart-check.client").then((m) => live && setChartFindings(m.checkCharts(body)));

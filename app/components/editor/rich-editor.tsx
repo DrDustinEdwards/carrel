@@ -19,7 +19,7 @@ import Collaboration from "@tiptap/extension-collaboration";
 import { Placeholder } from "@tiptap/extensions";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { countWords, filterLinkTargets, looksLikeUrl, minutesForWords, type ImageDescription, type LinkTarget, type Scaffold } from "capsomer/behavior/markdown-editor";
 import { place } from "capsomer/behavior/popover";
 
@@ -89,10 +89,9 @@ export function RichEditor(props: RichEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
   const origin = useRef<{ tail: string; prints: Map<number, string>; last: string }>({ tail: "", prints: new Map(), last: value });
+  // The latest props, for the editor's callbacks, which it made once; set after each render, not during it.
   const propsRef = useRef(props);
-  propsRef.current = props;
   const readOnlyRef = useRef(readOnly);
-  readOnlyRef.current = readOnly;
   const [ready, setReady] = useState(false);
   const [words, setWords] = useState(() => countWords(value));
   const [palette, setPalette] = useState<Palette | null>(null);
@@ -118,7 +117,6 @@ export function RichEditor(props: RichEditorProps) {
   const markdown = (editor: Editor) =>
     room ? markdownOf(room.doc, editor.getJSON() as JsonDoc) : fromDoc(editor.getJSON() as JsonNode, origin.current.tail, origin.current.prints, dialect);
   const roomRef = useRef(room);
-  roomRef.current = room;
   /** Source blocks are Markdown, which a suggestion cannot mark: while suggesting they are read only. */
   const sourceLocked = () => readOnlyRef.current || Boolean(editorRef.current && isSuggestChangesEnabled(editorRef.current.state));
 
@@ -191,7 +189,7 @@ export function RichEditor(props: RichEditorProps) {
         handlePaste: (_view, event) => {
           const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
           if (files[0] && propsRef.current.onUpload) {
-            void startUpload(files[0]);
+            startUpload(files[0]);
             return true;
           }
           // Markdown pasted as text becomes formatted blocks, as typing it in Markdown did.
@@ -209,7 +207,7 @@ export function RichEditor(props: RichEditorProps) {
           const files = [...((event as DragEvent).dataTransfer?.files ?? [])].filter((f) => f.type.startsWith("image/"));
           if (files[0] && propsRef.current.onUpload) {
             event.preventDefault();
-            void startUpload(files[0]);
+            startUpload(files[0]);
             return true;
           }
           return false;
@@ -237,7 +235,7 @@ export function RichEditor(props: RichEditorProps) {
       editorRef.current = null;
     };
     // Made once; later values come in through the effects below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps -- made once: the ProseMirror editor owns its state, and later values come in through the effects below
   }, []);
 
   // A new value from outside (a discarded draft, an AI draft taken as the working copy) is loaded. In a
@@ -246,7 +244,7 @@ export function RichEditor(props: RichEditorProps) {
     const editor = editorRef.current;
     if (room) setWords(countWords(value));
     else if (editor && value !== origin.current.last) load(editor, value);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps -- a new value only: the room and load are read as they are when it comes
   }, [value]);
 
   // Suggesting on or off, as the person chooses (always on for someone who may only suggest).
@@ -277,7 +275,12 @@ export function RichEditor(props: RichEditorProps) {
 
   // ---- the block menu on a lone "/"
   const slashOpen = useRef(false);
-  slashOpen.current = slash !== null;
+  useLayoutEffect(() => {
+    propsRef.current = props;
+    readOnlyRef.current = readOnly;
+    roomRef.current = room;
+    slashOpen.current = slash !== null;
+  });
   function syncSlash(editor: Editor) {
     const { $from, empty: collapsed } = editor.state.selection;
     const lone = collapsed && !readOnlyRef.current && scaffolds.length > 0 && $from.depth === 1 && $from.parent.type.name === "paragraph" && $from.parent.textContent === "/" && $from.parentOffset === 1;
@@ -353,7 +356,7 @@ export function RichEditor(props: RichEditorProps) {
       }
     };
     // Opened once per palette; typing in it does not move it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react/exhaustive-deps -- opened once per palette; typing in it does not move it
   }, [palette !== null]);
   const matches = palette ? filterLinkTargets(linkTargets, palette.query) : [];
   const typedUrl = palette && looksLikeUrl(palette.query) ? palette.query.trim() : null;
@@ -482,7 +485,9 @@ export function RichEditor(props: RichEditorProps) {
   return (
     <div className="cap-md app-rich" data-ready={ready ? "" : undefined} data-hide-front={room?.hideFrontMatter ? "" : undefined}>
       <div className="cap-md-frame">
+        {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- a roving-tabindex toolbar: its buttons take focus, the arrow keys move between them */}
         <div className="cap-md-toolbar" role="toolbar" aria-label="Formatting" ref={toolbar} onKeyDown={onToolbarKey}>
+          // oxlint-disable-next-line react/refs -- read when a tool runs, not while rendering
           {all.map((t, i) => (
             <span key={t.id} className="app-tool-slot">
               {i === tools.length && blocks.length > 0 ? <span className="cap-md-sep" aria-hidden="true" /> : null}
@@ -543,11 +548,12 @@ export function RichEditor(props: RichEditorProps) {
           onChange={(e) => {
             const f = e.target.files?.[0];
             e.target.value = "";
-            if (f) void startUpload(f);
+            if (f) startUpload(f);
           }}
         />
       ) : null}
       {upload ? (
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape inside the image step closes it; the group only catches the key from its fields
         <div
           className="cap-md-upload"
           role="group"
@@ -610,6 +616,7 @@ export function RichEditor(props: RichEditorProps) {
         </div>
       ) : null}
       {palette ? (
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape and the arrow keys inside the link palette; the group only catches them from its input
         <div
           ref={paletteRef}
           className="cap-popover cap-md-palette"
@@ -657,6 +664,7 @@ export function RichEditor(props: RichEditorProps) {
           />
           <div className="cap-listbox" role="listbox" id="rich-link-list" aria-label="Pages" data-wrap="">
             {matches.map((m, i) => (
+              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- a listbox option chosen by pointer; the palette's input drives it from the keyboard (aria-activedescendant)
               <div
                 key={m.href}
                 id={`rich-link-${i}`}
@@ -679,6 +687,7 @@ export function RichEditor(props: RichEditorProps) {
         </div>
       ) : null}
       {slash !== null ? (
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the block menu's keys come from the editor, which keeps focus while it is open
         <ul
           ref={slashRef}
           className="cap-popover cap-md-slash"

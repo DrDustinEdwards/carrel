@@ -19,7 +19,7 @@ import { loadMedia, readMediaQuery, type IntentResult } from "@dustinedwards/sit
 import { KitForm, useKitSubmit } from "~/components/kit-form";
 import { ProjectTabs } from "~/components/project-tabs";
 import { getEnv, getViewer } from "~/lib/context";
-import { mediaSource, runIntent, unreachable, useHref } from "~/lib/media.server";
+import { mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
@@ -41,7 +41,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     const kit = await loadMedia(mediaSource(env, project, viewer), readMediaQuery(search));
     if (!kit.offers.media) return { project: head, data: null, unavailable: "This site has no media library yet." };
     const pick = search.get("pick") ?? "";
-    const data = mediaDataOfKit(kit, { usedHref: (use) => useHref(project.slug, use), view: { ...readMediaView(search), ...(pick ? { pick } : {}) } });
+    const data = mediaDataOfKit(kit, { usedHref: (use) => usageHref(project.slug, use), view: { ...readMediaView(search), ...(pick ? { pick } : {}) } });
     return { project: head, data, unavailable: null };
   } catch (error) {
     const message = unreachable(error);

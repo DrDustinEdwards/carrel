@@ -10,7 +10,7 @@ Carrel is Dustin's private writing hub. Its signed-in app is Desk, at https://de
 
 ## Commands
 
-- `npm run typecheck` (wrangler types, typegen, tsc -b) and `npm test`: the quick local checks.
+- `npm run typecheck` (wrangler types, typegen, tsc -b), `npm run lint` (Oxlint, the shared config in `oxlint.config.ts`; after typecheck, which makes the types it reads) and `npm test`: the quick local checks.
 - `npm run check:a11y`, `npm run check:conformance`, `npm run check:mcp-roles`, `npm run check:plants`: the gates for accessibility, the MCP door, the AI roles and the planted-failure proofs.
 - `npm run check:bloat`: Knip and jscpd against `.no-bloat.json` (`devkit-no-bloat`; a count above its baseline fails), then JS and CSS gzip per route against `.route-weight.json` (devkit-route-weight, warn-only). Knip and jscpd run through npx at the exact versions in `.no-bloat.json`, set up in `knip.json` and `.jscpd.json`.
 - `npm run harness`: the app against a fake site, for working without the real one.

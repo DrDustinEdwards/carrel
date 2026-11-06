@@ -139,5 +139,5 @@ export function recentDays(totals: Map<string, number>, today: string, n: number
 
 /** "0123456" as stored, to weekday numbers; anything else in the string is dropped. */
 export function parseWritingDays(stored: string): number[] {
-  return [...new Set([...stored].map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort();
+  return [...new Set(stored.split("").map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort();
 }

@@ -3,9 +3,10 @@
 // made, and the bar and panels around the text. Each page adds its own saving and publishing.
 
 import type { Editor } from "@tiptap/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { listSuggestions } from "~/lib/editor/suggest";
+import { useRemembered } from "~/lib/remembered";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 
 import { CommentsPanel } from "./comments-panel";
@@ -49,37 +50,17 @@ export function useRoomEditing({
 }): RoomEditing {
   const room = useRoom(path, initial, unsaved);
   const mayEdit = viewer.access === "edit";
-  const [mode, setMode] = useState<WriteMode>(mayEdit ? "edit" : "suggest");
-  const [round, setRound] = useState("");
+  // Remembered on this device: whether an editor was suggesting, and the round they were in.
+  const [storedMode, rememberMode] = useRemembered(MODE_KEY);
+  const [storedRound, rememberRound] = useRemembered(ROUND_KEY);
+  const mode: WriteMode = mayEdit && storedMode !== "suggest" ? "edit" : "suggest";
+  const round = storedRound ?? "";
   const [editor, setEditor] = useState<Editor | null>(null);
   const [active, setActive] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
 
-  // Remembered on this device: whether an editor was suggesting, and the round they were in.
-  useEffect(() => {
-    try {
-      if (mayEdit && localStorage.getItem(MODE_KEY) === "suggest") setMode("suggest");
-      setRound(localStorage.getItem(ROUND_KEY) ?? "");
-    } catch {
-      // Storage refused: the defaults.
-    }
-  }, [mayEdit]);
-  const chooseMode = useCallback((next: WriteMode) => {
-    setMode(next);
-    try {
-      localStorage.setItem(MODE_KEY, next);
-    } catch {
-      // Not remembered, still switched.
-    }
-  }, []);
-  const chooseRound = useCallback((next: string) => {
-    setRound(next);
-    try {
-      localStorage.setItem(ROUND_KEY, next);
-    } catch {
-      // Not remembered.
-    }
-  }, []);
+  const chooseMode = rememberMode;
+  const chooseRound = rememberRound;
 
   useEffect(() => {
     if (!editor) return;
