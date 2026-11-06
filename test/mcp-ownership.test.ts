@@ -28,6 +28,7 @@ const CALLS: Record<string, Record<string, unknown>> = {
   carrel_get_checks: { project: SITE, item: "post-one" },
   carrel_add_finding: { project: SITE, item: "post-one", message: "m" },
   carrel_publish_item: { project: SITE, item: "post-one", expected_version: "v" },
+  carrel_delete_media: { project: SITE, ids: ["file-one"] },
   carrel_list_book_files: { project: BOOK },
   carrel_read_book_file: { project: BOOK, path: SCENE },
   carrel_check_book_text: { project: BOOK, path: SCENE, source: "x" },

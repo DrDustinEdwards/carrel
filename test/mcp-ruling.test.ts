@@ -39,12 +39,13 @@ describe("names and hints", () => {
       }
     }
     const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations]));
-    const writes = ["carrel_save_draft", "carrel_add_finding", "carrel_publish_item", "carrel_save_book_draft", "carrel_add_book_finding", "carrel_draft_social_post"];
+    const writes = ["carrel_save_draft", "carrel_add_finding", "carrel_publish_item", "carrel_delete_media", "carrel_save_book_draft", "carrel_add_book_finding", "carrel_draft_social_post"];
     for (const tool of tools) expect(hints[tool.name]!.readOnlyHint, tool.name).toBe(!writes.includes(tool.name));
     // Publishing replaces the live page for every reader: destructive, on the open world, so a client confirms first.
     expect(hints.carrel_publish_item).toEqual({ readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true });
+    expect(hints.carrel_delete_media).toEqual({ readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true });
     // Nothing else destroys or reaches past Carrel and the site's drafts.
-    for (const tool of tools.filter((t) => t.name !== "carrel_publish_item")) {
+    for (const tool of tools.filter((t) => t.name !== "carrel_publish_item" && t.name !== "carrel_delete_media")) {
       expect(hints[tool.name]!.destructiveHint, tool.name).toBe(false);
       expect(hints[tool.name]!.openWorldHint, tool.name).toBe(false);
     }

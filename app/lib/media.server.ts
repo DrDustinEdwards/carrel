@@ -97,3 +97,28 @@ export async function runIntent(env: Env, viewer: Viewer, slug: string | undefin
   const project = await requireSiteProject(env.DB, viewer, slug, "read");
   return answer(() => runMediaIntent(mediaSource(env, project, viewer), form), unreachable);
 }
+
+/** The most files one delete call takes; the kit's own per-request count holds too. */
+export const DELETE_LIMIT = 25;
+
+/**
+ * Deletes library files for good for an AI session, through the same kit steps as the Desk's buttons: a file is moved to
+ * the trash first where the site has one, then deleted with the count typed as the confirmation. The kit refuses a person
+ * who is not the Owner and the site refuses a file a page still uses, so each file ends as deleted or refused, named.
+ */
+export async function deleteMediaFiles(env: Env, viewer: Viewer, slug: string, ids: string[], fetcher?: typeof fetch): Promise<IntentResult> {
+  const project = await requireSiteProject(env.DB, viewer, slug, "read");
+  const source = mediaSource(env, project, viewer, fetcher);
+  return answer(async () => {
+    const offers = (await source.client.meta()).capabilities;
+    if (offers.mediaTrash) {
+      for (const id of ids) {
+        const detail = await source.client.media.get(id).catch(() => null);
+        if (!detail || detail.trashedAt) continue;
+        const trashed = await runMediaIntent(source, { intent: "trash", ids: [id], versions: [detail.version ?? ""] });
+        if (!trashed.ok) return trashed;
+      }
+    }
+    return runMediaIntent(source, { intent: "delete", ids, confirm: String(ids.length) });
+  }, unreachable);
+}
