@@ -20,6 +20,9 @@ export async function join(projectId: number, itemId: string, viewer: RoomViewer
   ws.accept();
   const doc = new Y.Doc();
   const said: ServerMessage[] = [];
+  /** The close code once the room has closed the socket. */
+  const closed: { code?: number } = {};
+  ws.addEventListener("close", (event) => (closed.code = event.code));
   let synced!: () => void;
   const ready = new Promise<void>((resolve) => (synced = resolve));
   // Binary frames come as Blobs here; reading them in turn keeps them in the order they came.
@@ -61,7 +64,7 @@ export async function join(projectId: number, itemId: string, viewer: RoomViewer
     for (let i = 0; i < 100 && !said.some((m) => m.t === "flushed" && m.n === want); i++) await new Promise((r) => setTimeout(r, 10));
   };
   const send = (message: object) => ws.send(`__YPS:${JSON.stringify(message)}`);
-  return { doc, said, flush, send, close: () => ws.close() };
+  return { doc, said, closed, flush, send, close: () => ws.close() };
 }
 
 

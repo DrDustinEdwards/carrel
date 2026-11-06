@@ -1,9 +1,16 @@
 // What a file's room and the editors in it say to each other, besides the document itself, which Yjs
 // carries. The room is workers/doc-room.ts; the editors' side is components/editor/use-room.ts.
 
+import { can, type Role } from "~/lib/roles";
+
 /** Who a connection is: set by the browser door (rooms.server.ts), never by the browser. */
 export type RoomViewer = { id: number; name: string; role: "reader" | "editor" | "author" | "owner"; access: "edit" | "suggest" };
 export const ROOM_VIEWER_HEADER = "x-carrel-room-viewer";
+
+/** What a role may do in a room: change the text, only suggest, or nothing (not let in). */
+export function roomAccess(role: Role | null): RoomViewer["access"] | null {
+  return can(role, "edit") ? "edit" : can(role, "suggest") ? "suggest" : null;
+}
 
 /** One comment as everyone in the room sees it. */
 export type RoomComment = {

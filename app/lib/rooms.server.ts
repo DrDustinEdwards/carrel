@@ -20,7 +20,7 @@ import { roomName } from "~/lib/editor/collab";
 import type { Dialect } from "~/lib/editor/markdown.mjs";
 import type { Viewer } from "~/lib/people.server";
 import { can, type Role } from "~/lib/roles";
-import { ROOM_VIEWER_HEADER, type RoomViewer } from "~/lib/editor/room-protocol";
+import { ROOM_VIEWER_HEADER, roomAccess, type RoomViewer } from "~/lib/editor/room-protocol";
 
 type Where = { id: number; role: Role };
 
@@ -201,7 +201,7 @@ export async function connectRoom(request: Request, env: Env, viewer: Viewer, fi
   const [, kind, slug, rest] = match as unknown as [string, "p" | "b", string, string];
   const itemId = rest.split("/").map(decodeURIComponent).join("/");
   const project = await find(kind, decodeURIComponent(slug));
-  const access: RoomViewer["access"] | null = can(project.role, "edit") ? "edit" : can(project.role, "suggest") ? "suggest" : null;
+  const access = roomAccess(project.role);
   if (!access) return new Response("Forbidden", { status: 403 });
   const who: RoomViewer = { id: viewer.id, name: viewer.name || viewer.email, role: project.role, access };
   const headers = new Headers(request.headers);
