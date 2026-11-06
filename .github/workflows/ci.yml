@@ -33,6 +33,8 @@ jobs:
       - run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Format check
+        run: npm run format:check
       - run: npm test
       # The public site (www/) builds, so a Capsomer or Prelum bump cannot break it unseen.
       - run: npm run www
