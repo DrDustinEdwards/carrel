@@ -1,6 +1,7 @@
-# Carrel's checks, on every pull request and every push to main, and a deploy on a push to main after they
-# pass. The check and gates jobs use no secrets: the tests run in workerd with a local D1 and never
-# reach the network, and the gates start their own local Workers. Only the deploy job holds secrets.
+# Carrel's checks, on every pull request and every push to main, and a deploy on a push to main after the fast ones
+# pass. The check and gates jobs use no secrets: the tests run in workerd with a local D1 and never reach the network,
+# and the gates start their own local Workers. Only the deploy job holds secrets. The planted-failure proofs
+# (check:plants) are in plants.yml: nightly, and on a pull request that touches what they prove.
 name: CI
 
 on:
@@ -54,25 +55,49 @@ jobs:
       - run: npm run check:console
       - run: npm run check:migrations
       - run: npm run check:mcp-roles
-      - name: Install Chromium for the accessibility scan
-        run: npx playwright install --with-deps chromium
-      - run: npm run check:a11y
+      # The MCP door against the protocol's conformance suite, on two local Workers (about 15 s).
+      - run: npm run check:conformance
 
+  # THE ACCESSIBILITY SCAN, check:a11y: axe on every Desk screen as the real app renders it, both themes, desktop and
+  # phone, and any script error or hydration mismatch on the way. It is the browser check for flows that must never
+  # break, so it runs on every pull request and push that can change a screen. It was the last step of `check` (about
+  # 6 of its 10 minutes); in its own job, in the slot the planted-failure proofs used to hold, it runs beside `check`,
+  # so a pull request takes about as long as the scan alone and the deploy no longer waits for it. The job count is
+  # the same as before (check, gates and bloat), and the job keeps the name `gates` because main's ruleset requires a
+  # check of that name.
+  #
+  # It skips the install and the scan (and passes, as the required check it is) only when every changed file is one
+  # no screen reads: docs/, .claude/, www/ (the public site, its own Worker, built in `check`), a Markdown file or
+  # LICENSE at the root, and .github/ other than this file. Anything else, a new directory included, runs it
+  # (scripts/ci-scope.sh).
   gates:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+          # The commit and its parent, for the comparison below.
+          fetch-depth: 2
+      - name: Decide whether this change can reach a screen
+        id: scope
+        env:
+          BEFORE: ${{ github.event.before }}
+          SKIP: '^(docs/|\.claude/|www/|\.github/|[^/]+\.md$|LICENSE$)'
+          KEEP: '^\.github/workflows/ci\.yml$'
+        run: scripts/ci-scope.sh
+      - if: steps.scope.outputs.run == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: package.json
           cache: npm
-      - run: npm ci
-      - run: npm run check:conformance
-      # Each gate seen red on a planted violation (several minutes).
-      - run: npm run check:plants
+      - if: steps.scope.outputs.run == 'true'
+        run: npm ci
+      - name: Install Chromium for the accessibility scan
+        if: steps.scope.outputs.run == 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.scope.outputs.run == 'true'
+        run: npm run check:a11y
 
   # Knip and jscpd against .no-bloat.json (devkit-no-bloat): a count above its baseline fails. Then the weight per
   # route against .route-weight.json (devkit-route-weight), which fails over budget_bytes (area 7, D5). It runs beside check and gates, so it
@@ -102,8 +127,17 @@ jobs:
   # and writes it, with the restore command, to its summary, so a bad migration is one restore to undo. A rollback swaps code and bindings only and
   # never undoes a D1 migration (devkit's README, "The shared deploy"). It never runs on a pull request or
   # on a branch other than main.
+  #
+  # It waits for `check` only: the typecheck, the tests (every D1 migration applied in workerd), the migrations check
+  # (expand only), the AI roles and the MCP conformance suite, run on this merge commit, which can differ from the
+  # pull request's head because the ruleset does not require a branch to be up to date. The accessibility scan
+  # (`gates`) runs on the same commit beside the deploy, and the planted-failure proofs nightly (plants.yml). Neither
+  # tests a migration or the deploy, and the pull request already ran both on its own merge commit, so waiting for
+  # them only bought the case where two pull requests merged close together break a screen between them. Then main
+  # goes red with the scan's failure, in GitHub's mail, and the fix is one rollback. The deploy starts about
+  # 7 minutes sooner.
   deploy:
-    needs: [check, gates]
+    needs: [check]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@4d0c8fdb2f1794272b31d3c4354059eb2f19a26a # v0.22.0
     with:
@@ -131,8 +165,9 @@ jobs:
   # the checks pass it builds www/dist, deploys with DEPLOY_SHA set to this commit, waits for www's /health
   # (site-runtime's staticSite) to report it, checks the home page answers, and rolls the deploy back if it does not.
   # It runs in www/, so wrangler reads www/wrangler.jsonc; the install and the build run from the repository root.
+  # Like the Desk's deploy, it waits for `check` only, which builds www/ (npm run www); the scan never looks at www/.
   deploy-www:
-    needs: [check, gates]
+    needs: [check]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@4d0c8fdb2f1794272b31d3c4354059eb2f19a26a # v0.22.0
     with:

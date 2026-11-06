@@ -1,0 +1,66 @@
+# THE PLANTED-FAILURE PROOFS, check:plants (scripts/plant-gates.mjs): each gate seen red on a planted violation. For
+# 30 plants it edits one file, runs the gate that must catch it and restores the file: the typecheck, the build, the
+# MCP test files under vitest, check:mcp-roles and the MCP conformance suite. About 6 minutes, so it no longer runs on
+# every pull request and push. It runs:
+#
+#   - on a pull request that touches anything that can change a plant's verdict (the list below);
+#   - nightly on main, which also catches what no single pull request shows, such as two that merged close together;
+#   - by hand (workflow_dispatch).
+#
+# A nightly failure shows the way Carrel's other scheduled checks do (restore-drill.yml, access-drift.yml): a red run
+# on the Actions tab and GitHub's failed-run mail to whoever last changed the schedule below.
+#
+# What a plant's verdict depends on, and so what runs it: the plants themselves and the gate scripts (scripts/), the
+# files the plants edit (app/lib/), the code the MCP tests reach (app/, workers/, test/, including the test files the
+# plants run), the schema the tests and the conformance Workers migrate (drizzle/), the conformance Workers
+# (test/conformance/, .conformance.json), the versions of TypeScript, Vite, vitest and devkit's conformance runner
+# (package.json, package-lock.json), and every config the gates read (tsconfig*.json, vite.config.ts,
+# vitest.config.ts, react-router.config.ts, wrangler.jsonc.example, all at the root). Rather than name those, the job
+# names what cannot matter and runs on everything else (scripts/ci-scope.sh), so a gate script or a config file added
+# later in a new file, or a new directory, runs it with nobody updating a list. Skipped only when every changed file is
+# in docs/, .claude/, www/ (the public site, its own Worker), public/ (static files the build copies), .github/ other
+# than this file, a stylesheet (*.css: no gate reads one for its verdict), or a Markdown file or LICENSE at the root.
+#
+# No secrets: like ci.yml's check job, the tests run in workerd with a local D1 and the conformance suite starts its
+# own local Workers.
+name: plants
+
+on:
+  pull_request:
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plants-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  plants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+          # The commit and its parent, for the comparison below.
+          fetch-depth: 2
+      - name: Decide whether this change can change a plant's verdict
+        id: scope
+        env:
+          SKIP: '^(docs/|\.claude/|www/|public/|\.github/|[^/]+\.md$|LICENSE$)|\.css$'
+          KEEP: '^\.github/workflows/plants\.yml$'
+        run: scripts/ci-scope.sh
+      - if: steps.scope.outputs.run == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          # The version in package.json's engines field.
+          node-version-file: package.json
+          cache: npm
+      - if: steps.scope.outputs.run == 'true'
+        run: npm ci
+      - if: steps.scope.outputs.run == 'true'
+        run: npm run check:plants
