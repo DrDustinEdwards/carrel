@@ -21,7 +21,7 @@ import { outsideResult } from "@dustinedwards/site-runtime/mcp-server";
 import { addFinding, aiDraftSocialPost, AiRefusal, aiPublish, itemFindings, listAiDrafts, saveAiDraft, type AiSession } from "~/lib/ai.server";
 import { bookVoice, checkDraft, indexedFile, listFiles, listFindings, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
-import { DELETE_LIMIT, deleteMediaFiles } from "~/lib/media.server";
+import { DELETE_LIMIT, deleteMediaFiles, importMediaFile } from "~/lib/media.server";
 import { searchItemsPage } from "~/lib/index.server";
 import { isBookPath } from "~/lib/novels/layout";
 import { visibleProjects } from "~/lib/people.server";
@@ -428,6 +428,36 @@ export const TOOLS: Tool[] = [
     },
   },
 
+  {
+    name: "carrel_import_media",
+    title: "Add a library photo from its web address",
+    scope: "write",
+    description: `Adds a picture to a site's media library from its https address, as the Desk's Import does: the site fetches and checks it and stores it as an upload. A file already in the library is reported, not stored twice. The alt text is required and describes the picture for someone who cannot see it; write only what the picture shows. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: PROJECT,
+        url: { type: "string", pattern: "^https://", maxLength: 2000, description: "The picture's https address." },
+        alt: { type: "string", maxLength: 500, description: "The picture's alt text." },
+        filename: { type: "string", maxLength: MAX.path, description: "A name for the file; leave out to take it from the address." },
+      },
+      required: ["project", "url", "alt"],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST }),
+    outside: false,
+    run: async (args, ctx) => {
+      const done = await importMediaFile(
+        ctx.env,
+        ctx.session.viewer,
+        str(args, "project"),
+        { url: str(args, "url", { max: 2000 }), alt: str(args, "alt", { max: 500 }), filename: str(args, "filename", { optional: true, max: MAX.path }) },
+        ctx.deps.fetcher,
+      );
+      return { ok: done.ok, message: done.message, outcomes: done.outcomes ?? [] };
+    },
+  },
   {
     name: "carrel_delete_media",
     title: "Delete library photos for good (Owner only)",

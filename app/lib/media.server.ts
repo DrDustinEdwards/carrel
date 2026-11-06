@@ -122,3 +122,12 @@ export async function deleteMediaFiles(env: Env, viewer: Viewer, slug: string, i
     return runMediaIntent(source, { intent: "delete", ids, confirm: String(ids.length) });
   }, unreachable);
 }
+
+/**
+ * Brings a picture into a site's library from its https address, for an AI session, through the Desk's own Import: the
+ * site fetches and checks it, shrinks it as an upload would be, and a file already stored is reported, not stored twice.
+ */
+export async function importMediaFile(env: Env, viewer: Viewer, slug: string, input: { url: string; alt: string; filename?: string }, fetcher?: typeof fetch): Promise<IntentResult> {
+  const project = await requireSiteProject(env.DB, viewer, slug, "read");
+  return answer(() => runMediaIntent(mediaSource(env, project, viewer, fetcher), { intent: "import", url: input.url, alt: input.alt, filename: input.filename ?? "" }), unreachable);
+}
