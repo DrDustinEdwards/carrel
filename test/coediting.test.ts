@@ -81,7 +81,6 @@ describe("a room", () => {
     // Both see both changes, and the untouched bytes of the file are untouched.
     expect(roomMarkdown(a.doc)).toBe("First line. More.\n\nNow Second line.\n");
     expect(roomMarkdown(b.doc)).toBe(roomMarkdown(a.doc));
-
     const sent: { source: string; version: string | null }[] = [];
     const saved = await saveRoom(testEnv, project("owner"), owner, itemId, async (source, expectedVersion) => {
       sent.push({ source, version: expectedVersion });
@@ -97,6 +96,13 @@ describe("a room", () => {
     expect(again).toMatchObject({ version: "v2", unsaved: false, behind: false });
     const mirror = await testEnv.DB.prepare("SELECT source, base_version FROM rooms WHERE item_id = ?").bind(itemId).first();
     expect(mirror).toEqual({ source: "First line. More.\n\nNow Second line.\n", base_version: "v2" });
+    // An editor's change past a suggestion's 256 KiB cap (a long paste, an offline catch-up) still lands:
+    // only a suggester's is held to it.
+    edit(b.doc, typeAtEnd("x".repeat(300 * 1024)));
+    await b.flush();
+    await a.flush();
+    expect(b.said.some((m) => m.t === "refused")).toBe(false);
+    expect(roomMarkdown(a.doc)).toBe(roomMarkdown(b.doc));
     a.close();
     b.close();
   });

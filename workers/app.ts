@@ -171,7 +171,7 @@ async function scheduled(controller: ScheduledController, env: Env, ctx: Executi
 // An admin idle for an hour is signed out of Access (site-runtime ./access). Every request writes one `request` log line
 // with its status and the deployed commit (site-runtime's withRequestLog).
 export default {
-  fetch: withRequestLog((request: Request, env: Env, ctx: ExecutionContext) => withAdminIdle(request, () => fetchCounted(request, env, ctx), { prefixes: ["/"] }), {
+  fetch: withRequestLog((request: Request, env: Env, ctx: ExecutionContext) => withAdminIdle(request, () => fetchCounted(request, env, ctx), { prefixes: ["/"], secret: env.ADMIN_IDLE_SECRET }), {
     sha: (env) => deployedSha(env),
   }),
   scheduled,

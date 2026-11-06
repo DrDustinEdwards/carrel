@@ -43,11 +43,14 @@ const SYNC = 0;
 const SYNC_STEP2 = 1;
 const SYNC_UPDATE = 2;
 /**
- * The largest change a suggester sends, in bytes. Each one is tried on a copy of the whole document
- * (`suggestOnly`), so one huge message would cost the room a great deal for one person; a suggestion
- * is a few words to a few paragraphs, far below this.
+ * The largest message the room takes, in bytes. A suggestion is tried on a copy of the whole document
+ * (`suggestOnly`), so a suggester's is a few words to a few pages, far below 256 KiB. An editor's is
+ * applied, stored and sent to everyone, and after time offline it is the whole catch-up (SYNC_STEP2),
+ * which for a book can be a large share of it: refusing it would drop that work, so an editor's cap
+ * only bounds a runaway client, well inside Cloudflare's 32 MiB WebSocket message limit.
  */
 const MAX_SUGGESTION = 256 * 1024;
+const MAX_EDIT = 8 * 1024 * 1024;
 /**
  * How long a connection's role holds before the room asks D1 again. Every message from an open editor
  * (its changes, and the presence it renews every 15 seconds while idle) waits on that check once a
@@ -273,14 +276,21 @@ export class DocRoom extends YServer<Env> {
     const viewer = await this.#recheck(conn);
     if (!viewer) return;
     const bytes = bytesOf(message);
+    // RFC 6455 section 7.4.1 has close code 1009 for a message too big to process, but a closed
+    // provider reconnects and sends the same change again, so the room refuses it and the editor
+    // loads the room again, dropping it.
+    if ((bytes?.byteLength ?? (message as string).length) > (viewer.access === "suggest" ? MAX_SUGGESTION : MAX_EDIT)) {
+      this.#send(conn, { t: "refused", reason: "That change is too large. Your editor loads the room again." });
+      return;
+    }
     if (viewer.access === "suggest" && bytes) {
       const decoder = decoding.createDecoder(bytes);
       if (decoding.readVarUint(decoder) === SYNC) {
         const step = decoding.readVarUint(decoder);
         if (step === SYNC_STEP2 || step === SYNC_UPDATE) {
           const update = decoding.readVarUint8Array(decoder);
-          if (update.byteLength <= MAX_SUGGESTION && suggestOnly(this.document, update, viewer.id)) Y.applyUpdate(this.document, update, conn);
-          else this.#send(conn, { t: "refused", reason: update.byteLength > MAX_SUGGESTION ? "That suggestion is too large. Your editor loads the room again." : "Only suggestions can be made here. Your editor loads the room again." });
+          if (suggestOnly(this.document, update, viewer.id)) Y.applyUpdate(this.document, update, conn);
+          else this.#send(conn, { t: "refused", reason: "Only suggestions can be made here. Your editor loads the room again." });
           return;
         }
       }
