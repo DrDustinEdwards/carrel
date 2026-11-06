@@ -4,6 +4,7 @@
 // its reference adapter; the email binding is a mailbox the tests read. The session is what the door
 // hands over from the OAuth grant: the person and the client, credited by the client's name.
 
+import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { autosave, readDraft } from "~/lib/content.server";
@@ -158,6 +159,9 @@ describe("reading, drafting, flagging", () => {
   });
 });
 
+/** The files the reference adapter deleted: fakeSite types its adapter as the plain SiteAdapter. */
+const deletedOn = (s: typeof site) => (s.adapter as ReturnType<typeof memoryAdapter>).deleted;
+
 describe("delete library photos", () => {
   const PNG = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="), (c) => c.charCodeAt(0));
 
@@ -165,10 +169,10 @@ describe("delete library photos", () => {
     const file = await site.adapter.media!.upload({ bytes: PNG, contentType: "image/png", filename: "river.png", alt: "The river", changeId: "seed" });
     const refused = await (await connect("editor@test.invalid")).call("carrel_delete_media", { project: SLUG, ids: [file.id] });
     expect(JSON.stringify(refused)).toContain("Owner");
-    expect(site.adapter.deleted).toEqual([]);
+    expect(deletedOn(site)).toEqual([]);
     const done = await (await connect("owner@test.invalid")).call("carrel_delete_media", { project: SLUG, ids: [file.id] });
     expect(done.structuredContent).toMatchObject({ ok: true });
-    expect(site.adapter.deleted).toContain(file.id);
+    expect(deletedOn(site)).toContain(file.id);
   });
 });
 
