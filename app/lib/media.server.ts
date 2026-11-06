@@ -13,7 +13,11 @@
 // query's suggest=1), and each suggestion is applied only when the person accepts it, as an ordinary
 // tag-add or alt post: nothing the model says is written unasked.
 
-import { runMediaIntent, type ContentSource, type IntentResult } from "@dustinedwards/site-api/admin";
+import {
+  runMediaIntent,
+  type ContentSource,
+  type IntentResult,
+} from "@dustinedwards/site-api/admin";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { bareType, CROPPABLE } from "capsomer/behavior/media";
 import { drizzle } from "drizzle-orm/d1";
@@ -46,7 +50,9 @@ const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
 
 /** Where a place that uses a file opens in Carrel: a post opens in its editor. */
 export function usageHref(slug: string, use: { type: string; id: string }): string {
-  return use.type === "post" ? `/p/${encodeURIComponent(slug)}/e/${encodeURIComponent(use.id)}` : "";
+  return use.type === "post"
+    ? `/p/${encodeURIComponent(slug)}/e/${encodeURIComponent(use.id)}`
+    : "";
 }
 
 /**
@@ -54,7 +60,12 @@ export function usageHref(slug: string, use: { type: string; id: string }): stri
  * carried out is one row in the authorship record, under the change id Carrel sent the site, so the
  * two histories join; a refused action writes nothing.
  */
-export function mediaSource(env: Env, project: SiteProject, viewer: Viewer, fetcher?: typeof fetch): ContentSource {
+export function mediaSource(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  fetcher?: typeof fetch,
+): ContentSource {
   return {
     ...kitBase(env, project),
     client: siteClient(env, project.site, fetcher),
@@ -64,7 +75,15 @@ export function mediaSource(env: Env, project: SiteProject, viewer: Viewer, fetc
       if (!action) return;
       await drizzle(env.DB)
         .insert(changes)
-        .values(ids.map((itemId) => ({ id: ids.length === 1 ? changeId : `${changeId}:${itemId}`, projectId: project.id, itemId, personId: viewer.id, action })));
+        .values(
+          ids.map((itemId) => ({
+            id: ids.length === 1 ? changeId : `${changeId}:${itemId}`,
+            projectId: project.id,
+            itemId,
+            personId: viewer.id,
+            action,
+          })),
+        );
     },
   };
 }
@@ -74,12 +93,19 @@ export function mediaSource(env: Env, project: SiteProject, viewer: Viewer, fetc
  * browser draws a same-origin image it may export. Only a raster the site lists, and no larger than
  * the site's own upload limit.
  */
-export async function mediaBytes(source: ContentSource, id: string, fetcher: typeof fetch = fetch): Promise<{ bytes: ArrayBuffer; type: string } | null> {
+export async function mediaBytes(
+  source: ContentSource,
+  id: string,
+  fetcher: typeof fetch = fetch,
+): Promise<{ bytes: ArrayBuffer; type: string } | null> {
   const { capabilities } = await source.client.meta();
   const limit = capabilities.mediaUpload?.maxBytes ?? 0;
   const detail = capabilities.media ? await source.client.media.get(id).catch(() => null) : null;
-  if (!detail || !CROPPABLE.includes(bareType(detail.contentType)) || detail.bytes > limit) return null;
-  const src = detail.url.startsWith("/") ? `${source.site.origin.replace(/\/+$/, "")}${detail.url}` : detail.url;
+  if (!detail || !CROPPABLE.includes(bareType(detail.contentType)) || detail.bytes > limit)
+    return null;
+  const src = detail.url.startsWith("/")
+    ? `${source.site.origin.replace(/\/+$/, "")}${detail.url}`
+    : detail.url;
   const response = await fetcher(src);
   if (!response.ok) return null;
   const bytes = await response.arrayBuffer();
@@ -88,12 +114,18 @@ export async function mediaBytes(source: ContentSource, id: string, fetcher: typ
 
 /** A site that is not connected or cannot be reached, said plainly instead of a crash. null for anything else. */
 export function unreachable(error: unknown): string | null {
-  if (error instanceof SiteApiError && error.status === 501) return "This site has no media library yet.";
+  if (error instanceof SiteApiError && error.status === 501)
+    return "This site has no media library yet.";
   return siteUnreachable(error);
 }
 
 /** One posted intent, as the kit runs it. The same for this page's forms with no script and the media endpoint's. */
-export async function runIntent(env: Env, viewer: Viewer, slug: string | undefined, form: FormData): Promise<IntentResult> {
+export async function runIntent(
+  env: Env,
+  viewer: Viewer,
+  slug: string | undefined,
+  form: FormData,
+): Promise<IntentResult> {
   const project = await requireSiteProject(env.DB, viewer, slug, "read");
   return answer(() => runMediaIntent(mediaSource(env, project, viewer), form), unreachable);
 }
@@ -106,7 +138,13 @@ export const DELETE_LIMIT = 25;
  * the trash first where the site has one, then deleted with the count typed as the confirmation. The kit refuses a person
  * who is not the Owner and the site refuses a file a page still uses, so each file ends as deleted or refused, named.
  */
-export async function deleteMediaFiles(env: Env, viewer: Viewer, slug: string, ids: string[], fetcher?: typeof fetch): Promise<IntentResult> {
+export async function deleteMediaFiles(
+  env: Env,
+  viewer: Viewer,
+  slug: string,
+  ids: string[],
+  fetcher?: typeof fetch,
+): Promise<IntentResult> {
   const project = await requireSiteProject(env.DB, viewer, slug, "read");
   const source = mediaSource(env, project, viewer, fetcher);
   return answer(async () => {
@@ -115,7 +153,11 @@ export async function deleteMediaFiles(env: Env, viewer: Viewer, slug: string, i
       for (const id of ids) {
         const detail = await source.client.media.get(id).catch(() => null);
         if (!detail || detail.trashedAt) continue;
-        const trashed = await runMediaIntent(source, { intent: "trash", ids: [id], versions: [detail.version ?? ""] });
+        const trashed = await runMediaIntent(source, {
+          intent: "trash",
+          ids: [id],
+          versions: [detail.version ?? ""],
+        });
         if (!trashed.ok) return trashed;
       }
     }
@@ -127,7 +169,22 @@ export async function deleteMediaFiles(env: Env, viewer: Viewer, slug: string, i
  * Brings a picture into a site's library from its https address, for an AI session, through the Desk's own Import: the
  * site fetches and checks it, shrinks it as an upload would be, and a file already stored is reported, not stored twice.
  */
-export async function importMediaFile(env: Env, viewer: Viewer, slug: string, input: { url: string; alt: string; filename?: string }, fetcher?: typeof fetch): Promise<IntentResult> {
+export async function importMediaFile(
+  env: Env,
+  viewer: Viewer,
+  slug: string,
+  input: { url: string; alt: string; filename?: string },
+  fetcher?: typeof fetch,
+): Promise<IntentResult> {
   const project = await requireSiteProject(env.DB, viewer, slug, "read");
-  return answer(() => runMediaIntent(mediaSource(env, project, viewer, fetcher), { intent: "import", url: input.url, alt: input.alt, filename: input.filename ?? "" }), unreachable);
+  return answer(
+    () =>
+      runMediaIntent(mediaSource(env, project, viewer, fetcher), {
+        intent: "import",
+        url: input.url,
+        alt: input.alt,
+        filename: input.filename ?? "",
+      }),
+    unreachable,
+  );
 }

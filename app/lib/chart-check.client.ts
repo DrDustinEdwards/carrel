@@ -26,15 +26,32 @@ type Run = { refused: string | null; warnings: string[]; summary: string | null 
 
 /** One block through Prelum's pack: its refusal under `strict`, its warnings, and Enarratio's summary of the data. */
 function run(block: string, strict: boolean): Run {
-  const tree = fromMarkdown(block, { extensions: [directive()], mdastExtensions: [directiveFromMarkdown()] });
+  const tree = fromMarkdown(block, {
+    extensions: [directive()],
+    mdastExtensions: [directiveFromMarkdown()],
+  });
   const warnings: string[] = [];
-  const setup = editorialPack({ assetPrefix: "carrel-", strictCharts: strict }).setup({ file: "chart", body: block, warn: (w) => warnings.push(w.message) });
+  const setup = editorialPack({ assetPrefix: "carrel-", strictCharts: strict }).setup({
+    file: "chart",
+    body: block,
+    warn: (w) => warnings.push(w.message),
+  });
   try {
-    for (const [plugin, ...args] of setup.remark as [(...a: unknown[]) => (tree: unknown) => void, ...unknown[]][]) plugin(...args)(tree);
+    for (const [plugin, ...args] of setup.remark as [
+      (...a: unknown[]) => (tree: unknown) => void,
+      ...unknown[],
+    ][])
+      plugin(...args)(tree);
     setup.result?.();
   } catch (error) {
     // Prelum's ContentError names the file and the block first; the editor names the line instead.
-    return { refused: unprefixed((error instanceof Error ? error.message : String(error)).replace(/^chart: /, "")), warnings, summary: null };
+    return {
+      refused: unprefixed(
+        (error instanceof Error ? error.message : String(error)).replace(/^chart: /, ""),
+      ),
+      warnings,
+      summary: null,
+    };
   }
   // The pack's rehype half takes the models the remark half built: the first is the charts'.
   const models = (setup.rehype[0]?.[1] ?? []) as { html?: string }[];
@@ -47,7 +64,10 @@ function run(block: string, strict: boolean): Run {
 const unprefixed = (message: string) => message.replace(/^:::chart "[^"]*": /, "");
 
 const decode = (text: string) =>
-  text.replace(/&(amp|lt|gt|quot|#39);/g, (_, e: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" })[e] ?? _);
+  text.replace(
+    /&(amp|lt|gt|quot|#39);/g,
+    (_, e: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" })[e] ?? _,
+  );
 
 /** Every chart's problems in a post's body: what strictCharts refuses, then what Prelum only warns about. */
 export function checkCharts(body: string): ChartFinding[] {

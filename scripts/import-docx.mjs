@@ -14,7 +14,8 @@ import { basename, dirname, join, resolve } from "node:path";
 import { readDocx } from "./lib/docx.mjs";
 import { buildBook, writeBook } from "./lib/manuscript.mjs";
 
-const USAGE = 'usage: npm run import:docx -- <file.docx | folder> [more...] --book <folder> --novels <path to writing clone> [--title "Title"]';
+const USAGE =
+  'usage: npm run import:docx -- <file.docx | folder> [more...] --book <folder> --novels <path to writing clone> [--title "Title"]';
 
 /** @param {string} message */
 function fail(message) {
@@ -41,14 +42,19 @@ for (let i = 0; i < args.length; i++) {
 }
 if (inputs.length === 0 || !options.book || !options.novels) fail(USAGE);
 if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(options.book) || options.book === "shared") {
-  fail("--book is the book's folder name: lower-case letters, digits and single hyphens, such as paluxy-portal.");
+  fail(
+    "--book is the book's folder name: lower-case letters, digits and single hyphens, such as paluxy-portal.",
+  );
 }
 
 const novels = resolve(options.novels);
-if (!existsSync(join(novels, ".git"))) fail(`${novels} is not a Git clone; point --novels at a clone of the writing repository.`);
+if (!existsSync(join(novels, ".git")))
+  fail(`${novels} is not a Git clone; point --novels at a clone of the writing repository.`);
 const bookDir = join(novels, options.book);
 if (existsSync(join(bookDir, "chapters"))) {
-  fail(`${join(bookDir, "chapters")} already exists. The importer writes a new book only; import into a new folder or move the old chapters first.`);
+  fail(
+    `${join(bookDir, "chapters")} already exists. The importer writes a new book only; import into a new folder or move the old chapters first.`,
+  );
 }
 
 /** Natural order, so 2-name.docx comes before 10-name.docx. */
@@ -68,7 +74,9 @@ for (const input of inputs) {
   } else if (path.toLowerCase().endsWith(".docx")) {
     files.push(path);
   } else {
-    fail(`${input} is not a .docx file. Export it from Google Docs with File, Download, Microsoft Word.`);
+    fail(
+      `${input} is not a .docx file. Export it from Google Docs with File, Download, Microsoft Word.`,
+    );
   }
 }
 
@@ -97,4 +105,5 @@ const s = book.summary;
 console.log(`Imported ${files.length} file${files.length === 1 ? "" : "s"} into ${bookDir}`);
 console.log(`${s.chapters} chapters, ${s.scenes} scenes, ${s.words} words, ${s.flags} flags.`);
 console.log(`Report (not committed; build/ is ignored): ${reportPath}`);
-if (s.flags > 0) console.log("Every flag is also marked in its file with an <!-- import: ... --> line.");
+if (s.flags > 0)
+  console.log("Every flag is also marked in its file with an <!-- import: ... --> line.");

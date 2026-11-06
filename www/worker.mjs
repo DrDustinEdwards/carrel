@@ -13,4 +13,8 @@ import { staticSite } from "@dustinedwards/site-runtime/static-site";
 import { carrel } from "@dustinedwards/site-runtime/sites";
 import { PAGE_PRELOADS } from "./headers.mjs";
 
-export default staticSite({ site: carrel, headers: TDM_RESERVATION_HEADERS, preload: PAGE_PRELOADS.header });
+export default staticSite({
+  site: carrel,
+  headers: TDM_RESERVATION_HEADERS,
+  preload: PAGE_PRELOADS.header,
+});

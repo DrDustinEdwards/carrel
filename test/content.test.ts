@@ -31,12 +31,30 @@ async function as(email: string, action: "read" | "edit" | "publish" = "read") {
 }
 
 /** A post already on the site, saved by the Owner, returned with its current version. */
-async function seed(site: ReturnType<typeof fakeSite>, env: Env, status: "draft" | "published" = "draft") {
+async function seed(
+  site: ReturnType<typeof fakeSite>,
+  env: Env,
+  status: "draft" | "published" = "draft",
+) {
   const { viewer, project } = await as("owner@test.invalid");
-  const saved = await writeToSite(env, project, viewer, "post-one", { action: "save", source: "# One\n", expectedVersion: null }, site.fetch);
+  const saved = await writeToSite(
+    env,
+    project,
+    viewer,
+    "post-one",
+    { action: "save", source: "# One\n", expectedVersion: null },
+    site.fetch,
+  );
   if (!saved.ok) throw new Error(saved.message);
   if (status === "draft") return saved.version;
-  const published = await writeToSite(env, project, viewer, "post-one", { action: "publish", expectedVersion: saved.version }, site.fetch);
+  const published = await writeToSite(
+    env,
+    project,
+    viewer,
+    "post-one",
+    { action: "publish", expectedVersion: saved.version },
+    site.fetch,
+  );
   if (!published.ok) throw new Error(published.message);
   return published.version;
 }
@@ -49,7 +67,9 @@ describe("PLANT: a non-member reads", () => {
   it("is answered 404, the same as a project that does not exist", async () => {
     const stranger = await viewerFor("stranger@test.invalid");
     expect(await refusal(requireSiteProject(testEnv.DB, stranger, SLUG, "read"))).toBe(404);
-    expect(await refusal(requireSiteProject(testEnv.DB, stranger, "no-such-project", "read"))).toBe(404);
+    expect(await refusal(requireSiteProject(testEnv.DB, stranger, "no-such-project", "read"))).toBe(
+      404,
+    );
   });
 
   it("is answered 404 for a project that is not a site", async () => {
@@ -64,9 +84,22 @@ describe("PLANT: a Reader saves", () => {
     const site = fakeSite();
     const env = connectedEnv();
     const { viewer, project } = await as("reader@test.invalid");
-    expect(await refusal(autosave(env.DB, project, viewer, "post-one", { source: "x", baseVersion: null }))).toBe(403);
     expect(
-      await refusal(writeToSite(env, project, viewer, "post-one", { action: "save", source: "x", expectedVersion: null }, site.fetch)),
+      await refusal(
+        autosave(env.DB, project, viewer, "post-one", { source: "x", baseVersion: null }),
+      ),
+    ).toBe(403);
+    expect(
+      await refusal(
+        writeToSite(
+          env,
+          project,
+          viewer,
+          "post-one",
+          { action: "save", source: "x", expectedVersion: null },
+          site.fetch,
+        ),
+      ),
     ).toBe(403);
     expect(site.requests).toEqual([]);
   });
@@ -84,7 +117,10 @@ describe("PLANT: an Editor publishes", () => {
       { action: "schedule" as const, expectedVersion: version, publishAt: "2030-01-01T00:00:00Z" },
       { action: "unpublish" as const, expectedVersion: version },
     ]) {
-      expect(await refusal(writeToSite(env, project, viewer, "post-one", request, site.fetch)), request.action).toBe(403);
+      expect(
+        await refusal(writeToSite(env, project, viewer, "post-one", request, site.fetch)),
+        request.action,
+      ).toBe(403);
     }
     expect(site.requests).toEqual([]);
   });
@@ -96,7 +132,16 @@ describe("PLANT: an Editor publishes", () => {
     site.requests.length = 0;
     const { viewer, project } = await as("editor@test.invalid");
     expect(
-      await refusal(writeToSite(env, project, viewer, "post-one", { action: "save", source: "# Changed live\n", expectedVersion: version }, site.fetch)),
+      await refusal(
+        writeToSite(
+          env,
+          project,
+          viewer,
+          "post-one",
+          { action: "save", source: "# Changed live\n", expectedVersion: version },
+          site.fetch,
+        ),
+      ),
     ).toBe(403);
     expect(writesTo(site)).toEqual([]);
     expect(site.adapter.store.get("post-one")!.doc.source).toBe("# One\n");
@@ -107,9 +152,18 @@ describe("PLANT: an Editor publishes", () => {
     const env = connectedEnv();
     const version = await seed(site, env);
     const { viewer, project } = await as("editor@test.invalid");
-    const outcome = await writeToSite(env, project, viewer, "post-one", { action: "save", source: "# One, edited\n", expectedVersion: version }, site.fetch);
+    const outcome = await writeToSite(
+      env,
+      project,
+      viewer,
+      "post-one",
+      { action: "save", source: "# One, edited\n", expectedVersion: version },
+      site.fetch,
+    );
     expect(outcome).toMatchObject({ ok: true, status: "draft" });
-    const change = await testEnv.DB.prepare("SELECT person_id, action, version_before FROM changes WHERE id = ?")
+    const change = await testEnv.DB.prepare(
+      "SELECT person_id, action, version_before FROM changes WHERE id = ?",
+    )
       .bind(outcome.ok ? outcome.changeId : "")
       .first();
     expect(change).toEqual({ person_id: viewer.id, action: "save", version_before: version });
@@ -123,11 +177,28 @@ describe("PLANT: a stale expectedVersion", () => {
     const version = await seed(site, env);
     const { viewer, project } = await as("owner@test.invalid");
     // Someone else moves the post on.
-    const moved = await writeToSite(env, project, viewer, "post-one", { action: "save", source: "# Moved\n", expectedVersion: version }, site.fetch);
+    const moved = await writeToSite(
+      env,
+      project,
+      viewer,
+      "post-one",
+      { action: "save", source: "# Moved\n", expectedVersion: version },
+      site.fetch,
+    );
     expect(moved.ok).toBe(true);
 
-    await autosave(env.DB, project, viewer, "post-one", { source: "# My edit\n", baseVersion: version });
-    const stale = await writeToSite(env, project, viewer, "post-one", { action: "save", source: "# My edit\n", expectedVersion: version }, site.fetch);
+    await autosave(env.DB, project, viewer, "post-one", {
+      source: "# My edit\n",
+      baseVersion: version,
+    });
+    const stale = await writeToSite(
+      env,
+      project,
+      viewer,
+      "post-one",
+      { action: "save", source: "# My edit\n", expectedVersion: version },
+      site.fetch,
+    );
     expect(stale).toMatchObject({ ok: false, reason: "conflict" });
     expect(site.adapter.store.get("post-one")!.doc.source).toBe("# Moved\n");
     expect((await readDraft(env.DB, project, viewer, "post-one"))?.source).toBe("# My edit\n");
@@ -138,7 +209,14 @@ describe("PLANT: a stale expectedVersion", () => {
     const env = connectedEnv();
     await seed(site, env);
     const { viewer, project } = await as("owner@test.invalid");
-    const clobber = await writeToSite(env, project, viewer, "post-one", { action: "save", source: "# Clobber\n", expectedVersion: null }, site.fetch);
+    const clobber = await writeToSite(
+      env,
+      project,
+      viewer,
+      "post-one",
+      { action: "save", source: "# Clobber\n", expectedVersion: null },
+      site.fetch,
+    );
     expect(clobber).toMatchObject({ ok: false, reason: "conflict" });
   });
 });
@@ -149,7 +227,10 @@ describe("the Owner's writes", () => {
     const env = connectedEnv();
     const version = await seed(site, env);
     const { viewer, project } = await as("owner@test.invalid");
-    await autosave(env.DB, project, viewer, "post-one", { source: "# One, final\n", baseVersion: version });
+    await autosave(env.DB, project, viewer, "post-one", {
+      source: "# One, final\n",
+      baseVersion: version,
+    });
     const outcome = await writeToSite(
       env,
       project,
@@ -161,18 +242,26 @@ describe("the Owner's writes", () => {
     expect(outcome).toMatchObject({ ok: true, status: "published" });
     expect(site.adapter.store.get("post-one")!.doc.source).toBe("# One, final\n");
     expect(await readDraft(env.DB, project, viewer, "post-one")).toBeNull();
-    const indexed = await testEnv.DB.prepare("SELECT status, title FROM site_items WHERE project_id = ? AND item_id = ?")
+    const indexed = await testEnv.DB.prepare(
+      "SELECT status, title FROM site_items WHERE project_id = ? AND item_id = ?",
+    )
       .bind(projectId, "post-one")
       .first();
     expect(indexed).toEqual({ status: "published", title: "One, final" });
-    const count = await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM changes").first<{ n: number }>();
+    const count = await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM changes").first<{
+      n: number;
+    }>();
     expect(count!.n).toBe(2);
   });
 
   it("reports a site that is not connected rather than failing obscurely", async () => {
     const { viewer, project } = await as("owner@test.invalid");
     await expect(
-      writeToSite(testEnv, project, viewer, "post-one", { action: "save", source: "x", expectedVersion: null }),
+      writeToSite(testEnv, project, viewer, "post-one", {
+        action: "save",
+        source: "x",
+        expectedVersion: null,
+      }),
     ).rejects.toThrow(/No SITE_DUSTINEDWARDS_KEY set/);
   });
 });
@@ -182,12 +271,27 @@ describe("missing alt text blocks a publish (Dustin approved, 2026-10-31)", () =
     const site = fakeSite();
     const env = connectedEnv();
     const { viewer, project } = await as("owner@test.invalid");
-    const bare = '---\ntitle: Figures\n---\n\n![](/media/chart.png)\n\n![A map of the survey plots](/media/map.png)\n\n:::figure{src="/media/photo.png" alt=""}\n:::\n';
-    const saved = await writeToSite(env, project, viewer, "post-one", { action: "save", source: bare, expectedVersion: null }, site.fetch);
+    const bare =
+      '---\ntitle: Figures\n---\n\n![](/media/chart.png)\n\n![A map of the survey plots](/media/map.png)\n\n:::figure{src="/media/photo.png" alt=""}\n:::\n';
+    const saved = await writeToSite(
+      env,
+      project,
+      viewer,
+      "post-one",
+      { action: "save", source: bare, expectedVersion: null },
+      site.fetch,
+    );
     if (!saved.ok) throw new Error(saved.message);
     const before = writesTo(site).length;
 
-    const refused = await writeToSite(env, project, viewer, "post-one", { action: "publish", expectedVersion: saved.version }, site.fetch);
+    const refused = await writeToSite(
+      env,
+      project,
+      viewer,
+      "post-one",
+      { action: "publish", expectedVersion: saved.version },
+      site.fetch,
+    );
     expect(refused).toMatchObject({ ok: false, reason: "refused" });
     expect(!refused.ok && refused.message).toContain("/media/chart.png (line 5)");
     expect(!refused.ok && refused.message).toContain("/media/photo.png (line 9)");
@@ -195,7 +299,18 @@ describe("missing alt text blocks a publish (Dustin approved, 2026-10-31)", () =
     expect(writesTo(site).length).toBe(before);
     expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
 
-    const fixed = bare.replace("![](", "![A bar chart of visits](").replace('alt=""', 'alt="An open field notebook"');
-    expect(await writeToSite(env, project, viewer, "post-one", { action: "publish", expectedVersion: saved.version, source: fixed }, site.fetch)).toMatchObject({ ok: true, status: "published" });
+    const fixed = bare
+      .replace("![](", "![A bar chart of visits](")
+      .replace('alt=""', 'alt="An open field notebook"');
+    expect(
+      await writeToSite(
+        env,
+        project,
+        viewer,
+        "post-one",
+        { action: "publish", expectedVersion: saved.version, source: fixed },
+        site.fetch,
+      ),
+    ).toMatchObject({ ok: true, status: "published" });
   });
 });

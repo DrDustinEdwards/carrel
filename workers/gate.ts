@@ -28,14 +28,23 @@ function withPrivateHeaders(response: Response): Response {
   // Scripts, styles and fonts stay compressible. One Cache-Control header, never two. applyHeaderSet hands a live
   // editor's WebSocket (101) back as it is.
   const html = response.headers.get("Content-Type")?.toLowerCase().startsWith("text/html");
-  return applyHeaderSet(response, { "Cache-Control": html ? `${PRIVATE_CACHE}, no-transform` : PRIVATE_CACHE });
+  return applyHeaderSet(response, {
+    "Cache-Control": html ? `${PRIVATE_CACHE}, no-transform` : PRIVATE_CACHE,
+  });
 }
 
 /** The same bare 403 for every refusal, so a caller learns nothing about why. The reason is logged. */
 function refuse(request: Request, reason: string): Response {
-  logEvent(OWASP_EVENTS.authorizationFailure, { door: "browser", reason, ...requestFields(request) }, { level: "warn" });
+  logEvent(
+    OWASP_EVENTS.authorizationFailure,
+    { door: "browser", reason, ...requestFields(request) },
+    { level: "warn" },
+  );
   return withPrivateHeaders(
-    new Response("Forbidden", { status: 403, headers: { "Content-Type": "text/plain; charset=utf-8" } }),
+    new Response("Forbidden", {
+      status: 403,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    }),
   );
 }
 
@@ -47,7 +56,11 @@ export async function gate(
 ): Promise<Response> {
   let viewer: Viewer | null;
   try {
-    const access = await verifyAccess(request, { teamDomain: env.ACCESS_TEAM_DOMAIN, audience: env.ACCESS_AUD }, keys);
+    const access = await verifyAccess(
+      request,
+      { teamDomain: env.ACCESS_TEAM_DOMAIN, audience: env.ACCESS_AUD },
+      keys,
+    );
     if (!access.ok) return refuse(request, access.reason);
     viewer = await findViewer(env.DB, access.email);
   } catch (error) {

@@ -35,7 +35,8 @@ export function readFields(front: string | null): FieldValues {
   for (const field of FIELDS) {
     if (field.kind === "tags") values[field.key] = readList(front, field.key).join(", ");
     else if (field.kind === "lines") values[field.key] = readList(front, field.key).join("\n");
-    else if (field.kind === "flag") values[field.key] = readKey(front, field.key) === BANNER_WORD ? BANNER_WORD : "";
+    else if (field.kind === "flag")
+      values[field.key] = readKey(front, field.key) === BANNER_WORD ? BANNER_WORD : "";
     else values[field.key] = readKey(front, field.key);
   }
   return values;
@@ -43,11 +44,17 @@ export function readFields(front: string | null): FieldValues {
 
 function writeBlock(key: FieldKey, kind: (typeof FIELDS)[number]["kind"], value: string): string[] {
   if (kind === "tags") {
-    const tags = value.split(",").map((t) => t.trim()).filter(Boolean);
+    const tags = value
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
     return [`${key}: [${tags.join(", ")}]`];
   }
   if (kind === "lines") {
-    const items = value.split("\n").map((t) => t.trim()).filter(Boolean);
+    const items = value
+      .split("\n")
+      .map((t) => t.trim())
+      .filter(Boolean);
     return [`${key}:`, ...items.map((t) => `  - ${JSON.stringify(t)}`)];
   }
   if (kind === "flag") return [`${key}: ${JSON.stringify(BANNER_WORD)}`];

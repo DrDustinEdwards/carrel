@@ -14,11 +14,17 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
   const host = preview.host ?? "the site";
   const address = preview.url ? preview.url.replace(/^https?:\/\//, "") : host;
   return (
-    <Panel title="Search and sharing" id="seo" count={findings.length} src="As a search result and a shared link">
+    <Panel
+      title="Search and sharing"
+      id="seo"
+      count={findings.length}
+      src="As a search result and a shared link"
+    >
       <div className="app-stack">
         {findings.length === 0 ? (
           <Empty kind="all-clear" flush title="Nothing flagged">
-            The title and description fit a search result, every image has alt text, and the post has a card image.
+            The title and description fit a search result, every image has alt text, and the post
+            has a card image.
           </Empty>
         ) : (
           <ul className="app-flags" aria-label="Search and sharing checks">
@@ -43,12 +49,21 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
             url={address.replace(/\//g, " › ")}
             title={preview.search.title || "No title"}
             description={preview.search.description || "No description"}
-            note={preview.url ? undefined : "The address is the site's to give when it publishes the post."}
+            note={
+              preview.url
+                ? undefined
+                : "The address is the site's to give when it publishes the post."
+            }
           />
           <OgCardPreview
             image={
               preview.card.image ? (
-                <img src={preview.card.image} alt="This post's sharing card" width={1200} height={630} />
+                <img
+                  src={preview.card.image}
+                  alt="This post's sharing card"
+                  width={1200}
+                  height={630}
+                />
               ) : (
                 <span className="app-share-noimage">No card image</span>
               )
@@ -56,7 +71,11 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
             host={host}
             title={preview.card.title || "No title"}
             description={preview.card.description}
-            note={preview.card.image ? undefined : "With no card image of its own, the post shares with the site's default image, or with none."}
+            note={
+              preview.card.image
+                ? undefined
+                : "With no card image of its own, the post shares with the site's default image, or with none."
+            }
           />
           <dl className="app-facts">
             <dt>Canonical URL</dt>

@@ -8,14 +8,22 @@ import * as syncProtocol from "y-protocols/sync";
 import * as Y from "yjs";
 
 import { patchMarkdown, roomName } from "~/lib/editor/collab";
-import { ROOM_VIEWER_HEADER, type RoomViewer, type ServerMessage } from "~/lib/editor/room-protocol";
+import {
+  ROOM_VIEWER_HEADER,
+  type RoomViewer,
+  type ServerMessage,
+} from "~/lib/editor/room-protocol";
 
 import { testEnv } from "./env";
 
 /** One person in the room: a Yjs document kept in step over a WebSocket, as the browser's provider does. */
 export async function join(projectId: number, itemId: string, viewer: RoomViewer) {
   const room = await getServerByName(testEnv.DOC_ROOM, roomName(projectId, itemId));
-  const response = await room.fetch(new Request(`https://carrel.test/collab/p/x/${itemId}`, { headers: { Upgrade: "websocket", [ROOM_VIEWER_HEADER]: JSON.stringify(viewer) } }));
+  const response = await room.fetch(
+    new Request(`https://carrel.test/collab/p/x/${itemId}`, {
+      headers: { Upgrade: "websocket", [ROOM_VIEWER_HEADER]: JSON.stringify(viewer) },
+    }),
+  );
   const ws = response.webSocket!;
   ws.accept();
   const doc = new Y.Doc();
@@ -61,15 +69,20 @@ export async function join(projectId: number, itemId: string, viewer: RoomViewer
   const flush = async () => {
     const want = ++flushes;
     ws.send(`__YPS:${JSON.stringify({ t: "flush", n: want })}`);
-    for (let i = 0; i < 100 && !said.some((m) => m.t === "flushed" && m.n === want); i++) await new Promise((r) => setTimeout(r, 10));
+    for (let i = 0; i < 100 && !said.some((m) => m.t === "flushed" && m.n === want); i++)
+      await new Promise((r) => setTimeout(r, 10));
   };
   const send = (message: object) => ws.send(`__YPS:${JSON.stringify(message)}`);
   return { doc, said, closed, flush, send, close: () => ws.close() };
 }
 
-
 /** Types `markdown` into an open file's room as `viewer` (an editor), and waits until the room has it. */
-export async function typeIn(projectId: number, itemId: string, viewer: RoomViewer, markdown: string): Promise<void> {
+export async function typeIn(
+  projectId: number,
+  itemId: string,
+  viewer: RoomViewer,
+  markdown: string,
+): Promise<void> {
   const person = await join(projectId, itemId, viewer);
   patchMarkdown(person.doc, markdown);
   await person.flush();

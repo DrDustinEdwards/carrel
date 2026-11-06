@@ -3,7 +3,13 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { addPerson as adminAddPerson, listPeople, PeopleRefusal, setDisabled, setProjectRole } from "~/lib/people-admin.server";
+import {
+  addPerson as adminAddPerson,
+  listPeople,
+  PeopleRefusal,
+  setDisabled,
+  setProjectRole,
+} from "~/lib/people-admin.server";
 import { deskPeopleEmails, findViewer } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as peopleAction, loader as peopleLoader } from "~/routes/people";
@@ -35,8 +41,12 @@ const status = (run: () => Promise<unknown>) => refusal(run());
 /** Every people and membership row, to prove a refusal changed nothing. */
 async function snapshot() {
   const [p, m] = await Promise.all([
-    testEnv.DB.prepare("SELECT id, email, is_owner, is_reviewer, disabled_at FROM people ORDER BY id").all(),
-    testEnv.DB.prepare("SELECT project_id, person_id, role FROM project_members ORDER BY project_id, person_id").all(),
+    testEnv.DB.prepare(
+      "SELECT id, email, is_owner, is_reviewer, disabled_at FROM people ORDER BY id",
+    ).all(),
+    testEnv.DB.prepare(
+      "SELECT project_id, person_id, role FROM project_members ORDER BY project_id, person_id",
+    ).all(),
   ]);
   return JSON.stringify([p.results, m.results]);
 }
@@ -48,67 +58,154 @@ function form(fields: Record<string, string>) {
 }
 
 async function personId(email: string) {
-  return (await testEnv.DB.prepare("SELECT id FROM people WHERE email = ?").bind(email).first<{ id: number }>())!.id;
+  return (await testEnv.DB.prepare("SELECT id FROM people WHERE email = ?")
+    .bind(email)
+    .first<{ id: number }>())!.id;
 }
 
 describe("the people page", () => {
   it("lists everyone with their kind and their role on each project, the Owner first", async () => {
     const data = await listPeople(testEnv.DB, await viewerFor("owner@test.invalid"));
     expect(data.people[0]).toMatchObject({ email: "owner@test.invalid", isOwner: true });
-    expect(data.people.find((p) => p.email === "editor@test.invalid")).toMatchObject({ roles: [{ projectId, role: "editor" }] });
-    expect(data.people.find((p) => p.email === "reviewer@test.invalid")).toMatchObject({ isReviewer: true, roles: [{ role: "reader" }] });
+    expect(data.people.find((p) => p.email === "editor@test.invalid")).toMatchObject({
+      roles: [{ projectId, role: "editor" }],
+    });
+    expect(data.people.find((p) => p.email === "reviewer@test.invalid")).toMatchObject({
+      isReviewer: true,
+      roles: [{ role: "reader" }],
+    });
     expect(data.projects).toEqual([{ id: projectId, slug: SLUG, name: SLUG, kind: "site" }]);
   });
 
   it("adds a person, shares a project with them, changes and removes the role, disables and enables them", async () => {
     const context = await contextFor("owner@test.invalid");
-    expect(await peopleAction({ request: form({ intent: "add", email: " Wife@Test.Invalid ", name: "Wife", reviewer: "no" }), params: {}, context } as never)).toEqual({
+    expect(
+      await peopleAction({
+        request: form({
+          intent: "add",
+          email: " Wife@Test.Invalid ",
+          name: "Wife",
+          reviewer: "no",
+        }),
+        params: {},
+        context,
+      } as never),
+    ).toEqual({
       ok: true,
       intent: "add",
       added: "wife@test.invalid",
     });
     const id = await personId("wife@test.invalid");
-    await peopleAction({ request: form({ intent: "role", person: String(id), project: String(projectId), role: "reader" }), params: {}, context } as never);
-    await peopleAction({ request: form({ intent: "role", person: String(id), project: String(projectId), role: "editor" }), params: {}, context } as never);
-    expect(await testEnv.DB.prepare("SELECT role FROM project_members WHERE person_id = ?").bind(id).first()).toEqual({ role: "editor" });
-    await peopleAction({ request: form({ intent: "role", person: String(id), project: String(projectId), role: "" }), params: {}, context } as never);
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM project_members WHERE person_id = ?").bind(id).first()).toEqual({ n: 0 });
+    await peopleAction({
+      request: form({
+        intent: "role",
+        person: String(id),
+        project: String(projectId),
+        role: "reader",
+      }),
+      params: {},
+      context,
+    } as never);
+    await peopleAction({
+      request: form({
+        intent: "role",
+        person: String(id),
+        project: String(projectId),
+        role: "editor",
+      }),
+      params: {},
+      context,
+    } as never);
+    expect(
+      await testEnv.DB.prepare("SELECT role FROM project_members WHERE person_id = ?")
+        .bind(id)
+        .first(),
+    ).toEqual({ role: "editor" });
+    await peopleAction({
+      request: form({ intent: "role", person: String(id), project: String(projectId), role: "" }),
+      params: {},
+      context,
+    } as never);
+    expect(
+      await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM project_members WHERE person_id = ?")
+        .bind(id)
+        .first(),
+    ).toEqual({ n: 0 });
 
-    await peopleAction({ request: form({ intent: "disable", person: String(id) }), params: {}, context } as never);
+    await peopleAction({
+      request: form({ intent: "disable", person: String(id) }),
+      params: {},
+      context,
+    } as never);
     // Disabled means refused at both doors, since every request looks the person up again.
     expect(await findViewer(testEnv.DB, "wife@test.invalid")).toBeNull();
-    await peopleAction({ request: form({ intent: "enable", person: String(id) }), params: {}, context } as never);
-    expect(await findViewer(testEnv.DB, "wife@test.invalid")).toMatchObject({ email: "wife@test.invalid" });
+    await peopleAction({
+      request: form({ intent: "enable", person: String(id) }),
+      params: {},
+      context,
+    } as never);
+    expect(await findViewer(testEnv.DB, "wife@test.invalid")).toMatchObject({
+      email: "wife@test.invalid",
+    });
   });
 
   it("gives the drift check everyone the Desk lets in: not a reviewer, an agent or a disabled person", async () => {
     await addPerson("agent:sample");
     await addPerson("gone@test.invalid", { disabled: true });
-    expect((await deskPeopleEmails(testEnv.DB)).sort()).toEqual(["editor@test.invalid", "owner@test.invalid", "reader@test.invalid", "stranger@test.invalid"]);
+    expect((await deskPeopleEmails(testEnv.DB)).sort()).toEqual([
+      "editor@test.invalid",
+      "owner@test.invalid",
+      "reader@test.invalid",
+      "stranger@test.invalid",
+    ]);
   });
 
   it("refuses an email already in Carrel, and one that is not an email", async () => {
     const owner = await viewerFor("owner@test.invalid");
     const before = await snapshot();
-    await expect(adminAddPerson(testEnv.DB, owner, { email: "EDITOR@test.invalid", name: "", reviewer: false })).rejects.toBeInstanceOf(PeopleRefusal);
-    await expect(adminAddPerson(testEnv.DB, owner, { email: "not an email", name: "", reviewer: false })).rejects.toBeInstanceOf(PeopleRefusal);
+    await expect(
+      adminAddPerson(testEnv.DB, owner, {
+        email: "EDITOR@test.invalid",
+        name: "",
+        reviewer: false,
+      }),
+    ).rejects.toBeInstanceOf(PeopleRefusal);
+    await expect(
+      adminAddPerson(testEnv.DB, owner, { email: "not an email", name: "", reviewer: false }),
+    ).rejects.toBeInstanceOf(PeopleRefusal);
     expect(await snapshot()).toBe(before);
   });
 });
 
 describe("PLANT: a non-Owner at the people page", () => {
-  for (const email of ["editor@test.invalid", "reader@test.invalid", "reviewer@test.invalid", "stranger@test.invalid"]) {
+  for (const email of [
+    "editor@test.invalid",
+    "reader@test.invalid",
+    "reviewer@test.invalid",
+    "stranger@test.invalid",
+  ]) {
     it(`answers ${email} 404 for the page and every action, and nothing changes`, async () => {
       const before = await snapshot();
       const context = await contextFor(email);
       const target = String(await personId("reader@test.invalid"));
-      expect(await status(() => peopleLoader({ request: new Request("https://carrel.test/people"), params: {}, context } as never))).toBe(404);
+      expect(
+        await status(() =>
+          peopleLoader({
+            request: new Request("https://carrel.test/people"),
+            params: {},
+            context,
+          } as never),
+        ),
+      ).toBe(404);
       for (const fields of <Record<string, string>[]>[
         { intent: "add", email: "new@test.invalid", name: "", reviewer: "no" },
         { intent: "role", person: target, project: String(projectId), role: "editor" },
         { intent: "disable", person: target },
       ]) {
-        expect(await status(() => peopleAction({ request: form(fields), params: {}, context } as never)), fields.intent).toBe(404);
+        expect(
+          await status(() => peopleAction({ request: form(fields), params: {}, context } as never)),
+          fields.intent,
+        ).toBe(404);
       }
       expect(await snapshot()).toBe(before);
     });
@@ -119,18 +216,47 @@ describe("PLANT: the Owner's own row", () => {
   it("refuses a second Owner: the page has no way to make one, and the database refuses one too", async () => {
     const context = await contextFor("owner@test.invalid");
     // Even a forged form field cannot make an Owner: addPerson has no such input.
-    await peopleAction({ request: form({ intent: "add", email: "second@test.invalid", name: "", reviewer: "no", owner: "yes", is_owner: "1" }), params: {}, context } as never);
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM people WHERE is_owner = 1").first()).toEqual({ n: 1 });
-    await expect(testEnv.DB.prepare("UPDATE people SET is_owner = 1 WHERE email = 'second@test.invalid'").run()).rejects.toThrow(/UNIQUE/);
+    await peopleAction({
+      request: form({
+        intent: "add",
+        email: "second@test.invalid",
+        name: "",
+        reviewer: "no",
+        owner: "yes",
+        is_owner: "1",
+      }),
+      params: {},
+      context,
+    } as never);
+    expect(
+      await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM people WHERE is_owner = 1").first(),
+    ).toEqual({ n: 1 });
+    await expect(
+      testEnv.DB.prepare(
+        "UPDATE people SET is_owner = 1 WHERE email = 'second@test.invalid'",
+      ).run(),
+    ).rejects.toThrow(/UNIQUE/);
   });
 
   it("refuses the Owner disabling themself, and changing the Owner's role, and nothing changes", async () => {
     const owner = await viewerFor("owner@test.invalid");
     const before = await snapshot();
-    await expect(setDisabled(testEnv.DB, owner, owner.id, true)).rejects.toThrow("The Owner cannot be disabled.");
-    await expect(setProjectRole(testEnv.DB, owner, owner.id, projectId, "reader")).rejects.toThrow(/Owner's role cannot be changed/);
-    const answer = await peopleAction({ request: form({ intent: "disable", person: String(owner.id) }), params: {}, context: await contextFor("owner@test.invalid") } as never);
-    expect(answer).toEqual({ ok: false, intent: "disable", message: "The Owner cannot be disabled." });
+    await expect(setDisabled(testEnv.DB, owner, owner.id, true)).rejects.toThrow(
+      "The Owner cannot be disabled.",
+    );
+    await expect(setProjectRole(testEnv.DB, owner, owner.id, projectId, "reader")).rejects.toThrow(
+      /Owner's role cannot be changed/,
+    );
+    const answer = await peopleAction({
+      request: form({ intent: "disable", person: String(owner.id) }),
+      params: {},
+      context: await contextFor("owner@test.invalid"),
+    } as never);
+    expect(answer).toEqual({
+      ok: false,
+      intent: "disable",
+      message: "The Owner cannot be disabled.",
+    });
     expect(await snapshot()).toBe(before);
   });
 });
@@ -141,24 +267,34 @@ describe("PLANT: a reviewer given the Editor role", () => {
     const reviewer = await personId("reviewer@test.invalid");
     await setProjectRole(testEnv.DB, owner, reviewer, projectId, null);
     const before = await snapshot();
-    await expect(setProjectRole(testEnv.DB, owner, reviewer, projectId, "editor")).rejects.toThrow(/Reviewers read and flag only/);
+    await expect(setProjectRole(testEnv.DB, owner, reviewer, projectId, "editor")).rejects.toThrow(
+      /Reviewers read and flag only/,
+    );
     expect(await snapshot()).toBe(before);
     await setProjectRole(testEnv.DB, owner, reviewer, projectId, "reader");
-    expect(await testEnv.DB.prepare("SELECT role FROM project_members WHERE person_id = ?").bind(reviewer).first()).toEqual({ role: "reader" });
+    expect(
+      await testEnv.DB.prepare("SELECT role FROM project_members WHERE person_id = ?")
+        .bind(reviewer)
+        .first(),
+    ).toEqual({ role: "reader" });
   });
 });
 
 // ---------- the project flags list
 
 async function flag(path: string, message: string, check = "ai") {
-  const row = await testEnv.DB.prepare("INSERT INTO findings (project_id, path, check_name, message, fingerprint) VALUES (?, ?, ?, ?, ?) RETURNING id")
+  const row = await testEnv.DB.prepare(
+    "INSERT INTO findings (project_id, path, check_name, message, fingerprint) VALUES (?, ?, ?, ?, ?) RETURNING id",
+  )
     .bind(projectId, path, check, message, `${path}:${message}`)
     .first<{ id: number }>();
   return row!.id;
 }
 
 async function indexed(itemId: string, title: string) {
-  await testEnv.DB.prepare("INSERT INTO site_items (project_id, item_id, kind, title, status, synced_at) VALUES (?, ?, 'post', ?, 'draft', '2026-09-27T00:00:00Z')")
+  await testEnv.DB.prepare(
+    "INSERT INTO site_items (project_id, item_id, kind, title, status, synced_at) VALUES (?, ?, 'post', ?, 'draft', '2026-09-27T00:00:00Z')",
+  )
     .bind(projectId, itemId, title)
     .run();
 }
@@ -177,8 +313,22 @@ describe("the project flags list", () => {
     const proof = await flag("carrel-mcp-proof", "Proof flag (from Claude Code)");
     const real = await flag("real-post", "A claim with no source (from Grok Build)", "review");
     const owner = await viewerFor("owner@test.invalid");
-    await (await import("~/lib/ai.server")).dismissItemFinding(testEnv.DB, await requireSiteProject(testEnv.DB, owner, SLUG, "publish"), owner, "real-post", real);
-    const data = (await flagsLoader({ params: { project: SLUG }, context: await contextFor("reader@test.invalid") } as never)) as { canDismiss: boolean; flags: { id: number; onSite: boolean; status: string; title: string | null }[] };
+    await (
+      await import("~/lib/ai.server")
+    ).dismissItemFinding(
+      testEnv.DB,
+      await requireSiteProject(testEnv.DB, owner, SLUG, "publish"),
+      owner,
+      "real-post",
+      real,
+    );
+    const data = (await flagsLoader({
+      params: { project: SLUG },
+      context: await contextFor("reader@test.invalid"),
+    } as never)) as {
+      canDismiss: boolean;
+      flags: { id: number; onSite: boolean; status: string; title: string | null }[];
+    };
     expect(data.canDismiss).toBe(false);
     expect(data.flags.map((f) => [f.id, f.status, f.onSite, f.title])).toEqual([
       [proof, "open", false, null],
@@ -189,29 +339,77 @@ describe("the project flags list", () => {
   it("lets the Owner dismiss a flag on an item the site does not have, recorded as the editor records it, and it stays dismissed", async () => {
     const proof = await flag("carrel-mcp-proof", "Proof flag (from Claude)");
     const owner = await viewerFor("owner@test.invalid");
-    expect(await flagsAction({ request: dismissForm(proof, "carrel-mcp-proof"), params: { project: SLUG }, context: await contextFor("owner@test.invalid") } as never)).toEqual({ dismissed: proof });
-    const row = await testEnv.DB.prepare("SELECT status, dismissed_by, dismissed_at FROM findings WHERE id = ?").bind(proof).first<{ status: string; dismissed_by: number; dismissed_at: string }>();
+    expect(
+      await flagsAction({
+        request: dismissForm(proof, "carrel-mcp-proof"),
+        params: { project: SLUG },
+        context: await contextFor("owner@test.invalid"),
+      } as never),
+    ).toEqual({ dismissed: proof });
+    const row = await testEnv.DB.prepare(
+      "SELECT status, dismissed_by, dismissed_at FROM findings WHERE id = ?",
+    )
+      .bind(proof)
+      .first<{ status: string; dismissed_by: number; dismissed_at: string }>();
     expect(row).toMatchObject({ status: "dismissed", dismissed_by: owner.id });
     expect(row!.dismissed_at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
-    const again = (await flagsLoader({ params: { project: SLUG }, context: await contextFor("owner@test.invalid") } as never)) as { flags: { id: number; status: string }[] };
+    const again = (await flagsLoader({
+      params: { project: SLUG },
+      context: await contextFor("owner@test.invalid"),
+    } as never)) as { flags: { id: number; status: string }[] };
     expect(again.flags).toEqual([expect.objectContaining({ id: proof, status: "dismissed" })]);
   });
 
   it("PLANT: an Editor or a Reader cannot dismiss, a stranger sees nothing, and the flag stays open", async () => {
     const proof = await flag("carrel-mcp-proof", "Proof flag");
-    for (const [email, code] of [["editor@test.invalid", 403], ["reader@test.invalid", 403], ["stranger@test.invalid", 404]] as const) {
-      expect(await status(async () => flagsAction({ request: dismissForm(proof, "carrel-mcp-proof"), params: { project: SLUG }, context: await contextFor(email) } as never)), email).toBe(code);
+    for (const [email, code] of [
+      ["editor@test.invalid", 403],
+      ["reader@test.invalid", 403],
+      ["stranger@test.invalid", 404],
+    ] as const) {
+      expect(
+        await status(async () =>
+          flagsAction({
+            request: dismissForm(proof, "carrel-mcp-proof"),
+            params: { project: SLUG },
+            context: await contextFor(email),
+          } as never),
+        ),
+        email,
+      ).toBe(code);
     }
-    expect(await status(async () => flagsLoader({ params: { project: SLUG }, context: await contextFor("stranger@test.invalid") } as never))).toBe(404);
-    expect(await testEnv.DB.prepare("SELECT status, dismissed_by FROM findings WHERE id = ?").bind(proof).first()).toEqual({ status: "open", dismissed_by: null });
+    expect(
+      await status(async () =>
+        flagsLoader({
+          params: { project: SLUG },
+          context: await contextFor("stranger@test.invalid"),
+        } as never),
+      ),
+    ).toBe(404);
+    expect(
+      await testEnv.DB.prepare("SELECT status, dismissed_by FROM findings WHERE id = ?")
+        .bind(proof)
+        .first(),
+    ).toEqual({ status: "open", dismissed_by: null });
   });
 
   // Two layers refuse a non-Owner: the route (by role, before it reads the form) and the dismiss
   // function itself. Each is tested on its own, so removing either one is seen.
   it("PLANT: the route refuses a non-Owner by role before it reads the form", async () => {
-    const empty = new Request(`https://carrel.test/p/${SLUG}/flags`, { method: "POST", body: new FormData() });
+    const empty = new Request(`https://carrel.test/p/${SLUG}/flags`, {
+      method: "POST",
+      body: new FormData(),
+    });
     // With the role check, 403. Without it, the missing fields would answer 400 instead.
-    expect(await status(async () => flagsAction({ request: empty, params: { project: SLUG }, context: await contextFor("editor@test.invalid") } as never))).toBe(403);
+    expect(
+      await status(async () =>
+        flagsAction({
+          request: empty,
+          params: { project: SLUG },
+          context: await contextFor("editor@test.invalid"),
+        } as never),
+      ),
+    ).toBe(403);
   });
 
   it("PLANT: the dismiss function refuses a non-Owner on its own, whatever route calls it", async () => {
@@ -219,14 +417,30 @@ describe("the project flags list", () => {
     const editor = await viewerFor("editor@test.invalid");
     const { dismissItemFinding } = await import("~/lib/ai.server");
     const project = await requireSiteProject(testEnv.DB, editor, SLUG, "read");
-    expect(await status(() => dismissItemFinding(testEnv.DB, project, editor, "carrel-mcp-proof", proof))).toBe(403);
-    expect(await testEnv.DB.prepare("SELECT status FROM findings WHERE id = ?").bind(proof).first()).toEqual({ status: "open" });
+    expect(
+      await status(() =>
+        dismissItemFinding(testEnv.DB, project, editor, "carrel-mcp-proof", proof),
+      ),
+    ).toBe(403);
+    expect(
+      await testEnv.DB.prepare("SELECT status FROM findings WHERE id = ?").bind(proof).first(),
+    ).toEqual({ status: "open" });
   });
 
   it("refuses a flag named with the wrong item, so a form cannot dismiss another item's flag", async () => {
     const proof = await flag("carrel-mcp-proof", "Proof flag");
-    expect(await status(async () => flagsAction({ request: dismissForm(proof, "some-other-item"), params: { project: SLUG }, context: await contextFor("owner@test.invalid") } as never))).toBe(404);
-    expect(await testEnv.DB.prepare("SELECT status FROM findings WHERE id = ?").bind(proof).first()).toEqual({ status: "open" });
+    expect(
+      await status(async () =>
+        flagsAction({
+          request: dismissForm(proof, "some-other-item"),
+          params: { project: SLUG },
+          context: await contextFor("owner@test.invalid"),
+        } as never),
+      ),
+    ).toBe(404);
+    expect(
+      await testEnv.DB.prepare("SELECT status FROM findings WHERE id = ?").bind(proof).first(),
+    ).toEqual({ status: "open" });
   });
 });
 
@@ -234,8 +448,16 @@ describe("the authorship record", () => {
   it("still requires a version for every content write (migration 0007 keeps that rule)", async () => {
     const owner = await personId("owner@test.invalid");
     await expect(
-      testEnv.DB.prepare("INSERT INTO changes (id, project_id, item_id, person_id, action, version_after) VALUES ('x', ?, 'post', ?, 'save', NULL)").bind(projectId, owner).run(),
+      testEnv.DB.prepare(
+        "INSERT INTO changes (id, project_id, item_id, person_id, action, version_after) VALUES ('x', ?, 'post', ?, 'save', NULL)",
+      )
+        .bind(projectId, owner)
+        .run(),
     ).rejects.toThrow(/CHECK/);
-    await testEnv.DB.prepare("INSERT INTO changes (id, project_id, item_id, person_id, action, version_after) VALUES ('y', ?, 'post', ?, 'save', 'v1')").bind(projectId, owner).run();
+    await testEnv.DB.prepare(
+      "INSERT INTO changes (id, project_id, item_id, person_id, action, version_after) VALUES ('y', ?, 'post', ?, 'save', 'v1')",
+    )
+      .bind(projectId, owner)
+      .run();
   });
 });

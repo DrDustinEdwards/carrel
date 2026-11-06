@@ -18,7 +18,8 @@ import { typeIn } from "./room";
 import { routeContext, settle } from "./site";
 
 const SLUG = "test-book";
-const HEADER = "---\npov: Wade\ndate: 2024-04-12\nlocation: Harlan place\ncharacters: [Wade]\ngoal: g\nconflict: c\noutcome: o\n---\n\n";
+const HEADER =
+  "---\npov: Wade\ndate: 2024-04-12\nlocation: Harlan place\ncharacters: [Wade]\ngoal: g\nconflict: c\noutcome: o\n---\n\n";
 const SCENE = "chapters/01-arrival/01-the-gate.md";
 
 let key: string;
@@ -51,63 +52,122 @@ function form(fields: Record<string, string>) {
 }
 
 async function bookPost(email: string, fields: Record<string, string>) {
-  const request = new Request(`https://carrel.test/b/${SLUG}`, { method: "POST", body: form(fields) });
-  return settle(bookAction({ request, params: { project: SLUG }, context: await contextFor(email) } as never));
+  const request = new Request(`https://carrel.test/b/${SLUG}`, {
+    method: "POST",
+    body: form(fields),
+  });
+  return settle(
+    bookAction({ request, params: { project: SLUG }, context: await contextFor(email) } as never),
+  );
 }
 
 async function openFile(email: string, path: string, e: Env = env, query = "") {
   const request = new Request(`https://carrel.test/b/${SLUG}/f/${path}${query}`);
-  return settle(fileLoader({ request, params: { project: SLUG, "*": path }, context: await contextFor(email, e) } as never));
+  return settle(
+    fileLoader({
+      request,
+      params: { project: SLUG, "*": path },
+      context: await contextFor(email, e),
+    } as never),
+  );
 }
 
 async function filePost(email: string, path: string, fields: Record<string, string>, e: Env = env) {
-  const request = new Request(`https://carrel.test/b/${SLUG}/f/${path}`, { method: "POST", body: form(fields) });
-  return settle(fileAction({ request, params: { project: SLUG, "*": path }, context: await contextFor(email, e) } as never));
+  const request = new Request(`https://carrel.test/b/${SLUG}/f/${path}`, {
+    method: "POST",
+    body: form(fields),
+  });
+  return settle(
+    fileAction({
+      request,
+      params: { project: SLUG, "*": path },
+      context: await contextFor(email, e),
+    } as never),
+  );
 }
 
 async function exportAs(email: string, format: string) {
   const request = new Request(`https://carrel.test/b/${SLUG}/export/${format}`);
-  return settle(exportLoader({ request, params: { project: SLUG, format }, context: await contextFor(email) } as never)) as Promise<Response>;
+  return settle(
+    exportLoader({
+      request,
+      params: { project: SLUG, format },
+      context: await contextFor(email),
+    } as never),
+  ) as Promise<Response>;
 }
 
 describe("the book view", () => {
   it("lists nothing until a refresh, then the chapters with each scene's header", async () => {
-    const before = (await settle(bookLoader({ request: new Request("https://carrel.test/b/x"), params: { project: SLUG }, context: await contextFor("reader@test.invalid") } as never))) as Awaited<
-      ReturnType<typeof bookLoader>
-    >;
+    const before = (await settle(
+      bookLoader({
+        request: new Request("https://carrel.test/b/x"),
+        params: { project: SLUG },
+        context: await contextFor("reader@test.invalid"),
+      } as never),
+    )) as Awaited<ReturnType<typeof bookLoader>>;
     expect(before.chapters).toEqual([]);
     expect(before.connected).toBe(true);
 
-    const refreshed = (await bookPost("reader@test.invalid", { intent: "refresh" })) as { refreshed: { files: number } };
+    const refreshed = (await bookPost("reader@test.invalid", { intent: "refresh" })) as {
+      refreshed: { files: number };
+    };
     expect(refreshed.refreshed.files).toBe(3);
-    const after = (await bookLoader({ request: new Request("https://carrel.test/b/x"), params: { project: SLUG }, context: await contextFor("reader@test.invalid") } as never)) as Awaited<
-      ReturnType<typeof bookLoader>
-    >;
-    expect(after.chapters).toMatchObject([{ slug: "01-arrival", title: "Arrival", scenes: [{ path: SCENE, name: "The gate", pov: "Wade", date: "2024-04-12" }] }]);
+    const after = (await bookLoader({
+      request: new Request("https://carrel.test/b/x"),
+      params: { project: SLUG },
+      context: await contextFor("reader@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof bookLoader>>;
+    expect(after.chapters).toMatchObject([
+      {
+        slug: "01-arrival",
+        title: "Arrival",
+        scenes: [{ path: SCENE, name: "The gate", pov: "Wade", date: "2024-04-12" }],
+      },
+    ]);
     expect(after.bible.map((b) => b.name)).toEqual(["Wade", "Harlan place"]);
   });
 
   it("PLANT: a Reader cannot start a chapter; an Editor is sent to the editor on the next number", async () => {
-    expect(((await bookPost("reader@test.invalid", { intent: "new-chapter", name: "Letters" })) as Response).status).toBe(403);
+    expect(
+      (
+        (await bookPost("reader@test.invalid", {
+          intent: "new-chapter",
+          name: "Letters",
+        })) as Response
+      ).status,
+    ).toBe(403);
     await bookPost("editor@test.invalid", { intent: "refresh" });
-    const started = (await bookPost("editor@test.invalid", { intent: "new-chapter", name: "The Letters", scene: "Morning" })) as Response;
-    expect(started.headers.get("Location")).toBe(`/b/${SLUG}/f/chapters/02-the-letters/01-morning.md`);
+    const started = (await bookPost("editor@test.invalid", {
+      intent: "new-chapter",
+      name: "The Letters",
+      scene: "Morning",
+    })) as Response;
+    expect(started.headers.get("Location")).toBe(
+      `/b/${SLUG}/f/chapters/02-the-letters/01-morning.md`,
+    );
   });
 
   it("says why when Git is not connected, and still shows the index", async () => {
     const offline = { ...testEnv };
-    const data = (await bookLoader({ request: new Request("https://carrel.test/b/x"), params: { project: SLUG }, context: await contextFor("owner@test.invalid", offline) } as never)) as Awaited<
-      ReturnType<typeof bookLoader>
-    >;
+    const data = (await bookLoader({
+      request: new Request("https://carrel.test/b/x"),
+      params: { project: SLUG },
+      context: await contextFor("owner@test.invalid", offline),
+    } as never)) as Awaited<ReturnType<typeof bookLoader>>;
     expect(data.connected).toBe(false);
-    expect(data.connectionDetail).toMatch(/GitHub App for the writing repository is not set up yet/);
+    expect(data.connectionDetail).toMatch(
+      /GitHub App for the writing repository is not set up yet/,
+    );
   });
 });
 
 describe("the file editor", () => {
   it("opens a scene from Git with its version and the bible entries it names", async () => {
     await bookPost("reader@test.invalid", { intent: "refresh" });
-    const data = (await openFile("reader@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
+    const data = (await openFile("reader@test.invalid", SCENE)) as Awaited<
+      ReturnType<typeof fileLoader>
+    >;
     expect(data.source).toContain("Wade opened the gate.");
     expect(data.version).toBe(gh.files.get(`${SLUG}/${SCENE}`)!.sha);
     expect(data.canEdit).toBe(false);
@@ -120,60 +180,110 @@ describe("the file editor", () => {
   it("PLANT: a path outside the layout is 404, and a Reader cannot start a new file", async () => {
     expect(((await openFile("owner@test.invalid", "../secrets.md")) as Response).status).toBe(404);
     expect(((await openFile("owner@test.invalid", "build/book.md")) as Response).status).toBe(404);
-    expect(((await openFile("reader@test.invalid", "chapters/02-a/01-b.md")) as Response).status).toBe(404);
+    expect(
+      ((await openFile("reader@test.invalid", "chapters/02-a/01-b.md")) as Response).status,
+    ).toBe(404);
   });
 
   it("starts a new file from its template, named from the link", async () => {
-    const scene = (await openFile("editor@test.invalid", "chapters/02-a/01-b.md")) as Awaited<ReturnType<typeof fileLoader>>;
+    const scene = (await openFile("editor@test.invalid", "chapters/02-a/01-b.md")) as Awaited<
+      ReturnType<typeof fileLoader>
+    >;
     // Not in Git, and the template is work nobody has saved yet.
     expect(scene).toMatchObject({ version: null, unsaved: true });
-    expect(scene.source).toMatch(/^---\nstatus:\nsummary:\ntarget:\npov:\ndate:\nlocation:\ncharacters: \[\]\ngoal:\nconflict:\noutcome:\n---/);
-    const person = (await openFile("editor@test.invalid", "bible/characters/june-harlan.md", env, "?name=June%20Harlan")) as Awaited<ReturnType<typeof fileLoader>>;
+    expect(scene.source).toMatch(
+      /^---\nstatus:\nsummary:\ntarget:\npov:\ndate:\nlocation:\ncharacters: \[\]\ngoal:\nconflict:\noutcome:\n---/,
+    );
+    const person = (await openFile(
+      "editor@test.invalid",
+      "bible/characters/june-harlan.md",
+      env,
+      "?name=June%20Harlan",
+    )) as Awaited<ReturnType<typeof fileLoader>>;
     expect(person.source).toContain("name: June Harlan");
   });
 
   it("saves the room's text through the route: a commit, the flags, and nothing left unsaved", async () => {
     await bookPost("editor@test.invalid", { intent: "refresh" });
-    const opened = (await openFile("editor@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
-    await typeIn(bookId, SCENE, opened.room!.viewer, `${HEADER}Wade opened the gate. It was a masterpiece.\n`);
-    const result = (await filePost("editor@test.invalid", SCENE, { intent: "save" })) as { intent: "save"; outcome: { ok: boolean; findings: { excerpt: string }[] } };
+    const opened = (await openFile("editor@test.invalid", SCENE)) as Awaited<
+      ReturnType<typeof fileLoader>
+    >;
+    await typeIn(
+      bookId,
+      SCENE,
+      opened.room!.viewer,
+      `${HEADER}Wade opened the gate. It was a masterpiece.\n`,
+    );
+    const result = (await filePost("editor@test.invalid", SCENE, { intent: "save" })) as {
+      intent: "save";
+      outcome: { ok: boolean; findings: { excerpt: string }[] };
+    };
     expect(result.outcome.ok).toBe(true);
     expect(result.outcome.findings.map((f) => f.excerpt)).toEqual(["masterpiece"]);
     expect(gh.commits).toHaveLength(1);
-    expect(gh.files.get(`${SLUG}/${SCENE}`)!.source).toBe(`${HEADER}Wade opened the gate. It was a masterpiece.\n`);
-    const reopened = (await openFile("editor@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
+    expect(gh.files.get(`${SLUG}/${SCENE}`)!.source).toBe(
+      `${HEADER}Wade opened the gate. It was a masterpiece.\n`,
+    );
+    const reopened = (await openFile("editor@test.invalid", SCENE)) as Awaited<
+      ReturnType<typeof fileLoader>
+    >;
     expect(reopened.unsaved).toBe(false);
     expect(reopened.findings.map((f) => f.status)).toEqual(["open"]);
   });
 
   it("PLANT: without Git, Save keeps the text in Carrel and says why; nothing is committed", async () => {
     const offline = { ...testEnv };
-    const opened = (await openFile("editor@test.invalid", SCENE, offline)) as Awaited<ReturnType<typeof fileLoader>>;
+    const opened = (await openFile("editor@test.invalid", SCENE, offline)) as Awaited<
+      ReturnType<typeof fileLoader>
+    >;
     await typeIn(bookId, SCENE, opened.room!.viewer, "kept\n");
-    const result = (await filePost("editor@test.invalid", SCENE, { intent: "save" }, offline)) as { outcome: { ok: boolean; message: string } };
+    const result = (await filePost("editor@test.invalid", SCENE, { intent: "save" }, offline)) as {
+      outcome: { ok: boolean; message: string };
+    };
     expect(result.outcome.ok).toBe(false);
     expect(result.outcome.message).toMatch(/not set up yet.*The text is kept here in Carrel\./);
     expect(gh.commits).toHaveLength(0);
-    expect(((await openFile("editor@test.invalid", SCENE, offline)) as Awaited<ReturnType<typeof fileLoader>>).source).toBe("kept\n");
+    expect(
+      (
+        (await openFile("editor@test.invalid", SCENE, offline)) as Awaited<
+          ReturnType<typeof fileLoader>
+        >
+      ).source,
+    ).toBe("kept\n");
   });
 
   it("PLANT: an Editor cannot dismiss a flag through the route", async () => {
     await bookPost("owner@test.invalid", { intent: "refresh" });
-    const opened = (await openFile("owner@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>;
+    const opened = (await openFile("owner@test.invalid", SCENE)) as Awaited<
+      ReturnType<typeof fileLoader>
+    >;
     await typeIn(bookId, SCENE, opened.room!.viewer, `${HEADER}A masterpiece.\n`);
     await filePost("owner@test.invalid", SCENE, { intent: "save" });
-    const flag = ((await openFile("owner@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>).findings[0]!;
-    expect(((await filePost("editor@test.invalid", SCENE, { intent: "dismiss", finding: String(flag.id) })) as Response).status).toBe(403);
-    expect(await filePost("owner@test.invalid", SCENE, { intent: "dismiss", finding: String(flag.id) })).toEqual({ intent: "dismiss", dismissed: flag.id });
+    const flag = (
+      (await openFile("owner@test.invalid", SCENE)) as Awaited<ReturnType<typeof fileLoader>>
+    ).findings[0]!;
+    expect(
+      (
+        (await filePost("editor@test.invalid", SCENE, {
+          intent: "dismiss",
+          finding: String(flag.id),
+        })) as Response
+      ).status,
+    ).toBe(403);
+    expect(
+      await filePost("owner@test.invalid", SCENE, { intent: "dismiss", finding: String(flag.id) }),
+    ).toEqual({ intent: "dismiss", dismissed: flag.id });
   });
 });
 
 describe("the chapter view", () => {
   it("PLANT: markup in a scene is shown as text, never run", async () => {
     await bookPost("reader@test.invalid", { intent: "refresh" });
-    const data = (await chapterLoader({ request: new Request("https://carrel.test/"), params: { project: SLUG, chapter: "01-arrival" }, context: await contextFor("reader@test.invalid") } as never)) as Awaited<
-      ReturnType<typeof chapterLoader>
-    >;
+    const data = (await chapterLoader({
+      request: new Request("https://carrel.test/"),
+      params: { project: SLUG, chapter: "01-arrival" },
+      context: await contextFor("reader@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof chapterLoader>>;
     expect(data.scenes[0]!.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(data.scenes[0]!.html).not.toContain("<script>");
   });
@@ -185,15 +295,22 @@ describe("export and the authorship record", () => {
     gh.files.set(`${SLUG}/${SCENE}`, { source: `${HEADER}A masterpiece.\n`, sha: "0".repeat(40) });
     const held = await exportAs("owner@test.invalid", "epub");
     expect(held.status).toBe(409);
-    expect(await held.text()).toMatch(/^1 flag is open\. Fix the text or dismiss each flag before exporting\./);
+    expect(await held.text()).toMatch(
+      /^1 flag is open\. Fix the text or dismiss each flag before exporting\./,
+    );
   });
 
   it("exports a clean book as ePub, Word and a print page with its own policy", async () => {
-    gh.files.set(`${SLUG}/${SCENE}`, { source: `${HEADER}Wade opened the gate.\n`, sha: "1".repeat(40) });
+    gh.files.set(`${SLUG}/${SCENE}`, {
+      source: `${HEADER}Wade opened the gate.\n`,
+      sha: "1".repeat(40),
+    });
     const epub = await exportAs("owner@test.invalid", "epub");
     expect(epub.status).toBe(200);
     expect(epub.headers.get("Content-Type")).toBe("application/epub+zip");
-    expect(epub.headers.get("Content-Disposition")).toBe('attachment; filename="book-test-book.epub"');
+    expect(epub.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="book-test-book.epub"',
+    );
     const docx = await exportAs("owner@test.invalid", "docx");
     expect(docx.headers.get("Content-Type")).toContain("wordprocessingml");
     const print = await exportAs("owner@test.invalid", "print");
@@ -203,7 +320,11 @@ describe("export and the authorship record", () => {
 
   it("serves the authorship record as Markdown to a Reader", async () => {
     const response = (await settle(
-      authorshipLoader({ request: new Request("https://carrel.test/"), params: { project: SLUG }, context: await contextFor("reader@test.invalid") } as never),
+      authorshipLoader({
+        request: new Request("https://carrel.test/"),
+        params: { project: SLUG },
+        context: await contextFor("reader@test.invalid"),
+      } as never),
     )) as Response;
     expect(response.headers.get("Content-Type")).toBe("text/markdown; charset=utf-8");
     expect(await response.text()).toContain("# Authorship record: Book test-book");
@@ -212,11 +333,23 @@ describe("export and the authorship record", () => {
 
 describe("home and new books", () => {
   it("lists a book as a book, and offers New book to the Owner only", async () => {
-    const home = (await homeLoader({ request: new Request("https://carrel.test/"), params: {}, context: await contextFor("reader@test.invalid") } as never)) as Awaited<
-      ReturnType<typeof homeLoader>
-    >;
+    const home = (await homeLoader({
+      request: new Request("https://carrel.test/"),
+      params: {},
+      context: await contextFor("reader@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof homeLoader>>;
     expect(home.projects).toMatchObject([{ slug: SLUG, kind: "book", role: "reader" }]);
     expect(home.isOwner).toBe(false);
-    expect(((await settle(newBookLoader({ request: new Request("https://carrel.test/"), params: {}, context: await contextFor("editor@test.invalid") } as never))) as Response).status).toBe(404);
+    expect(
+      (
+        (await settle(
+          newBookLoader({
+            request: new Request("https://carrel.test/"),
+            params: {},
+            context: await contextFor("editor@test.invalid"),
+          } as never),
+        )) as Response
+      ).status,
+    ).toBe(404);
   });
 });

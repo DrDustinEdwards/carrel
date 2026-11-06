@@ -39,7 +39,10 @@ const OTHER = "other";
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "read");
-  const [files, status] = await Promise.all([listFiles(env.DB, project), statusList(env.DB, project)]);
+  const [files, status] = await Promise.all([
+    listFiles(env.DB, project),
+    statusList(env.DB, project),
+  ]);
   const rows = readingOrder(files).map((f) => {
     const header = f.meta.kind === "scene" ? f.meta.header : null;
     const chapter = chapterOf(f.path)!;
@@ -66,7 +69,9 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   });
   const counts = new Map<string, number>();
   for (const r of rows) {
-    const key = !r.status ? NONE : (labelFor(status.labels, r.status)?.label.toLowerCase() ?? OTHER);
+    const key = !r.status
+      ? NONE
+      : (labelFor(status.labels, r.status)?.label.toLowerCase() ?? OTHER);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
@@ -86,10 +91,15 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "edit");
   const form = await readForm(request);
-  if (String(form.get("intent") ?? "") !== "labels") throw new Response("Bad request", { status: 400 });
+  if (String(form.get("intent") ?? "") !== "labels")
+    throw new Response("Bad request", { status: 400 });
   const labels = form.getAll("label").map(String);
   const colors = form.getAll("color").map(String);
-  const saved = await saveStatusList(env.DB, project, labels.map((label, i) => ({ label, color: colors[i] ?? "" })));
+  const saved = await saveStatusList(
+    env.DB,
+    project,
+    labels.map((label, i) => ({ label, color: colors[i] ?? "" })),
+  );
   return saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error };
 }
 
@@ -124,13 +134,23 @@ export default function Outliner({ loaderData, actionData }: Route.ComponentProp
   const base = `/b/${project.slug}`;
   const options = [
     { value: "", label: `Every status (${total})` },
-    ...labels.map((l) => ({ value: l.label.toLowerCase(), label: `${l.label} (${counts[l.label.toLowerCase()] ?? 0})` })),
+    ...labels.map((l) => ({
+      value: l.label.toLowerCase(),
+      label: `${l.label} (${counts[l.label.toLowerCase()] ?? 0})`,
+    })),
     { value: NONE, label: `No status (${counts[NONE] ?? 0})` },
     ...(counts[OTHER] ? [{ value: OTHER, label: `Not on the list (${counts[OTHER]})` }] : []),
   ];
-  const filterName = options.find((o) => o.value === filter)?.label.replace(/ \(\d+\)$/, "") ?? filter;
+  const filterName =
+    options.find((o) => o.value === filter)?.label.replace(/ \(\d+\)$/, "") ?? filter;
   // Room to add labels: two empty rows under the list, up to the limit.
-  const editRows = [...labels, ...Array.from({ length: Math.max(0, Math.min(2, MAX_LABELS - labels.length)) }, () => ({ label: "", color: 0 }))];
+  const editRows = [
+    ...labels,
+    ...Array.from({ length: Math.max(0, Math.min(2, MAX_LABELS - labels.length)) }, () => ({
+      label: "",
+      color: 0,
+    })),
+  ];
 
   return (
     <div className="app-page">
@@ -150,7 +170,9 @@ export default function Outliner({ loaderData, actionData }: Route.ComponentProp
 
       <Panel title="Scenes" count={rows.length} flush>
         <p className="cap-sr-only" role="status">
-          {filter ? `${rows.length} of ${total} scenes with the status ${filterName}.` : `${total} scenes.`}
+          {filter
+            ? `${rows.length} of ${total} scenes with the status ${filterName}.`
+            : `${total} scenes.`}
         </p>
         {total === 0 ? (
           <Empty kind="nothing-yet" flush title="No scenes in the index yet">
@@ -162,7 +184,12 @@ export default function Outliner({ loaderData, actionData }: Route.ComponentProp
           </Empty>
         ) : (
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region takes focus so a keyboard can scroll it (axe scrollable-region-focusable)
-          <div className="cap-table-wrap" role="region" aria-labelledby="outliner-caption" tabIndex={0}>
+          <div
+            className="cap-table-wrap"
+            role="region"
+            aria-labelledby="outliner-caption"
+            tabIndex={0}
+          >
             <table className="cap-table">
               <caption id="outliner-caption" className="cap-sr-only">
                 Scenes in reading order{filter ? `, with the status ${filterName}` : ""}
@@ -191,7 +218,13 @@ export default function Outliner({ loaderData, actionData }: Route.ComponentProp
                       </Link>
                       <span className="cap-muted app-outliner-chapter">{r.chapter}</span>
                     </th>
-                    <td>{r.status ? <StatusLabelPill labels={labels} status={r.status} /> : <span className="cap-muted">None</span>}</td>
+                    <td>
+                      {r.status ? (
+                        <StatusLabelPill labels={labels} status={r.status} />
+                      ) : (
+                        <span className="cap-muted">None</span>
+                      )}
+                    </td>
                     <td data-drop="1">{r.summary || <span className="cap-muted">None</span>}</td>
                     <td data-drop="2">{r.pov}</td>
                     <td data-num>{measure(r.words, r.target, r.limit)}</td>
@@ -203,7 +236,11 @@ export default function Outliner({ loaderData, actionData }: Route.ComponentProp
         )}
       </Panel>
 
-      <Panel title="Status list" count={labels.length} src={edited ? "This book's own" : "The starting list for books"}>
+      <Panel
+        title="Status list"
+        count={labels.length}
+        src={edited ? "This book's own" : "The starting list for books"}
+      >
         <div className="app-stack" data-tight>
           <ul className="app-label-list" aria-label="Statuses, in order">
             {labels.map((l) => (
@@ -212,21 +249,41 @@ export default function Outliner({ loaderData, actionData }: Route.ComponentProp
               </li>
             ))}
           </ul>
-          <p className="cap-muted app-note">A scene takes one with status: in its header. A status not on the list still shows, as written.</p>
-          {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : actionData?.saved ? <Banner tone="ok">The status list is saved.</Banner> : null}
+          <p className="cap-muted app-note">
+            A scene takes one with status: in its header. A status not on the list still shows, as
+            written.
+          </p>
+          {actionData?.error ? (
+            <Alert tone="crit">{actionData.error}</Alert>
+          ) : actionData?.saved ? (
+            <Banner tone="ok">The status list is saved.</Banner>
+          ) : null}
           {canEdit ? (
             <Disclosure summary="Edit the list" defaultOpen={Boolean(actionData?.error)}>
               <Form method="post" className="app-stack" data-tight>
                 <input type="hidden" name="intent" value="labels" />
-                <p className="cap-muted app-note">In order. Clear a label to remove it; renaming one does not change the scenes that carry the old word.</p>
+                <p className="cap-muted app-note">
+                  In order. Clear a label to remove it; renaming one does not change the scenes that
+                  carry the old word.
+                </p>
                 <ol className="app-label-edit">
                   {editRows.map((l, i) => (
                     <li key={i} className="app-inline-form">
                       <Field label={`Label ${i + 1}`}>
-                        <input className="cap-input" name="label" defaultValue={l.label} maxLength={40} autoComplete="off" />
+                        <input
+                          className="cap-input"
+                          name="label"
+                          defaultValue={l.label}
+                          maxLength={40}
+                          autoComplete="off"
+                        />
                       </Field>
                       <Field label={`Color ${i + 1}`}>
-                        <Select name="color" defaultValue={String(l.color || (i % 8) + 1)} options={COLOR_NAMES.map((c, k) => ({ value: String(k + 1), label: c }))} />
+                        <Select
+                          name="color"
+                          defaultValue={String(l.color || (i % 8) + 1)}
+                          options={COLOR_NAMES.map((c, k) => ({ value: String(k + 1), label: c }))}
+                        />
                       </Field>
                     </li>
                   ))}

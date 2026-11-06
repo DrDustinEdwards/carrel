@@ -7,7 +7,16 @@ import { BACKUP_CRON } from "~/lib/backup-checks";
 
 const QUARTER_HOUR_CRON = "*/15 * * * *";
 
-export type JobName = "health" | "refresh-sites" | "refresh-google" | "inbox-report" | "social" | "backup" | "prune-404" | "signed-in-crawl" | "tool-call-log-export";
+export type JobName =
+  | "health"
+  | "refresh-sites"
+  | "refresh-google"
+  | "inbox-report"
+  | "social"
+  | "backup"
+  | "prune-404"
+  | "signed-in-crawl"
+  | "tool-call-log-export";
 
 type ScheduledJob = { name: JobName; everyMinutes: number; timeoutMs: number };
 

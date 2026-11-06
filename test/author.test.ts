@@ -39,7 +39,11 @@ async function as(email: string) {
 /** A new post saved to the site by `email`, which makes them its author. */
 async function create(email: string, id: string) {
   const { viewer, project } = await as(email);
-  const saved = await writeToSite(env, project, viewer, id, { action: "save", source: `# ${id}\n`, expectedVersion: null });
+  const saved = await writeToSite(env, project, viewer, id, {
+    action: "save",
+    source: `# ${id}\n`,
+    expectedVersion: null,
+  });
   if (!saved.ok) throw new Error(saved.message);
   return saved.version;
 }
@@ -49,11 +53,21 @@ const writes = () => site.requests.filter((r) => !r.startsWith("GET"));
 describe("an Author", () => {
   it("publishes, changes and unpublishes a post they wrote", async () => {
     const { viewer, project } = await as(AUTHOR);
-    const published = await writeToSite(env, project, viewer, "mine", { action: "publish", expectedVersion: await create(AUTHOR, "mine") });
+    const published = await writeToSite(env, project, viewer, "mine", {
+      action: "publish",
+      expectedVersion: await create(AUTHOR, "mine"),
+    });
     expect(published).toMatchObject({ ok: true, status: "published" });
-    const changed = await writeToSite(env, project, viewer, "mine", { action: "save", source: "# Mine, changed\n", expectedVersion: published.ok ? published.version : "" });
+    const changed = await writeToSite(env, project, viewer, "mine", {
+      action: "save",
+      source: "# Mine, changed\n",
+      expectedVersion: published.ok ? published.version : "",
+    });
     expect(changed).toMatchObject({ ok: true, status: "published" });
-    const off = await writeToSite(env, project, viewer, "mine", { action: "unpublish", expectedVersion: changed.ok ? changed.version : "" });
+    const off = await writeToSite(env, project, viewer, "mine", {
+      action: "unpublish",
+      expectedVersion: changed.ok ? changed.version : "",
+    });
     expect(off).toMatchObject({ ok: true, status: "draft" });
   });
 
@@ -61,15 +75,40 @@ describe("an Author", () => {
     const version = await create(OWNER, "owners");
     const { viewer, project } = await as(AUTHOR);
     site.requests.length = 0;
-    expect(await refusal(writeToSite(env, project, viewer, "owners", { action: "publish", expectedVersion: version }))).toBe(403);
+    expect(
+      await refusal(
+        writeToSite(env, project, viewer, "owners", {
+          action: "publish",
+          expectedVersion: version,
+        }),
+      ),
+    ).toBe(403);
     const url = `https://carrel.test/p/${SLUG}/e/owners`;
     const form = new FormData();
-    for (const [k, v] of Object.entries({ intent: "publish", source: "# owners\n", expectedVersion: version, confirm: "first-publish" })) form.set(k, v);
+    for (const [k, v] of Object.entries({
+      intent: "publish",
+      source: "# owners\n",
+      expectedVersion: version,
+      confirm: "first-publish",
+    }))
+      form.set(k, v);
     const params = { project: SLUG, item: "owners" };
-    expect(await refusal(editorAction({ request: new Request(url, { method: "POST", body: form }), params, context: await routeContext(env, AUTHOR) } as never))).toBe(403);
+    expect(
+      await refusal(
+        editorAction({
+          request: new Request(url, { method: "POST", body: form }),
+          params,
+          context: await routeContext(env, AUTHOR),
+        } as never),
+      ),
+    ).toBe(403);
     expect(writes()).toEqual([]);
     // The editor offers the controls on their own post only, and the flag dismissal on none.
-    const opened = (await editorLoader({ request: new Request(url), params, context: await routeContext(env, AUTHOR) } as never)) as { canPublish: boolean; canDismiss: boolean };
+    const opened = (await editorLoader({
+      request: new Request(url),
+      params,
+      context: await routeContext(env, AUTHOR),
+    } as never)) as { canPublish: boolean; canDismiss: boolean };
     expect(opened).toMatchObject({ canPublish: false, canDismiss: false });
   });
 
@@ -79,8 +118,12 @@ describe("an Author", () => {
     const reviewer = await addPerson("reviewer@test.invalid", { reviewer: true });
     const book = await addBook("novel");
     const person = (await viewerFor(AUTHOR)).id;
-    await expect(setProjectRole(testEnv.DB, owner, agent, projectId, "author")).rejects.toThrow(/never publish/);
-    await expect(setProjectRole(testEnv.DB, owner, reviewer, projectId, "author")).rejects.toThrow(/reviewer/);
+    await expect(setProjectRole(testEnv.DB, owner, agent, projectId, "author")).rejects.toThrow(
+      /never publish/,
+    );
+    await expect(setProjectRole(testEnv.DB, owner, reviewer, projectId, "author")).rejects.toThrow(
+      /reviewer/,
+    );
     await expect(setProjectRole(testEnv.DB, owner, person, book, "author")).rejects.toThrow(/book/);
     await setProjectRole(testEnv.DB, owner, agent, projectId, "editor");
   });

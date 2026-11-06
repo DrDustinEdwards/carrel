@@ -75,11 +75,18 @@ export function useRoomEditing({
   // The room's own word on whose each caret is: its Yjs client ids, by connection.
   const byClient = useMemo(() => {
     const map = new Map<number, { name: string; slot: number }>();
-    for (const p of room.people) for (const c of p.clients) map.set(c, { name: p.name, slot: personSlot(p.id) });
+    for (const p of room.people)
+      for (const c of p.clients) map.set(c, { name: p.name, slot: personSlot(p.id) });
     return map;
   }, [room.people]);
   const peopleKey = room.people.map((p) => `${p.conn}:${p.clients.join(".")}`).join(",");
-  const threads = useMemo(() => room.comments.filter((c) => !c.parentId && !c.resolvedAt).map((c) => ({ id: c.id, anchor: c.anchor })), [room.comments]);
+  const threads = useMemo(
+    () =>
+      room.comments
+        .filter((c) => !c.parentId && !c.resolvedAt)
+        .map((c) => ({ id: c.id, anchor: c.anchor })),
+    [room.comments],
+  );
 
   const suggest = !mayEdit || mode === "suggest";
   const rich: RoomEditing["rich"] =
@@ -90,7 +97,11 @@ export function useRoomEditing({
           awareness: room.provider.awareness,
           who: (clientId) => byClient.get(clientId) ?? null,
           peopleKey,
-          suggester: { by: String(viewer.id), clientId: room.doc.clientID, round: () => (localStorageRound() ?? round) || null },
+          suggester: {
+            by: String(viewer.id),
+            clientId: room.doc.clientID,
+            round: () => (localStorageRound() ?? round) || null,
+          },
           suggest,
           threads,
           activeThread: active,
@@ -105,11 +116,35 @@ export function useRoomEditing({
       ? "Accept or reject the suggestions first: Markdown cannot show them. The Markdown here shows the text without them."
       : null;
 
-  const bar = <RoomBar people={room.people} me={viewer.id} status={room.status} mayEdit={mayEdit} mode={mode} onMode={chooseMode} pending={pending} />;
+  const bar = (
+    <RoomBar
+      people={room.people}
+      me={viewer.id}
+      status={room.status}
+      mayEdit={mayEdit}
+      mode={mode}
+      onMode={chooseMode}
+      pending={pending}
+    />
+  );
   const panels = (
     <>
-      <SuggestionsPanel editor={editor} names={names} me={viewer.id} mayDecide={mayEdit} round={round} onRound={chooseRound} />
-      <CommentsPanel comments={room.comments} me={viewer} send={room.send} editor={editor} active={active} onActive={setActive} />
+      <SuggestionsPanel
+        editor={editor}
+        names={names}
+        me={viewer.id}
+        mayDecide={mayEdit}
+        round={round}
+        onRound={chooseRound}
+      />
+      <CommentsPanel
+        comments={room.comments}
+        me={viewer}
+        send={room.send}
+        editor={editor}
+        active={active}
+        onActive={setActive}
+      />
     </>
   );
   return { room, rich, editor, setEditor, pending, markdownLocked, bar, panels };

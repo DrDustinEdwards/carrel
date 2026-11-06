@@ -8,7 +8,11 @@ import { drizzle } from "drizzle-orm/d1";
 import { comments, people, projectMembers } from "~/db/schema";
 import type { RoomComment } from "~/lib/editor/room-protocol";
 
-export async function listComments(db: D1Database, projectId: number, itemId: string): Promise<RoomComment[]> {
+export async function listComments(
+  db: D1Database,
+  projectId: number,
+  itemId: string,
+): Promise<RoomComment[]> {
   const rows = await drizzle(db)
     .select({
       id: comments.id,
@@ -25,18 +29,30 @@ export async function listComments(db: D1Database, projectId: number, itemId: st
     })
     .from(comments)
     .innerJoin(people, eq(people.id, comments.personId))
-    .where(and(eq(comments.projectId, projectId), eq(comments.itemId, itemId), isNull(comments.deletedAt)))
+    .where(
+      and(
+        eq(comments.projectId, projectId),
+        eq(comments.itemId, itemId),
+        isNull(comments.deletedAt),
+      ),
+    )
     .orderBy(asc(comments.createdAt))
     .all();
   return rows.map(({ email, ...r }) => ({ ...r, name: r.name || email }));
 }
 
 /** Every person who may work in the project's rooms (its members and the Owner), by id. */
-export async function roomNames(db: D1Database, projectId: number): Promise<Record<string, string>> {
+export async function roomNames(
+  db: D1Database,
+  projectId: number,
+): Promise<Record<string, string>> {
   const rows = await drizzle(db)
     .selectDistinct({ id: people.id, name: people.name, email: people.email })
     .from(people)
-    .leftJoin(projectMembers, and(eq(projectMembers.personId, people.id), eq(projectMembers.projectId, projectId)))
+    .leftJoin(
+      projectMembers,
+      and(eq(projectMembers.personId, people.id), eq(projectMembers.projectId, projectId)),
+    )
     .where(or(eq(people.isOwner, true), eq(projectMembers.projectId, projectId)))
     .all();
   return Object.fromEntries(rows.map((r) => [String(r.id), r.name || r.email]));

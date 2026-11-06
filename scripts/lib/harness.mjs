@@ -83,8 +83,18 @@ export const SCREENS = [
   { name: "not-found", viewer: "owner", path: `/p/${SITE}/not-found` },
   { name: "legal", viewer: "owner", path: `/p/${SITE}/legal` },
   { name: "legal-editor", viewer: "editor", path: `/p/${SITE}/legal` },
-  { name: "legal-page", viewer: "owner", path: `/p/${SITE}/e/page.privacy`, wait: ".app-rich-surface" },
-  { name: "kind-roster", viewer: "owner", path: `/p/${SITE}/e/roster.2017`, wait: ".app-rich-surface" },
+  {
+    name: "legal-page",
+    viewer: "owner",
+    path: `/p/${SITE}/e/page.privacy`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "kind-roster",
+    viewer: "owner",
+    path: `/p/${SITE}/e/roster.2017`,
+    wait: ".app-rich-surface",
+  },
   { name: "site-kind", viewer: "owner", path: `/p/${SITE}?kind=phage` },
   { name: "media", viewer: "owner", path: `/p/${SITE}/media` },
   { name: "media-detail", viewer: "owner", path: `/p/${SITE}/media`, open: "media" },
@@ -97,14 +107,41 @@ export const SCREENS = [
   { name: "mentions", viewer: "owner", path: `/p/${SITE}/mentions` },
   { name: "mentions-failed", viewer: "owner", path: `/p/${SITE}/mentions?view=failed` },
   { name: "mentions-all", viewer: "owner", path: `/p/${SITE}/mentions?view=all` },
-  { name: "mentions-select", viewer: "owner", path: `/p/${SITE}/mentions`, after: (page) => selectMentions(page, 2) },
-  { name: "mentions-delete", viewer: "owner", path: `/p/${SITE}/mentions?view=failed`, after: async (page) => {
+  {
+    name: "mentions-select",
+    viewer: "owner",
+    path: `/p/${SITE}/mentions`,
+    after: (page) => selectMentions(page, 2),
+  },
+  {
+    name: "mentions-delete",
+    viewer: "owner",
+    path: `/p/${SITE}/mentions?view=failed`,
+    after: async (page) => {
       await selectMentions(page, 1);
       await press(page, "button", /^Delete$/, "alertdialog");
-    } },
-  { name: "mentions-sweep", viewer: "owner", path: `/p/${SITE}/mentions`, after: (page) => pressUntilOpen(page, /^Remove \d+ expired/, "alertdialog") },
-  { name: "mentions-editor", viewer: "editor", path: `/p/${SITE}/mentions`, skipFor: "the queue is the Owner's alone: this page answers 403, which test/mentions.test.ts asserts" },
-  { name: "mentions-reader", viewer: "reader", path: `/p/${SITE}/mentions`, skipFor: "the queue is the Owner's alone: this page answers 403, which test/mentions.test.ts asserts" },
+    },
+  },
+  {
+    name: "mentions-sweep",
+    viewer: "owner",
+    path: `/p/${SITE}/mentions`,
+    after: (page) => pressUntilOpen(page, /^Remove \d+ expired/, "alertdialog"),
+  },
+  {
+    name: "mentions-editor",
+    viewer: "editor",
+    path: `/p/${SITE}/mentions`,
+    skipFor:
+      "the queue is the Owner's alone: this page answers 403, which test/mentions.test.ts asserts",
+  },
+  {
+    name: "mentions-reader",
+    viewer: "reader",
+    path: `/p/${SITE}/mentions`,
+    skipFor:
+      "the queue is the Owner's alone: this page answers 403, which test/mentions.test.ts asserts",
+  },
   { name: "people", viewer: "owner", path: "/people" },
   { name: "manuscripts", viewer: "owner", path: "/manuscripts" },
   { name: "manuscripts-search", viewer: "owner", path: "/manuscripts?q=paluxy" },
@@ -112,17 +149,43 @@ export const SCREENS = [
   { name: "book-new", viewer: "owner", path: "/books/new" },
   { name: "book", viewer: "owner", path: `/b/${BOOK}`, wait: ".cap-meter" },
   { name: "book-editor", viewer: "editor", path: `/b/${BOOK}` },
-  { name: "book-reader", viewer: "reader", path: `/b/${BOOK}`, skipFor: "reader has no role on the book" },
+  {
+    name: "book-reader",
+    viewer: "reader",
+    path: `/b/${BOOK}`,
+    skipFor: "reader has no role on the book",
+  },
   { name: "book-empty", viewer: "owner", path: "/b/salt-roads" },
   { name: "chapter", viewer: "owner", path: `/b/${BOOK}/c/01-arrival` },
   { name: "book-outliner", viewer: "owner", path: `/b/${BOOK}/outliner` },
   { name: "book-outliner-filtered", viewer: "owner", path: `/b/${BOOK}/outliner?status=revised` },
   { name: "book-outliner-none", viewer: "owner", path: `/b/${BOOK}/outliner?status=final` },
-  { name: "book-outliner-labels", viewer: "editor", path: `/b/${BOOK}/outliner`, after: (page) => page.getByText("Edit the list").click() },
-  { name: "book-target", viewer: "owner", path: `/b/${BOOK}`, wait: ".cap-meter", after: (page) => page.getByText("Your target").click() },
+  {
+    name: "book-outliner-labels",
+    viewer: "editor",
+    path: `/b/${BOOK}/outliner`,
+    after: (page) => page.getByText("Edit the list").click(),
+  },
+  {
+    name: "book-target",
+    viewer: "owner",
+    path: `/b/${BOOK}`,
+    wait: ".cap-meter",
+    after: (page) => page.getByText("Your target").click(),
+  },
   { name: "book-corkboard", viewer: "owner", path: `/b/${BOOK}/corkboard`, wait: ".cap-sortable" },
-  { name: "book-corkboard-lifted", viewer: "editor", path: `/b/${BOOK}/corkboard`, wait: ".cap-sortable", after: (page) => page.getByRole("button", { name: "Move Supper", exact: true }).press("Space") },
-  { name: "book-history", viewer: "owner", path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md` },
+  {
+    name: "book-corkboard-lifted",
+    viewer: "editor",
+    path: `/b/${BOOK}/corkboard`,
+    wait: ".cap-sortable",
+    after: (page) => page.getByRole("button", { name: "Move Supper", exact: true }).press("Space"),
+  },
+  {
+    name: "book-history",
+    viewer: "owner",
+    path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md`,
+  },
   {
     name: "book-history-compare",
     viewer: "owner",
@@ -133,13 +196,47 @@ export const SCREENS = [
       await page.locator(".cap-compare, .cap-patch").first().waitFor();
     },
   },
-  { name: "book-history-ai", viewer: "owner", path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md?compare=ai&ai=3` },
-  { name: "book-scene", viewer: "owner", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".app-rich-surface" },
-  { name: "book-scene-flagged", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".app-rich-surface" },
-  { name: "book-bible", viewer: "owner", path: `/b/${BOOK}/f/bible/characters/nell.md`, wait: ".app-rich-surface" },
-  { name: "book-scene-editor", viewer: "editor", path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`, wait: ".app-rich-surface" },
-  { name: "post-live", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface" },
-  { name: "post-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface" },
+  {
+    name: "book-history-ai",
+    viewer: "owner",
+    path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md?compare=ai&ai=3`,
+  },
+  {
+    name: "book-scene",
+    viewer: "owner",
+    path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "book-scene-flagged",
+    viewer: "owner",
+    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "book-bible",
+    viewer: "owner",
+    path: `/b/${BOOK}/f/bible/characters/nell.md`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "book-scene-editor",
+    viewer: "editor",
+    path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "post-live",
+    viewer: "owner",
+    path: `/p/${SITE}/e/alerts-wait`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "post-draft",
+    viewer: "owner",
+    path: `/p/${SITE}/e/counting-what-the-build-skips`,
+    wait: ".app-rich-surface",
+  },
   // The insert-chart dialog with data pasted: the type, the columns, the drafted finding and the chart check.
   {
     name: "post-chart-insert",
@@ -148,20 +245,57 @@ export const SCREENS = [
     wait: ".app-rich-surface",
     after: async (page) => {
       await page.getByRole("button", { name: "Insert chart", exact: true }).click();
-      await page.getByLabel("Data, as CSV").fill("year,visits,readers\n2024,1204,300\n2025,1530,410\n2026,987,350");
+      await page
+        .getByLabel("Data, as CSV")
+        .fill("year,visits,readers\n2024,1204,300\n2025,1530,410\n2026,987,350");
       await page.getByText("The chart check flags").waitFor();
     },
   },
-  { name: "post-working-copy", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface" },
-  { name: "post-scheduled", viewer: "owner", path: `/p/${SITE}/e/getting-started`, wait: ".app-rich-surface" },
-  { name: "post-editor-live", viewer: "editor", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface" },
-  { name: "post-reader", viewer: "reader", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface" },
+  {
+    name: "post-working-copy",
+    viewer: "owner",
+    path: `/p/${SITE}/e/what-a-carrel-is-for`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "post-scheduled",
+    viewer: "owner",
+    path: `/p/${SITE}/e/getting-started`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "post-editor-live",
+    viewer: "editor",
+    path: `/p/${SITE}/e/alerts-wait`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "post-reader",
+    viewer: "reader",
+    path: `/p/${SITE}/e/alerts-wait`,
+    wait: ".app-rich-surface",
+  },
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
-  { name: "post-history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}`, wait: ".app-rich-surface" },
+  {
+    name: "post-history",
+    viewer: "owner",
+    path: `/p/${SITE}/e/${REFRESH}`,
+    wait: ".app-rich-surface",
+  },
   { name: "history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history` },
   { name: "history-reader", viewer: "reader", path: `/p/${SITE}/e/${REFRESH}/history` },
-  { name: "history-source", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history`, after: openOldestSource },
-  { name: "history-diff", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history`, after: (page) => compareOutermost(page, ".cap-patch") },
+  {
+    name: "history-source",
+    viewer: "owner",
+    path: `/p/${SITE}/e/${REFRESH}/history`,
+    after: openOldestSource,
+  },
+  {
+    name: "history-diff",
+    viewer: "owner",
+    path: `/p/${SITE}/e/${REFRESH}/history`,
+    after: (page) => compareOutermost(page, ".cap-patch"),
+  },
   {
     name: "history-diff-word",
     viewer: "owner",
@@ -173,11 +307,40 @@ export const SCREENS = [
       await page.waitForTimeout(600);
     },
   },
-  { name: "history-draft-compare", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history?compare=site`, wait: ".cap-patch" },
-  { name: "history-ai-compare", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history?compare=ai&ai=2`, wait: ".cap-patch" },
+  {
+    name: "history-draft-compare",
+    viewer: "owner",
+    path: `/p/${SITE}/e/${REFRESH}/history?compare=site`,
+    wait: ".cap-patch",
+  },
+  {
+    name: "history-ai-compare",
+    viewer: "owner",
+    path: `/p/${SITE}/e/${REFRESH}/history?compare=ai&ai=2`,
+    wait: ".cap-patch",
+  },
   { name: "history-problem", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history?v=nope` },
-  { name: "site-select", viewer: "owner", path: `/p/${SITE}`, after: (page) => selectPosts(page, ["Counting what the build skips", "What a carrel is for", "How the index refreshes"]) },
-  { name: "site-select-editor", viewer: "editor", path: `/p/${SITE}`, after: (page) => selectPosts(page, ["Counting what the build skips", "Why the monitor waits before it pages you"]) },
+  {
+    name: "site-select",
+    viewer: "owner",
+    path: `/p/${SITE}`,
+    after: (page) =>
+      selectPosts(page, [
+        "Counting what the build skips",
+        "What a carrel is for",
+        "How the index refreshes",
+      ]),
+  },
+  {
+    name: "site-select-editor",
+    viewer: "editor",
+    path: `/p/${SITE}`,
+    after: (page) =>
+      selectPosts(page, [
+        "Counting what the build skips",
+        "Why the monitor waits before it pages you",
+      ]),
+  },
   {
     name: "site-bulk-delete",
     viewer: "owner",
@@ -193,8 +356,15 @@ export const SCREENS = [
     viewer: "editor",
     path: `/p/${SITE}`,
     after: async (page) => {
-      await selectPosts(page, ["Counting what the build skips", "Why the monitor waits before it pages you", "Getting started"]);
-      await page.getByRole("region", { name: /^Bulk actions/ }).getByLabel("Tag").fill("colophon");
+      await selectPosts(page, [
+        "Counting what the build skips",
+        "Why the monitor waits before it pages you",
+        "Getting started",
+      ]);
+      await page
+        .getByRole("region", { name: /^Bulk actions/ })
+        .getByLabel("Tag")
+        .fill("colophon");
       await page.getByRole("button", { name: /^Add tag$/ }).click();
       await page.locator(".cap-bulk-results").waitFor();
       await page.waitForTimeout(600);
@@ -217,23 +387,66 @@ export const SCREENS = [
       await page.waitForTimeout(300);
     },
   },
-  { name: "flags-dismiss", viewer: "owner", path: `/p/${SITE}/flags`, after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
+  {
+    name: "flags-dismiss",
+    viewer: "owner",
+    path: `/p/${SITE}/flags`,
+    after: (page) => press(page, "button", /^Dismiss/, "alertdialog"),
+  },
   {
     name: "media-select",
     viewer: "owner",
     path: `/p/${SITE}/media`,
     after: async (page) => {
-      await page.getByRole("checkbox", { name: /^Select/ }).first().setChecked(true, { force: true });
+      await page
+        .getByRole("checkbox", { name: /^Select/ })
+        .first()
+        .setChecked(true, { force: true });
       await page.getByRole("region", { name: "Bulk actions" }).waitFor();
       await page.waitForTimeout(300);
     },
   },
-  { name: "media-empty-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash`, after: (page) => press(page, "button", /^Empty Trash/, "alertdialog") },
-  { name: "media-delete", viewer: "owner", path: `/p/${SITE}/media?view=trash`, open: "media", after: (page) => press(page, "button", /^Delete for good/, "alertdialog") },
-  { name: "post-discard", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Discard unsaved changes/, "alertdialog") },
-  { name: "post-schedule", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Schedule/, "dialog") },
-  { name: "post-first-publish", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Publish$/, "alertdialog") },
-  { name: "post-library", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Insert from library/, "dialog") },
+  {
+    name: "media-empty-trash",
+    viewer: "owner",
+    path: `/p/${SITE}/media?view=trash`,
+    after: (page) => press(page, "button", /^Empty Trash/, "alertdialog"),
+  },
+  {
+    name: "media-delete",
+    viewer: "owner",
+    path: `/p/${SITE}/media?view=trash`,
+    open: "media",
+    after: (page) => press(page, "button", /^Delete for good/, "alertdialog"),
+  },
+  {
+    name: "post-discard",
+    viewer: "owner",
+    path: `/p/${SITE}/e/what-a-carrel-is-for`,
+    wait: ".app-rich-surface",
+    after: (page) => press(page, "button", /^Discard unsaved changes/, "alertdialog"),
+  },
+  {
+    name: "post-schedule",
+    viewer: "owner",
+    path: `/p/${SITE}/e/counting-what-the-build-skips`,
+    wait: ".app-rich-surface",
+    after: (page) => press(page, "button", /^Schedule/, "dialog"),
+  },
+  {
+    name: "post-first-publish",
+    viewer: "owner",
+    path: `/p/${SITE}/e/counting-what-the-build-skips`,
+    wait: ".app-rich-surface",
+    after: (page) => press(page, "button", /^Publish$/, "alertdialog"),
+  },
+  {
+    name: "post-library",
+    viewer: "owner",
+    path: `/p/${SITE}/e/alerts-wait`,
+    wait: ".app-rich-surface",
+    after: (page) => press(page, "button", /^Insert from library/, "dialog"),
+  },
   {
     name: "post-link-palette",
     viewer: "owner",
@@ -260,21 +473,63 @@ export const SCREENS = [
     },
     restore: discardDraft,
   },
-  { name: "post-markdown-mode", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface", after: (page) => page.getByRole("radio", { name: "Markdown" }).check({ force: true }).then(() => page.locator(".cm-editor").waitFor()), restore: (page) => page.evaluate(() => localStorage.removeItem("carrel:editor-mode")) },
-  { name: "post-source-block", viewer: "owner", path: `/p/${SITE}/e/what-a-carrel-is-for`, wait: ".app-rich-surface", after: async (page) => {
+  {
+    name: "post-markdown-mode",
+    viewer: "owner",
+    path: `/p/${SITE}/e/alerts-wait`,
+    wait: ".app-rich-surface",
+    after: (page) =>
+      page
+        .getByRole("radio", { name: "Markdown" })
+        .check({ force: true })
+        .then(() => page.locator(".cm-editor").waitFor()),
+    restore: (page) => page.evaluate(() => localStorage.removeItem("carrel:editor-mode")),
+  },
+  {
+    name: "post-source-block",
+    viewer: "owner",
+    path: `/p/${SITE}/e/what-a-carrel-is-for`,
+    wait: ".app-rich-surface",
+    after: async (page) => {
       await endOfText(page);
       await page.getByRole("button", { name: "Figure", exact: true }).click();
       await page.locator(".app-src-text").last().waitFor();
-    }, restore: discardDraft },
-  { name: "post-split", viewer: "owner", path: `/p/${SITE}/e/alerts-wait`, wait: ".app-rich-surface", after: (page) => page.getByRole("radio", { name: "Split" }).check({ force: true }).then(() => page.waitForTimeout(800)) },
-  { name: "social-reject", viewer: "owner", path: "/social", after: (page) => press(page, "button", /^Reject/, "alertdialog") },
-  { name: "book-dismiss", viewer: "owner", path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`, wait: ".app-rich-surface", after: (page) => press(page, "button", /^Dismiss/, "alertdialog") },
+    },
+    restore: discardDraft,
+  },
+  {
+    name: "post-split",
+    viewer: "owner",
+    path: `/p/${SITE}/e/alerts-wait`,
+    wait: ".app-rich-surface",
+    after: (page) =>
+      page
+        .getByRole("radio", { name: "Split" })
+        .check({ force: true })
+        .then(() => page.waitForTimeout(800)),
+  },
+  {
+    name: "social-reject",
+    viewer: "owner",
+    path: "/social",
+    after: (page) => press(page, "button", /^Reject/, "alertdialog"),
+  },
+  {
+    name: "book-dismiss",
+    viewer: "owner",
+    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`,
+    wait: ".app-rich-surface",
+    after: (page) => press(page, "button", /^Dismiss/, "alertdialog"),
+  },
   {
     name: "people-disable",
     viewer: "owner",
     path: "/people",
     after: async (page) => {
-      await page.getByRole("button", { name: /^Disable/ }).first().click();
+      await page
+        .getByRole("button", { name: /^Disable/ })
+        .first()
+        .click();
       await page.getByRole("button", { name: /Undo/ }).waitFor();
     },
     // The harness's database is shared by every scan, so the person is enabled again afterwards.
@@ -291,8 +546,12 @@ export const SCREENS = [
  * @param {string[]} titles
  */
 async function selectPosts(page, titles) {
-  for (const title of titles) await page.getByRole("checkbox", { name: new RegExp(`^Select ${title}`) }).check();
-  await page.getByRole("region", { name: "Bulk actions" }).getByText(`${titles.length} selected`).waitFor();
+  for (const title of titles)
+    await page.getByRole("checkbox", { name: new RegExp(`^Select ${title}`) }).check();
+  await page
+    .getByRole("region", { name: "Bulk actions" })
+    .getByText(`${titles.length} selected`)
+    .waitFor();
   await page.waitForTimeout(400);
 }
 
@@ -346,7 +605,10 @@ async function pressUntilOpen(page, name, opens) {
  * @param {Page} page
  */
 async function openOldestSource(page) {
-  await page.getByRole("link", { name: /open its source/ }).last().click();
+  await page
+    .getByRole("link", { name: /open its source/ })
+    .last()
+    .click();
   await page.getByLabel("Source of this revision").waitFor();
 }
 
@@ -402,8 +664,25 @@ async function press(page, role, name, opens) {
  * app's Content Security Policy refuses, and the page must be what a deploy would serve.
  */
 export async function startHarness(port = 5199) {
-  execFileSync(process.execPath, [VITE, "build", "--config", "vite.harness.config.ts"], { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
-  const child = spawn(process.execPath, [VITE, "preview", "--config", "vite.harness.config.ts", "--port", String(port), "--strictPort", "--host", "127.0.0.1"], { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
+  execFileSync(process.execPath, [VITE, "build", "--config", "vite.harness.config.ts"], {
+    cwd: ROOT,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const child = spawn(
+    process.execPath,
+    [
+      VITE,
+      "preview",
+      "--config",
+      "vite.harness.config.ts",
+      "--port",
+      String(port),
+      "--strictPort",
+      "--host",
+      "127.0.0.1",
+    ],
+    { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
+  );
   let output = "";
   child.stdout.on("data", (d) => (output += d));
   child.stderr.on("data", (d) => (output += d));
@@ -414,7 +693,10 @@ export async function startHarness(port = 5199) {
   for (let i = 0; i < 120; i++) {
     await sleep(2000);
     try {
-      const res = await fetch(origin, { headers: { "x-harness-viewer": VIEWERS.owner }, signal: AbortSignal.timeout(60_000) });
+      const res = await fetch(origin, {
+        headers: { "x-harness-viewer": VIEWERS.owner },
+        signal: AbortSignal.timeout(60_000),
+      });
       if (res.ok) return { origin, stop };
       if (res.status >= 500) {
         stop();
@@ -435,7 +717,10 @@ export async function launch() {
     return await chromium.launch();
   } catch (error) {
     const base = process.env.PLAYWRIGHT_BROWSERS_PATH ?? "";
-    const dir = base && existsSync(base) ? readdirSync(base).find((d) => /^chromium-\d+$/.test(d)) : undefined;
+    const dir =
+      base && existsSync(base)
+        ? readdirSync(base).find((d) => /^chromium-\d+$/.test(d))
+        : undefined;
     if (!dir) throw error;
     return chromium.launch({ executablePath: join(base, dir, "chrome-linux", "chrome") });
   }
@@ -463,10 +748,14 @@ export async function open(browser, origin, { viewer, theme, width, height }) {
     reducedMotion: "reduce",
   });
   // A WebSocket (a file's room) carries no extra headers, so the viewer is named in a cookie too.
-  await context.addCookies([{ name: "harness-viewer", value: encodeURIComponent(VIEWERS[viewer]), url: origin }]);
+  await context.addCookies([
+    { name: "harness-viewer", value: encodeURIComponent(VIEWERS[viewer]), url: origin },
+  ]);
   await context.route("https://site.test/**", (route) => {
     const url = route.request().url();
-    return /\/media\//.test(url) ? route.fulfill({ status: 200, contentType: "image/svg+xml", body: picture(url) }) : route.fulfill({ status: 404, body: "" });
+    return /\/media\//.test(url)
+      ? route.fulfill({ status: 200, contentType: "image/svg+xml", body: picture(url) })
+      : route.fulfill({ status: 404, body: "" });
   });
   const page = await context.newPage();
   return { page, context };

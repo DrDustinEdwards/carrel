@@ -3,16 +3,16 @@ const a = 1;
 const b = 2;
 ```
 
-~~~
+```
 tilde fence
-~~~
+```
 
     indented code
     block
 
-| Left | Center | Right |
-| :--- | :----: | ----: |
-| a    |   b    |     c |
+| Left | Center |   Right |
+| :--- | :----: | ------: |
+| a    |   b    |       c |
 | `x`  | **y**  | [z](/z) |
 
 <details>
@@ -39,5 +39,7 @@ Autolinks: <https://example.com>, <mail@example.com>, https://bare.example.com/p
 A footnote reference[^1] and another[^note].
 
 [^1]: The footnote.
-[^note]: A named one,
+
+[^note]:
+    A named one,
     with a continuation.

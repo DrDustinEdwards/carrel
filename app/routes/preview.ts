@@ -22,12 +22,17 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
   const connection = siteConnection(env, project.site);
-  if (connection.state !== "connected") return previewFailure(`The site is not connected: ${connection.detail}`);
+  if (connection.state !== "connected")
+    return previewFailure(`The site is not connected: ${connection.detail}`);
   const source = (await request.formData()).get("source");
-  if (typeof source !== "string" || !source.trim()) return previewFailure("There is nothing to preview yet.");
+  if (typeof source !== "string" || !source.trim())
+    return previewFailure("There is nothing to preview yet.");
   if (source.length > MAX_SOURCE) return previewFailure("This is too long to preview here.");
   try {
-    return previewResponse(await siteClient(env, project.site).preview({ id: params.item, source }), connection.origin);
+    return previewResponse(
+      await siteClient(env, project.site).preview({ id: params.item, source }),
+      connection.origin,
+    );
   } catch (error) {
     return failed(error, params.item);
   }
@@ -36,7 +41,8 @@ export async function action({ request, params, context }: Route.ActionArgs) {
 /** A preview the site could not give: what it said, or that it did not answer. */
 function failed(error: unknown, itemId: string): Response {
   if (error instanceof SiteNotConnected) return previewFailure(error.detail);
-  if (error instanceof SiteApiError && error.body) return previewFailure(`The site could not render this: ${error.body.message}`);
+  if (error instanceof SiteApiError && error.body)
+    return previewFailure(`The site could not render this: ${error.body.message}`);
   console.error(JSON.stringify({ preview: "failed", itemId, error: String(error) }));
   return previewFailure("The site did not answer the preview request.");
 }
@@ -47,7 +53,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
   const itemId = params.item;
   const connection = siteConnection(env, project.site);
-  if (connection.state !== "connected") return previewFailure(`The site is not connected: ${connection.detail}`);
+  if (connection.state !== "connected")
+    return previewFailure(`The site is not connected: ${connection.detail}`);
 
   try {
     const draft = await readDraft(env.DB, project, viewer, itemId);

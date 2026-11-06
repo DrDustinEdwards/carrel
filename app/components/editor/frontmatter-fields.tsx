@@ -25,7 +25,9 @@ const HINTS: Partial<Record<FieldKey, string>> = {
 /** Sets one field in a source and returns the whole source. A source with no frontmatter is returned as it was. */
 function withField(source: string, key: FieldKey, value: string): string {
   const parts = splitSource(source);
-  return parts.front === null ? source : joinSource({ ...parts, front: setField(parts.front, key, value) });
+  return parts.front === null
+    ? source
+    : joinSource({ ...parts, front: setField(parts.front, key, value) });
 }
 
 export type SectionChoice = { key: string; title: string };
@@ -61,7 +63,10 @@ export function FrontmatterFields({
       <fieldset className="app-fm">
         <legend>{kindWord(kind)} details</legend>
         <div className="app-fm-field" data-wide="">
-          <Field label="Frontmatter" help={`The site's own keys for this ${kindNoun(kind)}, as it stores them. The site checks them when you save.`}>
+          <Field
+            label="Frontmatter"
+            help={`The site's own keys for this ${kindNoun(kind)}, as it stores them. The site checks them when you save.`}
+          >
             <textarea
               className="cap-input app-fm-raw"
               value={front}
@@ -76,7 +81,12 @@ export function FrontmatterFields({
     );
   }
   const inSearch = (key: FieldKey) => !legal && searchFields.includes(key);
-  const shown = FIELDS.filter((f) => (f.on === "all" || f.on === (legal ? "legal" : "post")) && (!readOnly || values[f.key] !== "") && !inSearch(f.key));
+  const shown = FIELDS.filter(
+    (f) =>
+      (f.on === "all" || f.on === (legal ? "legal" : "post")) &&
+      (!readOnly || values[f.key] !== "") &&
+      !inSearch(f.key),
+  );
   if (shown.length === 0) return null;
   const used = sectionsUsed(body);
   const unused = sections.filter((s) => !used.includes(s.key));
@@ -88,7 +98,14 @@ export function FrontmatterFields({
           return (
             <div key={f.key} className="app-fm-field" data-wide="">
               <Field label={f.label} help={HINTS[f.key]}>
-                <input type="checkbox" checked={values[f.key] !== ""} disabled={readOnly || !onChange} onChange={(event) => onChange?.(withField(source, f.key, event.target.checked ? BANNER_WORD : ""))} />
+                <input
+                  type="checkbox"
+                  checked={values[f.key] !== ""}
+                  disabled={readOnly || !onChange}
+                  onChange={(event) =>
+                    onChange?.(withField(source, f.key, event.target.checked ? BANNER_WORD : ""))
+                  }
+                />
               </Field>
             </div>
           );
@@ -98,19 +115,27 @@ export function FrontmatterFields({
           className: "cap-input",
           value: values[f.key],
           readOnly: readOnly || !onChange,
-          onChange: (event: { target: { value: string } }) => onChange?.(withField(source, f.key, event.target.value)),
+          onChange: (event: { target: { value: string } }) =>
+            onChange?.(withField(source, f.key, event.target.value)),
         };
         return (
           <div key={f.key} className="app-fm-field" data-wide={wide ? "" : undefined}>
             <Field label={f.label} help={HINTS[f.key]}>
-              {f.kind === "text" || f.kind === "lines" ? <textarea {...props} rows={f.kind === "lines" ? 4 : 2} /> : <input {...props} type="text" />}
+              {f.kind === "text" || f.kind === "lines" ? (
+                <textarea {...props} rows={f.kind === "lines" ? 4 : 2} />
+              ) : (
+                <input {...props} type="text" />
+              )}
             </Field>
           </div>
         );
       })}
       {legal && !readOnly && onChange && unused.length > 0 ? (
         <div className="app-fm-field" data-wide="">
-          <Field label="Add a shared section" help="Written at the end of the text. It is filled in from the details above each time the page is saved to the site; edit its wording on the Legal tab, not here.">
+          <Field
+            label="Add a shared section"
+            help="Written at the end of the text. It is filled in from the details above each time the page is saved to the site; edit its wording on the Legal tab, not here."
+          >
             <select
               className="cap-input"
               value=""

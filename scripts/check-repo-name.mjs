@@ -11,14 +11,19 @@ const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
 const STALE = /DrDustinEdwards\\?\/novels\b/;
 const SELF = "scripts/check-repo-name.mjs";
 
-const planted = ["fetch https://api.github.com/repos/DrDustinEdwards/novels/contents", String.raw`/^\/repos\/DrDustinEdwards\/novels\/x$/`];
+const planted = [
+  "fetch https://api.github.com/repos/DrDustinEdwards/novels/contents",
+  String.raw`/^\/repos\/DrDustinEdwards\/novels\/x$/`,
+];
 if (!planted.every((line) => STALE.test(line))) {
   console.error("FAIL planted stale name was not matched; the scanner is broken.");
   process.exit(1);
 }
 
 const failures = [];
-const files = execFileSync("git", ["ls-files", "-z"], { cwd: repo, encoding: "utf8" }).split("\0").filter(Boolean);
+const files = execFileSync("git", ["ls-files", "-z"], { cwd: repo, encoding: "utf8" })
+  .split("\0")
+  .filter(Boolean);
 for (const file of files) {
   if (file === SELF || file.startsWith("docs/research/")) continue;
   let text;
@@ -41,4 +46,6 @@ if (failures.length) {
   console.error(`FAIL the old repo name is still used:\n${failures.join("\n")}`);
   process.exit(1);
 }
-console.log(`ok: ${files.length} tracked files name DrDustinEdwards/writing and not DrDustinEdwards/novels.`);
+console.log(
+  `ok: ${files.length} tracked files name DrDustinEdwards/writing and not DrDustinEdwards/novels.`,
+);

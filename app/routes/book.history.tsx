@@ -11,7 +11,14 @@ import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
 
 import { DraftLinks } from "~/components/history/draft-links";
-import { ComparePanel, type Side, SourcePanel, sides, utc, type View } from "~/components/history/history-view";
+import {
+  ComparePanel,
+  type Side,
+  SourcePanel,
+  sides,
+  utc,
+  type View,
+} from "~/components/history/history-view";
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
@@ -53,7 +60,8 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     listAiDrafts(env.DB, project, viewer, path),
     indexedFile(env.DB, project, path),
   ]);
-  if (!indexed && versions.length === 0 && !draft && aiDrafts.length === 0) throw new Response("Not found", { status: 404 });
+  if (!indexed && versions.length === 0 && !draft && aiDrafts.length === 0)
+    throw new Response("Not found", { status: 404 });
   let current: string | null = indexed?.source ?? null;
   if (repo) {
     try {
@@ -62,40 +70,70 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       // The index's copy stands in; the problem is already said for the list.
     }
   }
-  const unread = repo ? null : `${detail} Without Git, only the versions Carrel recorded are listed, and their text cannot be opened.`;
+  const unread = repo
+    ? null
+    : `${detail} Without Git, only the versions Carrel recorded are listed, and their text cannot be opened.`;
 
   const picks = query.getAll("v");
   let view: View = { kind: "none" };
   let picked: string[] = [];
-  const read = async (v: (typeof versions)[number]) => (repo ? readVersion(repo, project, v) : null);
+  const read = async (v: (typeof versions)[number]) =>
+    repo ? readVersion(repo, project, v) : null;
 
   if (query.get("compare") === "git") {
-    if (!draft) view = { kind: "problem", message: "You have no working draft of this file in Carrel, so there is nothing to set against Git's text." };
-    else if (current === null) view = { kind: "problem", message: "This file is not in Git yet, so there is no saved version to compare with." };
+    if (!draft)
+      view = {
+        kind: "problem",
+        message:
+          "You have no working draft of this file in Carrel, so there is nothing to set against Git's text.",
+      };
+    else if (current === null)
+      view = {
+        kind: "problem",
+        message: "This file is not in Git yet, so there is no saved version to compare with.",
+      };
     else {
       view = sides(
         "Your working draft against the saved file",
         "Your autosaved copy in Carrel, set against the file as Git holds it now.",
         fileName,
         { title: "Saved in Git", text: current },
-        { title: "Your working draft", who: viewer.name, time: draft.updatedAt, text: draft.source },
+        {
+          title: "Your working draft",
+          who: viewer.name,
+          time: draft.updatedAt,
+          text: draft.source,
+        },
         by,
       );
     }
   } else if (query.get("compare") === "ai") {
     const id = Number(query.get("ai"));
-    if (!Number.isInteger(id) || id <= 0) view = { kind: "problem", message: "That AI draft is not one of yours for this file." };
+    if (!Number.isInteger(id) || id <= 0)
+      view = { kind: "problem", message: "That AI draft is not one of yours for this file." };
     else {
       const ai = await readAiDraft(env.DB, project, viewer, path, id);
       const mine: Side = draft
-        ? { title: "Your working draft", who: viewer.name, time: draft.updatedAt, text: draft.source }
+        ? {
+            title: "Your working draft",
+            who: viewer.name,
+            time: draft.updatedAt,
+            text: draft.source,
+          }
         : { title: "Your text, saved in Git", text: current ?? "" };
       view = sides(
         `Your ${draft ? "draft" : "text"} against the AI draft from ${ai.client}`,
-        draft ? "Your autosaved copy in Carrel, set against the AI draft saved beside it." : "You have no working draft, so this is the saved file against the AI draft saved beside it.",
+        draft
+          ? "Your autosaved copy in Carrel, set against the AI draft saved beside it."
+          : "You have no working draft, so this is the saved file against the AI draft saved beside it.",
         fileName,
         mine,
-        { title: `AI draft from ${ai.client}`, who: ai.client, time: ai.createdAt, text: ai.source },
+        {
+          title: `AI draft from ${ai.client}`,
+          who: ai.client,
+          time: ai.createdAt,
+          text: ai.source,
+        },
         by,
       );
     }
@@ -108,7 +146,17 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       view =
         source === null
           ? { kind: "problem", message: unread ?? "Git does not hold this file at that version." }
-          : { kind: "source", version: v.version, message: v.message, author: v.author, at: v.at, source, current: at === 0, previous: versions[at + 1]?.version ?? null, newest: at === 0 ? null : versions[0]!.version };
+          : {
+              kind: "source",
+              version: v.version,
+              message: v.message,
+              author: v.author,
+              at: v.at,
+              source,
+              current: at === 0,
+              previous: versions[at + 1]?.version ?? null,
+              newest: at === 0 ? null : versions[0]!.version,
+            };
     }
   } else if (picks.length > 0) {
     const pair = orderPair(versions, picks);
@@ -119,7 +167,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       const [before, after] = await Promise.all([read(pair.from), read(pair.to)]);
       view =
         before === null || after === null
-          ? { kind: "problem", message: unread ?? "Git does not hold the file at one of those versions." }
+          ? {
+              kind: "problem",
+              message: unread ?? "Git does not hold the file at one of those versions.",
+            }
           : sides(
               `${utc(pair.from.at)} to ${utc(pair.to.at)}`,
               `What changed between the version by ${pair.from.author} and the one by ${pair.to.author}.`,
@@ -138,7 +189,14 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     by,
     view,
     picked,
-    versions: versions.map((v) => ({ version: v.version, at: v.at, author: v.author, message: v.message, kind: v.kind, path: v.path })),
+    versions: versions.map((v) => ({
+      version: v.version,
+      at: v.at,
+      author: v.author,
+      message: v.message,
+      kind: v.kind,
+      path: v.path,
+    })),
     notice: gitError ?? unread,
     againstGit: Boolean(draft && current !== null),
     aiDrafts: aiDrafts.map((d) => ({ id: d.id, client: d.client, createdAt: d.createdAt })),
@@ -146,7 +204,8 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 }
 
 export default function BookHistory({ loaderData }: Route.ComponentProps) {
-  const { project, path, label, by, view, picked, versions, notice, againstGit, aiDrafts } = loaderData;
+  const { project, path, label, by, view, picked, versions, notice, againstGit, aiDrafts } =
+    loaderData;
   const base = `/b/${project.slug}`;
   const editor = `${base}/f/${path}`;
   const historyPath = `${base}/h/${path}`;
@@ -156,11 +215,16 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
     <div className="app-page">
       <PageHead
         renderLink={RouterLink}
-        crumbs={[{ label: project.name, href: base }, { label, href: editor }, { label: "History" }]}
+        crumbs={[
+          { label: project.name, href: base },
+          { label, href: editor },
+          { label: "History" },
+        ]}
         title={`History of ${label}`}
         lead={
           <>
-            Every version of <span className="cap-mono">{path}</span>, newest first{moved ? ", followed back through its moves" : ""}. Looking here changes nothing.
+            Every version of <span className="cap-mono">{path}</span>, newest first
+            {moved ? ", followed back through its moves" : ""}. Looking here changes nothing.
           </>
         }
         actions={
@@ -173,9 +237,21 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
       {notice ? <Banner tone="warn">{notice}</Banner> : null}
       {view.kind === "problem" ? <Alert tone="warn">{view.message}</Alert> : null}
 
-      {view.kind === "source" ? <SourcePanel view={view} historyPath={historyPath} noun="version" /> : null}
+      {view.kind === "source" ? (
+        <SourcePanel view={view} historyPath={historyPath} noun="version" />
+      ) : null}
 
-      {view.kind === "compare" ? <ComparePanel view={view} by={by} id="book-history" options={[{ value: "word", label: "Side by side" }, { value: "line", label: "By line" }]} /> : null}
+      {view.kind === "compare" ? (
+        <ComparePanel
+          view={view}
+          by={by}
+          id="book-history"
+          options={[
+            { value: "word", label: "Side by side" },
+            { value: "line", label: "By line" },
+          ]}
+        />
+      ) : null}
 
       {againstGit || aiDrafts.length > 0 ? (
         <Panel title="Your text" src="Your draft, or the saved file when you have none">
@@ -183,7 +259,9 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
             <ul className="app-flags" aria-label="Compare your draft with the saved file">
               <li>
                 <span>
-                  <Link to={`${historyPath}?compare=git`}>Your working draft against the saved file</Link>
+                  <Link to={`${historyPath}?compare=git`}>
+                    Your working draft against the saved file
+                  </Link>
                 </span>
               </li>
             </ul>
@@ -192,14 +270,21 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
         </Panel>
       ) : null}
 
-      <Panel title="Versions" count={versions.length} src="Saved in Carrel, moved in the binder, or committed elsewhere">
+      <Panel
+        title="Versions"
+        count={versions.length}
+        src="Saved in Carrel, moved in the binder, or committed elsewhere"
+      >
         {versions.length === 0 ? (
           <Empty kind="nothing-yet" title="No history to show">
             {notice ? "Git is not answering." : "Nothing has been saved to this file yet."}
           </Empty>
         ) : (
           <RevisionPicker
-            revisions={versions.map((v) => ({ ...v, message: v.kind === "outside" ? `${v.message} (outside Carrel)` : v.message }))}
+            revisions={versions.map((v) => ({
+              ...v,
+              message: v.kind === "outside" ? `${v.message} (outside Carrel)` : v.message,
+            }))}
             historyPath={historyPath}
             picked={picked}
             label="Versions of this file"

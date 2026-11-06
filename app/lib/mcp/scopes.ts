@@ -38,7 +38,10 @@ function current(scopes: readonly string[]): Set<string> {
  * earlier one, which a client that connected before may still send); otherwise, a request for read or
  * for no Carrel scope at all, reading only. The person's tick decides the grant.
  */
-export function grantScopes(requested: readonly string[], opts: { readOnly?: boolean } = {}): string[] {
+export function grantScopes(
+  requested: readonly string[],
+  opts: { readOnly?: boolean } = {},
+): string[] {
   if (opts.readOnly) return [SCOPE_READ];
   const asked = current(requested);
   return asked.has(SCOPE_WRITE) ? [SCOPE_READ, SCOPE_WRITE] : [SCOPE_READ];

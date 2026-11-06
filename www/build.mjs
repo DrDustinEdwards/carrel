@@ -7,12 +7,24 @@
 //   node www/build.mjs [outDir]
 
 import { execFileSync } from "node:child_process";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ACCESSIBILITY_PATH, accessibilityStatement } from "@drdustinedwards/site-helpers/accessibility";
+import {
+  ACCESSIBILITY_PATH,
+  accessibilityStatement,
+} from "@drdustinedwards/site-helpers/accessibility";
 import { defineHead, headHtml } from "@drdustinedwards/site-helpers/head";
 import { iconLinks, webManifest } from "@drdustinedwards/site-helpers/icons";
 import { llmsDocument } from "@drdustinedwards/site-helpers/llms";
@@ -59,10 +71,13 @@ const DESCRIPTION =
  * @returns {string}
  */
 function inlineCss(file) {
-  return readFileSync(file, "utf8").replace(/@import\s+"([^"]+)"(?:\s+layer\(([\w.-]+)\))?\s*;/g, (_, path, layer) => {
-    const inner = inlineCss(join(dirname(file), path));
-    return layer ? `@layer ${layer} {\n${inner}\n}` : inner;
-  });
+  return readFileSync(file, "utf8").replace(
+    /@import\s+"([^"]+)"(?:\s+layer\(([\w.-]+)\))?\s*;/g,
+    (_, path, layer) => {
+      const inner = inlineCss(join(dirname(file), path));
+      return layer ? `@layer ${layer} {\n${inner}\n}` : inner;
+    },
+  );
 }
 
 /** Source Serif 4, the one face Capsomer's fonts.css leaves to @fontsource (latin only: the site is in English). */
@@ -97,7 +112,14 @@ function writeStyles(outDir) {
 }
 
 /** The sites Carrel publishes to on Dustin's Desk (app/lib/sites.server.ts). */
-const SITES = ["dustinedwards.info", "Germomics", "Foxhound", "Foxing", "Texas Branch ASM", "julieedwards.info"];
+const SITES = [
+  "dustinedwards.info",
+  "Germomics",
+  "Foxhound",
+  "Foxing",
+  "Texas Branch ASM",
+  "julieedwards.info",
+];
 /** The tools Carrel's MCP server gives an AI client (app/lib/mcp/tools.ts). */
 const TOOL_COUNT = 16;
 
@@ -106,25 +128,68 @@ const checklistItem = ({ name, href, kind, note }) =>
   `<li class="cap-checklist-item"><div class="cap-checklist-line">${href ? `<a href="${href}">${esc(name)}</a>` : `<strong>${esc(name)}</strong>`}<span class="cap-checklist-dots" aria-hidden="true"></span><span class="cap-checklist-kind">${esc(kind)}</span></div><p class="cap-checklist-note">${esc(note)}</p></li>`;
 
 const FEATURES = [
-  { name: "Every post on every site", href: "#path", kind: "Sites", note: "Each site's posts in one list, with search and filters. Write in a prose editor that saves as you type, and preview in the site's own design." },
-  { name: "Books in Git", kind: "Books", note: "Chapters, scenes, outlines and the story bible in a private Git repository. Export to ePub and Word, or print to PDF." },
-  { name: "Checks that flag", href: "#checks", kind: "Checks", note: "Search and sharing checks on every post; continuity, timeline and voice checks on every scene. They flag. You decide." },
-  { name: "AI drafts beside yours", href: "#ai", kind: "AI", note: `${TOOL_COUNT} tools for Claude and other MCP clients: read, search, preview, draft and flag. An AI draft never replaces your text.` },
-  { name: "Who wrote what", href: "#ai", kind: "Record", note: "Every change is recorded as yours or an AI's, and a book's record exports as a report." },
-  { name: "Manuscripts in Google Drive", kind: "Drive", note: "An index and search of your manuscripts, read-only, with Send to Docs and Import." },
+  {
+    name: "Every post on every site",
+    href: "#path",
+    kind: "Sites",
+    note: "Each site's posts in one list, with search and filters. Write in a prose editor that saves as you type, and preview in the site's own design.",
+  },
+  {
+    name: "Books in Git",
+    kind: "Books",
+    note: "Chapters, scenes, outlines and the story bible in a private Git repository. Export to ePub and Word, or print to PDF.",
+  },
+  {
+    name: "Checks that flag",
+    href: "#checks",
+    kind: "Checks",
+    note: "Search and sharing checks on every post; continuity, timeline and voice checks on every scene. They flag. You decide.",
+  },
+  {
+    name: "AI drafts beside yours",
+    href: "#ai",
+    kind: "AI",
+    note: `${TOOL_COUNT} tools for Claude and other MCP clients: read, search, preview, draft and flag. An AI draft never replaces your text.`,
+  },
+  {
+    name: "Who wrote what",
+    href: "#ai",
+    kind: "Record",
+    note: "Every change is recorded as yours or an AI's, and a book's record exports as a report.",
+  },
+  {
+    name: "Manuscripts in Google Drive",
+    kind: "Drive",
+    note: "An index and search of your manuscripts, read-only, with Send to Docs and Import.",
+  },
 ];
 
 /** A post's way from draft to live, as the Apollo flight plan's time line. */
 const PATH = [
-  ["Draft", "You write in the editor. Every keystroke is saved to the database, and saving never publishes."],
-  ["Check", "The search title, description, image alt text and share card are checked as you type."],
+  [
+    "Draft",
+    "You write in the editor. Every keystroke is saved to the database, and saving never publishes.",
+  ],
+  [
+    "Check",
+    "The search title, description, image alt text and share card are checked as you type.",
+  ],
   ["Preview", "The site renders the post itself, in a sandbox, so you see what readers will see."],
-  ["Publish", "The Owner publishes; an Author publishes the posts they wrote. Editors write and save; Readers read and comment."],
+  [
+    "Publish",
+    "The Owner publishes; an Author publishes the posts they wrote. Editors write and save; Readers read and comment.",
+  ],
   ["Announce", "Once a post is live, a queued note can go out to your social accounts."],
 ];
 
 const page = () => {
-  const patch = patchSvg({ id: "carrel", name: "Carrel", foot: "Writing desk", count: SITES.length, unit: "sites" });
+  const patch = patchSvg({
+    id: "carrel",
+    name: "Carrel",
+    foot: "Writing desk",
+    count: SITES.length,
+    unit: "sites",
+  });
   const center = `<div class="cap-family-footer-center">
 <div><p class="cap-family-footer-center-name">Carrel</p><p class="cap-family-footer-about">An open-source writing app for posts across several websites and for books. You run it on Cloudflare; this page is its public front.</p></div>
 <div class="cap-family-footer-columns">
@@ -223,7 +288,12 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 };
 
 /** The share card: the top of the page at 1200 by 630. */
-const CARD = { url: "/og-card.png", width: 1200, height: 630, alt: "Carrel: one desk for everything you write" };
+const CARD = {
+  url: "/og-card.png",
+  width: 1200,
+  height: 630,
+  alt: "Carrel: one desk for everything you write",
+};
 
 /**
  * The family letterhead (capsomer/site-header) with its theme button, wired by /site.js. Only the home page marks its
@@ -231,18 +301,19 @@ const CARD = { url: "/og-card.png", width: 1200, height: 630, alt: "Carrel: one 
  *
  * @param {string} [current]
  */
-const header = (current) => letterheadHtml({
-  name: "Carrel",
-  mark: '<img src="/icon.svg" alt="" width="32" height="32">',
-  links: [
-    ["/", "Home"],
-    ["/#what", "What it does"],
-    ["/#path", "Draft to live"],
-    ["/#ai", "AI"],
-    ["/#run", "Run your own"],
-  ],
-  current,
-});
+const header = (current) =>
+  letterheadHtml({
+    name: "Carrel",
+    mark: '<img src="/icon.svg" alt="" width="32" height="32">',
+    links: [
+      ["/", "Home"],
+      ["/#what", "What it does"],
+      ["/#path", "Draft to live"],
+      ["/#ai", "AI"],
+      ["/#run", "Run your own"],
+    ],
+    current,
+  });
 
 /** The home page's structured data: the site, and Carrel itself as an open-source application. */
 const AUTHOR = { "@type": "Person", name: "Dustin Edwards", url: "https://dustinedwards.info" };
@@ -265,21 +336,41 @@ const SCHEMA = graph([
 const LLMS = llmsDocument({
   title: "Carrel",
   summary: DESCRIPTION,
-  intro: ["This page is the public front of Dustin Edwards's own instance. Desk, the signed-in app, is behind Cloudflare Access and is not for crawlers."],
+  intro: [
+    "This page is the public front of Dustin Edwards's own instance. Desk, the signed-in app, is behind Cloudflare Access and is not for crawlers.",
+  ],
   sections: [
     {
       heading: "Carrel",
       links: [
-        { title: "Home", url: `${ORIGIN}/`, description: "What Carrel does, how a post goes from draft to live, and how its AI tools work" },
-        { title: "Source code", url: REPO, description: "MIT licensed, with the steps to run your own" },
-        { title: "site-api", url: "https://github.com/DrDustinEdwards/site-api", description: "the shared API each site uses to connect to Carrel" },
+        {
+          title: "Home",
+          url: `${ORIGIN}/`,
+          description:
+            "What Carrel does, how a post goes from draft to live, and how its AI tools work",
+        },
+        {
+          title: "Source code",
+          url: REPO,
+          description: "MIT licensed, with the steps to run your own",
+        },
+        {
+          title: "site-api",
+          url: "https://github.com/DrDustinEdwards/site-api",
+          description: "the shared API each site uses to connect to Carrel",
+        },
       ],
     },
   ],
 });
 
 const ICON_LINKS = iconLinks()
-  .map((link) => `<link ${Object.entries(link).map(([name, value]) => `${name}="${value}"`).join(" ")}>`)
+  .map(
+    (link) =>
+      `<link ${Object.entries(link)
+        .map(([name, value]) => `${name}="${value}"`)
+        .join(" ")}>`,
+  )
   .join("\n");
 
 const head = defineHead({ origin: ORIGIN, siteName: "Carrel", image: CARD, locale: "en_US" });
@@ -289,7 +380,10 @@ const head = defineHead({ origin: ORIGIN, siteName: "Carrel", image: CARD, local
  * @param {{ theme: string, site: string }} integrity each script's integrity (integrityHash): with crossorigin, what
  *   Integrity-Policy asks of a script, a classic one included.
  */
-const documentHtml = ({ title, description, body, path = "/", index = true }, integrity) => `<!doctype html>
+const documentHtml = (
+  { title, description, body, path = "/", index = true },
+  integrity,
+) => `<!doctype html>
 <html lang="en" data-family="${FAMILY}">
 <head>
 <meta charset="utf-8">
@@ -326,14 +420,25 @@ async function bundle(file, format) {
       lib: { entry: join(HERE, "browser", file), formats: [format], name: "carrel" },
     },
   });
-  const [{ output }] = /** @type {import("vite").Rolldown.RolldownOutput[]} */ (Array.isArray(result) ? result : [result]);
+  const [{ output }] = /** @type {import("vite").Rolldown.RolldownOutput[]} */ (
+    Array.isArray(result) ? result : [result]
+  );
   const [chunk] = output;
-  if (output.length !== 1 || chunk?.type !== "chunk") throw new Error(`${file}: expected one chunk`);
+  if (output.length !== 1 || chunk?.type !== "chunk")
+    throw new Error(`${file}: expected one chunk`);
   return chunk.code;
 }
 
 /** site-runtime's one `_headers` writer, from the public site's registry entry, with Prelum's TDMRep header. */
-const HEADERS_BIN = join(HERE, "..", "node_modules", "@dustinedwards", "site-runtime", "bin", "site-runtime-headers.mjs");
+const HEADERS_BIN = join(
+  HERE,
+  "..",
+  "node_modules",
+  "@dustinedwards",
+  "site-runtime",
+  "bin",
+  "site-runtime-headers.mjs",
+);
 
 /**
  * The accessibility statement (devkit-a11y S6), Prelum's, with this site's facts. devkit-a11y's run of 2026-11-01 found
@@ -341,7 +446,10 @@ const HEADERS_BIN = join(HERE, "..", "node_modules", "@dustinedwards", "site-run
  */
 const STATEMENT = accessibilityStatement({
   siteName: "Carrel's public site",
-  contact: { href: "https://dustinedwards.info/contact", label: "the contact page on dustinedwards.info" },
+  contact: {
+    href: "https://dustinedwards.info/contact",
+    label: "the contact page on dustinedwards.info",
+  },
   date: "2026-11-01",
   capsomer: true,
   links: "marked",
@@ -353,13 +461,26 @@ const STATEMENT = accessibilityStatement({
  */
 export async function buildSite(outDir) {
   // Only an earlier build is deleted: a mistyped outDir must not take the working tree with it.
-  if (existsSync(outDir) && readdirSync(outDir).length > 0 && !existsSync(join(outDir, "site.css"))) {
+  if (
+    existsSync(outDir) &&
+    readdirSync(outDir).length > 0 &&
+    !existsSync(join(outDir, "site.css"))
+  ) {
     throw new Error(`${outDir} is not empty and holds no earlier build; refusing to delete it`);
   }
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
-  for (const name of readdirSync(join(HERE, "static"))) copyFileSync(join(HERE, "static", name), join(outDir, name));
-  execFileSync(process.execPath, [HEADERS_BIN, "--site", "carrel", "--out", join(outDir, "_headers"), "--header", "tdm-reservation: 1"]);
+  for (const name of readdirSync(join(HERE, "static")))
+    copyFileSync(join(HERE, "static", name), join(outDir, name));
+  execFileSync(process.execPath, [
+    HEADERS_BIN,
+    "--site",
+    "carrel",
+    "--out",
+    join(outDir, "_headers"),
+    "--header",
+    "tdm-reservation: 1",
+  ]);
   writeStyles(outDir);
   const theme = await bundle("theme.js", "iife");
   const site = await bundle("site.js", "es");
@@ -369,39 +490,71 @@ export async function buildSite(outDir) {
 
   writeFileSync(
     join(outDir, "index.html"),
-    documentHtml({
-      title: TITLE,
-      description: DESCRIPTION,
-      body: page(),
-    }, integrity),
+    documentHtml(
+      {
+        title: TITLE,
+        description: DESCRIPTION,
+        body: page(),
+      },
+      integrity,
+    ),
   );
   writeFileSync(
     join(outDir, "404.html"),
-    documentHtml({
-      title: "Not found: Carrel",
-      description: "There is no page at this address.",
-      index: false,
-      body: `<main id="main" tabindex="-1">\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer>${familyFooterHtml({ site: "carrel", statement: ACCESSIBILITY_PATH })}</footer>`,
-    }, integrity),
+    documentHtml(
+      {
+        title: "Not found: Carrel",
+        description: "There is no page at this address.",
+        index: false,
+        body: `<main id="main" tabindex="-1">\n<h1>Not found</h1>\n<p>There is no page at this address. Carrel is at <a href="/">carrel.dustinedwards.info</a>, and Desk, the signed-in app, at <a href="${DESK}" rel="nofollow">desk.dustinedwards.info</a>.</p>\n</main>\n<footer>${familyFooterHtml({ site: "carrel", statement: ACCESSIBILITY_PATH })}</footer>`,
+      },
+      integrity,
+    ),
   );
 
   writeFileSync(
     join(outDir, "accessibility.html"),
-    documentHtml({
-      title: `${STATEMENT.title}: Carrel`,
-      description: STATEMENT.description,
-      path: ACCESSIBILITY_PATH,
-      body: `<main id="main" tabindex="-1" class="statement">\n<h1>${esc(STATEMENT.title)}</h1>\n${STATEMENT.html}\n</main>\n<footer>${familyFooterHtml({ site: "carrel", statement: ACCESSIBILITY_PATH })}</footer>`,
-    }, integrity),
+    documentHtml(
+      {
+        title: `${STATEMENT.title}: Carrel`,
+        description: STATEMENT.description,
+        path: ACCESSIBILITY_PATH,
+        body: `<main id="main" tabindex="-1" class="statement">\n<h1>${esc(STATEMENT.title)}</h1>\n${STATEMENT.html}\n</main>\n<footer>${familyFooterHtml({ site: "carrel", statement: ACCESSIBILITY_PATH })}</footer>`,
+      },
+      integrity,
+    ),
   );
 
   mkdirSync(join(outDir, ".well-known"), { recursive: true });
-  writeFileSync(join(outDir, ".well-known", "security.txt"), securityTxt({ origin: ORIGIN, contact: CONTACT, expires: SECURITY_TXT_EXPIRES }));
-  writeFileSync(join(outDir, "sitemap.xml"), sitemapDocument([{ loc: `${ORIGIN}/` }, { loc: `${ORIGIN}${ACCESSIBILITY_PATH}` }]));
-  writeFileSync(join(outDir, "robots.txt"), robotsDocument({ origin: ORIGIN, notes: [`llms.txt: ${ORIGIN}/llms.txt`] }));
-  writeFileSync(join(outDir, "ai.txt"), aiTxt({ origin: ORIGIN, name: "Carrel", contact: CONTACT }));
+  writeFileSync(
+    join(outDir, ".well-known", "security.txt"),
+    securityTxt({ origin: ORIGIN, contact: CONTACT, expires: SECURITY_TXT_EXPIRES }),
+  );
+  writeFileSync(
+    join(outDir, "sitemap.xml"),
+    sitemapDocument([{ loc: `${ORIGIN}/` }, { loc: `${ORIGIN}${ACCESSIBILITY_PATH}` }]),
+  );
+  writeFileSync(
+    join(outDir, "robots.txt"),
+    robotsDocument({ origin: ORIGIN, notes: [`llms.txt: ${ORIGIN}/llms.txt`] }),
+  );
+  writeFileSync(
+    join(outDir, "ai.txt"),
+    aiTxt({ origin: ORIGIN, name: "Carrel", contact: CONTACT }),
+  );
   writeFileSync(join(outDir, "llms.txt"), LLMS);
-  writeFileSync(join(outDir, "site.webmanifest"), JSON.stringify(webManifest({ name: "Carrel", description: DESCRIPTION, themeColor: "#687603", backgroundColor: "#687603", lang: "en" })));
+  writeFileSync(
+    join(outDir, "site.webmanifest"),
+    JSON.stringify(
+      webManifest({
+        name: "Carrel",
+        description: DESCRIPTION,
+        themeColor: "#687603",
+        backgroundColor: "#687603",
+        lang: "en",
+      }),
+    ),
+  );
   writeFileSync(join(outDir, `${INDEXNOW_KEY}.txt`), INDEXNOW_KEY);
 
   /** @type {string[]} */
@@ -415,7 +568,10 @@ export async function buildSite(outDir) {
   };
   walk(outDir);
   const missing = PAGE_PRELOADS.links.filter(({ href }) => !files.includes(href.slice(1)));
-  if (missing.length) throw new Error(`preloads name files the build did not write: ${missing.map(({ href }) => href).join(", ")}`);
+  if (missing.length)
+    throw new Error(
+      `preloads name files the build did not write: ${missing.map(({ href }) => href).join(", ")}`,
+    );
   return { files: files.sort() };
 }
 

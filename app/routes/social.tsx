@@ -39,7 +39,12 @@ export async function loader({ context }: Route.LoaderArgs) {
   return {
     accounts,
     projects: (await visibleProjects(env.DB, viewer)).map((p) => ({ id: p.id, name: p.name })),
-    posts: posts.map(({ post, ...rest }) => ({ ...post, ...rest, lint: JSON.parse(post.lint) as string[], costMills: rest.platform === "x" ? xCostMills(post.text) : 0 })),
+    posts: posts.map(({ post, ...rest }) => ({
+      ...post,
+      ...rest,
+      lint: JSON.parse(post.lint) as string[],
+      costMills: rest.platform === "x" ? xCostMills(post.text) : 0,
+    })),
     runs,
     routine: "missing" in routine ? routine.missing : null,
   };
@@ -78,7 +83,10 @@ export async function action({ request, context }: Route.ActionArgs) {
     case "acknowledge":
       return decidePost(env.DB, viewer, id, { action: intent });
     case "edit":
-      return decidePost(env.DB, viewer, id, { action: "edit", text: String(form.get("text") ?? "") });
+      return decidePost(env.DB, viewer, id, {
+        action: "edit",
+        text: String(form.get("text") ?? ""),
+      });
     default:
       throw new Response("Bad request", { status: 400 });
   }
@@ -101,14 +109,23 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
   const { accounts, projects, posts, runs, routine } = loaderData;
   const fetcher = useFetcher();
   const busy = useNavigation().state !== "idle";
-  const [rejecting, setRejecting] = useState<{ post: Post; opener: HTMLElement | null } | null>(null);
+  const [rejecting, setRejecting] = useState<{ post: Post; opener: HTMLElement | null } | null>(
+    null,
+  );
   const open = posts.filter((p) => p.status === "awaiting" || p.status === "held");
-  const unseen = posts.filter((p) => p.source === "template" && p.status === "sent" && !p.acknowledgedAt);
+  const unseen = posts.filter(
+    (p) => p.source === "template" && p.status === "sent" && !p.acknowledgedAt,
+  );
   return (
     <div className="app-page">
-      <PageHead title="Social" lead="Posts only announce pieces that went live. Carrel never replies or messages." />
+      <PageHead
+        title="Social"
+        lead="Posts only announce pieces that went live. Carrel never replies or messages."
+      />
 
-      {actionData && "error" in actionData && actionData.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
+      {actionData && "error" in actionData && actionData.error ? (
+        <Alert tone="crit">{actionData.error}</Alert>
+      ) : null}
       {routine ? (
         <Banner tone="warn" title="The drafting routine is not set up">
           {routine} A piece with no pre-drafted post gets the template.
@@ -153,7 +170,9 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                   <span className="cap-muted">
                     {p.source}
                     {p.title ? ` · for "${p.title}"` : ""}
-                    {p.platform === "x" ? ` · $${(p.costMills / 1000).toFixed(3)} through the API` : ""}
+                    {p.platform === "x"
+                      ? ` · $${(p.costMills / 1000).toFixed(3)} through the API`
+                      : ""}
                   </span>
                 </p>
                 {p.lint.length > 0 ? (
@@ -170,10 +189,22 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                   <label className="cap-sr-only" htmlFor={`post-${p.id}`}>
                     Post text for {p.accountKey}
                   </label>
-                  <textarea className="cap-input" id={`post-${p.id}`} name="text" defaultValue={p.text} rows={3} />
+                  <textarea
+                    className="cap-input"
+                    id={`post-${p.id}`}
+                    name="text"
+                    defaultValue={p.text}
+                    rows={3}
+                  />
                   <div className="app-actions">
                     {p.status === "awaiting" ? (
-                      <Button type="submit" name="intent" value="approve" variant="primary" pending={busy}>
+                      <Button
+                        type="submit"
+                        name="intent"
+                        value="approve"
+                        variant="primary"
+                        pending={busy}
+                      >
                         Approve
                       </Button>
                     ) : null}
@@ -213,10 +244,18 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
         ) : (
           <div className="app-accounts">
             {accounts.map((a) => (
-              <Form key={a.id} method="post" className="app-account app-form" aria-labelledby={`account-${a.id}`}>
+              <Form
+                key={a.id}
+                method="post"
+                className="app-account app-form"
+                aria-labelledby={`account-${a.id}`}
+              >
                 <input type="hidden" name="id" value={a.id} />
                 <h3 id={`account-${a.id}`}>
-                  {a.name} <span className="cap-muted">{a.platform} · @{a.handle} · {a.kind}</span>
+                  {a.name}{" "}
+                  <span className="cap-muted">
+                    {a.platform} · @{a.handle} · {a.kind}
+                  </span>
                 </h3>
                 <div className="app-fields">
                   <Check name="enabled" defaultChecked={a.enabled} label="On" />
@@ -232,19 +271,43 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                     />
                   </Field>
                   <Field label="Posts a day">
-                    <input className="cap-input" name="dailyCap" type="number" min={0} max={20} defaultValue={a.dailyCap} />
+                    <input
+                      className="cap-input"
+                      name="dailyCap"
+                      type="number"
+                      min={0}
+                      max={20}
+                      defaultValue={a.dailyCap}
+                    />
                   </Field>
                   {a.platform === "x" ? (
                     <Field label="X budget a month, $">
-                      <input className="cap-input" name="monthlyBudget" type="number" min={0} step="0.01" defaultValue={(a.monthlyBudgetMills / 1000).toFixed(2)} />
+                      <input
+                        className="cap-input"
+                        name="monthlyBudget"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        defaultValue={(a.monthlyBudgetMills / 1000).toFixed(2)}
+                      />
                     </Field>
                   ) : null}
                 </div>
                 <Field label={`Template, the last resort ({title}, {summary}, {link})`}>
-                  <input className="cap-input" name="template" defaultValue={a.template} placeholder="New: {title}. {summary} {link}" />
+                  <input
+                    className="cap-input"
+                    name="template"
+                    defaultValue={a.template}
+                    placeholder="New: {title}. {summary} {link}"
+                  />
                 </Field>
                 <Field label="Voice guide, for whoever drafts">
-                  <textarea className="cap-input" name="voiceGuide" defaultValue={a.voiceGuide} rows={2} />
+                  <textarea
+                    className="cap-input"
+                    name="voiceGuide"
+                    defaultValue={a.voiceGuide}
+                    rows={2}
+                  />
                 </Field>
                 <div className="app-actions">
                   <Button type="submit" name="intent" value="switches" pending={busy}>
@@ -255,17 +318,40 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
             ))}
           </div>
         )}
-        <Disclosure summary="Add an account" defaultOpen={actionData !== undefined && "error" in actionData && Boolean(actionData.error)}>
+        <Disclosure
+          summary="Add an account"
+          defaultOpen={
+            actionData !== undefined && "error" in actionData && Boolean(actionData.error)
+          }
+        >
           <Form method="post" className="app-form">
             <div className="app-fields">
               <Field label="Key" required>
-                <input className="cap-input" name="key" required placeholder="example-bluesky" autoComplete="off" />
+                <input
+                  className="cap-input"
+                  name="key"
+                  required
+                  placeholder="example-bluesky"
+                  autoComplete="off"
+                />
               </Field>
               <Field label="Name" required>
-                <input className="cap-input" name="name" required placeholder="Example Co" autoComplete="off" />
+                <input
+                  className="cap-input"
+                  name="name"
+                  required
+                  placeholder="Example Co"
+                  autoComplete="off"
+                />
               </Field>
               <Field label="Handle" required>
-                <input className="cap-input" name="handle" required placeholder="example.bsky.social" autoComplete="off" />
+                <input
+                  className="cap-input"
+                  name="handle"
+                  required
+                  placeholder="example.bsky.social"
+                  autoComplete="off"
+                />
               </Field>
               <Field label="Platform">
                 <Select
@@ -286,12 +372,24 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                 />
               </Field>
               <Field label="Announces">
-                <Select name="projectId" options={[{ value: "", label: "(no project yet)" }, ...projects.map((p) => ({ value: String(p.id), label: p.name }))]} />
+                <Select
+                  name="projectId"
+                  options={[
+                    { value: "", label: "(no project yet)" },
+                    ...projects.map((p) => ({ value: String(p.id), label: p.name })),
+                  ]}
+                />
               </Field>
             </div>
             <p className="cap-muted app-note">It starts off, in approval mode.</p>
             <div className="app-actions">
-              <Button type="submit" name="intent" value="add-account" variant="primary" pending={busy}>
+              <Button
+                type="submit"
+                name="intent"
+                value="add-account"
+                variant="primary"
+                pending={busy}
+              >
                 Add
               </Button>
             </div>
@@ -306,7 +404,12 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
           </Empty>
         ) : (
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region takes focus so a keyboard can scroll it (axe scrollable-region-focusable)
-          <div className="cap-table-wrap" role="region" aria-labelledby="record-caption" tabIndex={0}>
+          <div
+            className="cap-table-wrap"
+            role="region"
+            aria-labelledby="record-caption"
+            tabIndex={0}
+          >
             <table className="cap-table">
               <caption id="record-caption" className="cap-sr-only">
                 Every post
@@ -330,8 +433,22 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                       </span>
                     </th>
                     <td>
-                      <Pill variant={p.status === "failed" ? "destructive" : p.status === "sent" || p.status === "by-hand" ? "outline" : "secondary"}>{STATUS[p.status]}</Pill>
-                      {p.sentAt ? <span className="cap-table-aside">{p.sentAt.slice(0, 16).replace("T", " ")}</span> : null}
+                      <Pill
+                        variant={
+                          p.status === "failed"
+                            ? "destructive"
+                            : p.status === "sent" || p.status === "by-hand"
+                              ? "outline"
+                              : "secondary"
+                        }
+                      >
+                        {STATUS[p.status]}
+                      </Pill>
+                      {p.sentAt ? (
+                        <span className="cap-table-aside">
+                          {p.sentAt.slice(0, 16).replace("T", " ")}
+                        </span>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -347,13 +464,25 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
             {runs.map((r) => (
               <Row
                 key={r.id}
-                status={r.status === "failed" ? <Status tone="crit">Failed</Status> : <Status tone="ok">Fired</Status>}
+                status={
+                  r.status === "failed" ? (
+                    <Status tone="crit">Failed</Status>
+                  ) : (
+                    <Status tone="ok">Fired</Status>
+                  )
+                }
                 title={`${r.kind} run, ${(JSON.parse(r.events) as number[]).length} items`}
                 detail={r.error ?? undefined}
                 meta={<Time at={r.requestedAt} />}
                 actions={
                   r.sessionUrl ? (
-                    <a className="cap-btn" data-size="sm" href={r.sessionUrl} target="_blank" rel="noreferrer">
+                    <a
+                      className="cap-btn"
+                      data-size="sm"
+                      href={r.sessionUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       Session<span className="cap-sr-only"> (opens in a new tab)</span>
                     </a>
                   ) : undefined
@@ -373,7 +502,10 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
         returnTo={rejecting?.opener}
         perform={async () => {
           if (!rejecting) return;
-          await fetcher.submit({ intent: "reject", id: String(rejecting.post.id) }, { method: "post" });
+          await fetcher.submit(
+            { intent: "reject", id: String(rejecting.post.id) },
+            { method: "post" },
+          );
         }}
         onClose={() => setRejecting(null)}
       />

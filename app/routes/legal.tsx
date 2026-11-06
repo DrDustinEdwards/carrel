@@ -64,7 +64,12 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     }),
   );
   return {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
+    project: {
+      slug: project.slug,
+      name: project.name,
+      site: siteEntry(project.site).name,
+      mentions: can(project.role, "read_mentions"),
+    },
     canManage: can(project.role, "manage"),
     siteError,
     pages,
@@ -84,8 +89,14 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     return { saved: null, error: null, deleted: key };
   }
   if (intent !== "save-section") throw new Response("Bad request", { status: 400 });
-  const result = await saveSection(env.DB, project, viewer, { key, title: String(form.get("title") ?? ""), body: String(form.get("body") ?? "") });
-  return result.ok ? { saved: key, error: null, deleted: null } : { saved: null, error: result.message, deleted: null };
+  const result = await saveSection(env.DB, project, viewer, {
+    key,
+    title: String(form.get("title") ?? ""),
+    body: String(form.get("body") ?? ""),
+  });
+  return result.ok
+    ? { saved: key, error: null, deleted: null }
+    : { saved: null, error: result.message, deleted: null };
 }
 
 export default function Legal({ loaderData, actionData }: Route.ComponentProps) {
@@ -95,7 +106,10 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
 
   return (
     <div className="app-page">
-      <PageHead title={project.name} lead={`The privacy and terms pages on ${project.site}, and the text every site shares.`} />
+      <PageHead
+        title={project.name}
+        lead={`The privacy and terms pages on ${project.site}, and the text every site shares.`}
+      />
       <ProjectTabs slug={project.slug} current="legal" mentions={project.mentions} />
 
       {siteError ? (
@@ -106,14 +120,25 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
       {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
       {actionData?.saved ? (
         <Banner tone="ok">
-          Saved "{actionData.saved}". A page picks up the new wording when it is next saved to the site, and its date changes when the Owner publishes it.
+          Saved "{actionData.saved}". A page picks up the new wording when it is next saved to the
+          site, and its date changes when the Owner publishes it.
         </Banner>
       ) : null}
-      {actionData?.deleted ? <Banner tone="ok">Removed "{actionData.deleted}". A page that still names it is refused at publish until the marker is removed.</Banner> : null}
+      {actionData?.deleted ? (
+        <Banner tone="ok">
+          Removed "{actionData.deleted}". A page that still names it is refused at publish until the
+          marker is removed.
+        </Banner>
+      ) : null}
 
       <Panel title="Pages" count={pages.length} src={`${project.site}'s content`} flush>
         {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region takes focus so a keyboard can scroll it (axe scrollable-region-focusable) */}
-        <div className="cap-table-wrap" role="region" aria-labelledby="legal-pages-caption" tabIndex={0}>
+        <div
+          className="cap-table-wrap"
+          role="region"
+          aria-labelledby="legal-pages-caption"
+          tabIndex={0}
+        >
           <table className="cap-table">
             <caption id="legal-pages-caption" className="cap-sr-only">
               Legal pages on {project.site}
@@ -131,13 +156,20 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
                 page.setUp ? (
                   <tr key={page.id}>
                     <th scope="row">
-                      <Link className="cap-table-open" to={`/p/${project.slug}/e/${encodeURIComponent(page.id)}`}>
+                      <Link
+                        className="cap-table-open"
+                        to={`/p/${project.slug}/e/${encodeURIComponent(page.id)}`}
+                      >
                         {page.title}
                       </Link>
                       <span className="cap-table-aside">{page.id}</span>
                     </th>
                     <td>
-                      {page.status === "published" ? <Pill tone="ok">Published</Pill> : <Pill variant="secondary">Draft</Pill>}
+                      {page.status === "published" ? (
+                        <Pill tone="ok">Published</Pill>
+                      ) : (
+                        <Pill variant="secondary">Draft</Pill>
+                      )}
                       {page.draftBanner ? <Pill tone="warn">{BANNER_WORD} banner on</Pill> : null}
                     </td>
                     <td>{page.lastUpdated || "Not set"}</td>
@@ -160,8 +192,10 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
 
       <Panel title="Shared sections" count={sections.length} src="Carrel, used by every site">
         <p>
-          Write a part once and every site's page can carry it. Put <code>{"{{site_name}}"}</code>, <code>{"{{operator_name}}"}</code>, <code>{"{{contact}}"}</code>,{" "}
-          <code>{"{{jurisdiction}}"}</code> or <code>{"{{data_held}}"}</code> in the text and each page fills in its own.
+          Write a part once and every site's page can carry it. Put <code>{"{{site_name}}"}</code>,{" "}
+          <code>{"{{operator_name}}"}</code>, <code>{"{{contact}}"}</code>,{" "}
+          <code>{"{{jurisdiction}}"}</code> or <code>{"{{data_held}}"}</code> in the text and each
+          page fills in its own.
         </p>
         {sections.length === 0 ? (
           <Empty kind="nothing-yet" title="No shared sections yet">
@@ -169,17 +203,38 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
           </Empty>
         ) : null}
         {sections.map((section) => (
-          <Form method="post" key={section.key} className="app-fm" aria-label={`Shared section ${section.key}`}>
+          <Form
+            method="post"
+            key={section.key}
+            className="app-fm"
+            aria-label={`Shared section ${section.key}`}
+          >
             <input type="hidden" name="key" value={section.key} />
             <Field label={`${section.key}: title`}>
-              <input className="cap-input" name="title" defaultValue={section.title} readOnly={!canManage} />
+              <input
+                className="cap-input"
+                name="title"
+                defaultValue={section.title}
+                readOnly={!canManage}
+              />
             </Field>
             <Field label="Text">
-              <textarea className="cap-input" name="body" rows={5} defaultValue={section.body} readOnly={!canManage} />
+              <textarea
+                className="cap-input"
+                name="body"
+                rows={5}
+                defaultValue={section.body}
+                readOnly={!canManage}
+              />
             </Field>
             {canManage ? (
               <div className="app-actions">
-                <Button type="submit" name="intent" value="save-section" pending={saving === section.key}>
+                <Button
+                  type="submit"
+                  name="intent"
+                  value="save-section"
+                  pending={saving === section.key}
+                >
                   Save section
                 </Button>
                 <Button type="submit" name="intent" value="delete-section" variant="danger">

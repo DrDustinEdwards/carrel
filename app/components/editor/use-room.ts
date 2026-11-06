@@ -10,7 +10,12 @@ import YProvider from "y-partyserver/provider";
 import * as Y from "yjs";
 
 import { patchMarkdown, readMeta, roomMarkdown, type Patched } from "~/lib/editor/collab";
-import type { ClientMessage, RoomComment, RoomPerson, ServerMessage } from "~/lib/editor/room-protocol";
+import type {
+  ClientMessage,
+  RoomComment,
+  RoomPerson,
+  ServerMessage,
+} from "~/lib/editor/room-protocol";
 
 export type RoomStatus = "connecting" | "connected" | "offline";
 
@@ -82,7 +87,8 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
       setSynced(true);
       take();
     };
-    const onStatus = ({ status: s }: { status: string }) => setStatus(s === "connected" ? "connected" : s === "connecting" ? "connecting" : "offline");
+    const onStatus = ({ status: s }: { status: string }) =>
+      setStatus(s === "connected" ? "connected" : s === "connecting" ? "connecting" : "offline");
     const onMessage = (raw: string) => {
       let message: ServerMessage;
       try {
@@ -96,7 +102,8 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
         const done = flushes.current.waiting.get(message.n);
         flushes.current.waiting.delete(message.n);
         done?.();
-      } else if (message.t === "replaced") setNotice(`${message.by} replaced the text for everyone.`);
+      } else if (message.t === "replaced")
+        setNotice(`${message.by} replaced the text for everyone.`);
       else if (message.t === "error") setNotice(message.message);
       else if (message.t === "refused") {
         setNotice(`That change was not taken: ${message.reason}`);
@@ -115,7 +122,11 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
     };
   }, [path, generation]);
 
-  const send = useCallback((message: Exclude<ClientMessage, { t: "flush" }>) => live?.provider.sendMessage(JSON.stringify(message)), [live]);
+  const send = useCallback(
+    (message: Exclude<ClientMessage, { t: "flush" }>) =>
+      live?.provider.sendMessage(JSON.stringify(message)),
+    [live],
+  );
   const flush = useCallback(
     () =>
       new Promise<void>((resolve) => {
@@ -130,15 +141,58 @@ export function useRoom(path: string, initial: string, initiallyUnsaved: boolean
       }),
     [live],
   );
-  const setSource = useCallback((markdown: string): Patched => (live ? patchMarkdown(live.doc, markdown) : { ok: true, changed: false }), [live]);
+  const setSource = useCallback(
+    (markdown: string): Patched =>
+      live ? patchMarkdown(live.doc, markdown) : { ok: true, changed: false },
+    [live],
+  );
 
   return useMemo(
     () =>
       live
-        ? { doc: live.doc, provider: live.provider, synced, status, source, unsaved, people, comments, notice, generation, send, flush, setSource }
+        ? {
+            doc: live.doc,
+            provider: live.provider,
+            synced,
+            status,
+            source,
+            unsaved,
+            people,
+            comments,
+            notice,
+            generation,
+            send,
+            flush,
+            setSource,
+          }
         : // Before the page is in the browser: the text the server read, and nothing live yet.
-          ({ synced: false, status: "connecting", source, unsaved, people, comments, notice, generation, send, flush, setSource } as unknown as Room),
-    [live, synced, status, source, unsaved, people, comments, notice, generation, send, flush, setSource],
+          ({
+            synced: false,
+            status: "connecting",
+            source,
+            unsaved,
+            people,
+            comments,
+            notice,
+            generation,
+            send,
+            flush,
+            setSource,
+          } as unknown as Room),
+    [
+      live,
+      synced,
+      status,
+      source,
+      unsaved,
+      people,
+      comments,
+      notice,
+      generation,
+      send,
+      flush,
+      setSource,
+    ],
   );
 }
 

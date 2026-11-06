@@ -30,7 +30,11 @@ async function preview(email: string, env: Env) {
   const context = await contextFor(email, env);
   const request = new Request(`https://carrel.test/p/${SLUG}/e/post-one/preview`);
   try {
-    return (await previewLoader({ request, params: { project: SLUG, item: "post-one" }, context } as never)) as Response;
+    return (await previewLoader({
+      request,
+      params: { project: SLUG, item: "post-one" },
+      context,
+    } as never)) as Response;
   } catch (thrown) {
     if (thrown instanceof Response) return thrown;
     throw thrown;
@@ -41,11 +45,19 @@ async function post(email: string, env: Env, fields: Record<string, string>) {
   const body = new FormData();
   for (const [k, v] of Object.entries(fields)) body.set(k, v);
   const request = new Request(`https://carrel.test/p/${SLUG}/e/post-one`, { method: "POST", body });
-  return editorAction({ request, params: { project: SLUG, item: "post-one" }, context: await contextFor(email, env) } as never);
+  return editorAction({
+    request,
+    params: { project: SLUG, item: "post-one" },
+    context: await contextFor(email, env),
+  } as never);
 }
 
 async function seedPost(site: ReturnType<typeof fakeSite>) {
-  const saved = await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Site copy\n---\nOn the site.\n", expectedVersion: null, changeId: "seed" });
+  const saved = await site.adapter.content.saveDraft("post-one", {
+    source: "---\ntitle: Site copy\n---\nOn the site.\n",
+    expectedVersion: null,
+    changeId: "seed",
+  });
   return saved.version;
 }
 
@@ -57,7 +69,10 @@ describe("the preview", () => {
     const version = await seedPost(site);
     const editor = await viewerFor("editor@test.invalid");
     const project = await requireSiteProject(env.DB, editor, SLUG, "edit");
-    await autosave(env.DB, project, editor, "post-one", { source: "---\ntitle: Editor secret\n---\nx\n", baseVersion: version });
+    await autosave(env.DB, project, editor, "post-one", {
+      source: "---\ntitle: Editor secret\n---\nx\n",
+      baseVersion: version,
+    });
 
     const html = await (await preview("reader@test.invalid", env)).text();
     expect(html).toContain("Site copy");
@@ -82,13 +97,20 @@ describe("publishing from the editor", () => {
     vi.stubGlobal("fetch", site.fetch);
     const env = connectedEnv();
     await seedPost(site);
-    await editorLoader({ request: new Request(`https://carrel.test/p/${SLUG}/e/post-one`), params: { project: SLUG, item: "post-one" }, context: await contextFor("owner@test.invalid", env) } as never);
+    await editorLoader({
+      request: new Request(`https://carrel.test/p/${SLUG}/e/post-one`),
+      params: { project: SLUG, item: "post-one" },
+      context: await contextFor("owner@test.invalid", env),
+    } as never);
 
     const ask = await post("owner@test.invalid", env, { intent: "publish" });
     expect(ask).toEqual({ intent: "publish", needsConfirm: true });
     expect(site.adapter.store.get("post-one")!.doc.status).toBe("draft");
 
-    const done = await post("owner@test.invalid", env, { intent: "publish", confirm: "first-publish" });
+    const done = await post("owner@test.invalid", env, {
+      intent: "publish",
+      confirm: "first-publish",
+    });
     expect(done).toMatchObject({ intent: "write", outcome: { ok: true, status: "published" } });
   });
 

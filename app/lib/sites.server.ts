@@ -5,7 +5,14 @@ import { createSiteClient, SiteApiError, type SiteClient } from "@dustinedwards/
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
-export type SiteId = "dustinedwards" | "germomics" | "foxhound" | "foxing" | "txasm" | "julieedwards" | "bsw";
+export type SiteId =
+  | "dustinedwards"
+  | "germomics"
+  | "foxhound"
+  | "foxing"
+  | "txasm"
+  | "julieedwards"
+  | "bsw";
 
 type SiteEntry = {
   name: string;
@@ -35,8 +42,20 @@ const SITES: Record<SiteId, SiteEntry> = {
     keepPublic: ["page.terms"],
     // The shape of content/posts/*.md on the site: draft until the Owner publishes.
     newSource: (slug, today) =>
-      ["---", 'title: ""', `slug: ${slug}`, 'description: ""', `date: ${today}`, "tags: []", "draft: true", "---", "", ""].join("\n"),
-    searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_DUSTINEDWARDS?.trim() || "sc-domain:dustinedwards.info",
+      [
+        "---",
+        'title: ""',
+        `slug: ${slug}`,
+        'description: ""',
+        `date: ${today}`,
+        "tags: []",
+        "draft: true",
+        "---",
+        "",
+        "",
+      ].join("\n"),
+    searchConsoleProperty: (env) =>
+      env.SEARCH_CONSOLE_PROPERTY_DUSTINEDWARDS?.trim() || "sc-domain:dustinedwards.info",
   },
   germomics: {
     name: "Germomics",
@@ -47,7 +66,10 @@ const SITES: Record<SiteId, SiteEntry> = {
     // The shape of germomics's app/lib/carrel/source.ts: JSON front matter, then the body in Markdown,
     // rendered by Prelum. The id is the slug, and an item the site has not seen is created a draft.
     newSource: () => ["---", 'title: ""', 'excerpt: ""', "tags: []", "---", ""].join("\n"),
-    searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_GERMOMICS?: string }).SEARCH_CONSOLE_PROPERTY_GERMOMICS?.trim() || "sc-domain:germomics.com",
+    searchConsoleProperty: (env) =>
+      (
+        env as { SEARCH_CONSOLE_PROPERTY_GERMOMICS?: string }
+      ).SEARCH_CONSOLE_PROPERTY_GERMOMICS?.trim() || "sc-domain:germomics.com",
   },
   foxhound: {
     name: "Foxhound",
@@ -58,8 +80,21 @@ const SITES: Record<SiteId, SiteEntry> = {
     // The shape of foxhound's app/lib/carrel/source.ts: one JSON value per front matter line, then the
     // post's Markdown body. The slug is the address given here; the site refuses a later change to it.
     newSource: (slug) =>
-      ["---", 'title: ""', `slug: ${JSON.stringify(slug)}`, 'excerpt: ""', 'author: "Foxhound"', "tags: []", "featured: false", "---", ""].join("\n"),
-    searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_FOXHOUND?: string }).SEARCH_CONSOLE_PROPERTY_FOXHOUND?.trim() || "sc-domain:foxhoundapp.com",
+      [
+        "---",
+        'title: ""',
+        `slug: ${JSON.stringify(slug)}`,
+        'excerpt: ""',
+        'author: "Foxhound"',
+        "tags: []",
+        "featured: false",
+        "---",
+        "",
+      ].join("\n"),
+    searchConsoleProperty: (env) =>
+      (
+        env as { SEARCH_CONSOLE_PROPERTY_FOXHOUND?: string }
+      ).SEARCH_CONSOLE_PROPERTY_FOXHOUND?.trim() || "sc-domain:foxhoundapp.com",
   },
   foxing: {
     name: "Foxing",
@@ -70,8 +105,21 @@ const SITES: Record<SiteId, SiteEntry> = {
     // The shape of foxing's apps/web/app/lib/carrel/journal-source.ts for a Journal post: every field
     // as JSON, a blank line, then the Markdown body. The id is the slug; a new post is created a draft.
     newSource: () =>
-      ["---", 'title: ""', "excerpt: null", "cover_image_url: null", "cover_image_alt: null", "tags: []", "featured: false", "---", "", ""].join("\n"),
-    searchConsoleProperty: (env) => (env as { SEARCH_CONSOLE_PROPERTY_FOXING?: string }).SEARCH_CONSOLE_PROPERTY_FOXING?.trim() || "sc-domain:foxing.app",
+      [
+        "---",
+        'title: ""',
+        "excerpt: null",
+        "cover_image_url: null",
+        "cover_image_alt: null",
+        "tags: []",
+        "featured: false",
+        "---",
+        "",
+        "",
+      ].join("\n"),
+    searchConsoleProperty: (env) =>
+      (env as { SEARCH_CONSOLE_PROPERTY_FOXING?: string }).SEARCH_CONSOLE_PROPERTY_FOXING?.trim() ||
+      "sc-domain:foxing.app",
   },
   txasm: {
     name: "Texas Branch ASM",
@@ -79,7 +127,8 @@ const SITES: Record<SiteId, SiteEntry> = {
     key: (env) => env.SITE_TXASM_KEY,
     keyName: "SITE_TXASM_KEY",
     keepPublic: ["home", "award-nominations"],
-    searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_TXASM?.trim() || "sc-domain:txasm.org",
+    searchConsoleProperty: (env) =>
+      env.SEARCH_CONSOLE_PROPERTY_TXASM?.trim() || "sc-domain:txasm.org",
   },
   julieedwards: {
     name: "julieedwards.info",
@@ -87,7 +136,8 @@ const SITES: Record<SiteId, SiteEntry> = {
     key: (env) => env.SITE_JULIEEDWARDS_KEY,
     keyName: "SITE_JULIEEDWARDS_KEY",
     keepPublic: ["profile", "priorities", "about", "experience", "contact", "site"],
-    searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_JULIEEDWARDS?.trim() || "sc-domain:julieedwards.info",
+    searchConsoleProperty: (env) =>
+      env.SEARCH_CONSOLE_PROPERTY_JULIEEDWARDS?.trim() || "sc-domain:julieedwards.info",
   },
   bsw: {
     name: "BioScience Writers",
@@ -97,7 +147,8 @@ const SITES: Record<SiteId, SiteEntry> = {
     // Its pages are code in its own repository, so the site lists no items: Carrel reaches it for its media library.
     keepPublic: [],
     // A URL-prefix property until the site has its own domain (it answers noindex until then).
-    searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_BSW?.trim() || "https://bsw.dustin-edwards.workers.dev/",
+    searchConsoleProperty: (env) =>
+      env.SEARCH_CONSOLE_PROPERTY_BSW?.trim() || "https://bsw.dustin-edwards.workers.dev/",
   },
 };
 
@@ -126,13 +177,19 @@ export function siteConnection(env: Env, id: SiteId): SiteConnection {
   const origin = entry.origin(env)?.trim() ?? "";
   if (!key) return { state: "not-connected", detail: `No ${entry.keyName} set.` };
   if (key.length < MIN_KEY_LENGTH) {
-    return { state: "misconfigured", detail: `${entry.keyName} is shorter than ${MIN_KEY_LENGTH} characters.` };
+    return {
+      state: "misconfigured",
+      detail: `${entry.keyName} is shorter than ${MIN_KEY_LENGTH} characters.`,
+    };
   }
   let url: URL;
   try {
     url = new URL(origin);
   } catch {
-    return { state: "misconfigured", detail: `The origin for ${entry.name} is missing or not a URL.` };
+    return {
+      state: "misconfigured",
+      detail: `The origin for ${entry.name} is missing or not a URL.`,
+    };
   }
   if (url.protocol !== "https:") {
     return { state: "misconfigured", detail: `The origin for ${entry.name} is not https.` };
@@ -174,12 +231,19 @@ export class SiteNotConnected extends Error {
 export function siteClient(env: Env, id: SiteId, fetcher?: typeof fetch): SiteClient {
   const connection = siteConnection(env, id);
   if (connection.state !== "connected") throw new SiteNotConnected(connection.detail);
-  return createSiteClient({ baseUrl: connection.origin, key: connection.key, fetch: fetcher ?? timedFetch });
+  return createSiteClient({
+    baseUrl: connection.origin,
+    key: connection.key,
+    fetch: fetcher ?? timedFetch,
+  });
 }
 
 /** A site that is not connected or cannot be reached, said plainly instead of a crash. null for anything else. */
 export function siteUnreachable(error: unknown): string | null {
   if (error instanceof SiteNotConnected) return `This site is not connected yet: ${error.detail}`;
-  if (error instanceof SiteApiError) return error.body ? `The site refused: ${error.body.message}` : `The site answered ${error.status}.`;
+  if (error instanceof SiteApiError)
+    return error.body
+      ? `The site refused: ${error.body.message}`
+      : `The site answered ${error.status}.`;
   return null;
 }

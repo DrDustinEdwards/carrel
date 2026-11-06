@@ -43,15 +43,32 @@ export async function loader({ params, context, request }: Route.LoaderArgs) {
   const env = getEnv(context);
   const days = Number(windowOf(new URL(request.url)));
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read");
-  const head = { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") };
+  const head = {
+    slug: project.slug,
+    name: project.name,
+    site: siteEntry(project.site).name,
+    mentions: can(project.role, "read_mentions"),
+  };
   try {
     const { rows } = await siteClient(env, project.site).insight.notFound({ days });
     return { project: head, days, rows, reason: null };
   } catch (error) {
-    if (error instanceof SiteNotConnected) return { project: head, days, rows: [], reason: error.detail };
-    if (error instanceof SiteApiError && error.status === 501) return { project: head, days, rows: [], reason: "This site does not report its 404s to Carrel yet." };
+    if (error instanceof SiteNotConnected)
+      return { project: head, days, rows: [], reason: error.detail };
+    if (error instanceof SiteApiError && error.status === 501)
+      return {
+        project: head,
+        days,
+        rows: [],
+        reason: "This site does not report its 404s to Carrel yet.",
+      };
     console.error(JSON.stringify({ notFound: "report-failed", error: String(error) }));
-    return { project: head, days, rows: [], reason: "The site did not answer, so its 404s cannot be listed. Try again in a moment." };
+    return {
+      project: head,
+      days,
+      rows: [],
+      reason: "The site did not answer, so its 404s cannot be listed. Try again in a moment.",
+    };
   }
 }
 
@@ -62,7 +79,10 @@ export default function ProjectNotFound({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="app-page">
-      <PageHead title={project.name} lead={`Paths on ${project.site} that answered 404 in the last ${days} days, and who linked to them.`} />
+      <PageHead
+        title={project.name}
+        lead={`Paths on ${project.site} that answered 404 in the last ${days} days, and who linked to them.`}
+      />
 
       <ProjectTabs slug={project.slug} current="not-found" mentions={project.mentions} />
 
@@ -75,7 +95,16 @@ export default function ProjectNotFound({ loaderData }: Route.ComponentProps) {
           title="404s"
           count={rows.length}
           src={`Last ${days} days`}
-          actions={<Segmented legend="Period" hideLegend size="sm" value={String(days) as Window} onChange={choose} options={WINDOWS.map((w) => ({ value: w, label: `${w} days` }))} />}
+          actions={
+            <Segmented
+              legend="Period"
+              hideLegend
+              size="sm"
+              value={String(days) as Window}
+              onChange={choose}
+              options={WINDOWS.map((w) => ({ value: w, label: `${w} days` }))}
+            />
+          }
           flush
         >
           {rows.length === 0 ? (

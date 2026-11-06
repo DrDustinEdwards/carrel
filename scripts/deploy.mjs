@@ -32,11 +32,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = process.env.CARREL_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), "..");
-const wrangler = process.env.WRANGLER_ENTRY ?? join(root, "node_modules", "wrangler", "bin", "wrangler.js");
-const build = process.env.BUILD_ENTRY ?? join(root, "node_modules", "@react-router", "dev", "bin.cjs");
+const wrangler =
+  process.env.WRANGLER_ENTRY ?? join(root, "node_modules", "wrangler", "bin", "wrangler.js");
+const build =
+  process.env.BUILD_ENTRY ?? join(root, "node_modules", "@react-router", "dev", "bin.cjs");
 const buildArgs = process.env.BUILD_ENTRY ? [] : ["build"];
-const headers = process.env.HEADERS_ENTRY ?? join(root, "node_modules", "@dustinedwards", "site-runtime", "bin", "site-runtime-headers.mjs");
-const migrations = process.env.MIGRATIONS_ENTRY ?? join(root, "node_modules", "@dustinedwards", "devkit", "bin", "migrations.mjs");
+const headers =
+  process.env.HEADERS_ENTRY ??
+  join(root, "node_modules", "@dustinedwards", "site-runtime", "bin", "site-runtime-headers.mjs");
+const migrations =
+  process.env.MIGRATIONS_ENTRY ??
+  join(root, "node_modules", "@dustinedwards", "devkit", "bin", "migrations.mjs");
 
 const ZERO_D1 = "00000000-0000-0000-0000-000000000000";
 const ZERO_KV = "00000000000000000000000000000000";
@@ -76,7 +82,8 @@ function run(entry, args, opts = {}) {
 /** @param {string} label @param {string} entry @param {string[]} args @param {{ quiet?: boolean }} [opts] */
 function must(label, entry, args, opts) {
   const result = run(entry, args, opts);
-  if (result.status !== 0) fail(`${label} failed (exit ${result.status}). Stopping; nothing after it ran.`);
+  if (result.status !== 0)
+    fail(`${label} failed (exit ${result.status}). Stopping; nothing after it ran.`);
   return result;
 }
 
@@ -84,11 +91,16 @@ function must(label, entry, args, opts) {
 const d1Id = process.env.CARREL_D1_DATABASE_ID ?? "";
 const kvId = process.env.CARREL_KV_OAUTH_ID ?? "";
 const alertEmail = process.env.CARREL_ALERT_EMAIL ?? "";
-if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(d1Id) || d1Id === ZERO_D1) {
+if (
+  !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(d1Id) ||
+  d1Id === ZERO_D1
+) {
   fail("CARREL_D1_DATABASE_ID is missing, not a UUID, or the placeholder. Refusing to deploy.");
 }
 if (!/^[0-9a-f]{32}$/.test(kvId) || kvId === ZERO_KV) {
-  fail("CARREL_KV_OAUTH_ID is missing, not 32 hex characters, or the placeholder. Refusing to deploy.");
+  fail(
+    "CARREL_KV_OAUTH_ID is missing, not 32 hex characters, or the placeholder. Refusing to deploy.",
+  );
 }
 if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(alertEmail) || /@example\.com$/i.test(alertEmail)) {
   fail("CARREL_ALERT_EMAIL is missing or the placeholder. Refusing to deploy.");
@@ -100,20 +112,27 @@ const configPath = join(root, "wrangler.jsonc");
 if (!existsSync(examplePath)) fail("wrangler.jsonc.example is missing.");
 const example = readFileSync(examplePath, "utf8");
 if (existsSync(configPath) && readFileSync(configPath, "utf8") !== example) {
-  fail("wrangler.jsonc already exists and is not the placeholder copy. Refusing to overwrite a real config.");
+  fail(
+    "wrangler.jsonc already exists and is not the placeholder copy. Refusing to overwrite a real config.",
+  );
 }
 
 /** Replaces `from` with `to`, which must occur exactly once in the text. @param {string} text @param {string} from @param {string} to */
 function replaceOnce(text, from, to) {
   const parts = text.split(from);
-  if (parts.length !== 2) fail(`the example has ${parts.length - 1} copies of ${JSON.stringify(from)}, expected 1.`);
+  if (parts.length !== 2)
+    fail(`the example has ${parts.length - 1} copies of ${JSON.stringify(from)}, expected 1.`);
   return parts.join(to);
 }
 
 let rendered = example;
 rendered = replaceOnce(rendered, `"database_id": "${ZERO_D1}"`, `"database_id": "${d1Id}"`);
 rendered = replaceOnce(rendered, `"id": "${ZERO_KV}"`, `"id": "${kvId}"`);
-rendered = replaceOnce(rendered, `"ALERT_EMAIL": "alerts@example.com"`, `"ALERT_EMAIL": ${JSON.stringify(alertEmail)}`);
+rendered = replaceOnce(
+  rendered,
+  `"ALERT_EMAIL": "alerts@example.com"`,
+  `"ALERT_EMAIL": ${JSON.stringify(alertEmail)}`,
+);
 // The routes block: the lines from `// "routes": [` to `// ],`, with their comment marker removed.
 const lines = rendered.split("\n");
 const start = lines.findIndex((l) => l.trim() === '// "routes": [');
@@ -139,9 +158,13 @@ try {
 }
 const d1Match = databases.filter((d) => d.name === D1_NAME);
 if (d1Match.length !== 1 || d1Match[0].uuid !== d1Id) {
-  fail(`the D1 database named "${D1_NAME}" does not have the id in CARREL_D1_DATABASE_ID. Refusing to deploy.`);
+  fail(
+    `the D1 database named "${D1_NAME}" does not have the id in CARREL_D1_DATABASE_ID. Refusing to deploy.`,
+  );
 }
-const kvList = must("wrangler kv namespace list", wrangler, ["kv", "namespace", "list"], { quiet: true });
+const kvList = must("wrangler kv namespace list", wrangler, ["kv", "namespace", "list"], {
+  quiet: true,
+});
 /** @type {{ title: string, id: string }[]} */
 let namespaces;
 try {
@@ -151,13 +174,20 @@ try {
 }
 const kvMatch = namespaces.filter((n) => KV_TITLES.includes(n.title));
 if (kvMatch.length !== 1 || kvMatch[0].id !== kvId) {
-  fail(`the one KV namespace titled "${KV_TITLES.join('" or "')}" does not have the id in CARREL_KV_OAUTH_ID. Refusing to deploy.`);
+  fail(
+    `the one KV namespace titled "${KV_TITLES.join('" or "')}" does not have the id in CARREL_KV_OAUTH_ID. Refusing to deploy.`,
+  );
 }
 
 // 4. Build, so a broken build stops the run before any migration is applied.
 step("building");
 // The static files' _headers, from Desk's registry entry (npm run headers), then the build that copies it.
-must("the static headers", headers, ["--site", "carrel-desk", "--out", join(root, "public", "_headers")]);
+must("the static headers", headers, [
+  "--site",
+  "carrel-desk",
+  "--out",
+  join(root, "public", "_headers"),
+]);
 must("the build", build, buildArgs);
 
 // 5. Migrations, through devkit's shared step (devkit-migrations --apply): pending migrations that only add
@@ -169,7 +199,9 @@ must("the D1 migrations", migrations, ["drizzle", "--apply", "carrel"]);
 
 // 6. The new code goes live, unless the caller deploys it.
 if (process.argv.includes("--prepare")) {
-  console.log("deploy: prepared. Migrations applied, none pending, build ready; the deploy is the caller's.");
+  console.log(
+    "deploy: prepared. Migrations applied, none pending, build ready; the deploy is the caller's.",
+  );
   process.exit(0);
 }
 step("deploying");

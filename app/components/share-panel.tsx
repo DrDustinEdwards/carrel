@@ -15,13 +15,19 @@ export function SharePanel({ site }: { site: boolean }) {
   const fetcher = useFetcher<{ share?: ShareAnswer }>();
   const answer = fetcher.state === "idle" ? fetcher.data?.share : undefined;
   return (
-    <Panel title="Share" src="A coauthor sees this project only. The People page lists everyone and every role.">
+    <Panel
+      title="Share"
+      src="A coauthor sees this project only. The People page lists everyone and every role."
+    >
       {answer && !answer.ok ? (
         <Alert tone="crit" title="Not shared">
           {answer.message}
         </Alert>
       ) : answer?.ok ? (
-        <Banner tone={answer.access.state === "in-step" ? "ok" : "warn"} title={`Shared with ${answer.email}.`}>
+        <Banner
+          tone={answer.access.state === "in-step" ? "ok" : "warn"}
+          title={`Shared with ${answer.email}.`}
+        >
           {answer.access.state === "in-step"
             ? "Cloudflare Access lets them in now."
             : answer.access.state === "waiting"
@@ -35,7 +41,10 @@ export function SharePanel({ site }: { site: boolean }) {
           <Field label="Email" required>
             <input className="cap-input" type="email" name="email" required autoComplete="off" />
           </Field>
-          <Field label="Name" help="For someone new to Carrel. An existing person keeps their name.">
+          <Field
+            label="Name"
+            help="For someone new to Carrel. An existing person keeps their name."
+          >
             <input className="cap-input" type="text" name="name" autoComplete="off" />
           </Field>
           <Field label="Role">
@@ -46,7 +55,9 @@ export function SharePanel({ site }: { site: boolean }) {
                 { value: "reader", label: "Reader: comments and suggests changes" },
                 { value: "editor", label: "Editor: also writes and saves drafts" },
                 // An Author publishes their own posts, so the role is offered on a site's project only.
-                ...(site ? [{ value: "author", label: "Author: also publishes the posts they write" }] : []),
+                ...(site
+                  ? [{ value: "author", label: "Author: also publishes the posts they write" }]
+                  : []),
               ]}
             />
           </Field>

@@ -6,7 +6,11 @@ import type { Scaffold } from "capsomer/react/markdown-editor";
 /** Prelum's figure directive: the caption is the directive's body, as the Figure block writes it (dustinedwards-info@f84b978,
  *  app/components/admin/use-image-upload.ts). */
 const prelumFigure = (url: string, alt: string, caption: string) =>
-  [`:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`, ...(caption ? [oneLine(caption)] : []), ":::"].join("\n");
+  [
+    `:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`,
+    ...(caption ? [oneLine(caption)] : []),
+    ":::",
+  ].join("\n");
 
 /** How the site places an image with its alt text and, when it has one, its caption (stage 3), in the site's own dialect. */
 const FIGURES: Record<string, (url: string, alt: string, caption: string) => string> = {
@@ -24,7 +28,10 @@ function oneLine(text: string): string {
  *  space, parentheses, angle brackets. Encoding keeps the URL the same address, where an entity relies on the
  *  site's parser decoding it. */
 function urlPart(url: string): string {
-  return url.replace(/["\s()<>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`);
+  return url.replace(
+    /["\s()<>]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`,
+  );
 }
 
 /** Plain Markdown for a site with no figure syntax of its own: the caption, when there is one, as an emphasized line under it. */
@@ -48,7 +55,15 @@ export const SCAFFOLDS: Scaffold[] = [
     label: "Chart",
     hint: "Bar, line, dot or area from inline CSV",
     icon: "M4 20V10M10 20V4M16 20v-7M22 20H2",
-    text: [':::chart{type=bar x=name y=value title="" alt=""}', "```csv", "name,value", "first,1", "```", "An optional caption.", ":::"].join("\n"),
+    text: [
+      ':::chart{type=bar x=name y=value title="" alt=""}',
+      "```csv",
+      "name,value",
+      "first,1",
+      "```",
+      "An optional caption.",
+      ":::",
+    ].join("\n"),
     cursorAfter: 'alt="',
   },
   {
@@ -56,7 +71,15 @@ export const SCAFFOLDS: Scaffold[] = [
     label: "Diagram",
     hint: "Mermaid, rendered by build:diagrams",
     icon: "M4 4h6a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM15 15h5a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1zM10 6.5h4a3 3 0 0 1 3 3V15",
-    text: [':::diagram{title="" alt=""}', "```mermaid", "flowchart LR", "  A[Start] --> B[End]", "```", "An optional caption.", ":::"].join("\n"),
+    text: [
+      ':::diagram{title="" alt=""}',
+      "```mermaid",
+      "flowchart LR",
+      "  A[Start] --> B[End]",
+      "```",
+      "An optional caption.",
+      ":::",
+    ].join("\n"),
     cursorAfter: 'alt="',
   },
   {

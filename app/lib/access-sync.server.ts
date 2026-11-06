@@ -32,7 +32,12 @@ async function accessEmails(db: D1Database): Promise<string[]> {
         eq(people.isOwner, false),
         eq(people.isReviewer, false),
         not(like(people.email, `${agentEmail("")}%`)),
-        exists(d.select({ one: projectMembers.personId }).from(projectMembers).where(eq(projectMembers.personId, people.id))),
+        exists(
+          d
+            .select({ one: projectMembers.personId })
+            .from(projectMembers)
+            .where(eq(projectMembers.personId, people.id)),
+        ),
       ),
     )
     .all();
@@ -59,9 +64,18 @@ type SyncResult = { ok?: unknown; added?: unknown; dropped?: unknown; refusal?: 
  * Posts the allow list. `removed` names people this change just took out (disabled, or left with no
  * role), so Capsid frees their Zero Trust seats; anyone still on the list is not sent as removed.
  */
-export async function syncAccess(env: Env, change: { removed: string[] }, fetcher: typeof fetch = timedFetch, now = new Date()): Promise<SyncOutcome> {
+export async function syncAccess(
+  env: Env,
+  change: { removed: string[] },
+  fetcher: typeof fetch = timedFetch,
+  now = new Date(),
+): Promise<SyncOutcome> {
   const key = env.CAPSID_AGENT_KEY?.trim();
-  if (!key) return { state: "skipped", detail: "CAPSID_AGENT_KEY is not set, so Access is managed by hand." };
+  if (!key)
+    return {
+      state: "skipped",
+      detail: "CAPSID_AGENT_KEY is not set, so Access is managed by hand.",
+    };
   let ok = false;
   let refusal: string | null = null;
   let added = 0;
@@ -87,7 +101,10 @@ export async function syncAccess(env: Env, change: { removed: string[] }, fetche
       added = Array.isArray(result.added) ? result.added.length : 0;
       dropped = Array.isArray(result.dropped) ? result.dropped.length : 0;
     } else {
-      refusal = typeof result?.refusal === "string" && result.refusal ? result.refusal : `Capsid answered ${response.status}: ${text.trim() || "no reason given"}`;
+      refusal =
+        typeof result?.refusal === "string" && result.refusal
+          ? result.refusal
+          : `Capsid answered ${response.status}: ${text.trim() || "no reason given"}`;
     }
   } catch (error) {
     refusal = error instanceof Error ? error.message : String(error);
@@ -100,8 +117,15 @@ export async function syncAccess(env: Env, change: { removed: string[] }, fetche
       .values({ id: 1, ...row })
       .onConflictDoUpdate({ target: accessSync.id, set: row });
   } catch (error) {
-    console.error(JSON.stringify({ access: "sync-record-failed", error: error instanceof Error ? error.message : String(error) }));
+    console.error(
+      JSON.stringify({
+        access: "sync-record-failed",
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
   }
   if (!ok) console.error(JSON.stringify({ access: "sync-refused", refusal }));
-  return ok ? { state: "in-step", detail: `${added} added, ${dropped} dropped.` } : { state: "waiting", detail: refusal ?? "" };
+  return ok
+    ? { state: "in-step", detail: `${added} added, ${dropped} dropped.` }
+    : { state: "waiting", detail: refusal ?? "" };
 }

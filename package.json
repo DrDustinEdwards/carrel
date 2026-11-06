@@ -3,9 +3,6 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "engines": {
-    "node": ">=26.11.1"
-  },
   "scripts": {
     "build": "npm run headers && react-router build",
     "headers": "site-runtime-headers --site carrel-desk --out public/_headers",
@@ -113,5 +110,8 @@
   },
   "overrides": {
     "@cloudflare/workers-types": "5.20261031.1"
+  },
+  "engines": {
+    "node": ">=26.11.1"
   }
 }

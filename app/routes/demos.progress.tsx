@@ -21,7 +21,11 @@ export function loader({ context }: Route.LoaderArgs) {
 }
 
 // The frame as a visitor sees it: no name, no Owner's views, one sample book.
-const FRAME: FrameData = { name: "Sample", isOwner: false, projects: [{ slug: "sample-book", name: "Sample book", kind: "book" }] };
+const FRAME: FrameData = {
+  name: "Sample",
+  isOwner: false,
+  projects: [{ slug: "sample-book", name: "Sample book", kind: "book" }],
+};
 
 export default function ProgressDemo({ loaderData }: Route.ComponentProps) {
   return (
@@ -30,7 +34,8 @@ export default function ProgressDemo({ loaderData }: Route.ComponentProps) {
         <PageHead title="Sample book" lead="A book's page in Desk, with its writing progress." />
         <div className="app-stack">
           <Banner tone="info" title="Demo with sample data">
-            This is how the page looks for a signed-in writer. The numbers are made up, and nothing here belongs to a real account.
+            This is how the page looks for a signed-in writer. The numbers are made up, and nothing
+            here belongs to a real account.
           </Banner>
           <ProgressPanel {...loaderData} canEdit={false} titlePage="#" error={null} saved={false} />
         </div>

@@ -20,7 +20,15 @@ import { SharePanel } from "~/components/share-panel";
 import { ProgressPanel } from "~/components/writing/progress-panel";
 import { StatusLabelPill } from "~/components/writing/status-label";
 
-import { bookRepo, draftPaths, exportGate, listFiles, listFindings, refreshBook, requireBookProject } from "~/lib/books.server";
+import {
+  bookRepo,
+  draftPaths,
+  exportGate,
+  listFiles,
+  listFindings,
+  refreshBook,
+  requireBookProject,
+} from "~/lib/books.server";
 import { getEnv, getViewer, getZone } from "~/lib/context";
 import { slugify } from "@drdustinedwards/site-helpers/slug";
 import { chapterOf, nextNumbered, readingOrder, titleFromSegment } from "~/lib/novels/layout";
@@ -54,7 +62,22 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const flags = new Map<string, number>();
   for (const f of open) flags.set(f.path, (flags.get(f.path) ?? 0) + 1);
 
-  const chapters: { slug: string; title: string; words: number; flags: number; scenes: { path: string; name: string; status: string; pov: string; date: string; location: string; words: number; flags: number }[] }[] = [];
+  const chapters: {
+    slug: string;
+    title: string;
+    words: number;
+    flags: number;
+    scenes: {
+      path: string;
+      name: string;
+      status: string;
+      pov: string;
+      date: string;
+      location: string;
+      words: number;
+      flags: number;
+    }[];
+  }[] = [];
   for (const file of readingOrder(files)) {
     const slug = chapterOf(file.path)!;
     let chapter = chapters.at(-1);
@@ -84,7 +107,9 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       ? [{ path, kind: meta.kind, name: meta.entry.name, flags: flags.get(path) ?? 0 }]
       : [],
   );
-  const others = files.filter((f) => f.kind === "outline" || f.kind === "note" || f.kind === "book").map((f) => ({ path: f.path, kind: f.kind }));
+  const others = files
+    .filter((f) => f.kind === "outline" || f.kind === "note" || f.kind === "book")
+    .map((f) => ({ path: f.path, kind: f.kind }));
   const known = new Set(files.map((f) => f.path));
   const bookMeta = files.find((f) => f.path === "book.md")?.meta;
   const bookEntry = bookMeta?.kind === "book" ? bookMeta.entry : null;
@@ -108,7 +133,13 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     // Drafts of files Git does not have yet, so a started scene is not lost from view.
     unsaved: drafts.filter((p) => !known.has(p)),
     labels: status.labels,
-    progress: { entries, goal, projectTarget: bookEntry?.target ?? null, deadline: bookEntry?.deadline ?? "", zone: getZone(context) },
+    progress: {
+      entries,
+      goal,
+      projectTarget: bookEntry?.target ?? null,
+      deadline: bookEntry?.deadline ?? "",
+      zone: getZone(context),
+    },
   };
 }
 
@@ -125,18 +156,40 @@ export async function action({ params, request, context }: Route.ActionArgs) {
       writingDays: form.getAll("writingDays").map(String),
       allowNegative: form.get("allowNegative") === "1",
     });
-    return { refreshed: null, error: null, goal: saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error } };
+    return {
+      refreshed: null,
+      error: null,
+      goal: saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error },
+    };
   }
 
-  if (intent === "share") return { refreshed: null, error: null, share: await shareFromForm(env, getViewer(context), project.id, form) };
+  if (intent === "share")
+    return {
+      refreshed: null,
+      error: null,
+      share: await shareFromForm(env, getViewer(context), project.id, form),
+    };
 
   // A move in the binder: the whole new order, which the server turns into one commit of renames.
   if (intent === "reorder") {
     const order = parseOrder(String(form.get("order") ?? ""));
     if (!order) throw new Response("Bad request", { status: 400 });
     const { repo, detail } = bookRepo(env);
-    if (!repo) return { refreshed: null, error: null, reorder: { ok: false as const, reason: "failed" as const, message: `${detail} Nothing was moved.` } };
-    return { refreshed: null, error: null, reorder: await reorderBook(env.DB, repo, project, getViewer(context), order) };
+    if (!repo)
+      return {
+        refreshed: null,
+        error: null,
+        reorder: {
+          ok: false as const,
+          reason: "failed" as const,
+          message: `${detail} Nothing was moved.`,
+        },
+      };
+    return {
+      refreshed: null,
+      error: null,
+      reorder: await reorderBook(env.DB, repo, project, getViewer(context), order),
+    };
   }
 
   if (intent === "refresh") {
@@ -157,26 +210,52 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const files = await listFiles(env.DB, project);
 
   if (intent === "new-chapter") {
-    const chapters = [...new Set(files.map((f) => chapterOf(f.path)).filter((c): c is string => c !== null))];
-    return redirect(`/b/${project.slug}/f/chapters/${nextNumbered(chapters, slug)}/01-${slugify(String(form.get("scene") ?? ""), { max: 60 }) || "opening"}.md`);
+    const chapters = [
+      ...new Set(files.map((f) => chapterOf(f.path)).filter((c): c is string => c !== null)),
+    ];
+    return redirect(
+      `/b/${project.slug}/f/chapters/${nextNumbered(chapters, slug)}/01-${slugify(String(form.get("scene") ?? ""), { max: 60 }) || "opening"}.md`,
+    );
   }
   if (intent === "new-bible") {
     const kind = String(form.get("kind") ?? "") as keyof typeof BIBLE_FOLDERS;
     if (!Object.hasOwn(BIBLE_FOLDERS, kind)) throw new Response("Bad request", { status: 400 });
-    return redirect(`/b/${project.slug}/f/bible/${BIBLE_FOLDERS[kind]}/${slug}.md?name=${encodeURIComponent(name)}`);
+    return redirect(
+      `/b/${project.slug}/f/bible/${BIBLE_FOLDERS[kind]}/${slug}.md?name=${encodeURIComponent(name)}`,
+    );
   }
   if (intent === "new-outline") return redirect(`/b/${project.slug}/f/outline/${slug}.md`);
   throw new Response("Bad request", { status: 400 });
 }
 
 export default function Book({ loaderData, actionData }: Route.ComponentProps) {
-  const { project, canEdit, canPublish, canShare, connected, connectionDetail, chapters, bible, others, words, open, exportReady, unsaved, hasBookFile, labels, progress } = loaderData;
+  const {
+    project,
+    canEdit,
+    canPublish,
+    canShare,
+    connected,
+    connectionDetail,
+    chapters,
+    bible,
+    others,
+    words,
+    open,
+    exportReady,
+    unsaved,
+    hasBookFile,
+    labels,
+    progress,
+  } = loaderData;
   const goalResult = actionData && "goal" in actionData ? actionData.goal : null;
   const navigation = useNavigation();
-  const refreshing = navigation.state !== "idle" && navigation.formData?.get("intent") === "refresh";
+  const refreshing =
+    navigation.state !== "idle" && navigation.formData?.get("intent") === "refresh";
   const base = `/b/${project.slug}`;
   const file = (path: string) => `${base}/f/${path}`;
-  const link = ({ href, children }: { href: string; children: ReactNode }) => <Link to={href}>{children}</Link>;
+  const link = ({ href, children }: { href: string; children: ReactNode }) => (
+    <Link to={href}>{children}</Link>
+  );
 
   return (
     <div className="app-page">
@@ -214,12 +293,19 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                   <a className="cap-btn" href={`${base}/export/docx`}>
                     Word
                   </a>
-                  <a className="cap-btn" href={`${base}/export/print`} target="_blank" rel="noreferrer">
+                  <a
+                    className="cap-btn"
+                    href={`${base}/export/print`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Print or PDF<span className="cap-sr-only"> (opens in a new tab)</span>
                   </a>
                 </ButtonGroup>
               ) : (
-                <Button disabledReason="Export waits until every flag is fixed or dismissed.">Export</Button>
+                <Button disabledReason="Export waits until every flag is fixed or dismissed.">
+                  Export
+                </Button>
               )
             ) : null}
           </>
@@ -227,17 +313,34 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
       />
 
       <StatTiles label="The book at a glance">
-        <StatTile label="Words in scenes" figure={words.toLocaleString()} detail={`${chapters.length} chapter${chapters.length === 1 ? "" : "s"}`} />
+        <StatTile
+          label="Words in scenes"
+          figure={words.toLocaleString()}
+          detail={`${chapters.length} chapter${chapters.length === 1 ? "" : "s"}`}
+        />
         {open === 0 ? (
-          <StatTile label="Open flags" tone="ok" word="Clear" figure="0" detail="Nothing holds export." />
+          <StatTile
+            label="Open flags"
+            tone="ok"
+            word="Clear"
+            figure="0"
+            detail="Nothing holds export."
+          />
         ) : (
-          <StatTile label="Open flags" tone="warn" word="Open" figure={open} detail="They hold export until fixed or dismissed." />
+          <StatTile
+            label="Open flags"
+            tone="warn"
+            word="Open"
+            figure={open}
+            detail="They hold export until fixed or dismissed."
+          />
         )}
       </StatTiles>
 
       {!connected ? (
         <Banner tone="warn" title="Git is not connected yet">
-          {connectionDetail} The book shows Carrel's last index of it, and saving waits for the connection.
+          {connectionDetail} The book shows Carrel's last index of it, and saving waits for the
+          connection.
         </Banner>
       ) : null}
 
@@ -245,7 +348,8 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         <Alert tone="crit">{actionData.error}</Alert>
       ) : actionData?.refreshed ? (
         <Banner tone="ok">
-          {actionData.refreshed.files} files in Git, {actionData.refreshed.read} read again, {actionData.refreshed.removed} gone
+          {actionData.refreshed.files} files in Git, {actionData.refreshed.read} read again,{" "}
+          {actionData.refreshed.removed} gone
           {actionData.refreshed.more ? "; more on the next refresh" : ""}.
         </Banner>
       ) : null}
@@ -254,7 +358,13 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         <Panel title="Your drafts not yet in Git" count={unsaved.length} flush>
           <RowList label="Your drafts not yet in Git">
             {unsaved.map((p) => (
-              <Row key={p} title={<span className="cap-mono">{p}</span>} href={file(p)} renderLink={link} detail="Started here; nothing is in Git until the first Save." />
+              <Row
+                key={p}
+                title={<span className="cap-mono">{p}</span>}
+                href={file(p)}
+                renderLink={link}
+                detail="Started here; nothing is in Git until the first Save."
+              />
             ))}
           </RowList>
         </Panel>
@@ -270,10 +380,21 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
               <Form method="post" className="app-inline-form">
                 <input type="hidden" name="intent" value="new-chapter" />
                 <Field label="New chapter">
-                  <input className="cap-input" name="name" required placeholder="Chapter name" autoComplete="off" />
+                  <input
+                    className="cap-input"
+                    name="name"
+                    required
+                    placeholder="Chapter name"
+                    autoComplete="off"
+                  />
                 </Field>
                 <Field label="First scene">
-                  <input className="cap-input" name="scene" placeholder="Scene name" autoComplete="off" />
+                  <input
+                    className="cap-input"
+                    name="scene"
+                    placeholder="Scene name"
+                    autoComplete="off"
+                  />
                 </Field>
                 <Button type="submit">Start it</Button>
               </Form>
@@ -282,18 +403,29 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         >
           {chapters.length === 0 ? (
             <Empty kind="nothing-yet" flush title="No chapters in the index yet">
-              {canEdit ? "Start the first chapter below, or refresh from Git." : "Refresh from Git to read the book's folder."}
+              {canEdit
+                ? "Start the first chapter below, or refresh from Git."
+                : "Refresh from Git to read the book's folder."}
             </Empty>
           ) : (
             chapters.map((chapter) => (
-              <section key={chapter.slug} className="app-chapter" aria-labelledby={`chapter-${chapter.slug}`}>
+              <section
+                key={chapter.slug}
+                className="app-chapter"
+                aria-labelledby={`chapter-${chapter.slug}`}
+              >
                 <h3 id={`chapter-${chapter.slug}`}>
                   <Link to={`${base}/c/${chapter.slug}`}>{chapter.title}</Link>
                   <span className="cap-muted">{chapter.words.toLocaleString()} words</span>
                   {chapter.flags ? <Status tone="warn">{chapter.flags} flagged</Status> : null}
                 </h3>
                 {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region takes focus so a keyboard can scroll it (axe scrollable-region-focusable) */}
-                <div className="cap-table-wrap" role="region" aria-labelledby={`scenes-${chapter.slug}`} tabIndex={0}>
+                <div
+                  className="cap-table-wrap"
+                  role="region"
+                  aria-labelledby={`scenes-${chapter.slug}`}
+                  tabIndex={0}
+                >
                   <table className="cap-table">
                     <caption id={`scenes-${chapter.slug}`} className="cap-sr-only">
                       Scenes in {chapter.title}
@@ -370,7 +502,13 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                     />
                   </Field>
                   <Field label="Name">
-                    <input className="cap-input" name="name" required placeholder="Name" autoComplete="off" />
+                    <input
+                      className="cap-input"
+                      name="name"
+                      required
+                      placeholder="Name"
+                      autoComplete="off"
+                    />
                   </Field>
                   <Button type="submit">Start it</Button>
                 </Form>
@@ -379,7 +517,8 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
           >
             {(["character", "place", "rule"] as const).map((kind) => {
               const entries = bible.filter((b) => b.kind === kind);
-              const heading = kind === "character" ? "Characters" : kind === "place" ? "Places" : "World rules";
+              const heading =
+                kind === "character" ? "Characters" : kind === "place" ? "Places" : "World rules";
               return (
                 <section key={kind} className="app-section" aria-labelledby={`bible-${kind}`}>
                   <h3 id={`bible-${kind}`}>{heading}</h3>
@@ -407,7 +546,13 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                 <Form method="post" className="app-inline-form">
                   <input type="hidden" name="intent" value="new-outline" />
                   <Field label="New outline file">
-                    <input className="cap-input" name="name" required placeholder="Name" autoComplete="off" />
+                    <input
+                      className="cap-input"
+                      name="name"
+                      required
+                      placeholder="Name"
+                      autoComplete="off"
+                    />
                   </Field>
                   <Button type="submit">Start it</Button>
                 </Form>
@@ -420,7 +565,9 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
               <ul className="app-links">
                 {others.map((o) => (
                   <li key={o.path}>
-                    <Link to={file(o.path)}>{o.kind === "book" ? "Title page (book.md)" : o.path}</Link>
+                    <Link to={file(o.path)}>
+                      {o.kind === "book" ? "Title page (book.md)" : o.path}
+                    </Link>
                   </li>
                 ))}
                 {!hasBookFile && canEdit ? (

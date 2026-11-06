@@ -32,7 +32,11 @@ beforeEach(async () => {
 const context = (email: string) => routeContext(env, email);
 
 async function published() {
-  const saved = await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Post one\n---\nWords.\n", expectedVersion: null, changeId: "s" });
+  const saved = await site.adapter.content.saveDraft("post-one", {
+    source: "---\ntitle: Post one\n---\nWords.\n",
+    expectedVersion: null,
+    changeId: "s",
+  });
   await site.adapter.content.publish("post-one", { expectedVersion: saved.version, changeId: "p" });
 }
 
@@ -45,13 +49,19 @@ describe("the unpublish page", () => {
   it("opens without changing anything, and one button returns the post to draft", async () => {
     await published();
     const params = { project: SLUG, item: "post-one" };
-    const page = (await unpublishLoader({ request: new Request("https://carrel.test/"), params, context: await context("owner@test.invalid") } as never)) as Awaited<
-      ReturnType<typeof unpublishLoader>
-    >;
+    const page = (await unpublishLoader({
+      request: new Request("https://carrel.test/"),
+      params,
+      context: await context("owner@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof unpublishLoader>>;
     expect(page.item).toMatchObject({ title: "Post one", status: "published" });
     expect((await site.adapter.content.get("post-one"))?.status).toBe("published");
 
-    const done = await unpublishAction({ request: new Request("https://carrel.test/", { method: "POST" }), params, context: await context("owner@test.invalid") } as never);
+    const done = await unpublishAction({
+      request: new Request("https://carrel.test/", { method: "POST" }),
+      params,
+      context: await context("owner@test.invalid"),
+    } as never);
     expect(done).toMatchObject({ ok: true, message: "Returned to draft. It is off the site." });
     expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
   });
@@ -59,9 +69,27 @@ describe("the unpublish page", () => {
   it("PLANT: an Editor cannot open it or use it", async () => {
     await published();
     const params = { project: SLUG, item: "post-one" };
-    expect(((await settle(unpublishLoader({ request: new Request("https://carrel.test/"), params, context: await context("editor@test.invalid") } as never))) as Response).status).toBe(403);
     expect(
-      ((await settle(unpublishAction({ request: new Request("https://carrel.test/", { method: "POST" }), params, context: await context("editor@test.invalid") } as never))) as Response).status,
+      (
+        (await settle(
+          unpublishLoader({
+            request: new Request("https://carrel.test/"),
+            params,
+            context: await context("editor@test.invalid"),
+          } as never),
+        )) as Response
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        (await settle(
+          unpublishAction({
+            request: new Request("https://carrel.test/", { method: "POST" }),
+            params,
+            context: await context("editor@test.invalid"),
+          } as never),
+        )) as Response
+      ).status,
     ).toBe(403);
     expect((await site.adapter.content.get("post-one"))?.status).toBe("published");
   });
@@ -71,22 +99,56 @@ describe("AI drafts in the browser", () => {
   it("shows an AI draft to the person whose session saved it, and Use as my draft replaces only their working copy", async () => {
     await published();
     const { viewer, project } = await as("owner@test.invalid");
-    const saved = await saveAiDraft(env, project, { viewer, client: "Claude 1.0" }, "post-one", { source: "AI text.", note: "A note." }, site.fetch);
+    const saved = await saveAiDraft(
+      env,
+      project,
+      { viewer, client: "Claude 1.0" },
+      "post-one",
+      { source: "AI text.", note: "A note." },
+      site.fetch,
+    );
     const params = { project: SLUG, item: "post-one", id: String(saved.id) };
-    const page = (await aiDraftLoader({ request: new Request("https://carrel.test/"), params, context: await context("owner@test.invalid") } as never)) as Awaited<ReturnType<typeof aiDraftLoader>>;
+    const page = (await aiDraftLoader({
+      request: new Request("https://carrel.test/"),
+      params,
+      context: await context("owner@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof aiDraftLoader>>;
     expect(page.draft).toMatchObject({ client: "Claude 1.0", note: "A note.", source: "AI text." });
 
-    const used = (await aiDraftAction({ request: new Request("https://carrel.test/", { method: "POST" }), params, context: await context("owner@test.invalid") } as never)) as Response;
+    const used = (await aiDraftAction({
+      request: new Request("https://carrel.test/", { method: "POST" }),
+      params,
+      context: await context("owner@test.invalid"),
+    } as never)) as Response;
     expect(used.headers.get("Location")).toBe(`/p/${SLUG}/e/post-one`);
     expect((await readDraft(testEnv.DB, project, viewer, "post-one"))?.source).toBe("AI text.");
-    expect((await site.adapter.content.get("post-one"))?.source).toBe("---\ntitle: Post one\n---\nWords.\n");
+    expect((await site.adapter.content.get("post-one"))?.source).toBe(
+      "---\ntitle: Post one\n---\nWords.\n",
+    );
   });
 
   it("PLANT: another person cannot see someone's AI draft", async () => {
     const { viewer, project } = await as("owner@test.invalid");
-    const saved = await saveAiDraft(env, project, { viewer, client: "Claude" }, "post-one", { source: "Private." }, site.fetch);
+    const saved = await saveAiDraft(
+      env,
+      project,
+      { viewer, client: "Claude" },
+      "post-one",
+      { source: "Private." },
+      site.fetch,
+    );
     const params = { project: SLUG, item: "post-one", id: String(saved.id) };
-    expect(((await settle(aiDraftLoader({ request: new Request("https://carrel.test/"), params, context: await context("editor@test.invalid") } as never))) as Response).status).toBe(404);
+    expect(
+      (
+        (await settle(
+          aiDraftLoader({
+            request: new Request("https://carrel.test/"),
+            params,
+            context: await context("editor@test.invalid"),
+          } as never),
+        )) as Response
+      ).status,
+    ).toBe(404);
   });
 });
 
@@ -95,18 +157,41 @@ describe("flags in the editor", () => {
     await published();
     const reviewer = await viewerFor("owner@test.invalid");
     const { project } = await as("owner@test.invalid");
-    const flag = await addFinding(testEnv.DB, project, { viewer: { ...reviewer, isReviewer: true }, client: "Grok Build" }, "post-one", { message: "Check this." });
+    const flag = await addFinding(
+      testEnv.DB,
+      project,
+      { viewer: { ...reviewer, isReviewer: true }, client: "Grok Build" },
+      "post-one",
+      { message: "Check this." },
+    );
     const params = { project: SLUG, item: "post-one" };
-    const data = (await editorLoader({ request: new Request("https://carrel.test/"), params, context: await context("editor@test.invalid") } as never)) as Awaited<ReturnType<typeof editorLoader>>;
-    expect(data.flags).toMatchObject([{ status: "open", message: "Check this. (from Grok Build)" }]);
+    const data = (await editorLoader({
+      request: new Request("https://carrel.test/"),
+      params,
+      context: await context("editor@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof editorLoader>>;
+    expect(data.flags).toMatchObject([
+      { status: "open", message: "Check this. (from Grok Build)" },
+    ]);
 
     const dismiss = (email: string) => {
       const body = new FormData();
       body.set("intent", "dismiss-flag");
       body.set("flag", String(flag.id));
-      return context(email).then((c) => settle(editorAction({ request: new Request("https://carrel.test/", { method: "POST", body }), params, context: c } as never)));
+      return context(email).then((c) =>
+        settle(
+          editorAction({
+            request: new Request("https://carrel.test/", { method: "POST", body }),
+            params,
+            context: c,
+          } as never),
+        ),
+      );
     };
     expect(((await dismiss("editor@test.invalid")) as Response).status).toBe(403);
-    expect(await dismiss("owner@test.invalid")).toEqual({ intent: "dismiss-flag", dismissed: flag.id });
+    expect(await dismiss("owner@test.invalid")).toEqual({
+      intent: "dismiss-flag",
+      dismissed: flag.id,
+    });
   });
 });

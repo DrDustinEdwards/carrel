@@ -42,12 +42,24 @@ async function seeded() {
   vi.stubGlobal("fetch", site.fetch);
   const env = connectedEnv();
   const put = async (id: string, source: string, publish: boolean) => {
-    const saved = await site.adapter.content.saveDraft(id, { source, expectedVersion: null, changeId: `seed-${id}` });
-    if (publish) await site.adapter.content.publish(id, { expectedVersion: saved.version, changeId: `seed-pub-${id}` });
+    const saved = await site.adapter.content.saveDraft(id, {
+      source,
+      expectedVersion: null,
+      changeId: `seed-${id}`,
+    });
+    if (publish)
+      await site.adapter.content.publish(id, {
+        expectedVersion: saved.version,
+        changeId: `seed-pub-${id}`,
+      });
   };
   await put("a-post", "---\ntitle: A post\n---\nWords.\n", true);
   await put("draft-post", "---\ntitle: A draft post\n---\nNot yet.\n", false);
-  await put("phage.acorn15", "---\ntitle: Acorn15\nhost: Gordonia\n---\nA cluster DJ phage.\n", true);
+  await put(
+    "phage.acorn15",
+    "---\ntitle: Acorn15\nhost: Gordonia\n---\nA cluster DJ phage.\n",
+    true,
+  );
   await put("roster.2017", "---\ntitle: 2017 cohort\nyear: 2017\n---\n", true);
   await put("procedure.coi-primers", "---\ntitle: COI primers\n---\nThe PCR protocol.\n", true);
   await refreshIndex(env, { id: projectId, site: "dustinedwards" });
@@ -67,7 +79,11 @@ describe("every kind the site reports", () => {
     const params = { project: SLUG, item: id };
     const url = `https://carrel.test/p/${SLUG}/e/${id}`;
 
-    const opened = (await editorLoader({ request: new Request(url), params, context: await contextFor(env) } as never)) as Awaited<ReturnType<typeof editorLoader>>;
+    const opened = (await editorLoader({
+      request: new Request(url),
+      params,
+      context: await contextFor(env),
+    } as never)) as Awaited<ReturnType<typeof editorLoader>>;
     expect(opened.title).toBe("Acorn15");
     expect(opened.path).toBe("/research/phages#acorn15");
     // Links written in the editor go to each item's own address on the site, a draft post to where the site's posts live.
@@ -78,42 +94,90 @@ describe("every kind the site reports", () => {
       "/writing/draft-post",
     ]);
 
-    const source = "---\ntitle: Acorn15\nhost: Gordonia terrae\n---\nA cluster DJ phage, found in 2015.\n";
+    const source =
+      "---\ntitle: Acorn15\nhost: Gordonia terrae\n---\nA cluster DJ phage, found in 2015.\n";
     await typeIn(projectId, id, opened.room!.viewer, source);
-    const saved = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "save" }) }), params, context: await contextFor(env) } as never);
-    expect(saved).toMatchObject({ intent: "write", outcome: { ok: true, action: "save", status: "published" } });
+    const saved = await editorAction({
+      request: new Request(url, { method: "POST", body: form({ intent: "save" }) }),
+      params,
+      context: await contextFor(env),
+    } as never);
+    expect(saved).toMatchObject({
+      intent: "write",
+      outcome: { ok: true, action: "save", status: "published" },
+    });
 
-    const previewed = (await settled(async () => previewLoader({ request: new Request(`${url}/preview`), params, context: await contextFor(env) } as never))) as Response;
+    const previewed = (await settled(async () =>
+      previewLoader({
+        request: new Request(`${url}/preview`),
+        params,
+        context: await contextFor(env),
+      } as never),
+    )) as Response;
     expect(previewed.status).toBe(200);
     expect(await previewed.text()).toContain("found in 2015");
 
-    const published = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "publish" }) }), params, context: await contextFor(env) } as never);
-    expect(published).toMatchObject({ intent: "write", outcome: { ok: true, action: "publish", status: "published" } });
+    const published = await editorAction({
+      request: new Request(url, { method: "POST", body: form({ intent: "publish" }) }),
+      params,
+      context: await contextFor(env),
+    } as never);
+    expect(published).toMatchObject({
+      intent: "write",
+      outcome: { ok: true, action: "publish", status: "published" },
+    });
     expect((await site.adapter.content.get(id))?.source).toContain("found in 2015");
 
-    const history = (await historyLoader({ request: new Request(`${url}/history`), params, context: await contextFor(env) } as never)) as { revisions: unknown[] | null };
+    const history = (await historyLoader({
+      request: new Request(`${url}/history`),
+      params,
+      context: await contextFor(env),
+    } as never)) as { revisions: unknown[] | null };
     expect(history.revisions?.length).toBe(4);
   });
 
   it("keeps a data kind out of the lists, and shows the site's own refusal if one is written", async () => {
     const { env, site } = await seeded();
     // The site's import puts registry rows in place directly; Carrel never wrote them.
-    await env.DB.prepare("INSERT INTO site_items (project_id, item_id, kind, title, status, synced_at) VALUES (?, 'equipment.heat-block', 'equipment', 'Heat block', 'published', '2026-10-10T00:00:00Z')").bind(projectId).run();
+    await env.DB.prepare(
+      "INSERT INTO site_items (project_id, item_id, kind, title, status, synced_at) VALUES (?, 'equipment.heat-block', 'equipment', 'Heat block', 'published', '2026-10-10T00:00:00Z')",
+    )
+      .bind(projectId)
+      .run();
     const context = await contextFor(env);
-    const listed = (await projectLoader({ request: new Request(`https://carrel.test/p/${SLUG}`), params: { project: SLUG }, context } as never)) as Awaited<ReturnType<typeof projectLoader>>;
+    const listed = (await projectLoader({
+      request: new Request(`https://carrel.test/p/${SLUG}`),
+      params: { project: SLUG },
+      context,
+    } as never)) as Awaited<ReturnType<typeof projectLoader>>;
     expect(listed.data?.kinds).not.toContain("equipment");
     expect(listed.data?.rows.map((r) => r.id)).not.toContain("equipment.heat-block");
 
     const params = { project: SLUG, item: "equipment.heat-block" };
     // The site does not hold the entry, so its room starts from this text, as a new file's would.
     const owner = await viewerFor(OWNER);
-    await openRoom(env, { id: projectId, role: "owner" }, owner, "equipment.heat-block", { dialect: "site", current: null, starter: "---\nname: Heat block\n---\n" });
+    await openRoom(env, { id: projectId, role: "owner" }, owner, "equipment.heat-block", {
+      dialect: "site",
+      current: null,
+      starter: "---\nname: Heat block\n---\n",
+    });
     const written = await editorAction({
-      request: new Request(`https://carrel.test/p/${SLUG}/e/equipment.heat-block`, { method: "POST", body: form({ intent: "save" }) }),
+      request: new Request(`https://carrel.test/p/${SLUG}/e/equipment.heat-block`, {
+        method: "POST",
+        body: form({ intent: "save" }),
+      }),
       params,
       context: await contextFor(env),
     } as never);
-    expect(written).toMatchObject({ intent: "write", outcome: { ok: false, reason: "refused", message: "The site's equipment entries are edited in the site's repository, not through Carrel." } });
+    expect(written).toMatchObject({
+      intent: "write",
+      outcome: {
+        ok: false,
+        reason: "refused",
+        message:
+          "The site's equipment entries are edited in the site's repository, not through Carrel.",
+      },
+    });
     expect(await site.adapter.content.get("equipment.heat-block")).toBeNull();
   });
 
@@ -122,11 +186,22 @@ describe("every kind the site reports", () => {
     const id = "roster.2017";
     const params = { project: SLUG, item: id };
     const url = `https://carrel.test/p/${SLUG}/e/${id}`;
-    const opened = (await editorLoader({ request: new Request(url), params, context: await contextFor(env) } as never)) as Awaited<ReturnType<typeof editorLoader>>;
-    const source = opened.source.replace("year: 2017\n", "year: 2017\nresearchers: [Megan Adams, Travis Miller]\n");
+    const opened = (await editorLoader({
+      request: new Request(url),
+      params,
+      context: await contextFor(env),
+    } as never)) as Awaited<ReturnType<typeof editorLoader>>;
+    const source = opened.source.replace(
+      "year: 2017\n",
+      "year: 2017\nresearchers: [Megan Adams, Travis Miller]\n",
+    );
     expect(source).not.toBe(opened.source);
     await typeIn(projectId, id, opened.room!.viewer, source);
-    const saved = await editorAction({ request: new Request(url, { method: "POST", body: form({ intent: "save" }) }), params, context: await contextFor(env) } as never);
+    const saved = await editorAction({
+      request: new Request(url, { method: "POST", body: form({ intent: "save" }) }),
+      params,
+      context: await contextFor(env),
+    } as never);
     expect(saved).toMatchObject({ intent: "write", outcome: { ok: true, action: "save" } });
     expect((await site.adapter.content.get(id))?.source).toBe(source);
   });

@@ -111,13 +111,13 @@ Each scene opens with its header: `pov`, `date` (2031-04-12, or 2031-04-12 14:30
 
 They run on every save, on the saved text, and after a refresh that finds changes; Check this text runs them on a draft without saving. They flag and never refuse: a flag never stops a save. An open flag holds export until the text is fixed or the Owner dismisses it, and a dismissal survives later saves of the same words.
 
-| Check | Flags |
-|---|---|
-| header | a missing header, point of view, date, location or beat; a date that is not a story date |
-| continuity | someone present who is not in the bible, dead at the scene's date or not yet born; a location not in the bible |
-| timeline | a scene dated before the scene it follows, unless it is marked flashback (a flashback does not move the clock) |
-| world-rules | a match for any rule's forbidden patterns; on the rule itself, a pattern that cannot compile |
-| voice | site-runtime's `slopScan` against Dustin's own writing (`shared/voice/` and up to four of the book's scenes whose status starts done, final, finished or complete, never the scene itself): a sentence well past his long ones, a run all the same length, a model's filler, a model's word his writing never uses, a joiner dash or "not X, it's Y" where his writing has none, a closing list of padding |
+| Check       | Flags                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| header      | a missing header, point of view, date, location or beat; a date that is not a story date                                                                                                                                                                                                                                                                                                                   |
+| continuity  | someone present who is not in the bible, dead at the scene's date or not yet born; a location not in the bible                                                                                                                                                                                                                                                                                             |
+| timeline    | a scene dated before the scene it follows, unless it is marked flashback (a flashback does not move the clock)                                                                                                                                                                                                                                                                                             |
+| world-rules | a match for any rule's forbidden patterns; on the rule itself, a pattern that cannot compile                                                                                                                                                                                                                                                                                                               |
+| voice       | site-runtime's `slopScan` against Dustin's own writing (`shared/voice/` and up to four of the book's scenes whose status starts done, final, finished or complete, never the scene itself): a sentence well past his long ones, a run all the same length, a model's filler, a model's word his writing never uses, a joiner dash or "not X, it's Y" where his writing has none, a closing list of padding |
 
 There is no global word list: a word Dustin uses is never flagged. A session drafting a scene gets excerpts of the same writing with `carrel_read_book_file`, among them a long sentence of his and a short one. Every check has a planted problem that must be flagged and a clean twin that must not (`test/checks.test.ts`).
 
@@ -155,21 +155,21 @@ The AI door is its own hostname, `carrel-mcp.dustinedwards.info` (design decisio
 
 Every tool is named `carrel_<action>_<resource>` and carries all four annotation hints. `carrel_search_items` returns 50 posts to a page by default (`limit` up to 100), with `has_more` and an opaque `next_cursor` to pass back as `cursor`.
 
-| Tool | Who | What |
-|---|---|---|
-| `carrel_list_projects`, `carrel_search_items`, `carrel_read_item`, `carrel_preview_item`, `carrel_get_checks` | anyone with a role | read through the same functions as the pages |
-| `carrel_voice_brief`, `carrel_check_post_text` | anyone with a role | what to read before drafting (a few writing rules, the Owner's guide, and excerpts of the published posts holding a long and a short sentence of the author's), and the scan run on text without saving |
-| `carrel_save_draft` | Editor, Owner | a new AI draft beside the person's own; never over it, never to the site. The answer carries the writing checks on what was saved |
-| `carrel_add_finding` | anyone with a role, reviewers above all | a flag on a post, credited to the client |
-| `carrel_publish_item` | the Owner's own sessions | the post as saved on the site at `expected_version`; refused while any flag is open; recorded as "published by <client> on Dustin's instruction"; emails Dustin an unpublish link |
-| `carrel_import_media` | anyone who may edit the site's library | a picture from its https address, with alt text, as the Desk's Import does; a file already stored is reported, not stored twice |
-| `carrel_delete_media` | the Owner's own sessions | library files by id, for good, through the Desk's own Delete (trash first where the site has one, then removed); the site refuses a file a page still uses, and the answer names it |
-| `carrel_review_mentions` | the Owner's own sessions | a page of a site's webmention queue with the whole queue's counts, stranger text marked as data |
-| `carrel_decide_mention` | the Owner's own sessions | approve, reject or take back mentions, through the Desk's mentions list; delete and the sweep stay in the Desk |
-| `carrel_list_book_files`, `carrel_read_book_file`, `carrel_check_book_text` | anyone with a role on the book | the book's files, a file with its version and flags, and the checks run on text without saving |
-| `carrel_save_book_draft` | Editor, Owner | a new AI draft of a book file beside the person's own; never committed to Git |
-| `carrel_add_book_finding` | anyone with a role, reviewers above all | a flag on a book file; a recheck never withdraws it, and it holds export |
-| `carrel_draft_social_post` | the Owner's own sessions | a post for the social queue, by event id or by account, project and item |
+| Tool                                                                                                          | Who                                     | What                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `carrel_list_projects`, `carrel_search_items`, `carrel_read_item`, `carrel_preview_item`, `carrel_get_checks` | anyone with a role                      | read through the same functions as the pages                                                                                                                                                            |
+| `carrel_voice_brief`, `carrel_check_post_text`                                                                | anyone with a role                      | what to read before drafting (a few writing rules, the Owner's guide, and excerpts of the published posts holding a long and a short sentence of the author's), and the scan run on text without saving |
+| `carrel_save_draft`                                                                                           | Editor, Owner                           | a new AI draft beside the person's own; never over it, never to the site. The answer carries the writing checks on what was saved                                                                       |
+| `carrel_add_finding`                                                                                          | anyone with a role, reviewers above all | a flag on a post, credited to the client                                                                                                                                                                |
+| `carrel_publish_item`                                                                                         | the Owner's own sessions                | the post as saved on the site at `expected_version`; refused while any flag is open; recorded as "published by <client> on Dustin's instruction"; emails Dustin an unpublish link                       |
+| `carrel_import_media`                                                                                         | anyone who may edit the site's library  | a picture from its https address, with alt text, as the Desk's Import does; a file already stored is reported, not stored twice                                                                         |
+| `carrel_delete_media`                                                                                         | the Owner's own sessions                | library files by id, for good, through the Desk's own Delete (trash first where the site has one, then removed); the site refuses a file a page still uses, and the answer names it                     |
+| `carrel_review_mentions`                                                                                      | the Owner's own sessions                | a page of a site's webmention queue with the whole queue's counts, stranger text marked as data                                                                                                         |
+| `carrel_decide_mention`                                                                                       | the Owner's own sessions                | approve, reject or take back mentions, through the Desk's mentions list; delete and the sweep stay in the Desk                                                                                          |
+| `carrel_list_book_files`, `carrel_read_book_file`, `carrel_check_book_text`                                   | anyone with a role on the book          | the book's files, a file with its version and flags, and the checks run on text without saving                                                                                                          |
+| `carrel_save_book_draft`                                                                                      | Editor, Owner                           | a new AI draft of a book file beside the person's own; never committed to Git                                                                                                                           |
+| `carrel_add_book_finding`                                                                                     | anyone with a role, reviewers above all | a flag on a book file; a recheck never withdraws it, and it holds export                                                                                                                                |
+| `carrel_draft_social_post`                                                                                    | the Owner's own sessions                | a post for the social queue, by event id or by account, project and item                                                                                                                                |
 
 A **named agent** is a person row `agent:<name>` that a key resolves to; it is neither Owner nor reviewer, and its role on each project is set in People like anyone's. A **reviewer** is a person row with `is_reviewer = 1` (another company's agent), signed in through the same door with its own email: it reads and flags through `/mcp`, never saves or publishes, and is refused at the browser door. AI drafts and flags show in the post's editor, and the project's Posts list shows a post that exists only as a draft (yours or an AI's, `test/waiting.test.ts`) and marks a post with AI drafts waiting; only the Owner dismisses a flag. If the email after an AI publish fails, the publish stands and the health check reports it until it is sent.
 
@@ -273,8 +273,8 @@ Credentials are secrets named for the account key, with dashes as underscores: `
 
 - **People** (`/people`, the Owner only; anyone else gets a 404): who is in Carrel, their kind (Owner, person, or reviewer), and their role on each project. The Owner adds a person, shares a project as Reader, Editor or Author, removes a role, and disables or re-enables someone. Everything goes through `app/lib/people-admin.server.ts`, which checks the Owner. It refuses a second Owner (the database refuses one too), disabling or re-roling the Owner, a reviewer as Editor or Author (reviewers read and flag only), and Author for an AI agent or on a book.
 - **Access is outside Carrel.** Adding a person here does not let them past Cloudflare Access, and the page says so after each add, naming where to allow the same email:
-  - Carrel's pages: the Worker's Access policy. The Worker's Access tab offers only *Cloudflare account* and *Email domain*, so one extra address goes in an Emails rule in Zero Trust > Access controls > Policies, or on the Worker's application in Zero Trust.
-  - The AI door: the *Carrel people* policy of the *Carrel AI Door* application.
+  - Carrel's pages: the Worker's Access policy. The Worker's Access tab offers only _Cloudflare account_ and _Email domain_, so one extra address goes in an Emails rule in Zero Trust > Access controls > Policies, or on the Worker's application in Zero Trust.
+  - The AI door: the _Carrel people_ policy of the _Carrel AI Door_ application.
   - Someone without a Cloudflare account signs in with an emailed code only if One-time PIN is set up, under Zero Trust > Integrations > Identity providers.
 - **Flags** (`/p/<project>/flags`): every flag on a site project, open first, from checks, AI sessions and reviewers, including flags on items the site does not have, which no editor page reaches. Anyone who can read the project sees them. Only the Owner dismisses, through the editor's own dismiss function, so a dismissal is recorded the same way.
 
@@ -290,33 +290,33 @@ A privacy or terms page is an ordinary page on the site (item `page.privacy` or 
 
 ## Who may do what
 
-| Action | Reader | Editor | Author | Owner |
-|---|---|---|---|---|
-| See the list, open a post, preview | yes | yes | yes | yes |
-| Type in a file's shared room (everyone in it sees the change at once) | | yes | yes | yes |
-| Comment, reply, and make or withdraw your own suggestions | yes | yes | yes | yes |
-| Accept or reject suggestions; resolve anyone's comment thread | | yes | yes | yes |
-| Delete someone else's comment | | | | yes |
-| Save a draft post to the site | | yes | yes | yes |
-| Save changes to a published or scheduled post | | | own posts | yes |
-| Publish, schedule, schedule an update to a live post, cancel it, return to draft, restore a live post's earlier text | | | own posts | yes |
-| Save a book's file to Git (it changes nothing public) | | yes | | yes |
-| Read a book's flags and authorship record | yes | yes | | yes |
-| Dismiss a flag, export a book | | | | yes |
-| Browse the media library | yes | yes | yes | yes |
-| Upload media (several at once), insert an image into a post | | yes | yes | yes |
-| Edit a file's alt text, caption, credit and license, tags and focal point, import one from a web address, crop it into a new file, ask for and accept suggested tags and alt text, move files to the trash and restore them | | yes | yes | yes |
-| Replace, turn, mirror, shrink or revert a file's bytes under the same address (it changes every page that shows it) | | | | yes |
-| Delete a media file from the site for good, empty the trash | | | | yes |
-| Read a post's history and compare revisions or drafts | yes | yes | yes | yes |
-| Tag, duplicate, rename a draft, move posts to the Trash and restore them, from the posts list | | yes | yes | yes |
-| Unpublish, reschedule or rename a live post, move it to the Trash, from the posts list | | | | yes |
-| Delete posts from a site for good | | | | yes |
-| See a project's flags list | yes | yes | yes | yes |
-| See the Legal tab and the shared sections | yes | yes | yes | yes |
-| Change or remove a shared section | | | | yes |
-| See a site's mention queue; approve, reject or delete a mention; sweep the expired ones | | | | yes |
-| Manage people and their roles | | | | yes |
+| Action                                                                                                                                                                                                                      | Reader | Editor | Author    | Owner |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | --------- | ----- |
+| See the list, open a post, preview                                                                                                                                                                                          | yes    | yes    | yes       | yes   |
+| Type in a file's shared room (everyone in it sees the change at once)                                                                                                                                                       |        | yes    | yes       | yes   |
+| Comment, reply, and make or withdraw your own suggestions                                                                                                                                                                   | yes    | yes    | yes       | yes   |
+| Accept or reject suggestions; resolve anyone's comment thread                                                                                                                                                               |        | yes    | yes       | yes   |
+| Delete someone else's comment                                                                                                                                                                                               |        |        |           | yes   |
+| Save a draft post to the site                                                                                                                                                                                               |        | yes    | yes       | yes   |
+| Save changes to a published or scheduled post                                                                                                                                                                               |        |        | own posts | yes   |
+| Publish, schedule, schedule an update to a live post, cancel it, return to draft, restore a live post's earlier text                                                                                                        |        |        | own posts | yes   |
+| Save a book's file to Git (it changes nothing public)                                                                                                                                                                       |        | yes    |           | yes   |
+| Read a book's flags and authorship record                                                                                                                                                                                   | yes    | yes    |           | yes   |
+| Dismiss a flag, export a book                                                                                                                                                                                               |        |        |           | yes   |
+| Browse the media library                                                                                                                                                                                                    | yes    | yes    | yes       | yes   |
+| Upload media (several at once), insert an image into a post                                                                                                                                                                 |        | yes    | yes       | yes   |
+| Edit a file's alt text, caption, credit and license, tags and focal point, import one from a web address, crop it into a new file, ask for and accept suggested tags and alt text, move files to the trash and restore them |        | yes    | yes       | yes   |
+| Replace, turn, mirror, shrink or revert a file's bytes under the same address (it changes every page that shows it)                                                                                                         |        |        |           | yes   |
+| Delete a media file from the site for good, empty the trash                                                                                                                                                                 |        |        |           | yes   |
+| Read a post's history and compare revisions or drafts                                                                                                                                                                       | yes    | yes    | yes       | yes   |
+| Tag, duplicate, rename a draft, move posts to the Trash and restore them, from the posts list                                                                                                                               |        | yes    | yes       | yes   |
+| Unpublish, reschedule or rename a live post, move it to the Trash, from the posts list                                                                                                                                      |        |        |           | yes   |
+| Delete posts from a site for good                                                                                                                                                                                           |        |        |           | yes   |
+| See a project's flags list                                                                                                                                                                                                  | yes    | yes    | yes       | yes   |
+| See the Legal tab and the shared sections                                                                                                                                                                                   | yes    | yes    | yes       | yes   |
+| Change or remove a shared section                                                                                                                                                                                           |        |        |           | yes   |
+| See a site's mention queue; approve, reject or delete a mention; sweep the expired ones                                                                                                                                     |        |        |           | yes   |
+| Manage people and their roles                                                                                                                                                                                               |        |        |           | yes   |
 
 A person with no role on a project gets the same 404 as for a project that does not exist.
 

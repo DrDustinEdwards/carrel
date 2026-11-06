@@ -34,7 +34,15 @@ import { math } from "micromark-extension-math";
  */
 
 /** The node types that may hold a block's origin. */
-export const BLOCK_TYPES = ["paragraph", "heading", "bulletList", "orderedList", "blockquote", "horizontalRule", "sourceBlock"];
+export const BLOCK_TYPES = [
+  "paragraph",
+  "heading",
+  "bulletList",
+  "orderedList",
+  "blockquote",
+  "horizontalRule",
+  "sourceBlock",
+];
 
 /**
  * @param {string} source
@@ -44,7 +52,11 @@ function parseTree(source, dialect) {
   const site = dialect === "site";
   return fromMarkdown(source, {
     extensions: [frontmatter(["yaml"]), gfm(), ...(site ? [directive(), math()] : [])],
-    mdastExtensions: [frontmatterFromMarkdown(["yaml"]), gfmFromMarkdown(), ...(site ? [directiveFromMarkdown(), mathFromMarkdown()] : [])],
+    mdastExtensions: [
+      frontmatterFromMarkdown(["yaml"]),
+      gfmFromMarkdown(),
+      ...(site ? [directiveFromMarkdown(), mathFromMarkdown()] : []),
+    ],
   });
 }
 
@@ -61,8 +73,10 @@ const span = (node) => [node.position.start.offset, node.position.end.offset];
  * @returns {string}
  */
 function sliceOf(node, source) {
-  if (node.position?.start?.offset !== undefined && node.position?.end?.offset !== undefined) return source.slice(node.position.start.offset, node.position.end.offset);
-  if (Array.isArray(node.children)) return node.children.map((/** @type {any} */ c) => sliceOf(c, source)).join("");
+  if (node.position?.start?.offset !== undefined && node.position?.end?.offset !== undefined)
+    return source.slice(node.position.start.offset, node.position.end.offset);
+  if (Array.isArray(node.children))
+    return node.children.map((/** @type {any} */ c) => sliceOf(c, source)).join("");
   return typeof node.value === "string" ? node.value : "";
 }
 
@@ -79,22 +93,33 @@ function inlines(children, source, marks = []) {
   const push = (n) => {
     const last = out.at(-1);
     // Adjacent text with the same marks is one text node, as ProseMirror keeps it.
-    if (n.type === "text" && last?.type === "text" && JSON.stringify(last.marks ?? []) === JSON.stringify(n.marks ?? [])) last.text = (last.text ?? "") + (n.text ?? "");
+    if (
+      n.type === "text" &&
+      last?.type === "text" &&
+      JSON.stringify(last.marks ?? []) === JSON.stringify(n.marks ?? [])
+    )
+      last.text = (last.text ?? "") + (n.text ?? "");
     else out.push(n);
   };
   /** @param {any} node */
   const atom = (node) => {
-    push({ type: "sourceInline", attrs: { text: sliceOf(node, source) }, ...(marks.length ? { marks } : {}) });
+    push({
+      type: "sourceInline",
+      attrs: { text: sliceOf(node, source) },
+      ...(marks.length ? { marks } : {}),
+    });
   };
   for (const node of children) {
     switch (node.type) {
       case "text":
-        if (node.value) push({ type: "text", text: node.value, ...(marks.length ? { marks } : {}) });
+        if (node.value)
+          push({ type: "text", text: node.value, ...(marks.length ? { marks } : {}) });
         break;
       case "emphasis":
       case "strong":
       case "delete": {
-        const type = node.type === "emphasis" ? "italic" : node.type === "strong" ? "bold" : "strike";
+        const type =
+          node.type === "emphasis" ? "italic" : node.type === "strong" ? "bold" : "strike";
         const inner = inlines(node.children, source, [...marks, { type }]);
         if (!inner || inner.length === 0) return null;
         inner.forEach(push);
@@ -107,11 +132,19 @@ function inlines(children, source, marks = []) {
         break;
       case "link": {
         // Only [text](url) is formatted; a bare URL, <url> or an e-mail stays exactly as typed.
-        if (!node.position || source[node.position.start.offset] !== "[" || node.children.length === 0 || marks.some((m) => m.type === "link")) {
+        if (
+          !node.position ||
+          source[node.position.start.offset] !== "[" ||
+          node.children.length === 0 ||
+          marks.some((m) => m.type === "link")
+        ) {
           atom(node);
           break;
         }
-        const inner = inlines(node.children, source, [...marks, { type: "link", attrs: { href: node.url, title: node.title ?? null } }]);
+        const inner = inlines(node.children, source, [
+          ...marks,
+          { type: "link", attrs: { href: node.url, title: node.title ?? null } },
+        ]);
         if (!inner || inner.length === 0) atom(node);
         else inner.forEach(push);
         break;
@@ -121,7 +154,8 @@ function inlines(children, source, marks = []) {
         break;
       case "textDirective":
         // The site reads 4.5:1 and localhost:8080 as text, not as directives named "1" or "8080".
-        if (/^\d/.test(node.name ?? "")) push({ type: "text", text: sliceOf(node, source), ...(marks.length ? { marks } : {}) });
+        if (/^\d/.test(node.name ?? ""))
+          push({ type: "text", text: sliceOf(node, source), ...(marks.length ? { marks } : {}) });
         else atom(node);
         break;
       default:
@@ -145,7 +179,11 @@ function blockJson(node, source) {
     case "heading": {
       const content = inlines(node.children, source);
       if (!content) return null;
-      return { type: "heading", attrs: { level: node.depth }, ...(content.length ? { content } : {}) };
+      return {
+        type: "heading",
+        attrs: { level: node.depth },
+        ...(content.length ? { content } : {}),
+      };
     }
     case "thematicBreak":
       return { type: "horizontalRule" };
@@ -160,11 +198,18 @@ function blockJson(node, source) {
         // A task item has a checkbox the editor does not draw; it stays Markdown.
         if (item.checked !== null && item.checked !== undefined) return null;
         const content = item.children.map((/** @type {any} */ c) => blockJson(c, source));
-        if (content.length === 0 || content[0]?.type !== "paragraph" || content.some((/** @type {any} */ c) => !c)) return null;
+        if (
+          content.length === 0 ||
+          content[0]?.type !== "paragraph" ||
+          content.some((/** @type {any} */ c) => !c)
+        )
+          return null;
         items.push({ type: "listItem", content });
       }
       if (items.length === 0) return null;
-      return node.ordered ? { type: "orderedList", attrs: { start: node.start ?? 1 }, content: items } : { type: "bulletList", content: items };
+      return node.ordered
+        ? { type: "orderedList", attrs: { start: node.start ?? 1 }, content: items }
+        : { type: "bulletList", content: items };
     }
     default:
       return null;
@@ -181,7 +226,8 @@ function blockLabel(node) {
   if (node.type === "html") return "HTML";
   if (node.type === "footnoteDefinition") return "Footnote";
   if (node.type === "definition") return "Link reference";
-  if (node.type === "containerDirective" || node.type === "leafDirective") return node.name ? node.name.charAt(0).toUpperCase() + node.name.slice(1) : "Directive";
+  if (node.type === "containerDirective" || node.type === "leafDirective")
+    return node.name ? node.name.charAt(0).toUpperCase() + node.name.slice(1) : "Directive";
   if (node.type === "list") return "List";
   if (node.type === "blockquote") return "Quote";
   return "Markdown";
@@ -201,14 +247,23 @@ export function toDoc(source, dialect) {
   tree.children.forEach((/** @type {any} */ node, /** @type {number} */ id) => {
     const [start, end] = span(node);
     const text = source.slice(start, end);
-    const json = blockJson(node, source) ?? { type: "sourceBlock", attrs: { text, kind: blockLabel(node) } };
+    const json = blockJson(node, source) ?? {
+      type: "sourceBlock",
+      attrs: { text, kind: blockLabel(node) },
+    };
     json.attrs = { ...json.attrs, md: { id, source: text, before: source.slice(at, start) } };
     content.push(json);
     at = end;
   });
   if (content.length === 0) {
     // An empty or blank file: one empty paragraph that writes nothing until something is typed.
-    return { doc: { type: "doc", content: [{ type: "paragraph", attrs: { md: { id: 0, source: "", before: "" } } }] }, tail: source };
+    return {
+      doc: {
+        type: "doc",
+        content: [{ type: "paragraph", attrs: { md: { id: 0, source: "", before: "" } } }],
+      },
+      tail: source,
+    };
   }
   return { doc: { type: "doc", content }, tail: source.slice(at) };
 }
@@ -246,7 +301,14 @@ function canon(node) {
   const attrs = (attrs) => {
     /** @type {Record<string, any>} */
     const out = {};
-    for (const k of keep) if (attrs && attrs[k] !== undefined && attrs[k] !== null && !(k === "start" && attrs[k] === 1)) out[k] = attrs[k];
+    for (const k of keep)
+      if (
+        attrs &&
+        attrs[k] !== undefined &&
+        attrs[k] !== null &&
+        !(k === "start" && attrs[k] === 1)
+      )
+        out[k] = attrs[k];
     return out;
   };
   const order = ["link", "bold", "italic", "strike", "code"];
@@ -256,16 +318,28 @@ function canon(node) {
   const add = (c) => {
     if (c.type === "text" && c.text === "") return;
     const last = content.at(-1);
-    if (c.type === "text" && last?.type === "text" && JSON.stringify(last.marks) === JSON.stringify(c.marks)) last.text += c.text;
+    if (
+      c.type === "text" &&
+      last?.type === "text" &&
+      JSON.stringify(last.marks) === JSON.stringify(c.marks)
+    )
+      last.text += c.text;
     else content.push(c);
   };
   for (const child of node.content ?? []) {
     // A source atom is written as its bytes. Checked alone, a block can read it as plain text (a
     // reference whose definition is in another block), so both count as the same characters.
-    const c = child.type === "sourceInline" ? canon({ type: "text", text: child.attrs?.text ?? "", marks: child.marks }) : canon(child);
+    const c =
+      child.type === "sourceInline"
+        ? canon({ type: "text", text: child.attrs?.text ?? "", marks: child.marks })
+        : canon(child);
     // Whitespace at the edge of bold or italic cannot be written inside the delimiters, so the writer
     // puts it outside; both readings count as the same text.
-    if (c.type === "text" && c.marks.length && !c.marks.some((/** @type {any} */ m) => m.type === "code")) {
+    if (
+      c.type === "text" &&
+      c.marks.length &&
+      !c.marks.some((/** @type {any} */ m) => m.type === "code")
+    ) {
       const [, lead = "", body = "", trail = ""] = /^(\s*)([\s\S]*?)(\s*)$/.exec(c.text) ?? [];
       add({ ...c, text: lead, marks: [] });
       add({ ...c, text: body });
@@ -279,13 +353,16 @@ function canon(node) {
     if (first.type === "text") first.text = first.text.replace(/^[ \t]+/, "");
     if (last.type === "text") last.text = last.text.replace(/[ \t]+$/, "");
     while (content.length && content[0].type === "text" && content[0].text === "") content.shift();
-    while (content.length && content.at(-1).type === "text" && content.at(-1).text === "") content.pop();
+    while (content.length && content.at(-1).type === "text" && content.at(-1).text === "")
+      content.pop();
   }
   return {
     type: node.type,
     attrs: attrs(node.attrs),
     text: node.text,
-    marks: (node.marks ?? []).map((m) => ({ type: m.type, attrs: attrs(m.attrs) })).sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type)),
+    marks: (node.marks ?? [])
+      .map((m) => ({ type: m.type, attrs: attrs(m.attrs) }))
+      .sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type)),
     content,
   };
 }
@@ -326,15 +403,19 @@ function escapeText(text, o) {
     else if (c === "<" && /[A-Za-z/!?]/.test(next)) out += "\\<";
     else if (c === "&" && /^&(#?[A-Za-z0-9]+);/.test(text.slice(i))) out += "\\&";
     else if (c === "[" && /\]\s*[([:]/.test(text.slice(i))) out += "\\[";
-    else if (o.dialect === "site" && c === ":" && /[A-Za-z]/.test(next) && prev !== ":") out += "\\:";
+    else if (o.dialect === "site" && c === ":" && /[A-Za-z]/.test(next) && prev !== ":")
+      out += "\\:";
     else if (o.dialect === "site" && c === "$") out += "\\$";
     else out += c;
   }
   // What would start another block at the start of a line.
-  return out.replace(/(^|\n)([ \t]*)(#{1,6}(?=[ \t]|$)|>|[-+](?=[ \t])|\d{1,9}(?=[.)][ \t]|[.)]$)|=+[ \t]*$|-+[ \t]*$)/g, (m, nl, ws, mark) => {
-    if (!o.lineStart && nl === "") return m;
-    return /^\d/.test(mark) ? `${nl}${ws}${mark}\\` : `${nl}${ws}\\${mark}`;
-  });
+  return out.replace(
+    /(^|\n)([ \t]*)(#{1,6}(?=[ \t]|$)|>|[-+](?=[ \t])|\d{1,9}(?=[.)][ \t]|[.)]$)|=+[ \t]*$|-+[ \t]*$)/g,
+    (m, nl, ws, mark) => {
+      if (!o.lineStart && nl === "") return m;
+      return /^\d/.test(mark) ? `${nl}${ws}${mark}\\` : `${nl}${ws}\\${mark}`;
+    },
+  );
 }
 
 /** @param {string} code */
@@ -347,7 +428,9 @@ function codeSpan(code) {
 
 /** @param {string} href @param {string | null} title */
 function linkTail(href, title) {
-  const url = /[\s()<>]/.test(href) ? `<${href.replace(/[<>]/g, (c) => encodeURIComponent(c))}>` : href;
+  const url = /[\s()<>]/.test(href)
+    ? `<${href.replace(/[<>]/g, (c) => encodeURIComponent(c))}>`
+    : href;
   return `](${url}${title ? ` "${title.replace(/["\\]/g, (c) => `\\${c}`)}"` : ""})`;
 }
 
@@ -364,18 +447,30 @@ function writeInlines(nodes, o) {
     if (m.type === "bold") return "**";
     if (m.type === "italic") return o.emphasis;
     if (m.type === "strike") return "~~";
-    if (m.type === "link") return opening ? "[" : linkTail(m.attrs?.href ?? "", m.attrs?.title ?? null);
+    if (m.type === "link")
+      return opening ? "[" : linkTail(m.attrs?.href ?? "", m.attrs?.title ?? null);
     return "";
   };
-  const sorted = (/** @type {JsonNode} */ n) => [...(n.marks ?? [])].filter((m) => m.type !== "code").sort((a, b) => MARK_ORDER.indexOf(a.type) - MARK_ORDER.indexOf(b.type));
-  const same = (/** @type {JsonMark} */ a, /** @type {JsonMark} */ b) => a.type === b.type && JSON.stringify(a.attrs ?? {}) === JSON.stringify(b.attrs ?? {});
+  const sorted = (/** @type {JsonNode} */ n) =>
+    [...(n.marks ?? [])]
+      .filter((m) => m.type !== "code")
+      .sort((a, b) => MARK_ORDER.indexOf(a.type) - MARK_ORDER.indexOf(b.type));
+  const same = (/** @type {JsonMark} */ a, /** @type {JsonMark} */ b) =>
+    a.type === b.type && JSON.stringify(a.attrs ?? {}) === JSON.stringify(b.attrs ?? {});
   /** @param {JsonMark[]} wanted @param {string} lead */
   const moveTo = (wanted, lead = "") => {
     let keep = 0;
-    while (keep < open.length && keep < wanted.length && same(/** @type {JsonMark} */ (open[keep]), /** @type {JsonMark} */ (wanted[keep]))) keep++;
-    for (let i = open.length - 1; i >= keep; i--) out += delim(/** @type {JsonMark} */ (open[i]), false);
+    while (
+      keep < open.length &&
+      keep < wanted.length &&
+      same(/** @type {JsonMark} */ (open[keep]), /** @type {JsonMark} */ (wanted[keep]))
+    )
+      keep++;
+    for (let i = open.length - 1; i >= keep; i--)
+      out += delim(/** @type {JsonMark} */ (open[i]), false);
     out += lead;
-    for (let i = keep; i < wanted.length; i++) out += delim(/** @type {JsonMark} */ (wanted[i]), true);
+    for (let i = keep; i < wanted.length; i++)
+      out += delim(/** @type {JsonMark} */ (wanted[i]), true);
     open = wanted;
   };
   nodes.forEach((node, i) => {
@@ -386,7 +481,12 @@ function writeInlines(nodes, o) {
       // Delimiters cannot sit against a space: whitespace at the edges of a marked run goes outside.
       const prefix = (/** @type {JsonMark[]} */ a, /** @type {JsonMark[]} */ b) => {
         let k = 0;
-        while (k < a.length && k < b.length && same(/** @type {JsonMark} */ (a[k]), /** @type {JsonMark} */ (b[k]))) k++;
+        while (
+          k < a.length &&
+          k < b.length &&
+          same(/** @type {JsonMark} */ (a[k]), /** @type {JsonMark} */ (b[k]))
+        )
+          k++;
         return k;
       };
       // A mark opens or closes wherever the stack changes below it, not only where it starts or ends.
@@ -399,7 +499,14 @@ function writeInlines(nodes, o) {
       text = text.slice(0, text.length - trail.length);
       moveTo(marks, lead);
       const lineStart = out === "" || out.endsWith("\n");
-      out += code ? codeSpan(text) : escapeText(text, { all: o.all, dialect: o.dialect, lineStart, afterAtom: !lead && nodes[i - 1]?.type === "sourceInline" });
+      out += code
+        ? codeSpan(text)
+        : escapeText(text, {
+            all: o.all,
+            dialect: o.dialect,
+            lineStart,
+            afterAtom: !lead && nodes[i - 1]?.type === "sourceInline",
+          });
       if (trail) {
         moveTo(marks.slice(0, prefix(marks, after)));
         out += trail;
@@ -450,11 +557,17 @@ function writeBlock(node, o) {
     case "orderedList": {
       const start = node.attrs?.start ?? 1;
       const items = node.content ?? [];
-      const loose = items.some((item) => (item.content ?? []).filter((c) => c.type !== "bulletList" && c.type !== "orderedList").length > 1);
+      const loose = items.some(
+        (item) =>
+          (item.content ?? []).filter((c) => c.type !== "bulletList" && c.type !== "orderedList")
+            .length > 1,
+      );
       return items
         .map((item, i) => {
           const marker = node.type === "bulletList" ? "- " : `${start + i}. `;
-          const body = (item.content ?? []).map((c) => writeBlock(c, o)).join(loose ? "\n\n" : "\n");
+          const body = (item.content ?? [])
+            .map((c) => writeBlock(c, o))
+            .join(loose ? "\n\n" : "\n");
           return indent(body, marker, " ".repeat(marker.length));
         })
         .join(loose ? "\n\n" : "\n");
@@ -468,7 +581,9 @@ function writeBlock(node, o) {
 /** @param {JsonNode} block */
 function emphasisOf(block) {
   const source = /** @type {MdOrigin | null | undefined} */ (block.attrs?.md)?.source ?? "";
-  return /(^|[^\p{L}\p{N}_])_[^_\s]/u.test(source) && !/(^|[^*\\])\*[^*\s]/.test(source) ? "_" : "*";
+  return /(^|[^\p{L}\p{N}_])_[^_\s]/u.test(source) && !/(^|[^*\\])\*[^*\s]/.test(source)
+    ? "_"
+    : "*";
 }
 
 /**
@@ -486,7 +601,8 @@ export function writeChecked(block, dialect) {
     text = writeBlock(block, { all, dialect, emphasis });
     if (block.type === "paragraph" && !(block.content ?? []).length) return "";
     const back = toDoc(text, dialect).doc.content ?? [];
-    if (back.length === 1 && JSON.stringify(canon(/** @type {JsonNode} */ (back[0]))) === want) return text;
+    if (back.length === 1 && JSON.stringify(canon(/** @type {JsonNode} */ (back[0]))) === want)
+      return text;
   }
   return text;
 }
@@ -522,5 +638,7 @@ export function fromDoc(doc, tail, prints, dialect) {
  * @returns {JsonNode[]}
  */
 export function pastedBlocks(text, dialect) {
-  return JSON.parse(JSON.stringify(toDoc(text, dialect).doc.content ?? []), (key, value) => (key === "md" ? null : value));
+  return JSON.parse(JSON.stringify(toDoc(text, dialect).doc.content ?? []), (key, value) =>
+    key === "md" ? null : value,
+  );
 }

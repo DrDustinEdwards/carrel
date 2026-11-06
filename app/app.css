@@ -670,12 +670,35 @@
 }
 
 /* While someone types, the rest of the screen falls quiet; a mouse move or focus brings it back. */
-html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-site-tabs, .cap-admin-bar, .app-editor .cap-page-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar):not(:focus-within) {
+html[data-typing]
+  :is(
+    .cap-site-header,
+    .cap-admin-strip,
+    .cap-admin-menu,
+    .cap-site-tabs,
+    .cap-admin-bar,
+    .app-editor .cap-page-head,
+    .app-editor .app-notices,
+    .app-editor-side,
+    .app-writing-tools,
+    .cap-md-toolbar
+  ):not(:focus-within) {
   opacity: 0.08;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-site-tabs, .cap-admin-bar, .app-editor .cap-page-head, .app-editor .app-notices, .app-editor-side, .app-writing-tools, .cap-md-toolbar) {
+  :is(
+    .cap-site-header,
+    .cap-admin-strip,
+    .cap-admin-menu,
+    .cap-site-tabs,
+    .cap-admin-bar,
+    .app-editor .cap-page-head,
+    .app-editor .app-notices,
+    .app-editor-side,
+    .app-writing-tools,
+    .cap-md-toolbar
+  ) {
     transition: opacity var(--dur-base) var(--ease-out);
   }
 }
@@ -838,13 +861,27 @@ html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-
   flex: none;
 }
 
-.app-label[data-color="2"] .app-label-dot { background: var(--series-2); }
-.app-label[data-color="3"] .app-label-dot { background: var(--series-3); }
-.app-label[data-color="4"] .app-label-dot { background: var(--series-4); }
-.app-label[data-color="5"] .app-label-dot { background: var(--series-5); }
-.app-label[data-color="6"] .app-label-dot { background: var(--series-6); }
-.app-label[data-color="7"] .app-label-dot { background: var(--series-7); }
-.app-label[data-color="8"] .app-label-dot { background: var(--series-8); }
+.app-label[data-color="2"] .app-label-dot {
+  background: var(--series-2);
+}
+.app-label[data-color="3"] .app-label-dot {
+  background: var(--series-3);
+}
+.app-label[data-color="4"] .app-label-dot {
+  background: var(--series-4);
+}
+.app-label[data-color="5"] .app-label-dot {
+  background: var(--series-5);
+}
+.app-label[data-color="6"] .app-label-dot {
+  background: var(--series-6);
+}
+.app-label[data-color="7"] .app-label-dot {
+  background: var(--series-7);
+}
+.app-label[data-color="8"] .app-label-dot {
+  background: var(--series-8);
+}
 
 @media (forced-colors: active) {
   .app-label-dot {
@@ -989,10 +1026,18 @@ html[data-typing] :is(.cap-site-header, .cap-admin-strip, .cap-admin-menu, .cap-
     font-family: var(--prose);
     line-height: 1.3;
   }
-  & h1 { font-size: 1.9em; }
-  & h2 { font-size: var(--fs-prose-h2, 1.5em); }
-  & h3 { font-size: 1.25em; }
-  & :is(h4, h5, h6) { font-size: 1.05em; }
+  & h1 {
+    font-size: 1.9em;
+  }
+  & h2 {
+    font-size: var(--fs-prose-h2, 1.5em);
+  }
+  & h3 {
+    font-size: 1.25em;
+  }
+  & :is(h4, h5, h6) {
+    font-size: 1.05em;
+  }
   & blockquote {
     margin-inline: 0;
     padding-inline-start: var(--space-5);
@@ -1161,14 +1206,38 @@ img.ProseMirror-separator {
 /* A file's room (components/editor/room-*.tsx): each person takes one of Capsomer's eight series
    colors, the same on every screen, with its own text color for a name set on it. The carets, the
    avatars in the room bar and the selection share it. */
-[data-who="0"] { --who: var(--series-1); --who-text: var(--series-text-1); }
-[data-who="1"] { --who: var(--series-2); --who-text: var(--series-text-2); }
-[data-who="2"] { --who: var(--series-3); --who-text: var(--series-text-3); }
-[data-who="3"] { --who: var(--series-4); --who-text: var(--series-text-4); }
-[data-who="4"] { --who: var(--series-5); --who-text: var(--series-text-5); }
-[data-who="5"] { --who: var(--series-6); --who-text: var(--series-text-6); }
-[data-who="6"] { --who: var(--series-7); --who-text: var(--series-text-7); }
-[data-who="7"] { --who: var(--series-8); --who-text: var(--series-text-8); }
+[data-who="0"] {
+  --who: var(--series-1);
+  --who-text: var(--series-text-1);
+}
+[data-who="1"] {
+  --who: var(--series-2);
+  --who-text: var(--series-text-2);
+}
+[data-who="2"] {
+  --who: var(--series-3);
+  --who-text: var(--series-text-3);
+}
+[data-who="3"] {
+  --who: var(--series-4);
+  --who-text: var(--series-text-4);
+}
+[data-who="4"] {
+  --who: var(--series-5);
+  --who-text: var(--series-text-5);
+}
+[data-who="5"] {
+  --who: var(--series-6);
+  --who-text: var(--series-text-6);
+}
+[data-who="6"] {
+  --who: var(--series-7);
+  --who-text: var(--series-text-7);
+}
+[data-who="7"] {
+  --who: var(--series-8);
+  --who-text: var(--series-text-8);
+}
 
 .app-room-bar {
   display: flex;

@@ -18,7 +18,19 @@ import { headingOf } from "./docx.mjs";
  * @typedef {{ title: string, source: string, scenes: Scene[] }} Chapter
  */
 
-const SCENE_HEADER = ["---", "pov:", "date:", "location:", "characters: []", "goal:", "conflict:", "outcome:", "---", "", ""].join("\n");
+const SCENE_HEADER = [
+  "---",
+  "pov:",
+  "date:",
+  "location:",
+  "characters: []",
+  "goal:",
+  "conflict:",
+  "outcome:",
+  "---",
+  "",
+  "",
+].join("\n");
 
 /** A paragraph that is only a scene-break mark: "* * *", "***", "#", "~", a bullet, or a rule. */
 const SCENE_BREAK = /^(?:(?:[*#~•·]\s*){1,5}|(?:-\s*){3,}|(?:_\s*){3,})$/u;
@@ -84,16 +96,22 @@ export function buildBook(sources) {
     /** @type {Chapter | null} */
     let chapter = null;
     if (!hasChapters) {
-      chapter = { title: source.name.replace(/\.docx$/i, ""), source: source.name, scenes: [{ blocks: [] }] };
+      chapter = {
+        title: source.name.replace(/\.docx$/i, ""),
+        source: source.name,
+        scenes: [{ blocks: [] }],
+      };
       chapters.push(chapter);
     }
     /** @type {Map<number, DocFlag[]>} */
     const flagsAt = new Map();
-    for (const f of source.flags) flagsAt.set(f.paragraph, [...(flagsAt.get(f.paragraph) ?? []), f]);
+    for (const f of source.flags)
+      flagsAt.set(f.paragraph, [...(flagsAt.get(f.paragraph) ?? []), f]);
     let blanks = 0;
 
     /** The blocks the next paragraph goes into: the open scene, or front matter before any chapter. */
-    const current = () => (chapter ? /** @type {Scene} */ (chapter.scenes.at(-1)).blocks : frontMatter);
+    const current = () =>
+      chapter ? /** @type {Scene} */ (chapter.scenes.at(-1)).blocks : frontMatter;
     /** @param {string} text */
     const note = (text) => current().push({ kind: "note", text });
     const hasText = () => current().some((b) => b.kind === "text");
@@ -109,11 +127,17 @@ export function buildBook(sources) {
         return;
       }
       if (heading?.kind === "subtitle") {
-        note(`subtitle: The subtitle "${text.trim()}" was left out; put it in book.md if it belongs.`);
+        note(
+          `subtitle: The subtitle "${text.trim()}" was left out; put it in book.md if it belongs.`,
+        );
         return;
       }
       if (heading?.level === 1) {
-        chapter = { title: text.trim() || "Untitled", source: source.name, scenes: [{ blocks: [] }] };
+        chapter = {
+          title: text.trim() || "Untitled",
+          source: source.name,
+          scenes: [{ blocks: [] }],
+        };
         chapters.push(chapter);
         blanks = 0;
         return;
@@ -121,10 +145,16 @@ export function buildBook(sources) {
 
       if (text.trim() === "") {
         blanks++;
-        if (p.pageBreak && chapter && hasText()) note("page-break: A page break inside a chapter was dropped; if it marked a scene break, add one.");
+        if (p.pageBreak && chapter && hasText())
+          note(
+            "page-break: A page break inside a chapter was dropped; if it marked a scene break, add one.",
+          );
         return;
       }
-      if (blanks >= 2 && hasText()) note("blank-lines: Several empty paragraphs here may have marked a scene break; none was assumed.");
+      if (blanks >= 2 && hasText())
+        note(
+          "blank-lines: Several empty paragraphs here may have marked a scene break; none was assumed.",
+        );
       blanks = 0;
 
       if (SCENE_BREAK.test(text.trim())) {
@@ -138,8 +168,12 @@ export function buildBook(sources) {
         markdown = `## ${markdown}`;
         note(`heading: A Heading ${heading.level} was kept as a heading inside the scene.`);
       }
-      if (p.lineBreaks > 0) note("line-break: Line breaks inside this paragraph were kept; Carrel's export joins them into one line.");
-      if (p.center && !heading) note("centered: This paragraph was centered in Word; the centering was dropped.");
+      if (p.lineBreaks > 0)
+        note(
+          "line-break: Line breaks inside this paragraph were kept; Carrel's export joins them into one line.",
+        );
+      if (p.center && !heading)
+        note("centered: This paragraph was centered in Word; the centering was dropped.");
       if (p.pageBreak) note("page-break: A page break in this paragraph was dropped.");
       current().push({ kind: "text", markdown, source: source.name, index });
     });
@@ -165,7 +199,14 @@ export function buildBook(sources) {
  */
 function sceneName(scene) {
   const first = scene.blocks.find((b) => b.kind === "text");
-  const words = first && first.kind === "text" ? first.markdown.replace(/[\\*_#]/g, "").split(/\s+/).slice(0, 5).join(" ") : "";
+  const words =
+    first && first.kind === "text"
+      ? first.markdown
+          .replace(/[\\*_#]/g, "")
+          .split(/\s+/)
+          .slice(0, 5)
+          .join(" ")
+      : "";
   return slugify(words, { max: 50 }) || "scene";
 }
 
@@ -191,7 +232,8 @@ export function writeBook(book, opts) {
     let body = header;
     let line = header.split("\n").length;
     for (const b of blocks) {
-      const chunk = b.kind === "text" ? b.markdown : `<!-- import: ${b.text.replace(/--+/g, "-")} -->`;
+      const chunk =
+        b.kind === "text" ? b.markdown : `<!-- import: ${b.text.replace(/--+/g, "-")} -->`;
       if (b.kind === "note") {
         const [what, ...rest] = b.text.split(": ");
         flags.push({ file, where: path, line, what: what ?? "", detail: rest.join(": ") });
@@ -207,12 +249,23 @@ export function writeBook(book, opts) {
   book.chapters.forEach((chapter, ci) => {
     const folder = `chapters/${number(ci + 1)}-${slugify(chapter.title, { max: 50 }) || "chapter"}`;
     chapter.scenes.forEach((scene, si) => {
-      render(`${folder}/${number(si + 1)}-${sceneName(scene)}.md`, SCENE_HEADER, scene.blocks, chapter.source);
+      render(
+        `${folder}/${number(si + 1)}-${sceneName(scene)}.md`,
+        SCENE_HEADER,
+        scene.blocks,
+        chapter.source,
+      );
     });
   });
   if (book.frontMatter.length > 0) {
     render("outline/imported-front-matter.md", "", book.frontMatter, "");
-    flags.push({ file: "", where: "outline/imported-front-matter.md", line: null, what: "front-matter", detail: "Text before the first chapter heading was kept here, out of the story." });
+    flags.push({
+      file: "",
+      where: "outline/imported-front-matter.md",
+      line: null,
+      what: "front-matter",
+      detail: "Text before the first chapter heading was kept here, out of the story.",
+    });
   }
   const title = opts.title || book.title || opts.bookFolder;
   files.set("book.md", ["---", `title: ${title}`, "author:", "language: en", "---", ""].join("\n"));
@@ -227,8 +280,20 @@ export function writeBook(book, opts) {
     "",
     ...(flags.length === 0
       ? ["Nothing was flagged."]
-      : ["| File | Line | What | Detail | From |", "| --- | ---: | --- | --- | --- |", ...flags.map((f) => `| ${f.where} | ${f.line ?? ""} | ${f.what} | ${f.detail.replace(/\|/g, "\\|")} | ${f.file} |`)]),
+      : [
+          "| File | Line | What | Detail | From |",
+          "| --- | ---: | --- | --- | --- |",
+          ...flags.map(
+            (f) =>
+              `| ${f.where} | ${f.line ?? ""} | ${f.what} | ${f.detail.replace(/\|/g, "\\|")} | ${f.file} |`,
+          ),
+        ]),
     "",
   ].join("\n");
-  return { files, report, flags, summary: { chapters: book.chapters.length, scenes, words, flags: flags.length, title } };
+  return {
+    files,
+    report,
+    flags,
+    summary: { chapters: book.chapters.length, scenes, words, flags: flags.length, title },
+  };
 }

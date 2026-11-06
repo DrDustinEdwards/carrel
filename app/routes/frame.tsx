@@ -34,7 +34,12 @@ export function ErrorBoundary() {
   const error = useRouteError();
   const data = useRouteLoaderData<typeof loader>("routes/frame") ?? null;
   const status = isRouteErrorResponse(error) ? error.status : null;
-  const title = status === 404 ? "Not found" : status === 403 ? "You may not open this" : "Something went wrong";
+  const title =
+    status === 404
+      ? "Not found"
+      : status === 403
+        ? "You may not open this"
+        : "Something went wrong";
   const detail =
     status === 404
       ? "There is nothing at this address, or it is not shared with you."
@@ -44,7 +49,15 @@ export function ErrorBoundary() {
   return (
     <Frame data={data}>
       <div className="app-page">
-        <Empty kind="failed" title={status ? `${status}: ${title}` : title} action={<a className="cap-btn" href="/">Go to Home</a>}>
+        <Empty
+          kind="failed"
+          title={status ? `${status}: ${title}` : title}
+          action={
+            <a className="cap-btn" href="/">
+              Go to Home
+            </a>
+          }
+        >
           {detail}
         </Empty>
       </div>

@@ -35,18 +35,40 @@ async function owner() {
 async function publish(id: string, body: string) {
   const { viewer, project } = await owner();
   const current = await site.adapter.content.get(id).catch(() => null);
-  const saved = await writeToSite(env, project, viewer, id, { action: "save", source: `---\ntitle: ${id}\n---\n${body}\n`, expectedVersion: current?.version ?? null }, site.fetch);
+  const saved = await writeToSite(
+    env,
+    project,
+    viewer,
+    id,
+    {
+      action: "save",
+      source: `---\ntitle: ${id}\n---\n${body}\n`,
+      expectedVersion: current?.version ?? null,
+    },
+    site.fetch,
+  );
   if (!saved.ok) throw new Error(saved.message);
-  const published = await writeToSite(env, project, viewer, id, { action: "publish", expectedVersion: saved.version }, site.fetch);
+  const published = await writeToSite(
+    env,
+    project,
+    viewer,
+    id,
+    { action: "publish", expectedVersion: saved.version },
+    site.fetch,
+  );
   if (!published.ok) throw new Error(published.message);
 }
 
 describe("the brief and the scan", () => {
   it("builds the brief from the published posts, and a saved draft comes back with the scan", async () => {
     for (const [i, body] of BASELINE.entries()) await publish(`post-${i}`, body);
-    const ai = await connectAs("owner@test.invalid", "Claude", { env, deps: { fetcher: site.fetch } });
+    const ai = await connectAs("owner@test.invalid", "Claude", {
+      env,
+      deps: { fetcher: site.fetch },
+    });
 
-    const brief = (await ai.call("carrel_voice_brief", { project: SLUG })).structuredContent as VoiceBrief & { notice: string };
+    const brief = (await ai.call("carrel_voice_brief", { project: SLUG }))
+      .structuredContent as VoiceBrief & { notice: string };
     expect(brief).toMatchObject({ from: "posts", pieces: BASELINE.length });
     expect(BASELINE.some((b) => b.includes(brief.excerpts[0]!.slice(0, 80)))).toBe(true);
     expect(brief.notice).toMatch(/data to read/);
@@ -55,24 +77,52 @@ describe("the brief and the scan", () => {
     // The excerpts hold one of the author's long sentences and one of their short ones; the brief holds
     // no word list and no measured average, which a model would copy as a length to write every time.
     const spread = sentenceSpread(BASELINE)!;
-    const lengths = brief.excerpts.flatMap((e) => e.split(/(?<=[.!?]["”]?)\s+/).map((t) => t.split(/\s+/).filter(Boolean).length));
+    const lengths = brief.excerpts.flatMap((e) =>
+      e.split(/(?<=[.!?]["”]?)\s+/).map((t) => t.split(/\s+/).filter(Boolean).length),
+    );
     expect(lengths.some((n) => n >= spread.long)).toBe(true);
     expect(lengths.some((n) => n >= 2 && n <= spread.short)).toBe(true);
-    expect(Object.keys(brief).sort()).toEqual(["builtAt", "excerpts", "from", "guide", "notice", "pieces", "rules"]);
+    expect(Object.keys(brief).sort()).toEqual([
+      "builtAt",
+      "excerpts",
+      "from",
+      "guide",
+      "notice",
+      "pieces",
+      "rules",
+    ]);
     expect(brief.rules).not.toMatch(/average/i);
 
     // A filler phrase, another author's long sentences, and a sentence lifted from an excerpt are each named.
     const lifted = brief.excerpts[0]!.split(/(?<=\.)\s+/).find((s) => s.split(" ").length >= 10)!;
-    const saved = (await ai.call("carrel_save_draft", { project: SLUG, sources: [], item: "post-new", source: `---\ntitle: New\n---\nGreat question, so we walked.\n\n${PLANT}\n\n${lifted}\n` }))
-      .structuredContent as { checks: DraftCheck };
-    expect(saved.checks.findings).toContainEqual(expect.objectContaining({ kind: "filler", excerpt: "Great question", line: 4 }));
+    const saved = (
+      await ai.call("carrel_save_draft", {
+        project: SLUG,
+        sources: [],
+        item: "post-new",
+        source: `---\ntitle: New\n---\nGreat question, so we walked.\n\n${PLANT}\n\n${lifted}\n`,
+      })
+    ).structuredContent as { checks: DraftCheck };
+    expect(saved.checks.findings).toContainEqual(
+      expect.objectContaining({ kind: "filler", excerpt: "Great question", line: 4 }),
+    );
     expect(saved.checks.findings.some((f) => f.kind === "length")).toBe(true);
     expect(saved.checks.findings.filter((f) => f.kind === "copied")).toHaveLength(1);
-    expect(saved.checks.instruction).toMatch(/^Edit the draft in place\. Change only the spans listed\./);
-    expect(saved.checks.instruction).toContain('- Line 4, "Great question": Answer the question. Cut the compliment.');
+    expect(saved.checks.instruction).toMatch(
+      /^Edit the draft in place\. Change only the spans listed\./,
+    );
+    expect(saved.checks.instruction).toContain(
+      '- Line 4, "Great question": Answer the question. Cut the compliment.',
+    );
 
     // A plain page in the author's register, its names and numbers in its source, comes back clean.
-    const { findings, instruction } = (await ai.call("carrel_check_post_text", { project: SLUG, sources: [TWIN], source: `---\ntitle: Twin\n---\n${TWIN}\n` })).structuredContent as DraftCheck;
+    const { findings, instruction } = (
+      await ai.call("carrel_check_post_text", {
+        project: SLUG,
+        sources: [TWIN],
+        source: `---\ntitle: Twin\n---\n${TWIN}\n`,
+      })
+    ).structuredContent as DraftCheck;
     expect({ findings, instruction }).toEqual({ findings: [], instruction: null });
   });
 
@@ -81,11 +131,17 @@ describe("the brief and the scan", () => {
     for (const [i, body] of BASELINE.entries()) await publish(`post-${i}`, body);
     const { project } = await owner();
     await saveVoiceGuide(testEnv.DB, project, { guide: "", own: `${TWIN}\n\n---\n\n${PLANT}` });
-    const ai = await connectAs("owner@test.invalid", "Claude", { env, deps: { fetcher: site.fetch } });
+    const ai = await connectAs("owner@test.invalid", "Claude", {
+      env,
+      deps: { fetcher: site.fetch },
+    });
 
-    const brief = (await ai.call("carrel_voice_brief", { project: SLUG })).structuredContent as VoiceBrief;
+    const brief = (await ai.call("carrel_voice_brief", { project: SLUG }))
+      .structuredContent as VoiceBrief;
     expect(brief).toMatchObject({ from: "own", pieces: 2 });
     expect(brief.excerpts.length).toBeGreaterThan(0);
-    expect(brief.excerpts.every((e) => TWIN.includes(e.slice(0, 60)) || PLANT.includes(e.slice(0, 60)))).toBe(true);
+    expect(
+      brief.excerpts.every((e) => TWIN.includes(e.slice(0, 60)) || PLANT.includes(e.slice(0, 60))),
+    ).toBe(true);
   });
 });

@@ -23,9 +23,6 @@
     "public/_headers": "not by hand: site-runtime-headers writes it on every build from the registry entry the Worker's set comes from (npm run headers, carrel-desk); committed so the /assets/* cache rule can be read"
   },
   "spelling": {
-    "skip": [
-      "docs/research/kill-matrix.json",
-      "test/fixtures/voice.ts"
-    ]
+    "skip": ["docs/research/kill-matrix.json", "test/fixtures/voice.ts"]
   }
 }

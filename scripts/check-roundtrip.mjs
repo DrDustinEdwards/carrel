@@ -18,7 +18,13 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import { fingerprints, fromDoc, sameBlock, toDoc, writeChecked } from "../app/lib/editor/markdown.mjs";
+import {
+  fingerprints,
+  fromDoc,
+  sameBlock,
+  toDoc,
+  writeChecked,
+} from "../app/lib/editor/markdown.mjs";
 import { editorSchema } from "../app/lib/editor/schema.mjs";
 
 const args = process.argv.slice(2);
@@ -32,7 +38,9 @@ if (roots.length === 0) {
 /** @param {string} dir @returns {string[]} */
 function markdownUnder(dir) {
   if (statSync(dir).isFile()) return dir.endsWith(".md") ? [dir] : [];
-  return readdirSync(dir).flatMap((name) => (name === "node_modules" || name.startsWith(".") ? [] : markdownUnder(join(dir, name))));
+  return readdirSync(dir).flatMap((name) =>
+    name === "node_modules" || name.startsWith(".") ? [] : markdownUnder(join(dir, name)),
+  );
 }
 
 const schema = editorSchema();
@@ -100,19 +108,41 @@ for (const file of files) {
     const md = block.attrs.md;
     const written = writeChecked(normalize(edited).content[at], dialect);
     // The file with only that block's bytes replaced: anything else differing is a stray change.
-    const start = doc.content.slice(0, at).reduce((/** @type {number} */ n, /** @type {any} */ b) => n + b.attrs.md.before.length + b.attrs.md.source.length, 0) + md.before.length;
+    const start =
+      doc.content
+        .slice(0, at)
+        .reduce(
+          (/** @type {number} */ n, /** @type {any} */ b) =>
+            n + b.attrs.md.before.length + b.attrs.md.source.length,
+          0,
+        ) + md.before.length;
     const expected = source.slice(0, start) + written + source.slice(start + md.source.length);
-    if (out !== expected) problems.push(`${name}: an edit to block ${at + 1} changed other bytes, ${firstDifference(expected, out)}`);
+    if (out !== expected)
+      problems.push(
+        `${name}: an edit to block ${at + 1} changed other bytes, ${firstDifference(expected, out)}`,
+      );
     const back = toDoc(written, dialect).doc.content ?? [];
-    if (back.length !== 1 || !sameBlock(normalize(edited).content[at], /** @type {any} */ (back[0]))) loose.push(`${name}: block ${at + 1}, once edited, reads back differently: ${JSON.stringify(written.slice(0, 160))}`);
+    if (
+      back.length !== 1 ||
+      !sameBlock(normalize(edited).content[at], /** @type {any} */ (back[0]))
+    )
+      loose.push(
+        `${name}: block ${at + 1}, once edited, reads back differently: ${JSON.stringify(written.slice(0, 160))}`,
+      );
   });
 }
 
 if (loose.length > 0) {
-  console.warn(`check:roundtrip: ${loose.length} edited block${loose.length === 1 ? "" : "s"} of ${edits} read back differently (warning only: no other block changed)\n${loose.slice(0, 20).join("\n")}\n`);
+  console.warn(
+    `check:roundtrip: ${loose.length} edited block${loose.length === 1 ? "" : "s"} of ${edits} read back differently (warning only: no other block changed)\n${loose.slice(0, 20).join("\n")}\n`,
+  );
 }
 if (problems.length > 0) {
-  console.error(`check:roundtrip: ${problems.length} problem${problems.length === 1 ? "" : "s"} in ${files.length} files\n\n${problems.slice(0, 40).join("\n")}`);
+  console.error(
+    `check:roundtrip: ${problems.length} problem${problems.length === 1 ? "" : "s"} in ${files.length} files\n\n${problems.slice(0, 40).join("\n")}`,
+  );
   process.exit(1);
 }
-console.log(`check:roundtrip: ${files.length} files byte for byte after a save with no edit, and ${edits} single-block edits that changed only their own block (${dialect}).`);
+console.log(
+  `check:roundtrip: ${files.length} files byte for byte after a save with no edit, and ${edits} single-block edits that changed only their own block (${dialect}).`,
+);

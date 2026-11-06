@@ -1,1 +1,1 @@
-No final newline here, *emphasis* at the end
+No final newline here, _emphasis_ at the end

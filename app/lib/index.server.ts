@@ -62,7 +62,9 @@ function summaryRow(projectId: number, item: ContentSummary, syncedAt: string) {
 
 function writeBody(db: D1Database, projectId: number, itemId: string, title: string, body: string) {
   return [
-    db.prepare("DELETE FROM site_items_fts WHERE project_id = ? AND item_id = ?").bind(projectId, itemId),
+    db
+      .prepare("DELETE FROM site_items_fts WHERE project_id = ? AND item_id = ?")
+      .bind(projectId, itemId),
     db
       .prepare("INSERT INTO site_items_fts (project_id, item_id, title, body) VALUES (?, ?, ?, ?)")
       .bind(projectId, itemId, title, body),
@@ -70,7 +72,12 @@ function writeBody(db: D1Database, projectId: number, itemId: string, title: str
 }
 
 /** Indexes one item from a document already in hand, as after a save: no extra request to the site. */
-export async function indexDoc(db: D1Database, projectId: number, doc: ContentDoc, now = new Date()): Promise<void> {
+export async function indexDoc(
+  db: D1Database,
+  projectId: number,
+  doc: ContentDoc,
+  now = new Date(),
+): Promise<void> {
   const row = summaryRow(projectId, doc, now.toISOString());
   const d = drizzle(db);
   await d
@@ -84,10 +91,18 @@ export async function indexDoc(db: D1Database, projectId: number, doc: ContentDo
 }
 
 /** Drops one item from the index after the site deleted it. The index is a cache; the site stays the authority. */
-export async function removeFromIndex(db: D1Database, projectId: number, itemId: string): Promise<void> {
+export async function removeFromIndex(
+  db: D1Database,
+  projectId: number,
+  itemId: string,
+): Promise<void> {
   await db.batch([
-    db.prepare("DELETE FROM site_items WHERE project_id = ? AND item_id = ?").bind(projectId, itemId),
-    db.prepare("DELETE FROM site_items_fts WHERE project_id = ? AND item_id = ?").bind(projectId, itemId),
+    db
+      .prepare("DELETE FROM site_items WHERE project_id = ? AND item_id = ?")
+      .bind(projectId, itemId),
+    db
+      .prepare("DELETE FROM site_items_fts WHERE project_id = ? AND item_id = ?")
+      .bind(projectId, itemId),
   ]);
 }
 
@@ -138,16 +153,31 @@ export async function refreshIndex(
            status = excluded.status, path = excluded.path, publish_at = excluded.publish_at, update_at = excluded.update_at,
            published_at = excluded.published_at, updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
       ).bind(
-        row.projectId, row.itemId, row.kind, row.title, row.status, row.path,
-        row.publishAt, row.updateAt, row.publishedAt, row.updatedAt, row.syncedAt,
+        row.projectId,
+        row.itemId,
+        row.kind,
+        row.title,
+        row.status,
+        row.path,
+        row.publishAt,
+        row.updateAt,
+        row.publishedAt,
+        row.updatedAt,
+        row.syncedAt,
       ),
     );
   }
   const gone = [...known.keys()].filter((id) => !listed.has(id));
   for (const itemId of gone) {
     statements.push(
-      env.DB.prepare("DELETE FROM site_items WHERE project_id = ? AND item_id = ?").bind(project.id, itemId),
-      env.DB.prepare("DELETE FROM site_items_fts WHERE project_id = ? AND item_id = ?").bind(project.id, itemId),
+      env.DB.prepare("DELETE FROM site_items WHERE project_id = ? AND item_id = ?").bind(
+        project.id,
+        itemId,
+      ),
+      env.DB.prepare("DELETE FROM site_items_fts WHERE project_id = ? AND item_id = ?").bind(
+        project.id,
+        itemId,
+      ),
     );
   }
   if (statements.length > 0) await env.DB.batch(statements);
@@ -163,15 +193,18 @@ export async function refreshIndex(
     const doc = await client.get(item.id);
     await env.DB.batch([
       ...writeBody(env.DB, project.id, doc.id, doc.title, doc.source),
-      env.DB.prepare("UPDATE site_items SET body_updated_at = ? WHERE project_id = ? AND item_id = ?").bind(
-        doc.updatedAt ?? "",
-        project.id,
-        doc.id,
-      ),
+      env.DB.prepare(
+        "UPDATE site_items SET body_updated_at = ? WHERE project_id = ? AND item_id = ?",
+      ).bind(doc.updatedAt ?? "", project.id, doc.id),
     ]);
   }
 
-  return { listed: items.length, fetched: due.length, removed: gone.length, pending: stale.length - due.length };
+  return {
+    listed: items.length,
+    fetched: due.length,
+    removed: gone.length,
+    pending: stale.length - due.length,
+  };
 }
 
 /**
@@ -201,7 +234,11 @@ function writingKinds(projectId: number): SQL {
   return sql`${siteItems.kind} IN (SELECT kind FROM site_items WHERE project_id = ${projectId} AND (path IS NOT NULL OR status != 'published'))`;
 }
 
-export async function searchItems(db: D1Database, projectId: number, filters: Filters): Promise<IndexedItem[]> {
+export async function searchItems(
+  db: D1Database,
+  projectId: number,
+  filters: Filters,
+): Promise<IndexedItem[]> {
   return (await searchItemsPage(db, projectId, filters, { offset: 0, limit: 500 })).items;
 }
 
@@ -262,10 +299,13 @@ export async function kindsIn(db: D1Database, projectId: number): Promise<string
  * the address the site's published posts have, with its own id). An item whose kind shows no such
  * pattern has no known address yet, and is left out of the link targets.
  */
-export function sitePaths(items: readonly Pick<IndexedItem, "itemId" | "kind" | "path">[]): Map<string, string> {
+export function sitePaths(
+  items: readonly Pick<IndexedItem, "itemId" | "kind" | "path">[],
+): Map<string, string> {
   const prefixes = new Map<string, string>();
   for (const i of items) {
-    if (i.path && !prefixes.has(i.kind) && i.path.endsWith(`/${i.itemId}`)) prefixes.set(i.kind, i.path.slice(0, -i.itemId.length));
+    if (i.path && !prefixes.has(i.kind) && i.path.endsWith(`/${i.itemId}`))
+      prefixes.set(i.kind, i.path.slice(0, -i.itemId.length));
   }
   const paths = new Map<string, string>();
   for (const i of items) {

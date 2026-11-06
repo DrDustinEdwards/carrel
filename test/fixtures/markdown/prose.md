@@ -12,10 +12,10 @@ Setext heading
 Second level, setext
 --------------------
 
-### Closed ATX ###
+### Closed ATX
 
-Plain text with *star emphasis*, _underscore emphasis_, **star strong**, __underscore strong__,
-***both at once***, ~~struck~~, `code`, ``code with ` a backtick``, and a [link](https://example.com "with a title").
+Plain text with _star emphasis_, _underscore emphasis_, **star strong**, **underscore strong**,
+_**both at once**_, ~~struck~~, `code`, ``code with ` a backtick``, and a [link](https://example.com "with a title").
 
 A soft line break
 continues the paragraph, and a hard break  

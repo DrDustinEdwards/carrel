@@ -21,7 +21,10 @@ import type { Route } from "./+types/project.new";
 /** A site with a fixed set of items refuses a new one, so Carrel has no New post for it. */
 function newSourceFor(site: SiteId) {
   const newSource = siteEntry(site).newSource;
-  if (!newSource) throw new Response("This site has a fixed set of items; Carrel cannot add one.", { status: 404 });
+  if (!newSource)
+    throw new Response("This site has a fixed set of items; Carrel cannot add one.", {
+      status: 404,
+    });
   return newSource;
 }
 
@@ -52,7 +55,10 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     return { error: `The site already has a post at ${slug}. Open it from the list instead.` };
   }
   const today = new Date().toISOString().slice(0, 10);
-  await autosave(env.DB, project, viewer, slug, { source: newSource(slug, today), baseVersion: null });
+  await autosave(env.DB, project, viewer, slug, {
+    source: newSource(slug, today),
+    baseVersion: null,
+  });
   return redirect(`/p/${project.slug}/e/${slug}`);
 }
 
@@ -62,14 +68,31 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
     <div className="app-page" data-narrow>
       <PageHead
         renderLink={RouterLink}
-        crumbs={[{ label: loaderData.project.name, href: `/p/${loaderData.project.slug}` }, { label: "New post" }]}
+        crumbs={[
+          { label: loaderData.project.name, href: `/p/${loaderData.project.slug}` },
+          { label: "New post" },
+        ]}
         title="New post"
         lead="A new post starts as a draft in Carrel, under the address you give it."
       />
       <Panel title="Address">
         <Form method="post" className="app-form">
-          <Field label="Slug, the post's address on the site" required help="Lower-case letters, digits and single hyphens, such as my-new-post. The site gives it its address when it is published. It stays a draft in Carrel until you save it to the site." error={actionData?.error} announce>
-            <input className="cap-input" name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" autoComplete="off" spellCheck={false} data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as my-new-post." />
+          <Field
+            label="Slug, the post's address on the site"
+            required
+            help="Lower-case letters, digits and single hyphens, such as my-new-post. The site gives it its address when it is published. It stays a draft in Carrel until you save it to the site."
+            error={actionData?.error}
+            announce
+          >
+            <input
+              className="cap-input"
+              name="slug"
+              required
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              autoComplete="off"
+              spellCheck={false}
+              data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as my-new-post."
+            />
           </Field>
           <div className="app-actions">
             <Button type="submit" variant="primary" pending={busy}>

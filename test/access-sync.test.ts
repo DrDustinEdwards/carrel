@@ -48,30 +48,78 @@ describe("syncAccess", () => {
     expect(await syncAccess(env, { removed: [] }, fetcher)).toMatchObject({ state: "in-step" });
     expect(calls[0]!.url).toBe("https://mcp.dustinedwards.info/ops/access-sync");
     expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe("Bearer key-1");
-    expect(sent()).toEqual({ namespace: "carrel", members: ["coauthor@test.invalid", "wife@test.invalid"], removed: [] });
+    expect(sent()).toEqual({
+      namespace: "carrel",
+      members: ["coauthor@test.invalid", "wife@test.invalid"],
+      removed: [],
+    });
   });
 
   it("sends someone whose last role was removed as removed, and keeps anyone still on the list out of removed", async () => {
     const owner = await viewerFor("owner@test.invalid");
     const { fetcher, sent } = capture();
-    await syncAccess(env, await setProjectRole(testEnv.DB, owner, wifeId, projectId, null), fetcher);
-    expect(sent()).toEqual({ namespace: "carrel", members: ["coauthor@test.invalid"], removed: ["wife@test.invalid"] });
+    await syncAccess(
+      env,
+      await setProjectRole(testEnv.DB, owner, wifeId, projectId, null),
+      fetcher,
+    );
+    expect(sent()).toEqual({
+      namespace: "carrel",
+      members: ["coauthor@test.invalid"],
+      removed: ["wife@test.invalid"],
+    });
     await syncAccess(env, { removed: ["coauthor@test.invalid"] }, fetcher);
     expect(sent().removed).toEqual([]);
   });
 
   it("records Capsid's refusal, and the People page shows it until a sync succeeds", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    const refused = capture(502, { ok: false, refusal: "the group write was refused, so the group still holds its old list", added: [], dropped: [] });
-    expect(await syncAccess(env, { removed: [] }, refused.fetcher)).toEqual({ state: "waiting", detail: "the group write was refused, so the group still holds its old list" });
-    const page = async () => (await peopleLoader({ context: await routeContext(env, "owner@test.invalid"), params: {}, request: new Request("https://carrel.test/people") } as never)).access;
-    expect(await page()).toMatchObject({ configured: true, last: { ok: false, refusal: "the group write was refused, so the group still holds its old list" } });
+    const refused = capture(502, {
+      ok: false,
+      refusal: "the group write was refused, so the group still holds its old list",
+      added: [],
+      dropped: [],
+    });
+    expect(await syncAccess(env, { removed: [] }, refused.fetcher)).toEqual({
+      state: "waiting",
+      detail: "the group write was refused, so the group still holds its old list",
+    });
+    const page = async () =>
+      (
+        await peopleLoader({
+          context: await routeContext(env, "owner@test.invalid"),
+          params: {},
+          request: new Request("https://carrel.test/people"),
+        } as never)
+      ).access;
+    expect(await page()).toMatchObject({
+      configured: true,
+      last: {
+        ok: false,
+        refusal: "the group write was refused, so the group still holds its old list",
+      },
+    });
 
     // A refusal before Cloudflare is plain words, not a SyncResult.
-    await syncAccess(env, { removed: [] }, capture(403, "unauthorized: agent:carrel is not scoped to the '/ops/access-sync' tool.").fetcher);
-    expect(await page()).toMatchObject({ last: { ok: false, refusal: "Capsid answered 403: unauthorized: agent:carrel is not scoped to the '/ops/access-sync' tool." } });
+    await syncAccess(
+      env,
+      { removed: [] },
+      capture(403, "unauthorized: agent:carrel is not scoped to the '/ops/access-sync' tool.")
+        .fetcher,
+    );
+    expect(await page()).toMatchObject({
+      last: {
+        ok: false,
+        refusal:
+          "Capsid answered 403: unauthorized: agent:carrel is not scoped to the '/ops/access-sync' tool.",
+      },
+    });
 
-    await syncAccess(env, { removed: [] }, capture(200, { ok: true, added: ["wife@test.invalid"], dropped: [] }).fetcher);
+    await syncAccess(
+      env,
+      { removed: [] },
+      capture(200, { ok: true, added: ["wife@test.invalid"], dropped: [] }).fetcher,
+    );
     expect(await page()).toMatchObject({ last: { ok: true, refusal: null, added: 1, dropped: 0 } });
     log.mockRestore();
   });
@@ -81,7 +129,9 @@ describe("syncAccess", () => {
     const unset = { ...env, CAPSID_AGENT_KEY: undefined } as Env;
     expect(await syncAccess(unset, { removed: [] }, fetcher)).toMatchObject({ state: "skipped" });
     expect(calls).toHaveLength(0);
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM access_sync").first()).toEqual({ n: 0 });
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM access_sync").first()).toEqual({
+      n: 0,
+    });
   });
 });
 
@@ -92,17 +142,56 @@ describe("the Share panel", () => {
     return body;
   };
   const roles = (email: string) =>
-    testEnv.DB.prepare("SELECT m.project_id, m.role FROM project_members m JOIN people p ON p.id = m.person_id WHERE p.email = ? ORDER BY m.project_id").bind(email).all();
+    testEnv.DB.prepare(
+      "SELECT m.project_id, m.role FROM project_members m JOIN people p ON p.id = m.person_id WHERE p.email = ? ORDER BY m.project_id",
+    )
+      .bind(email)
+      .all();
 
   it("adds a new coauthor onto this project only, gives an existing person the role, and leaves no one behind on a refusal", async () => {
     const owner = await viewerFor("owner@test.invalid");
-    expect(await shareFromForm(testEnv, owner, bookId, form({ email: " New@Test.Invalid ", name: "New", role: "reader" }))).toMatchObject({ ok: true, email: "new@test.invalid", added: true, access: { state: "skipped" } });
-    expect((await roles("new@test.invalid")).results).toEqual([{ project_id: bookId, role: "reader" }]);
+    expect(
+      await shareFromForm(
+        testEnv,
+        owner,
+        bookId,
+        form({ email: " New@Test.Invalid ", name: "New", role: "reader" }),
+      ),
+    ).toMatchObject({
+      ok: true,
+      email: "new@test.invalid",
+      added: true,
+      access: { state: "skipped" },
+    });
+    expect((await roles("new@test.invalid")).results).toEqual([
+      { project_id: bookId, role: "reader" },
+    ]);
 
-    expect(await shareFromForm(testEnv, owner, bookId, form({ email: "wife@test.invalid", name: "Ignored", role: "editor" }))).toMatchObject({ ok: true, added: false });
-    expect((await roles("wife@test.invalid")).results).toEqual([{ project_id: projectId, role: "editor" }, { project_id: bookId, role: "editor" }]);
+    expect(
+      await shareFromForm(
+        testEnv,
+        owner,
+        bookId,
+        form({ email: "wife@test.invalid", name: "Ignored", role: "editor" }),
+      ),
+    ).toMatchObject({ ok: true, added: false });
+    expect((await roles("wife@test.invalid")).results).toEqual([
+      { project_id: projectId, role: "editor" },
+      { project_id: bookId, role: "editor" },
+    ]);
 
-    expect(await shareFromForm(testEnv, owner, bookId, form({ email: "late@test.invalid", name: "", role: "author" }))).toMatchObject({ ok: false, message: expect.stringMatching(/book/) });
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM people WHERE email = 'late@test.invalid'").first()).toEqual({ n: 0 });
+    expect(
+      await shareFromForm(
+        testEnv,
+        owner,
+        bookId,
+        form({ email: "late@test.invalid", name: "", role: "author" }),
+      ),
+    ).toMatchObject({ ok: false, message: expect.stringMatching(/book/) });
+    expect(
+      await testEnv.DB.prepare(
+        "SELECT COUNT(*) AS n FROM people WHERE email = 'late@test.invalid'",
+      ).first(),
+    ).toEqual({ n: 0 });
   });
 });

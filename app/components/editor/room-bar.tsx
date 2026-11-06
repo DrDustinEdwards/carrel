@@ -52,7 +52,9 @@ export function RoomBar({
         ) : null}
         <p className="app-room-line" role="status">
           {status === "offline" ? (
-            <Status tone="warn">Offline. Your changes are kept here and sent when the connection is back.</Status>
+            <Status tone="warn">
+              Offline. Your changes are kept here and sent when the connection is back.
+            </Status>
           ) : status === "connecting" ? (
             <Status tone="nodata" running>
               Connecting
@@ -78,7 +80,8 @@ export function RoomBar({
         />
       ) : (
         <p className="app-note">
-          You are suggesting: what you type shows as a suggestion until an editor accepts it.{pending > 0 ? ` ${pending} waiting.` : ""}
+          You are suggesting: what you type shows as a suggestion until an editor accepts it.
+          {pending > 0 ? ` ${pending} waiting.` : ""}
         </p>
       )}
     </div>

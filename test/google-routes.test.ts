@@ -39,31 +39,73 @@ const context = (email: string) => routeContext(env, email);
 describe("Google routes", () => {
   it("PLANT: manuscripts and Connect Google are 404 to anyone but the Owner", async () => {
     const req = new Request("https://carrel.test/manuscripts");
-    expect(((await settle(manuscriptsLoader({ request: req, params: {}, context: await context("editor@test.invalid") } as never))) as Response).status).toBe(404);
+    expect(
+      (
+        (await settle(
+          manuscriptsLoader({
+            request: req,
+            params: {},
+            context: await context("editor@test.invalid"),
+          } as never),
+        )) as Response
+      ).status,
+    ).toBe(404);
     const start = new Request("https://carrel.test/auth/google/start");
-    expect(((await settle(authLoader({ request: start, params: { step: "start" }, context: await context("editor@test.invalid") } as never))) as Response).status).toBe(404);
-    const home = (await homeLoader({ request: new Request("https://carrel.test/"), params: {}, context: await context("editor@test.invalid") } as never)) as Awaited<ReturnType<typeof homeLoader>>;
+    expect(
+      (
+        (await settle(
+          authLoader({
+            request: start,
+            params: { step: "start" },
+            context: await context("editor@test.invalid"),
+          } as never),
+        )) as Response
+      ).status,
+    ).toBe(404);
+    const home = (await homeLoader({
+      request: new Request("https://carrel.test/"),
+      params: {},
+      context: await context("editor@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof homeLoader>>;
     expect(home.google).toBeNull();
   });
 
   it("connects Google through the real routes and says so on the home page", async () => {
     const owner = await context("owner@test.invalid");
-    const start = (await authLoader({ request: new Request("https://carrel.test/auth/google/start"), params: { step: "start" }, context: owner } as never)) as Response;
+    const start = (await authLoader({
+      request: new Request("https://carrel.test/auth/google/start"),
+      params: { step: "start" },
+      context: owner,
+    } as never)) as Response;
     const google = new URL(start.headers.get("Location")!);
     expect(google.hostname).toBe("accounts.google.com");
-    const back = new Request(`https://carrel.test/auth/google/callback?state=${google.searchParams.get("state")}&code=${encodeURIComponent(CODE)}`);
-    const done = (await authLoader({ request: back, params: { step: "callback" }, context: await context("owner@test.invalid") } as never)) as Response;
-    const message = new URL(done.headers.get("Location")!, "https://carrel.test").searchParams.get("google");
+    const back = new Request(
+      `https://carrel.test/auth/google/callback?state=${google.searchParams.get("state")}&code=${encodeURIComponent(CODE)}`,
+    );
+    const done = (await authLoader({
+      request: back,
+      params: { step: "callback" },
+      context: await context("owner@test.invalid"),
+    } as never)) as Response;
+    const message = new URL(done.headers.get("Location")!, "https://carrel.test").searchParams.get(
+      "google",
+    );
     expect(message).toBe("Google is connected for Send to Docs and Import (drive.file only).");
-    const home = (await homeLoader({ request: new Request("https://carrel.test/"), params: {}, context: await context("owner@test.invalid") } as never)) as Awaited<ReturnType<typeof homeLoader>>;
+    const home = (await homeLoader({
+      request: new Request("https://carrel.test/"),
+      params: {},
+      context: await context("owner@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof homeLoader>>;
     expect(home.google).toEqual({ configured: true, connected: true });
   });
 
   it("shows the manuscripts page with the setup still missing, rather than failing", async () => {
     env = { ...env, GOOGLE_SA_KEY: undefined } as Env;
-    const data = (await manuscriptsLoader({ request: new Request("https://carrel.test/manuscripts?q=x"), params: {}, context: await context("owner@test.invalid") } as never)) as Awaited<
-      ReturnType<typeof manuscriptsLoader>
-    >;
+    const data = (await manuscriptsLoader({
+      request: new Request("https://carrel.test/manuscripts?q=x"),
+      params: {},
+      context: await context("owner@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof manuscriptsLoader>>;
     expect(data.setup).toMatch(/^GOOGLE_SA_KEY is not set/);
     expect(data.files).toEqual([]);
   });
