@@ -25,7 +25,6 @@ export function RevisionPicker({
   const captionId = `${label.replace(/\W+/g, "-").toLowerCase()}-caption`;
   return (
     <form method="get" action={historyPath} className="app-stack" data-tight aria-label={label}>
-      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region takes focus so a keyboard can scroll it (axe scrollable-region-focusable) */}
       <div className="cap-table-wrap" role="region" aria-labelledby={captionId} tabIndex={0}>
         <table className="cap-table">
           <caption id={captionId} className="cap-sr-only">
