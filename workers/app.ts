@@ -17,7 +17,7 @@ import { ALL_JOBS, CRON_JOBS, type JobName, type ScheduledJob } from "~/lib/cron
 import { deployedSha } from "~/lib/deployed";
 import { OPERATOR_PATH, operatorAnswer } from "~/lib/operator.server";
 import { refreshGoogle } from "~/lib/google/refresh.server";
-import { healthAnswer, runHealth } from "~/lib/health.server";
+import { runHealth } from "~/lib/health.server";
 import { runSignedInCrawl, type DeskAs } from "~/lib/signed-in-crawl.server";
 import { reportInbox } from "~/lib/inbox-report.server";
 import { aiDoor, isMcpHost } from "~/lib/mcp/door";
@@ -82,10 +82,6 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
     return response;
   }
   const nonce = nonceFor(request);
-  // The shared /health, public like every site's, before the gate: Access bypasses this one path (the carrel-desk-public
-  // application) so Capsid's watcher can read Desk's deployed sha, and the AI door serves the same answer.
-  if (new URL(request.url).pathname === "/health")
-    return deskHeaders(await healthAnswer(env), request, env);
   // The Desk's people, hashed with a fresh salt, for the daily Access drift check (.github/workflows/access-drift.yml).
   // Before the gate, because the caller is carrel-desk-login's service token and not a person: adminListResponse answers
   // only a GET carrying that application's verified Access token from a service token, and 404 to everything else.
