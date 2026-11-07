@@ -5,7 +5,8 @@
 
 import { getEnv, getViewer } from "~/lib/context";
 import { runIntent } from "~/lib/posts.server";
-import { readForm } from "~/lib/form.server";
+import { readForm } from "@dustinedwards/site-runtime/body";
+import { FORM_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/posts.api";
 
@@ -13,6 +14,11 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   if (request.method !== "POST")
     return Response.json({ error: "Method not allowed." }, { status: 405 });
   return Response.json(
-    await runIntent(getEnv(context), getViewer(context), params.project, await readForm(request)),
+    await runIntent(
+      getEnv(context),
+      getViewer(context),
+      params.project,
+      await readForm(request, FORM_MAX_BYTES),
+    ),
   );
 }

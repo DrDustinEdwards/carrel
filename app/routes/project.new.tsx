@@ -14,7 +14,8 @@ import { autosave, readDoc } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { siteEntry, type SiteId } from "~/lib/sites.server";
-import { readForm } from "~/lib/form.server";
+import { readForm } from "@dustinedwards/site-runtime/body";
+import { FORM_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.new";
 
@@ -47,7 +48,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
   const newSource = newSourceFor(project.site);
-  const slug = String((await readForm(request)).get("slug") ?? "").trim();
+  const slug = String((await readForm(request, FORM_MAX_BYTES)).get("slug") ?? "").trim();
   if (!SLUG.test(slug) || slug.length > 120) {
     return { error: "Use lower-case letters, digits and single hyphens, such as my-new-post." };
   }

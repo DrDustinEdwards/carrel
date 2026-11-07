@@ -24,7 +24,8 @@ import { chapterOf, readingOrder, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 import { saveStatusList, statusList } from "~/lib/writing.server";
 import { COLOR_NAMES, labelFor, MAX_LABELS } from "~/lib/writing/status";
-import { readForm } from "~/lib/form.server";
+import { readForm } from "@dustinedwards/site-runtime/body";
+import { FORM_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.outliner";
 
@@ -90,7 +91,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "edit");
-  const form = await readForm(request);
+  const form = await readForm(request, FORM_MAX_BYTES);
   if (String(form.get("intent") ?? "") !== "labels")
     throw new Response("Bad request", { status: 400 });
   const labels = form.getAll("label").map(String);

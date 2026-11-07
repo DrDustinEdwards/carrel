@@ -11,7 +11,8 @@ import { RouterLink } from "~/components/frame";
 
 import { createBook } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { readForm } from "~/lib/form.server";
+import { readForm } from "@dustinedwards/site-runtime/body";
+import { FORM_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.new";
 
@@ -25,7 +26,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
-  const form = await readForm(request);
+  const form = await readForm(request, FORM_MAX_BYTES);
   const result = await createBook(getEnv(context).DB, getViewer(context), {
     name: String(form.get("name") ?? ""),
     folder: String(form.get("folder") ?? "").trim(),

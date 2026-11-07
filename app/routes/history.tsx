@@ -34,7 +34,8 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteCoauthors, withOthers } from "~/lib/rooms.server";
 import { SiteNotConnected } from "~/lib/sites.server";
-import { readForm } from "~/lib/form.server";
+import { readForm } from "@dustinedwards/site-runtime/body";
+import { FORM_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/history";
 
@@ -267,7 +268,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
-  const form = await readForm(request);
+  const form = await readForm(request, FORM_MAX_BYTES);
   const version = String(form.get("version") ?? "");
   const doc = await readDoc(env, project, params.item);
   if (!doc || !version) throw new Response("Not found", { status: 404 });

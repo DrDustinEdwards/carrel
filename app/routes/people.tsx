@@ -39,7 +39,8 @@ import {
   setProjectRole,
 } from "~/lib/people-admin.server";
 import { isMemberRole } from "~/lib/roles";
-import { readForm } from "~/lib/form.server";
+import { readForm } from "@dustinedwards/site-runtime/body";
+import { FORM_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/people";
 
@@ -64,7 +65,7 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
   const env = getEnv(context);
   const db = env.DB;
   const viewer = getViewer(context);
-  const form = await readForm(request);
+  const form = await readForm(request, FORM_MAX_BYTES);
   const intent = String(form.get("intent") ?? "");
   const personId = Number(form.get("person"));
   try {

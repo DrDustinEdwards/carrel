@@ -24,7 +24,8 @@ import {
   readVoicePack,
   saveVoiceGuide,
 } from "~/lib/voice.server";
-import { readForm } from "~/lib/form.server";
+import { readForm } from "@dustinedwards/site-runtime/body";
+import { FORM_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.voice";
 
@@ -53,7 +54,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const form = await readForm(request);
+  const form = await readForm(request, FORM_MAX_BYTES);
   const intent = form.get("intent");
   if (intent === "rebuild") {
     const project = await requireSiteProject(env.DB, viewer, params.project, "read");
