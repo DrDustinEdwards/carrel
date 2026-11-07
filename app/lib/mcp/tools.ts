@@ -141,6 +141,14 @@ const READ = {
   openWorldHint: false,
 };
 
+/** A write to the site that undoes cleanly: not destructive, repeatable, and it reaches past Carrel. */
+const WRITE_SITE = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+};
+
 /** An answer's shape: the fields always present, then those that may be null or absent. */
 function shape(
   always: Record<string, unknown>,
@@ -707,12 +715,7 @@ export const TOOLS: Tool[] = [
       required: ["project", "url"],
       additionalProperties: false,
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: true,
-    },
+    annotations: WRITE_SITE,
     outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST }),
     outside: false,
     run: async (args, ctx) => {
@@ -815,12 +818,7 @@ export const TOOLS: Tool[] = [
       required: ["project", "id"],
       additionalProperties: false,
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: true,
-    },
+    annotations: WRITE_SITE,
     outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST }),
     outside: false,
     run: async (args, ctx) => {

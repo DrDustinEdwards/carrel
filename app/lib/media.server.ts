@@ -88,6 +88,12 @@ export function mediaSource(
   };
 }
 
+/** The library source of the project a session names, once it may at least read the project. */
+async function mediaSourceFor(env: Env, viewer: Viewer, slug: string, fetcher?: typeof fetch) {
+  const project = await requireSiteProject(env.DB, viewer, slug, "read");
+  return mediaSource(env, project, viewer, fetcher);
+}
+
 /**
  * A file's bytes, read from where the site serves it, for the crop editor: through Carrel, so the
  * browser draws a same-origin image it may export. Only a raster the site lists, and no larger than
@@ -145,8 +151,7 @@ export async function deleteMediaFiles(
   ids: string[],
   fetcher?: typeof fetch,
 ): Promise<IntentResult> {
-  const project = await requireSiteProject(env.DB, viewer, slug, "read");
-  const source = mediaSource(env, project, viewer, fetcher);
+  const source = await mediaSourceFor(env, viewer, slug, fetcher);
   return answer(async () => {
     const offers = (await source.client.meta()).capabilities;
     if (offers.mediaTrash) {
@@ -176,10 +181,10 @@ export async function importMediaFile(
   input: { url: string; alt: string; filename?: string },
   fetcher?: typeof fetch,
 ): Promise<IntentResult> {
-  const project = await requireSiteProject(env.DB, viewer, slug, "read");
+  const source = await mediaSourceFor(env, viewer, slug, fetcher);
   return answer(
     () =>
-      runMediaIntent(mediaSource(env, project, viewer, fetcher), {
+      runMediaIntent(source, {
         intent: "import",
         url: input.url,
         alt: input.alt,
@@ -222,8 +227,7 @@ export async function listMediaFiles(
     }
   | { ok: false; message: string }
 > {
-  const project = await requireSiteProject(env.DB, viewer, slug, "read");
-  const source = mediaSource(env, project, viewer, fetcher);
+  const source = await mediaSourceFor(env, viewer, slug, fetcher);
   const lens = query.lens ?? "no-alt";
   try {
     const list = await source.client.media.list({
@@ -282,8 +286,7 @@ export async function setMediaAlt(
   input: { id: string; alt: string; decorative: boolean },
   fetcher?: typeof fetch,
 ): Promise<IntentResult> {
-  const project = await requireSiteProject(env.DB, viewer, slug, "read");
-  const source = mediaSource(env, project, viewer, fetcher);
+  const source = await mediaSourceFor(env, viewer, slug, fetcher);
   return answer(async () => {
     const detail = await source.client.media.get(input.id).catch(() => null);
     if (!detail) return { ok: false, message: `No file ${input.id} in this site's library.` };

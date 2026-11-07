@@ -275,17 +275,17 @@ describe("reading, drafting, flagging", () => {
   });
 });
 
+const PNG = Uint8Array.from(
+  atob(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  ),
+  (c) => c.charCodeAt(0),
+);
+
 /** The files the reference adapter deleted: fakeSite types its adapter as the plain SiteAdapter. */
 const deletedOn = (s: typeof site) => (s.adapter as ReturnType<typeof memoryAdapter>).deleted;
 
 describe("delete library photos", () => {
-  const PNG = Uint8Array.from(
-    atob(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-    ),
-    (c) => c.charCodeAt(0),
-  );
-
   it("PLANT: only the Owner's session deletes, and it removes the file from the site", async () => {
     const file = await site.adapter.media!.upload({
       bytes: PNG,
@@ -308,13 +308,6 @@ describe("delete library photos", () => {
 });
 
 describe("alt text for library photos", () => {
-  const PNG = Uint8Array.from(
-    atob(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-    ),
-    (c) => c.charCodeAt(0),
-  );
-
   it("PLANT: lists the files with no alt, writes one through the site's alt step, and refuses its file name", async () => {
     const bare = await site.adapter.media!.upload({
       bytes: PNG,
