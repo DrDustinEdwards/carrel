@@ -28,7 +28,7 @@
     "import:docx": "node scripts/import-docx.mjs",
     "deploy": "npm run build && wrangler deploy",
     "deploy:ci": "node scripts/deploy.mjs",
-    "www": "node www/build.mjs",
+    "www": "node www/build.mjs && prelum-lastmod --dir www/dist --origin https://carrel.dustinedwards.info",
     "deploy:www": "npm run www && wrangler deploy -c www/wrangler.jsonc",
     "postinstall": "devkit-bootstrap -- --strict-vars=false",
     "check:a11y": "node scripts/check-a11y.mjs",
@@ -42,7 +42,7 @@
     "@codemirror/language": "6.12.4",
     "@codemirror/state": "6.7.1",
     "@codemirror/view": "6.43.7",
-    "@drdustinedwards/site-helpers": "github:DrDustinEdwards/prelum#v0.35.1",
+    "@drdustinedwards/site-helpers": "github:DrDustinEdwards/prelum#v0.38.0",
     "@dustinedwards/d1-dump": "github:DrDustinEdwards/d1-dump#v0.15.0",
     "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.30.0",
     "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#v0.96.0",
@@ -111,7 +111,10 @@
     "wrangler": "4.156.1"
   },
   "overrides": {
-    "@cloudflare/workers-types": "5.20261031.1"
+    "@cloudflare/workers-types": "5.20261031.1",
+    "@drdustinedwards/site-helpers": {
+      "enarratio": "$enarratio"
+    }
   },
   "engines": {
     "node": ">=26.11.1"
