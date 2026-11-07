@@ -1,6 +1,8 @@
 // Secrets are not in wrangler.jsonc, so `wrangler types` cannot see them. Declared here instead, on
 // both the global Env and Cloudflare.Env, because the generated global does not extend the other.
 interface CarrelSecrets {
+  /** "1" or "true" puts the site in maintenance: every path but /health answers the 503 page (site-runtime ./maintenance). Set in the dashboard. */
+  MAINTENANCE?: string;
   /** The AUD tag of the Worker's Access application. Set with `wrangler secret put ACCESS_AUD`. */
   ACCESS_AUD: string;
   /** Keys site-runtime's admin idle cookie (withAdminIdle `secret`). Minted by the deploy (devkit worker-deploy `generated-secrets`), never shown; unset, the admin paths fail (site-runtime 0.82 requires it). */

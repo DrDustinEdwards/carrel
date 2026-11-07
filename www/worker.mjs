@@ -15,6 +15,7 @@ import { PAGE_PRELOADS } from "./headers.mjs";
 
 export default staticSite({
   site: carrel,
+  siteName: "Carrel",
   headers: TDM_RESERVATION_HEADERS,
   preload: PAGE_PRELOADS.header,
 });

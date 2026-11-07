@@ -2,6 +2,7 @@ import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { exportAuditLog } from "@dustinedwards/site-runtime/audit-log";
 import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
+import { maintenanceOn, maintenanceResponse } from "@dustinedwards/site-runtime/maintenance";
 import { logEvent, withRequestLog } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
@@ -65,6 +66,10 @@ const door = withMcpHeaders<Env>(
  * (workers/security-headers.ts), refusals and redirects included.
  */
 async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  // The maintenance page (site-runtime ./maintenance), on both doors: every path but /health answers 503 while the
+  // MAINTENANCE var is on.
+  if (maintenanceOn(env) && new URL(request.url).pathname !== "/health")
+    return deskHeaders(maintenanceResponse({ siteName: "Carrel" }), newNonce(), env);
   if (isMcpHost(request, env)) {
     if (isCspReport(request)) return cspReport(request, env, carrelOrigin(env));
     // Capsid Admin's run a job now (app/lib/operator.server.ts).
