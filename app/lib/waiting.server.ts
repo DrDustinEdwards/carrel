@@ -10,7 +10,7 @@ import { aiDrafts, drafts } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 import type { ProjectRole } from "~/lib/content.server";
 import { can } from "~/lib/roles";
-import { readKey, splitSource } from "@dustinedwards/site-api/frontmatter";
+import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 export type Waiting = {
   itemId: string;

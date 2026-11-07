@@ -4,7 +4,7 @@
 
 import { Field } from "capsomer/react/field";
 
-import { joinSource, splitSource } from "@dustinedwards/site-api/frontmatter";
+import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { BANNER_WORD, FIELDS, readFields, setField, type FieldKey } from "~/lib/frontmatter";
 import { kindNoun, kindWord } from "~/lib/kind-words";
 import { legalTypeOf, marker, sectionsUsed } from "~/lib/legal";

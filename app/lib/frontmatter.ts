@@ -2,7 +2,7 @@
 // writer, so only a block whose field was changed is written again and every other block, comment
 // and unknown key comes back byte for byte. Shared by the server and the browser.
 
-import { readKey, readList, setBlock } from "@dustinedwards/site-api/frontmatter";
+import { readKey, readList, setBlock } from "@drdustinedwards/site-helpers/frontmatter";
 
 /**
  * The fields the editor shows. A list field is a list of strings, a flag is one fixed word or nothing,

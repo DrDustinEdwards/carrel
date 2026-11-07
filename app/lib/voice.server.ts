@@ -29,7 +29,7 @@ import type { ProjectRole } from "~/lib/content.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteClient } from "~/lib/sites.server";
-import { splitSource } from "@dustinedwards/site-api/frontmatter";
+import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 /** The newest published posts a pack is built from: enough to show a range, few enough for one request's subrequests. */
 export const PACK_POSTS = 40;

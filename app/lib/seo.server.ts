@@ -3,7 +3,8 @@
 
 import { searchItems, sitePaths } from "~/lib/index.server";
 import type { SiteProject } from "~/lib/projects.server";
-import { searchFieldsOf, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
+import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { searchFieldsOf, type SearchField } from "@dustinedwards/site-api/frontmatter";
 
 import { seoCheck, type SeoCheck } from "~/lib/seo-checks";
 import { siteClient, siteConnection } from "~/lib/sites.server";

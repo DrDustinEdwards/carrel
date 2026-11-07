@@ -16,7 +16,7 @@ import { ProjectTabs } from "~/components/project-tabs";
 
 import { readDoc } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { splitSource } from "@dustinedwards/site-api/frontmatter";
+import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { BANNER_WORD, readFields } from "~/lib/frontmatter";
 import { LEGAL_TYPES, legalItemId, sectionsUsed, type LegalType } from "~/lib/legal";
 import { deleteSection, listSections, saveSection, sectionsCurrent } from "~/lib/legal.server";

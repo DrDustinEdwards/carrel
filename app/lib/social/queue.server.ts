@@ -23,7 +23,7 @@ import { lintPost } from "./lint";
 import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
 import { d1FireStore, fireOnce, routineConfig, routinePrompt } from "./routine.server";
 import { timedFetch } from "~/lib/timed-fetch.server";
-import { readKey, splitSource } from "@dustinedwards/site-api/frontmatter";
+import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 type Fetch = typeof fetch;
 

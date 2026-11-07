@@ -22,12 +22,8 @@ import {
   serpWidth,
   truncateForSerp,
 } from "@drdustinedwards/site-helpers/head";
-import {
-  readKey,
-  searchFieldsOf,
-  splitSource,
-  type SearchField,
-} from "@dustinedwards/site-api/frontmatter";
+import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { searchFieldsOf, type SearchField } from "@dustinedwards/site-api/frontmatter";
 
 import { legalTypeOf } from "~/lib/legal";
 

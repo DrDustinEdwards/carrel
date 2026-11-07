@@ -49,7 +49,8 @@ import {
 } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions } from "~/lib/history.server";
-import { joinSource, splitSource, type SearchField } from "@dustinedwards/site-api/frontmatter";
+import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { type SearchField } from "@dustinedwards/site-api/frontmatter";
 import { listSections } from "~/lib/legal.server";
 import { kindNoun, kindWord } from "~/lib/kind-words";
 import { siteState } from "~/lib/save-state";
