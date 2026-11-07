@@ -4,7 +4,7 @@
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
 import { requireBookProject } from "~/lib/books.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
+import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
 import { findViewer } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { connectRoom } from "~/lib/rooms.server";
@@ -43,7 +43,7 @@ export default {
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env: world.env, ctx });
     context.set(viewerContext, viewer);
-    context.set(nonceContext, nonce);
+    context.set(cspNonceContext, nonce);
     return withSecurityHeaders(await requestHandler(request, context), nonce, {
       imageOrigins: siteOrigins(world.env),
     });

@@ -13,7 +13,7 @@ import {
   type BookProject,
 } from "~/lib/books.server";
 import { autosave, readDraft } from "~/lib/content.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
+import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
 import type { Viewer } from "~/lib/people.server";
 import { createAccount, recordPublication, setSwitches } from "~/lib/social/queue.server";
 import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
@@ -191,7 +191,7 @@ describe("AI drafts in the book editor", () => {
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env: testEnv, ctx: {} as ExecutionContext });
     context.set(viewerContext, await viewerFor("owner@test.invalid"));
-    context.set(nonceContext, "n");
+    context.set(cspNonceContext, "n");
     const params = { project: SLUG, "*": SCENE };
     const data = (await fileLoader({
       request: new Request("https://carrel.test/"),
