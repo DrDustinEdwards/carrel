@@ -107,7 +107,7 @@ describe("the protocol", () => {
       deps: { fetcher: site.fetch, carrelOrigin: CARREL },
       era: "legacy",
     });
-    expect((await legacy.list()).length).toBe(20);
+    expect((await legacy.list()).length).toBe(22);
     expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({
       projects: [{ slug: SLUG, role: "reader" }],
     });
@@ -275,17 +275,17 @@ describe("reading, drafting, flagging", () => {
   });
 });
 
+const PNG = Uint8Array.from(
+  atob(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  ),
+  (c) => c.charCodeAt(0),
+);
+
 /** The files the reference adapter deleted: fakeSite types its adapter as the plain SiteAdapter. */
 const deletedOn = (s: typeof site) => (s.adapter as ReturnType<typeof memoryAdapter>).deleted;
 
 describe("delete library photos", () => {
-  const PNG = Uint8Array.from(
-    atob(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-    ),
-    (c) => c.charCodeAt(0),
-  );
-
   it("PLANT: only the Owner's session deletes, and it removes the file from the site", async () => {
     const file = await site.adapter.media!.upload({
       bytes: PNG,
@@ -304,6 +304,37 @@ describe("delete library photos", () => {
     ).call("carrel_delete_media", { project: SLUG, ids: [file.id] });
     expect(done.structuredContent).toMatchObject({ ok: true });
     expect(deletedOn(site)).toContain(file.id);
+  });
+});
+
+describe("alt text for library photos", () => {
+  it("PLANT: lists the files with no alt, writes one through the site's alt step, and refuses its file name", async () => {
+    const bare = await site.adapter.media!.upload({
+      bytes: PNG,
+      contentType: "image/png",
+      filename: "river.png",
+      alt: "",
+      changeId: "seed",
+    });
+    const editor = await connect("editor@test.invalid");
+    const listed = await editor.call("carrel_list_media", { project: SLUG });
+    expect(listed.structuredContent).toMatchObject({ ok: true, lens: "no-alt" });
+    expect(JSON.stringify(listed.structuredContent)).toContain(bare.id);
+    const refused = await editor.call("carrel_set_media_alt", {
+      project: SLUG,
+      id: bare.id,
+      alt: "river.png",
+    });
+    expect(refused.structuredContent).toMatchObject({ ok: false });
+    const done = await editor.call("carrel_set_media_alt", {
+      project: SLUG,
+      id: bare.id,
+      alt: "The river at dusk",
+    });
+    expect(done.structuredContent).toMatchObject({ ok: true });
+    expect(
+      JSON.stringify((await editor.call("carrel_list_media", { project: SLUG })).structuredContent),
+    ).not.toContain(bare.id);
   });
 });
 
