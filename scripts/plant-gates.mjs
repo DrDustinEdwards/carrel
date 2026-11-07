@@ -126,15 +126,15 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/people.server.ts",
-    find: "return viewer && !viewer.isOwner ? viewer : null;",
+    find: "return flagged ? null : viewer;",
     replace: "return viewer;",
     label: "a person row marked Owner may be an agent",
   },
   {
     gate: "tests",
     file: "app/lib/people.server.ts",
-    find: "and(eq(people.email, email.trim()), isNull(people.disabledAt))",
-    replace: "eq(people.email, email.trim())",
+    find: "if (!row || (row.disabledAt && !admin)) return null;",
+    replace: "if (!row) return null;",
     label: "a disabled person (or agent) is still found",
   },
   // The MCP ruling of 2026-10-10: the security floor (rule 12), the tightened
