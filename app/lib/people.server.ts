@@ -118,11 +118,18 @@ export async function deskPeopleEmails(db: D1Database, env: AdminEnv): Promise<s
 
 /**
  * The active person row for a named agent key ("agent:<name>"), or null. The row is where the agent's
- * role lives: the key proves who is knocking and grants nothing. An agent is never the Owner: the roster
- * decides who is, and an agent's address is never on it.
+ * role lives: the key proves who is knocking and grants nothing. An agent is never the Owner: a row flagged
+ * Owner is refused here, whatever the table says.
  */
 export async function findAgentViewer(db: D1Database, name: string): Promise<Viewer | null> {
-  return findViewer(db, {}, agentEmail(name));
+  const viewer = await findViewer(db, {}, agentEmail(name));
+  if (!viewer) return null;
+  const flagged = await drizzle(db)
+    .select({ one: people.id })
+    .from(people)
+    .where(and(eq(people.id, viewer.id), eq(people.isOwner, true)))
+    .get();
+  return flagged ? null : viewer;
 }
 
 async function roleOn(db: D1Database, viewer: Viewer, projectId: number): Promise<Role | null> {
