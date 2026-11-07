@@ -105,6 +105,18 @@ describe("gate: refusals (fail closed)", () => {
   });
 });
 
+describe("gate: /health", () => {
+  // Access bypasses this one path for Capsid's watcher; every other path still needs a token.
+  it("answers the health body with no Access token, and nothing else without one", async () => {
+    const health = await gate(new Request("https://carrel.test/health"), testEnv, async () => {
+      throw new Error("rendered");
+    });
+    expect(health.status).toBe(200);
+    expect(await health.json()).toMatchObject({ db: "up" });
+    await expectRefused(new Request("https://carrel.test/healthz"));
+  });
+});
+
 describe("gate: admission", () => {
   it("admits a valid token for a known person and passes the viewer to render", async () => {
     let seen = "";
