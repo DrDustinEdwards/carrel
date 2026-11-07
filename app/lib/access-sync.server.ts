@@ -12,6 +12,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { accessSync, people, projectMembers } from "~/db/schema";
 import { agentEmail } from "~/lib/agent-keys.server";
+import { postAccessSync, type AccessSyncResult } from "@dustinedwards/site-runtime/access-sync";
 import { capsidOrigin } from "~/lib/inbox-report.server";
 import { timedFetch } from "~/lib/timed-fetch.server";
 
@@ -57,9 +58,6 @@ export async function accessState(env: Env): Promise<AccessState> {
 
 export type SyncOutcome = { state: "skipped" | "in-step" | "waiting"; detail: string };
 
-// The fields of Capsid's SyncResult that Carrel reads.
-type SyncResult = { ok?: unknown; added?: unknown; dropped?: unknown; refusal?: unknown };
-
 /**
  * Posts the allow list. `removed` names people this change just took out (disabled, or left with no
  * role), so Capsid frees their Zero Trust seats; anyone still on the list is not sent as removed.
@@ -76,40 +74,23 @@ export async function syncAccess(
       state: "skipped",
       detail: "CAPSID_AGENT_KEY is not set, so Access is managed by hand.",
     };
-  let ok = false;
-  let refusal: string | null = null;
-  let added = 0;
-  let dropped = 0;
+  let result: AccessSyncResult;
   try {
-    const members = await accessEmails(env.DB);
-    const removed = change.removed.map((e) => e.toLowerCase()).filter((e) => !members.includes(e));
-    const response = await fetcher(`${capsidOrigin(env)}/ops/access-sync`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ namespace: "carrel", members, removed }),
+    result = await postAccessSync({
+      key,
+      namespace: "carrel",
+      members: await accessEmails(env.DB),
+      removed: change.removed,
+      origin: capsidOrigin(env),
+      fetch: fetcher,
     });
-    // Capsid answers a SyncResult for 200, 409 and 502, and plain words for a refusal before Cloudflare.
-    const text = await response.text();
-    let result: SyncResult | null = null;
-    try {
-      result = JSON.parse(text) as SyncResult;
-    } catch {
-      result = null;
-    }
-    if (response.ok && result?.ok === true) {
-      ok = true;
-      added = Array.isArray(result.added) ? result.added.length : 0;
-      dropped = Array.isArray(result.dropped) ? result.dropped.length : 0;
-    } else {
-      refusal =
-        typeof result?.refusal === "string" && result.refusal
-          ? result.refusal
-          : `Capsid answered ${response.status}: ${text.trim() || "no reason given"}`;
-    }
   } catch (error) {
-    refusal = error instanceof Error ? error.message : String(error);
+    result = { ok: false, refusal: error instanceof Error ? error.message : String(error) };
   }
-  refusal = refusal?.slice(0, 1000) ?? null;
+  const ok = result.ok;
+  const refusal = result.ok ? null : result.refusal.slice(0, 1000);
+  const added = result.ok ? result.added : 0;
+  const dropped = result.ok ? result.dropped : 0;
   const row = { syncedAt: now.toISOString(), ok, refusal, added, dropped };
   try {
     await drizzle(env.DB)
