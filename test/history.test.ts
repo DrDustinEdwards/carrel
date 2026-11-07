@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { saveAiDraft } from "~/lib/ai.server";
 import { autosave, writeToSite } from "~/lib/content.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
+import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
 import { orderPair } from "~/lib/history.server";
 import { hasChanges, unifiedPatch } from "~/lib/patch";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -59,7 +59,7 @@ async function load(email: string, search = "") {
   const context = new RouterContextProvider();
   context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
   context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "n");
+  context.set(cspNonceContext, "n");
   const request = new Request(`https://carrel.test/p/${SLUG}/e/post-one/history${search}`);
   return historyLoader({ request, params: { project: SLUG, item: "post-one" }, context } as never);
 }

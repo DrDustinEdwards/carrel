@@ -5,7 +5,7 @@ import { createSiteApi, RefusedError, type SiteAdapter } from "@dustinedwards/si
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { RouterContextProvider } from "react-router";
 
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
+import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
 import type { Viewer } from "~/lib/people.server";
 
 import { testEnv } from "./env";
@@ -137,7 +137,7 @@ export async function routeContext(env: Env, email: string): Promise<RouterConte
   const context = new RouterContextProvider();
   context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
   context.set(viewerContext, await viewerFor(email));
-  context.set(nonceContext, "test-nonce");
+  context.set(cspNonceContext, "test-nonce");
   return context;
 }
 

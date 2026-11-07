@@ -9,7 +9,7 @@ import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
 import { carrelMcp } from "@dustinedwards/site-runtime/sites";
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
-import { cloudflareContext, nonceContext, viewerContext, zoneContext } from "~/lib/context";
+import { cloudflareContext, cspNonceContext, viewerContext, zoneContext } from "~/lib/context";
 import { knownZone } from "~/lib/writing/progress";
 import { runBackup } from "~/lib/backup.server";
 import { ALL_JOBS, CRON_JOBS, type JobName, type ScheduledJob } from "~/lib/cron-schedule";
@@ -101,7 +101,7 @@ function demoRender(env: Env, ctx: ExecutionContext, nonce: string) {
   return (req: Request) => {
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env, ctx });
-    context.set(nonceContext, nonce);
+    context.set(cspNonceContext, nonce);
     context.set(zoneContext, requestZone(req));
     return requestHandler(req, context);
   };
@@ -130,7 +130,7 @@ function deskRender(env: Env, ctx: ExecutionContext, nonce: string): Render {
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env, ctx });
     context.set(viewerContext, viewer);
-    context.set(nonceContext, nonce);
+    context.set(cspNonceContext, nonce);
     context.set(zoneContext, requestZone(req));
     return requestHandler(req, context);
   };

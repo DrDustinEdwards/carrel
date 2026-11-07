@@ -6,7 +6,7 @@ import { RouterContextProvider } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { writeToSite } from "~/lib/content.server";
-import { cloudflareContext, nonceContext, viewerContext } from "~/lib/context";
+import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { readFields } from "~/lib/frontmatter";
 import { expandShared, prepareLegalWrite, type SharedSection } from "~/lib/legal";
@@ -371,7 +371,7 @@ describe("the Legal tab", () => {
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env: connectedEnv(), ctx: {} as ExecutionContext });
     context.set(viewerContext, await viewerFor(email));
-    context.set(nonceContext, "test-nonce");
+    context.set(cspNonceContext, "test-nonce");
     return context;
   }
 
