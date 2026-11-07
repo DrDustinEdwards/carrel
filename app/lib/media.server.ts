@@ -188,3 +188,111 @@ export async function importMediaFile(
     unreachable,
   );
 }
+
+/** The most files one list call returns, each with the pages that use it. */
+export const MEDIA_PAGE = 25;
+
+/** The lenses a list can open on (site-api's MEDIA_LENSES); the default is the files with no alt text. */
+export const MEDIA_LENS_NAMES = [
+  "no-alt",
+  "unattached",
+  "large",
+  "duplicates",
+  "license-expired",
+  "oversized",
+] as const;
+
+/**
+ * A page of a site's library for an AI session: by default the files with no alt text (and not marked decorative), each
+ * with where it is used, its size and its address, so a session can look at the picture and write the alt. Read only.
+ */
+export async function listMediaFiles(
+  env: Env,
+  viewer: Viewer,
+  slug: string,
+  query: { lens?: string; q?: string; cursor?: string },
+  fetcher?: typeof fetch,
+): Promise<
+  | {
+      ok: true;
+      lens: string;
+      total: number | null;
+      files: Record<string, unknown>[];
+      next_cursor: string | null;
+    }
+  | { ok: false; message: string }
+> {
+  const project = await requireSiteProject(env.DB, viewer, slug, "read");
+  const source = mediaSource(env, project, viewer, fetcher);
+  const lens = query.lens ?? "no-alt";
+  try {
+    const list = await source.client.media.list({
+      lens: lens as (typeof MEDIA_LENS_NAMES)[number],
+      limit: MEDIA_PAGE,
+      ...(query.q ? { q: query.q } : {}),
+      ...(query.cursor ? { cursor: query.cursor } : {}),
+    });
+    const origin = source.site.origin.replace(/\/+$/, "");
+    const files = await Promise.all(
+      list.items.map(async (item) => {
+        const detail = await source.client.media.get(item.id).catch(() => null);
+        return {
+          id: item.id,
+          filename: item.filename,
+          contentType: item.contentType,
+          width: item.width,
+          height: item.height,
+          alt: item.alt,
+          decorative: item.decorative === true,
+          caption: item.caption ?? "",
+          url: item.url.startsWith("/") ? `${origin}${item.url}` : item.url,
+          version: item.version ?? detail?.version ?? null,
+          usedBy: (detail?.usedBy ?? []).map((use) => ({
+            type: use.type,
+            id: use.id,
+            title: use.title,
+            detail: use.detail,
+          })),
+        };
+      }),
+    );
+    return {
+      ok: true,
+      lens,
+      total: list.total ?? null,
+      files,
+      next_cursor: list.nextCursor,
+    };
+  } catch (error) {
+    const message = unreachable(error);
+    if (message === null) throw error;
+    return { ok: false, message };
+  }
+}
+
+/**
+ * Writes the alt text of one library file for an AI session, or marks it decorative, through the Desk's own alt step: the
+ * site refuses an alt that is the file name, a bare word such as "image", an address, or too long, and refuses an alt sent
+ * with decorative. The version is read first so a file changed in between is refused, not overwritten.
+ */
+export async function setMediaAlt(
+  env: Env,
+  viewer: Viewer,
+  slug: string,
+  input: { id: string; alt: string; decorative: boolean },
+  fetcher?: typeof fetch,
+): Promise<IntentResult> {
+  const project = await requireSiteProject(env.DB, viewer, slug, "read");
+  const source = mediaSource(env, project, viewer, fetcher);
+  return answer(async () => {
+    const detail = await source.client.media.get(input.id).catch(() => null);
+    if (!detail) return { ok: false, message: `No file ${input.id} in this site's library.` };
+    return runMediaIntent(source, {
+      intent: "alt",
+      ids: [input.id],
+      versions: [detail.version ?? ""],
+      alt: input.alt,
+      ...(input.decorative ? { decorative: "yes" } : {}),
+    });
+  }, unreachable);
+}

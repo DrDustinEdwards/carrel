@@ -54,6 +54,7 @@ describe("names and hints", () => {
       "carrel_publish_item",
       "carrel_delete_media",
       "carrel_import_media",
+      "carrel_set_media_alt",
       "carrel_decide_mention",
       "carrel_save_book_draft",
       "carrel_add_book_finding",
@@ -88,6 +89,7 @@ describe("names and hints", () => {
           "carrel_publish_item",
           "carrel_delete_media",
           "carrel_import_media",
+          "carrel_set_media_alt",
           "carrel_decide_mention",
         ].includes(t.name),
     )) {
