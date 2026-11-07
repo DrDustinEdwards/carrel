@@ -52,36 +52,75 @@ function monthStart(now: Date): string {
 
 // ---------- accounts and switches
 
-export type AccountInput = { key: string; name: string; platform: "bluesky" | "x"; kind: "personal" | "brand"; handle: string; projectId: number | null };
+export type AccountInput = {
+  key: string;
+  name: string;
+  platform: "bluesky" | "x";
+  kind: "personal" | "brand";
+  handle: string;
+  projectId: number | null;
+};
 
 export async function createAccount(db: D1Database, viewer: Viewer, input: AccountInput) {
   requireOwner(viewer);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.key)) return { ok: false as const, error: "The key is lower-case letters, digits and hyphens, such as example-bluesky." };
-  if (!input.name.trim() || !input.handle.trim()) return { ok: false as const, error: "Give the account a name and its handle." };
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.key))
+    return {
+      ok: false as const,
+      error: "The key is lower-case letters, digits and hyphens, such as example-bluesky.",
+    };
+  if (!input.name.trim() || !input.handle.trim())
+    return { ok: false as const, error: "Give the account a name and its handle." };
   try {
     // Every account starts off, in approval mode.
-    await drizzle(db).insert(socialAccounts).values({ ...input, name: input.name.trim(), handle: input.handle.trim().replace(/^@/, ""), enabled: false, mode: "approval" });
+    await drizzle(db)
+      .insert(socialAccounts)
+      .values({
+        ...input,
+        name: input.name.trim(),
+        handle: input.handle.trim().replace(/^@/, ""),
+        enabled: false,
+        mode: "approval",
+      });
   } catch {
     return { ok: false as const, error: `An account with the key ${input.key} already exists.` };
   }
   return { ok: true as const };
 }
 
-export async function setSwitches(db: D1Database, viewer: Viewer, id: number, input: { enabled?: boolean; mode?: "approval" | "auto"; dailyCap?: number; monthlyBudgetMills?: number; template?: string; voiceGuide?: string }) {
+export async function setSwitches(
+  db: D1Database,
+  viewer: Viewer,
+  id: number,
+  input: {
+    enabled?: boolean;
+    mode?: "approval" | "auto";
+    dailyCap?: number;
+    monthlyBudgetMills?: number;
+    template?: string;
+    voiceGuide?: string;
+  },
+) {
   requireOwner(viewer);
   const d = drizzle(db);
   const account = await d.select().from(socialAccounts).where(eq(socialAccounts.id, id)).get();
   if (!account) throw new Response("Not found", { status: 404 });
   // The personal account is approved post by post, always.
-  if (input.mode === "auto" && account.kind === "personal") return { ok: false as const, error: "The personal account is always approval: every post is Dustin's call." };
+  if (input.mode === "auto" && account.kind === "personal")
+    return {
+      ok: false as const,
+      error: "The personal account is always approval: every post is Dustin's call.",
+    };
   const set: Partial<typeof socialAccounts.$inferInsert> = {};
   if (input.enabled !== undefined) set.enabled = input.enabled;
   if (input.mode) set.mode = input.mode;
-  if (input.dailyCap !== undefined) set.dailyCap = Math.max(0, Math.min(20, Math.floor(input.dailyCap)));
-  if (input.monthlyBudgetMills !== undefined) set.monthlyBudgetMills = Math.max(0, Math.floor(input.monthlyBudgetMills));
+  if (input.dailyCap !== undefined)
+    set.dailyCap = Math.max(0, Math.min(20, Math.floor(input.dailyCap)));
+  if (input.monthlyBudgetMills !== undefined)
+    set.monthlyBudgetMills = Math.max(0, Math.floor(input.monthlyBudgetMills));
   if (input.template !== undefined) set.template = input.template.slice(0, 500);
   if (input.voiceGuide !== undefined) set.voiceGuide = input.voiceGuide.slice(0, 4000);
-  if (Object.keys(set).length) await d.update(socialAccounts).set(set).where(eq(socialAccounts.id, id));
+  if (Object.keys(set).length)
+    await d.update(socialAccounts).set(set).where(eq(socialAccounts.id, id));
   return { ok: true as const };
 }
 
@@ -97,20 +136,47 @@ export function summaryFrom(source: string): string {
  * An account that is off when the piece goes live closes its event, so turning it on later does
  * not post a backlog.
  */
-export async function recordPublication(db: D1Database, projectId: number, item: { id: string; title: string; url: string; summary: string }, now = new Date()) {
+export async function recordPublication(
+  db: D1Database,
+  projectId: number,
+  item: { id: string; title: string; url: string; summary: string },
+  now = new Date(),
+) {
   const d = drizzle(db);
-  const accounts = await d.select().from(socialAccounts).where(eq(socialAccounts.projectId, projectId)).all();
+  const accounts = await d
+    .select()
+    .from(socialAccounts)
+    .where(eq(socialAccounts.projectId, projectId))
+    .all();
   for (const account of accounts) {
-    const values = { title: item.title, url: item.url, summary: item.summary, publishedAt: now.toISOString() };
+    const values = {
+      title: item.title,
+      url: item.url,
+      summary: item.summary,
+      publishedAt: now.toISOString(),
+    };
     const existing = await d
       .select()
       .from(socialEvents)
-      .where(and(eq(socialEvents.accountId, account.id), eq(socialEvents.projectId, projectId), eq(socialEvents.itemId, item.id)))
+      .where(
+        and(
+          eq(socialEvents.accountId, account.id),
+          eq(socialEvents.projectId, projectId),
+          eq(socialEvents.itemId, item.id),
+        ),
+      )
       .get();
     if (existing?.publishedAt) continue; // Announced once, not on every re-publish.
     const state = account.enabled ? (existing?.state ?? "waiting") : "closed";
-    if (existing) await d.update(socialEvents).set({ ...values, state }).where(eq(socialEvents.id, existing.id));
-    else await d.insert(socialEvents).values({ accountId: account.id, projectId, itemId: item.id, ...values, state });
+    if (existing)
+      await d
+        .update(socialEvents)
+        .set({ ...values, state })
+        .where(eq(socialEvents.id, existing.id));
+    else
+      await d
+        .insert(socialEvents)
+        .values({ accountId: account.id, projectId, itemId: item.id, ...values, state });
   }
 }
 
@@ -119,32 +185,68 @@ export async function recordPublication(db: D1Database, projectId: number, item:
  * asked for it. The newest draft replaces any earlier one that has not gone out. This is what the
  * session that finishes a piece, and the routine, call through MCP.
  */
-export async function draftSocialPost(db: D1Database, input: { accountKey: string; projectId: number; itemId: string; text: string; createdBy: string }) {
+export async function draftSocialPost(
+  db: D1Database,
+  input: { accountKey: string; projectId: number; itemId: string; text: string; createdBy: string },
+) {
   const d = drizzle(db);
-  const account = await d.select().from(socialAccounts).where(eq(socialAccounts.key, input.accountKey)).get();
-  if (!account || account.projectId !== input.projectId) return { ok: false as const, error: `No account ${input.accountKey} announces this project.` };
+  const account = await d
+    .select()
+    .from(socialAccounts)
+    .where(eq(socialAccounts.key, input.accountKey))
+    .get();
+  if (!account || account.projectId !== input.projectId)
+    return { ok: false as const, error: `No account ${input.accountKey} announces this project.` };
   let event = await d
     .select()
     .from(socialEvents)
-    .where(and(eq(socialEvents.accountId, account.id), eq(socialEvents.projectId, input.projectId), eq(socialEvents.itemId, input.itemId)))
+    .where(
+      and(
+        eq(socialEvents.accountId, account.id),
+        eq(socialEvents.projectId, input.projectId),
+        eq(socialEvents.itemId, input.itemId),
+      ),
+    )
     .get();
   if (!event) {
-    [event] = await d.insert(socialEvents).values({ accountId: account.id, projectId: input.projectId, itemId: input.itemId }).returning();
+    [event] = await d
+      .insert(socialEvents)
+      .values({ accountId: account.id, projectId: input.projectId, itemId: input.itemId })
+      .returning();
   }
-  if (event!.state === "templated" || event!.state === "closed") return { ok: false as const, error: "This item's post was already settled (template used, or the account was off)." };
+  if (event!.state === "templated" || event!.state === "closed")
+    return {
+      ok: false as const,
+      error: "This item's post was already settled (template used, or the account was off).",
+    };
   await d
     .update(socialPosts)
     .set({ status: "rejected", error: "Replaced by a newer draft." })
-    .where(and(eq(socialPosts.eventId, event!.id), inArray(socialPosts.status, ["drafted", "held", "awaiting", "queued"])));
+    .where(
+      and(
+        eq(socialPosts.eventId, event!.id),
+        inArray(socialPosts.status, ["drafted", "held", "awaiting", "queued"]),
+      ),
+    );
   const [post] = await d
     .insert(socialPosts)
-    .values({ accountId: account.id, eventId: event!.id, text: input.text.trim(), source: event!.state === "routine" ? "routine" : "predrafted", status: "drafted", createdBy: input.createdBy })
+    .values({
+      accountId: account.id,
+      eventId: event!.id,
+      text: input.text.trim(),
+      source: event!.state === "routine" ? "routine" : "predrafted",
+      status: "drafted",
+      createdBy: input.createdBy,
+    })
     .returning({ id: socialPosts.id });
   return { ok: true as const, postId: post!.id };
 }
 
 /** The routine is told each item by its event id; this stores its draft for that event. */
-export async function draftForEvent(db: D1Database, input: { eventId: number; text: string; createdBy: string }) {
+export async function draftForEvent(
+  db: D1Database,
+  input: { eventId: number; text: string; createdBy: string },
+) {
   const row = await drizzle(db)
     .select({ event: socialEvents, key: socialAccounts.key })
     .from(socialEvents)
@@ -152,10 +254,19 @@ export async function draftForEvent(db: D1Database, input: { eventId: number; te
     .where(eq(socialEvents.id, input.eventId))
     .get();
   if (!row) return { ok: false as const, error: `No social event ${input.eventId}.` };
-  return draftSocialPost(db, { accountKey: row.key, projectId: row.event.projectId, itemId: row.event.itemId, text: input.text, createdBy: input.createdBy });
+  return draftSocialPost(db, {
+    accountKey: row.key,
+    projectId: row.event.projectId,
+    itemId: row.event.itemId,
+    text: input.text,
+    createdBy: input.createdBy,
+  });
 }
 
-function fillTemplate(template: string, event: { title: string; summary: string; url: string }): string {
+function fillTemplate(
+  template: string,
+  event: { title: string; summary: string; url: string },
+): string {
   return (template || DEFAULT_TEMPLATE)
     .replaceAll("{title}", event.title)
     .replaceAll("{summary}", event.summary)
@@ -168,42 +279,89 @@ function fillTemplate(template: string, event: { title: string; summary: string;
 
 // ---------- the tick
 
-export type TickResult = { linted: number; routineFired: number; templated: number; sent: number; waitingOnCaps: number; errors: string[] };
+export type TickResult = {
+  linted: number;
+  routineFired: number;
+  templated: number;
+  sent: number;
+  waitingOnCaps: number;
+  errors: string[];
+};
 
 type Account = typeof socialAccounts.$inferSelect;
 
 /** Lints a drafted post and routes it by the account's switch. */
 /** The voice excerpts of the project a post announces, for its lint. */
 async function excerptsFor(db: D1Database, eventId: number): Promise<string[]> {
-  const event = await drizzle(db).select({ projectId: socialEvents.projectId }).from(socialEvents).where(eq(socialEvents.id, eventId)).get();
+  const event = await drizzle(db)
+    .select({ projectId: socialEvents.projectId })
+    .from(socialEvents)
+    .where(eq(socialEvents.id, eventId))
+    .get();
   return event ? packExcerpts(db, event.projectId) : [];
 }
 
 async function route(db: D1Database, post: typeof socialPosts.$inferSelect, account: Account) {
   const findings = lintPost(post.text, account.platform, await excerptsFor(db, post.eventId));
   const status = findings.length ? "held" : account.mode === "auto" ? "queued" : "awaiting";
-  await drizzle(db).update(socialPosts).set({ status, lint: JSON.stringify(findings) }).where(eq(socialPosts.id, post.id));
-  await drizzle(db).update(socialEvents).set({ state: "covered" }).where(and(eq(socialEvents.id, post.eventId), inArray(socialEvents.state, ["waiting", "routine"])));
+  await drizzle(db)
+    .update(socialPosts)
+    .set({ status, lint: JSON.stringify(findings) })
+    .where(eq(socialPosts.id, post.id));
+  await drizzle(db)
+    .update(socialEvents)
+    .set({ state: "covered" })
+    .where(
+      and(eq(socialEvents.id, post.eventId), inArray(socialEvents.state, ["waiting", "routine"])),
+    );
 }
 
-async function applyTemplate(db: D1Database, event: typeof socialEvents.$inferSelect, account: Account) {
+async function applyTemplate(
+  db: D1Database,
+  event: typeof socialEvents.$inferSelect,
+  account: Account,
+) {
   const d = drizzle(db);
   const [post] = await d
     .insert(socialPosts)
-    .values({ accountId: account.id, eventId: event.id, text: fillTemplate(account.template, event), source: "template", status: "drafted", createdBy: "template" })
+    .values({
+      accountId: account.id,
+      eventId: event.id,
+      text: fillTemplate(account.template, event),
+      source: "template",
+      status: "drafted",
+      createdBy: "template",
+    })
     .returning();
   await d.update(socialEvents).set({ state: "templated" }).where(eq(socialEvents.id, event.id));
   await route(db, post!, account);
 }
 
-async function sendQueued(env: Env, account: Account, now: Date, fetcher: Fetch, result: TickResult) {
+async function sendQueued(
+  env: Env,
+  account: Account,
+  now: Date,
+  fetcher: Fetch,
+  result: TickResult,
+) {
   const d = drizzle(env.DB);
-  const queued = await d.select().from(socialPosts).where(and(eq(socialPosts.accountId, account.id), eq(socialPosts.status, "queued"))).orderBy(asc(socialPosts.id)).all();
+  const queued = await d
+    .select()
+    .from(socialPosts)
+    .where(and(eq(socialPosts.accountId, account.id), eq(socialPosts.status, "queued")))
+    .orderBy(asc(socialPosts.id))
+    .all();
   if (queued.length === 0) return;
   const sent = await d
     .select({ sentAt: socialPosts.sentAt, cost: socialPosts.costMills })
     .from(socialPosts)
-    .where(and(eq(socialPosts.accountId, account.id), eq(socialPosts.status, "sent"), gte(socialPosts.sentAt, monthStart(now))))
+    .where(
+      and(
+        eq(socialPosts.accountId, account.id),
+        eq(socialPosts.status, "sent"),
+        gte(socialPosts.sentAt, monthStart(now)),
+      ),
+    )
     .orderBy(desc(socialPosts.sentAt))
     .all();
   let today = sent.filter((s) => s.sentAt! >= dayStart(now)).length;
@@ -219,37 +377,71 @@ async function sendQueued(env: Env, account: Account, now: Date, fetcher: Fetch,
     }
     const cost = account.platform === "x" ? xCostMills(post.text) : 0;
     if (account.platform === "x" && spent + cost > account.monthlyBudgetMills) {
-      await d.update(socialPosts).set({ error: `Held: it would pass this month's X budget ($${(account.monthlyBudgetMills / 1000).toFixed(2)}).` }).where(eq(socialPosts.id, post.id));
+      await d
+        .update(socialPosts)
+        .set({
+          error: `Held: it would pass this month's X budget ($${(account.monthlyBudgetMills / 1000).toFixed(2)}).`,
+        })
+        .where(eq(socialPosts.id, post.id));
       result.waitingOnCaps++;
       return;
     }
     if ("missing" in creds) {
-      await d.update(socialPosts).set({ error: `Waiting for credentials: ${creds.missing.join(", ")}.` }).where(eq(socialPosts.id, post.id));
+      await d
+        .update(socialPosts)
+        .set({ error: `Waiting for credentials: ${creds.missing.join(", ")}.` })
+        .where(eq(socialPosts.id, post.id));
       result.errors.push(`${account.key}: credentials missing`);
       return;
     }
     try {
       const id = await postOriginal(creds, post.text, fetcher, now.getTime());
-      await d.update(socialPosts).set({ status: "sent", platformPostId: id, costMills: cost, sentAt: now.toISOString(), error: null }).where(eq(socialPosts.id, post.id));
+      await d
+        .update(socialPosts)
+        .set({
+          status: "sent",
+          platformPostId: id,
+          costMills: cost,
+          sentAt: now.toISOString(),
+          error: null,
+        })
+        .where(eq(socialPosts.id, post.id));
       today++;
       spent += cost;
       last = now.getTime();
       result.sent++;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await d.update(socialPosts).set({ status: "failed", error: message }).where(eq(socialPosts.id, post.id));
+      await d
+        .update(socialPosts)
+        .set({ status: "failed", error: message })
+        .where(eq(socialPosts.id, post.id));
       result.errors.push(`${account.key}: ${message}`);
     }
   }
 }
 
 /** One pass of the queue, run by the cron. Every step is idempotent, so a missed run loses nothing. */
-export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Date } = {}): Promise<TickResult> {
+export async function processSocial(
+  env: Env,
+  deps: { fetcher?: Fetch; now?: Date } = {},
+): Promise<TickResult> {
   const fetcher = deps.fetcher ?? timedFetch;
   const now = deps.now ?? new Date();
   const d = drizzle(env.DB);
-  const result: TickResult = { linted: 0, routineFired: 0, templated: 0, sent: 0, waitingOnCaps: 0, errors: [] };
-  const accounts = new Map((await d.select().from(socialAccounts).where(eq(socialAccounts.enabled, true)).all()).map((a) => [a.id, a]));
+  const result: TickResult = {
+    linted: 0,
+    routineFired: 0,
+    templated: 0,
+    sent: 0,
+    waitingOnCaps: 0,
+    errors: [],
+  };
+  const accounts = new Map(
+    (await d.select().from(socialAccounts).where(eq(socialAccounts.enabled, true)).all()).map(
+      (a) => [a.id, a],
+    ),
+  );
   if (accounts.size === 0) return result;
   const ids = [...accounts.keys()];
 
@@ -258,7 +450,13 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
     .select({ post: socialPosts })
     .from(socialPosts)
     .innerJoin(socialEvents, eq(socialEvents.id, socialPosts.eventId))
-    .where(and(eq(socialPosts.status, "drafted"), isNotNull(socialEvents.publishedAt), inArray(socialPosts.accountId, ids)))
+    .where(
+      and(
+        eq(socialPosts.status, "drafted"),
+        isNotNull(socialEvents.publishedAt),
+        inArray(socialPosts.accountId, ids),
+      ),
+    )
     .all();
   for (const { post } of drafted) {
     await route(env.DB, post, accounts.get(post.accountId)!);
@@ -270,7 +468,13 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
     .select({ event: socialEvents, requestedAt: socialRoutineRuns.requestedAt })
     .from(socialEvents)
     .innerJoin(socialRoutineRuns, eq(socialRoutineRuns.id, socialEvents.routineRunId))
-    .where(and(eq(socialEvents.state, "routine"), inArray(socialEvents.accountId, ids), lte(socialRoutineRuns.requestedAt, new Date(now.getTime() - ROUTINE_WAIT_MS).toISOString())))
+    .where(
+      and(
+        eq(socialEvents.state, "routine"),
+        inArray(socialEvents.accountId, ids),
+        lte(socialRoutineRuns.requestedAt, new Date(now.getTime() - ROUTINE_WAIT_MS).toISOString()),
+      ),
+    )
     .all();
   for (const { event } of stale) {
     await applyTemplate(env.DB, event, accounts.get(event.accountId)!);
@@ -284,15 +488,31 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
     await d
       .select()
       .from(socialEvents)
-      .where(and(eq(socialEvents.state, "waiting"), isNotNull(socialEvents.publishedAt), inArray(socialEvents.accountId, ids)))
+      .where(
+        and(
+          eq(socialEvents.state, "waiting"),
+          isNotNull(socialEvents.publishedAt),
+          inArray(socialEvents.accountId, ids),
+        ),
+      )
       .all()
   ).filter((e) => nightly || Date.parse(e.publishedAt!) <= now.getTime() - BATCH_DELAY_MS);
   if (waiting.length > 0) {
     const config = routineConfig(env);
-    const runsToday = await d.select({ id: socialRoutineRuns.id }).from(socialRoutineRuns).where(and(eq(socialRoutineRuns.status, "fired"), gte(socialRoutineRuns.requestedAt, dayStart(now)))).all();
+    const runsToday = await d
+      .select({ id: socialRoutineRuns.id })
+      .from(socialRoutineRuns)
+      .where(
+        and(
+          eq(socialRoutineRuns.status, "fired"),
+          gte(socialRoutineRuns.requestedAt, dayStart(now)),
+        ),
+      )
+      .all();
     let templateAll: string | null = null;
     if ("missing" in config) templateAll = config.missing;
-    else if (runsToday.length >= ROUTINE_DAILY_CAP) templateAll = `the routine's daily cap of ${ROUTINE_DAILY_CAP} runs is reached`;
+    else if (runsToday.length >= ROUTINE_DAILY_CAP)
+      templateAll = `the routine's daily cap of ${ROUTINE_DAILY_CAP} runs is reached`;
     else {
       // The guard against a second fire (R2): a run row is written first, as fired, and the waiting events are
       // claimed for it in one conditional UPDATE. Only the events this tick claimed are sent to the routine, so two
@@ -300,14 +520,27 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
       // claimed by a run that counts as fired: the template takes them after ROUTINE_WAIT_MS, never a blind re-fire.
       const [run] = await d
         .insert(socialRoutineRuns)
-        .values({ kind: nightly ? "nightly" : "batch", requestedAt: now.toISOString(), events: "[]", status: "fired" })
+        .values({
+          kind: nightly ? "nightly" : "batch",
+          requestedAt: now.toISOString(),
+          events: "[]",
+          status: "fired",
+        })
         .returning({ id: socialRoutineRuns.id });
       const claimedIds = new Set(
         (
           await d
             .update(socialEvents)
             .set({ state: "routine", routineRunId: run!.id })
-            .where(and(inArray(socialEvents.id, waiting.map((e) => e.id)), eq(socialEvents.state, "waiting")))
+            .where(
+              and(
+                inArray(
+                  socialEvents.id,
+                  waiting.map((e) => e.id),
+                ),
+                eq(socialEvents.state, "waiting"),
+              ),
+            )
             .returning({ id: socialEvents.id })
         ).map((e) => e.id),
       );
@@ -320,24 +553,47 @@ export async function processSocial(env: Env, deps: { fetcher?: Fetch; now?: Dat
         const prompt = routinePrompt(
           claimed.map((e) => {
             const a = accounts.get(e.accountId)!;
-            return { eventId: e.id, account: `${a.name} (${a.key})`, platform: a.platform, voiceGuide: a.voiceGuide, title: e.title, url: e.url, summary: e.summary };
+            return {
+              eventId: e.id,
+              account: `${a.name} (${a.key})`,
+              platform: a.platform,
+              voiceGuide: a.voiceGuide,
+              title: e.title,
+              url: e.url,
+              summary: e.summary,
+            };
           }),
         );
         // Through site-runtime's duplicate guard (R2), keyed by this run: a retry of the same run never fires again.
-        const fired = await fireOnce(d1FireStore(env.DB), `social-run:${run!.id}:${now.toISOString()}`, config, prompt, { fetcher, now });
+        const fired = await fireOnce(
+          d1FireStore(env.DB),
+          `social-run:${run!.id}:${now.toISOString()}`,
+          config,
+          prompt,
+          { fetcher, now },
+        );
         // A fire with no answer may have started a session, and one already fired did: treat both as fired, never fire
         // them again.
-        const started = fired.ok || fired.outcome === "unknown" || fired.outcome === "already_fired";
+        const started =
+          fired.ok || fired.outcome === "unknown" || fired.outcome === "already_fired";
         await d
           .update(socialRoutineRuns)
-          .set({ events: JSON.stringify(claimed.map((e) => e.id)), status: started ? "fired" : "failed", sessionUrl: fired.ok ? fired.sessionUrl : null, error: fired.ok ? null : fired.error })
+          .set({
+            events: JSON.stringify(claimed.map((e) => e.id)),
+            status: started ? "fired" : "failed",
+            sessionUrl: fired.ok ? fired.sessionUrl : null,
+            error: fired.ok ? null : fired.error,
+          })
           .where(eq(socialRoutineRuns.id, run!.id));
         if (started) {
           result.routineFired++;
           if (!fired.ok) result.errors.push(`routine: ${fired.error}`);
         } else {
           // It certainly started nothing: the claim is released, for the template now or the next tick.
-          await d.update(socialEvents).set({ state: "waiting", routineRunId: null }).where(and(eq(socialEvents.routineRunId, run!.id), eq(socialEvents.state, "routine")));
+          await d
+            .update(socialEvents)
+            .set({ state: "waiting", routineRunId: null })
+            .where(and(eq(socialEvents.routineRunId, run!.id), eq(socialEvents.state, "routine")));
           if (!fired.retry) templateAll = `the routine refused the run (${fired.error})`;
           // The hourly limit or a brief outage: the next tick tries again; the items keep waiting.
           else result.errors.push(`routine: ${fired.error}`);
@@ -364,39 +620,83 @@ export async function decidePost(
   db: D1Database,
   viewer: Viewer,
   id: number,
-  decision: { action: "approve" | "reject" | "by-hand" | "acknowledge" } | { action: "edit"; text: string },
+  decision:
+    | { action: "approve" | "reject" | "by-hand" | "acknowledge" }
+    | { action: "edit"; text: string },
   now = new Date(),
 ) {
   requireOwner(viewer);
   const d = drizzle(db);
-  const row = await d.select({ post: socialPosts, account: socialAccounts }).from(socialPosts).innerJoin(socialAccounts, eq(socialAccounts.id, socialPosts.accountId)).where(eq(socialPosts.id, id)).get();
+  const row = await d
+    .select({ post: socialPosts, account: socialAccounts })
+    .from(socialPosts)
+    .innerJoin(socialAccounts, eq(socialAccounts.id, socialPosts.accountId))
+    .where(eq(socialPosts.id, id))
+    .get();
   if (!row) throw new Response("Not found", { status: 404 });
   const { post, account } = row;
   const open = ["held", "awaiting"].includes(post.status);
   switch (decision.action) {
     case "approve":
       // A held post is approved only once its text passes the lint (edit it first).
-      if (post.status !== "awaiting") return { ok: false as const, error: post.status === "held" ? "Edit the post until the lint passes, then approve it." : "Only a post awaiting approval can be approved." };
-      await d.update(socialPosts).set({ status: "queued", approvedBy: viewer.id }).where(eq(socialPosts.id, id));
+      if (post.status !== "awaiting")
+        return {
+          ok: false as const,
+          error:
+            post.status === "held"
+              ? "Edit the post until the lint passes, then approve it."
+              : "Only a post awaiting approval can be approved.",
+        };
+      await d
+        .update(socialPosts)
+        .set({ status: "queued", approvedBy: viewer.id })
+        .where(eq(socialPosts.id, id));
       return { ok: true as const };
     case "reject":
-      if (!open && post.status !== "queued") return { ok: false as const, error: "Only a post that has not gone out can be rejected." };
-      await d.update(socialPosts).set({ status: "rejected", approvedBy: viewer.id }).where(eq(socialPosts.id, id));
+      if (!open && post.status !== "queued")
+        return { ok: false as const, error: "Only a post that has not gone out can be rejected." };
+      await d
+        .update(socialPosts)
+        .set({ status: "rejected", approvedBy: viewer.id })
+        .where(eq(socialPosts.id, id));
       return { ok: true as const };
     case "by-hand":
       // The personal account's free path: Dustin copies the text and posts it himself.
-      if (!open) return { ok: false as const, error: "Only a post that has not gone out can be posted by hand." };
-      await d.update(socialPosts).set({ status: "by-hand", approvedBy: viewer.id, sentAt: now.toISOString() }).where(eq(socialPosts.id, id));
+      if (!open)
+        return {
+          ok: false as const,
+          error: "Only a post that has not gone out can be posted by hand.",
+        };
+      await d
+        .update(socialPosts)
+        .set({ status: "by-hand", approvedBy: viewer.id, sentAt: now.toISOString() })
+        .where(eq(socialPosts.id, id));
       return { ok: true as const };
     case "edit": {
-      if (!open) return { ok: false as const, error: "Only a held or awaiting post can be edited." };
-      const findings = lintPost(decision.text, account.platform, await excerptsFor(db, post.eventId));
-      await d.update(socialPosts).set({ text: decision.text.trim(), lint: JSON.stringify(findings), status: findings.length ? "held" : "awaiting" }).where(eq(socialPosts.id, id));
+      if (!open)
+        return { ok: false as const, error: "Only a held or awaiting post can be edited." };
+      const findings = lintPost(
+        decision.text,
+        account.platform,
+        await excerptsFor(db, post.eventId),
+      );
+      await d
+        .update(socialPosts)
+        .set({
+          text: decision.text.trim(),
+          lint: JSON.stringify(findings),
+          status: findings.length ? "held" : "awaiting",
+        })
+        .where(eq(socialPosts.id, id));
       return { ok: true as const, findings };
     }
     case "acknowledge":
-      if (post.source !== "template") return { ok: false as const, error: "Only a template post has an alert to acknowledge." };
-      await d.update(socialPosts).set({ acknowledgedAt: now.toISOString() }).where(eq(socialPosts.id, id));
+      if (post.source !== "template")
+        return { ok: false as const, error: "Only a template post has an alert to acknowledge." };
+      await d
+        .update(socialPosts)
+        .set({ acknowledgedAt: now.toISOString() })
+        .where(eq(socialPosts.id, id));
       return { ok: true as const };
   }
 }
@@ -409,7 +709,14 @@ export async function socialOverview(db: D1Database, viewer: Viewer) {
   const [accounts, posts, runs] = await Promise.all([
     d.select().from(socialAccounts).orderBy(asc(socialAccounts.key)).all(),
     d
-      .select({ post: socialPosts, title: socialEvents.title, url: socialEvents.url, accountKey: socialAccounts.key, platform: socialAccounts.platform, kind: socialAccounts.kind })
+      .select({
+        post: socialPosts,
+        title: socialEvents.title,
+        url: socialEvents.url,
+        accountKey: socialAccounts.key,
+        platform: socialAccounts.platform,
+        kind: socialAccounts.kind,
+      })
       .from(socialPosts)
       .innerJoin(socialEvents, eq(socialEvents.id, socialPosts.eventId))
       .innerJoin(socialAccounts, eq(socialAccounts.id, socialPosts.accountId))
@@ -427,6 +734,12 @@ export async function unseenTemplates(db: D1Database) {
     .select({ id: socialPosts.id, accountKey: socialAccounts.key, text: socialPosts.text })
     .from(socialPosts)
     .innerJoin(socialAccounts, eq(socialAccounts.id, socialPosts.accountId))
-    .where(and(eq(socialPosts.source, "template"), eq(socialPosts.status, "sent"), isNull(socialPosts.acknowledgedAt)))
+    .where(
+      and(
+        eq(socialPosts.source, "template"),
+        eq(socialPosts.status, "sent"),
+        isNull(socialPosts.acknowledgedAt),
+      ),
+    )
     .all();
 }

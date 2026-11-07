@@ -9,7 +9,13 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import { absolutePositionToRelativePosition, relativePositionToAbsolutePosition, yCursorPlugin, yCursorPluginKey, ySyncPluginKey } from "@tiptap/y-tiptap";
+import {
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
+  yCursorPlugin,
+  yCursorPluginKey,
+  ySyncPluginKey,
+} from "@tiptap/y-tiptap";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 
@@ -24,7 +30,8 @@ export function roomCarets(awareness: Awareness, who: () => Who) {
     addProseMirrorPlugins() {
       return [
         yCursorPlugin(awareness, {
-          awarenessStateFilter: (mine: number, theirs: number) => mine !== theirs && who()(theirs) !== null,
+          awarenessStateFilter: (mine: number, theirs: number) =>
+            mine !== theirs && who()(theirs) !== null,
           cursorBuilder: (_user: unknown, clientId: number) => {
             const person = who()(clientId)!;
             const caret = document.createElement("span");
@@ -39,7 +46,10 @@ export function roomCarets(awareness: Awareness, who: () => Who) {
             caret.appendChild(document.createTextNode("\u2060"));
             return caret;
           },
-          selectionBuilder: (_user: unknown, clientId: number) => ({ class: "app-caret-selection", "data-who": String(who()(clientId)?.slot ?? 0) }),
+          selectionBuilder: (_user: unknown, clientId: number) => ({
+            class: "app-caret-selection",
+            "data-who": String(who()(clientId)?.slot ?? 0),
+          }),
         }),
       ];
     },
@@ -76,18 +86,32 @@ export const commentsKey = new PluginKey<DecorationSet>("carrel-comments");
 export function anchorOf(state: EditorState, from: number, to: number): string | null {
   const y = ySyncPluginKey.getState(state);
   if (!y?.binding) return null;
-  const at = (pos: number) => Y.relativePositionToJSON(absolutePositionToRelativePosition(pos, y.type, y.binding.mapping));
+  const at = (pos: number) =>
+    Y.relativePositionToJSON(absolutePositionToRelativePosition(pos, y.type, y.binding.mapping));
   return JSON.stringify({ from: at(from), to: at(to) });
 }
 
 /** Where a thread's text is now, or null when that text is gone. */
-export function rangeOf(state: EditorState, anchor: string | null): { from: number; to: number } | null {
+export function rangeOf(
+  state: EditorState,
+  anchor: string | null,
+): { from: number; to: number } | null {
   const y = ySyncPluginKey.getState(state);
   if (!anchor || !y?.binding) return null;
   try {
     const range = JSON.parse(anchor) as Range;
-    const from = relativePositionToAbsolutePosition(y.doc, y.type, Y.createRelativePositionFromJSON(range.from), y.binding.mapping);
-    const to = relativePositionToAbsolutePosition(y.doc, y.type, Y.createRelativePositionFromJSON(range.to), y.binding.mapping);
+    const from = relativePositionToAbsolutePosition(
+      y.doc,
+      y.type,
+      Y.createRelativePositionFromJSON(range.from),
+      y.binding.mapping,
+    );
+    const to = relativePositionToAbsolutePosition(
+      y.doc,
+      y.type,
+      Y.createRelativePositionFromJSON(range.to),
+      y.binding.mapping,
+    );
     return from !== null && to !== null && from < to ? { from, to } : null;
   } catch {
     return null;
@@ -101,7 +125,14 @@ export function commentMarks(get: () => { threads: Anchored[]; active: string | 
     const marks: Decoration[] = [];
     for (const t of threads) {
       const range = rangeOf(state, t.anchor);
-      if (range) marks.push(Decoration.inline(range.from, range.to, { class: "app-comment-mark", "data-comment": t.id, ...(t.id === active ? { "data-active": "" } : {}) }));
+      if (range)
+        marks.push(
+          Decoration.inline(range.from, range.to, {
+            class: "app-comment-mark",
+            "data-comment": t.id,
+            ...(t.id === active ? { "data-active": "" } : {}),
+          }),
+        );
     }
     return DecorationSet.create(state.doc, marks);
   };
@@ -113,7 +144,10 @@ export function commentMarks(get: () => { threads: Anchored[]; active: string | 
           key: commentsKey,
           state: {
             init: (_config, state) => build(state),
-            apply: (tr, old, _before, state) => (tr.docChanged || tr.getMeta(commentsKey) || tr.getMeta(ySyncPluginKey) ? build(state) : old.map(tr.mapping, tr.doc)),
+            apply: (tr, old, _before, state) =>
+              tr.docChanged || tr.getMeta(commentsKey) || tr.getMeta(ySyncPluginKey)
+                ? build(state)
+                : old.map(tr.mapping, tr.doc),
           },
           props: {
             decorations: (state) => commentsKey.getState(state),

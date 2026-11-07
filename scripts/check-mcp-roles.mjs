@@ -38,7 +38,9 @@ const FORBIDDEN = [
  * @param {string} source
  */
 function codeLines(source) {
-  const withoutBlocks = source.replace(/\/\*[\s\S]*?\*\//g, (/** @type {string} */ block) => block.replace(/[^\n]/g, " "));
+  const withoutBlocks = source.replace(/\/\*[\s\S]*?\*\//g, (/** @type {string} */ block) =>
+    block.replace(/[^\n]/g, " "),
+  );
   return withoutBlocks.split("\n").map((line) => line.replace(/(^|[^:"'`\\])\/\/.*$/, "$1"));
 }
 
@@ -68,14 +70,18 @@ for (const file of found) {
     for (const [pattern, shape] of FORBIDDEN) {
       if (pattern.test(line)) {
         hits += 1;
-        console.error(`  ${relative(ROOT, file)}:${index + 1}  ${shape}:  ${line.trim().slice(0, 140)}`);
+        console.error(
+          `  ${relative(ROOT, file)}:${index + 1}  ${shape}:  ${line.trim().slice(0, 140)}`,
+        );
       }
     }
   });
 }
 
 if (hits) {
-  console.error(`check:mcp-roles: ${hits} role decision(s) in the MCP layer. Move each into the function the tool calls.`);
+  console.error(
+    `check:mcp-roles: ${hits} role decision(s) in the MCP layer. Move each into the function the tool calls.`,
+  );
   process.exit(1);
 }
 console.log(`check:mcp-roles: ${found.length} files in ${relative(ROOT, LAYER)}, no role logic.`);

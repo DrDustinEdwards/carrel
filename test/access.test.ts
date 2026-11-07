@@ -11,7 +11,8 @@ import { addPerson, localKeys, resetDb, testEnv } from "./env";
 const ISSUER = "https://test-team.cloudflareaccess.com";
 const AUDIENCE = "test-audience-tag";
 
-const stub = (email = "owner@test.invalid") => stubAccess({ issuer: ISSUER, audience: AUDIENCE, email, install: false });
+const stub = (email = "owner@test.invalid") =>
+  stubAccess({ issuer: ISSUER, audience: AUDIENCE, email, install: false });
 
 let keys: KeySource;
 let team: Awaited<ReturnType<typeof stub>>;
@@ -44,10 +45,15 @@ function request(jwt?: string): Request {
 
 async function run(req: Request, env: Env = testEnv) {
   let rendered = false;
-  const response = await gate(req, env, async () => {
-    rendered = true;
-    return new Response("inside");
-  }, keys);
+  const response = await gate(
+    req,
+    env,
+    async () => {
+      rendered = true;
+      return new Response("inside");
+    },
+    keys,
+  );
   return { response, rendered };
 }
 
@@ -86,22 +92,31 @@ describe("gate: refusals (fail closed)", () => {
 
   it("refuses a signed-in POST sent from another site's page", async () => {
     const req = request(await token());
-    await expectRefused(new Request("https://carrel.test/p/x/bulk", { method: "POST", headers: { ...Object.fromEntries(req.headers), Origin: "https://evil.example.com" } }));
+    await expectRefused(
+      new Request("https://carrel.test/p/x/bulk", {
+        method: "POST",
+        headers: { ...Object.fromEntries(req.headers), Origin: "https://evil.example.com" },
+      }),
+    );
   });
 
   it("refuses everyone when ACCESS_AUD is not set", async () => {
     await expectRefused(request(await token()), { ...testEnv, ACCESS_AUD: "" });
   });
-
 });
 
 describe("gate: admission", () => {
   it("admits a valid token for a known person and passes the viewer to render", async () => {
     let seen = "";
-    const response = await gate(request(await token()), testEnv, async (_req, viewer) => {
-      seen = viewer.email;
-      return new Response("inside");
-    }, keys);
+    const response = await gate(
+      request(await token()),
+      testEnv,
+      async (_req, viewer) => {
+        seen = viewer.email;
+        return new Response("inside");
+      },
+      keys,
+    );
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("inside");
     expect(seen).toBe("owner@test.invalid");
@@ -110,11 +125,24 @@ describe("gate: admission", () => {
 
   it("leaves an HTML page untransformed so Web Analytics cannot inject its beacon, and no asset", async () => {
     const through = async (type: string) =>
-      gate(request(await token()), testEnv, async () => new Response("x", { headers: { "Content-Type": type } }), keys);
+      gate(
+        request(await token()),
+        testEnv,
+        async () => new Response("x", { headers: { "Content-Type": type } }),
+        keys,
+      );
     for (const html of ["text/html; charset=utf-8", "TEXT/HTML"]) {
-      expect((await through(html)).headers.get("cache-control")).toBe("private, no-store, no-transform");
+      expect((await through(html)).headers.get("cache-control")).toBe(
+        "private, no-store, no-transform",
+      );
     }
-    for (const asset of ["text/css", "text/javascript", "font/woff2", "application/json", "text/plain; charset=utf-8"]) {
+    for (const asset of [
+      "text/css",
+      "text/javascript",
+      "font/woff2",
+      "application/json",
+      "text/plain; charset=utf-8",
+    ]) {
       expect((await through(asset)).headers.get("cache-control"), asset).toBe("private, no-store");
     }
   });
@@ -123,17 +151,27 @@ describe("gate: admission", () => {
     const { response } = await run(request(await token({ email: "Owner@Test.Invalid" })));
     expect(response.status).toBe(200);
   });
-
 });
 
 // The chart demo is the one page served before the gate (workers/demo.ts). Planted: anything wider would let
 // an anonymous request reach a signed-in page or a write.
 describe("the demo's way past the gate", () => {
   it("opens /demos/progress to GET and HEAD, and nothing else", () => {
-    const at = (path: string, method = "GET") => isDemo(new Request(`https://carrel.test${path}`, { method }));
+    const at = (path: string, method = "GET") =>
+      isDemo(new Request(`https://carrel.test${path}`, { method }));
     expect(at("/demos/progress")).toBe(true);
     expect(at("/demos/progress", "HEAD")).toBe(true);
-    for (const method of ["POST", "PUT", "DELETE"]) expect(at("/demos/progress", method)).toBe(false);
-    for (const path of ["/", "/demos", "/demos/", "/demos/progress/", "/demos/progress.data", "/demos/../people", "/b/sample/demos/progress"]) expect(at(path)).toBe(false);
+    for (const method of ["POST", "PUT", "DELETE"])
+      expect(at("/demos/progress", method)).toBe(false);
+    for (const path of [
+      "/",
+      "/demos",
+      "/demos/",
+      "/demos/progress/",
+      "/demos/progress.data",
+      "/demos/../people",
+      "/b/sample/demos/progress",
+    ])
+      expect(at(path)).toBe(false);
   });
 });

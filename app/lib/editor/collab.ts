@@ -61,7 +61,8 @@ export function readMeta(ydoc: Y.Doc): RoomMeta {
 function printsOf(ydoc: Y.Doc): Map<number, string> {
   const prints = metaOf(ydoc).get(PRINTS);
   const out = new Map<number, string>();
-  if (prints instanceof Y.Map) for (const [id, print] of prints.entries()) out.set(Number(id), String(print));
+  if (prints instanceof Y.Map)
+    for (const [id, print] of prints.entries()) out.set(Number(id), String(print));
   return out;
 }
 
@@ -70,7 +71,10 @@ function printsOf(ydoc: Y.Doc): Map<number, string> {
  * the save's bookkeeping from it. The first load of a room and every replacement both come here.
  * `saved` is the text as the site or Git holds it, when that differs (a room started from a draft).
  */
-export function loadMarkdown(ydoc: Y.Doc, input: { markdown: string; version: string | null; dialect?: Dialect; saved?: string }): void {
+export function loadMarkdown(
+  ydoc: Y.Doc,
+  input: { markdown: string; version: string | null; dialect?: Dialect; saved?: string },
+): void {
   const dialect = input.dialect ?? readMeta(ydoc).dialect;
   const loaded = toDoc(input.markdown, dialect);
   const node = roomSchema().nodeFromJSON(loaded.doc);
@@ -101,7 +105,11 @@ function addPrints(ydoc: Y.Doc, prints: Map<number, string>, tail?: string): voi
 
 const SUGGESTION_MARKS = new Set(["insertion", "deletion", "modification"]);
 function hasSuggestion(node: JsonDoc): boolean {
-  return Boolean(node.attrs?.smark) || (node.marks ?? []).some((m) => SUGGESTION_MARKS.has(m.type)) || (node.content ?? []).some(hasSuggestion);
+  return (
+    Boolean(node.attrs?.smark) ||
+    (node.marks ?? []).some((m) => SUGGESTION_MARKS.has(m.type)) ||
+    (node.content ?? []).some(hasSuggestion)
+  );
 }
 
 export type Patched = { ok: true; changed: boolean } | { ok: false; reason: "suggestions" };
@@ -122,24 +130,52 @@ export function patchMarkdown(ydoc: Y.Doc, markdown: string): Patched {
   const incoming = (loaded.doc.content ?? []) as JsonDoc[];
   /** The bytes a block in the room writes now, and whether those are the incoming block's. */
   const unchanged = (raw: JsonDoc, fresh: JsonDoc) => {
-    const settled = hasSuggestion(raw) ? (settle(schema, { type: "doc", content: [raw] }).content ?? []) : [raw];
+    const settled = hasSuggestion(raw)
+      ? (settle(schema, { type: "doc", content: [raw] }).content ?? [])
+      : [raw];
     if (settled.length !== 1) return false;
     const md = fresh.attrs?.md as { source: string; before: string };
-    const written = fromDoc({ type: "doc", content: settled } as JsonNode, "", prints, meta.dialect);
+    const written = fromDoc(
+      { type: "doc", content: settled } as JsonNode,
+      "",
+      prints,
+      meta.dialect,
+    );
     return written === md.before + md.source || (!settled[0]!.attrs?.md && written === md.source);
   };
   let head = 0;
-  while (head < current.length && head < incoming.length && unchanged(current[head]!, incoming[head]!)) head++;
+  while (
+    head < current.length &&
+    head < incoming.length &&
+    unchanged(current[head]!, incoming[head]!)
+  )
+    head++;
   let tail = 0;
-  while (tail < current.length - head && tail < incoming.length - head && unchanged(current[current.length - 1 - tail]!, incoming[incoming.length - 1 - tail]!)) tail++;
+  while (
+    tail < current.length - head &&
+    tail < incoming.length - head &&
+    unchanged(current[current.length - 1 - tail]!, incoming[incoming.length - 1 - tail]!)
+  )
+    tail++;
   const replaced = current.slice(head, current.length - tail);
   if (replaced.some(hasSuggestion)) return { ok: false, reason: "suggestions" };
   // New blocks take origin ids no block in the room has, so no print is read for the wrong block.
-  const ids = [...prints.keys(), ...current.map((b) => (b.attrs?.md as { id?: number } | null)?.id ?? -1)];
+  const ids = [
+    ...prints.keys(),
+    ...current.map((b) => (b.attrs?.md as { id?: number } | null)?.id ?? -1),
+  ];
   let next = Math.max(-1, ...ids) + 1;
-  const fresh = incoming.slice(head, incoming.length - tail).map((b) => ({ ...b, attrs: { ...b.attrs, md: { ...(b.attrs?.md as object), id: next++ } } }));
-  const node = schema.nodeFromJSON({ type: "doc", content: [...current.slice(0, head), ...fresh, ...current.slice(current.length - tail)] });
-  const added = fingerprints({ type: "doc", content: fresh.map((b) => schema.nodeFromJSON(b).toJSON()) } as JsonNode);
+  const fresh = incoming
+    .slice(head, incoming.length - tail)
+    .map((b) => ({ ...b, attrs: { ...b.attrs, md: { ...(b.attrs?.md as object), id: next++ } } }));
+  const node = schema.nodeFromJSON({
+    type: "doc",
+    content: [...current.slice(0, head), ...fresh, ...current.slice(current.length - tail)],
+  });
+  const added = fingerprints({
+    type: "doc",
+    content: fresh.map((b) => schema.nodeFromJSON(b).toJSON()),
+  } as JsonNode);
   ydoc.transact(() => {
     prosemirrorToYXmlFragment(node, ydoc.getXmlFragment(FRAGMENT));
     addPrints(ydoc, added, loaded.tail);
@@ -170,7 +206,12 @@ export function roomMarkdown(ydoc: Y.Doc): string {
 /** The Markdown for a document an editor holds as JSON, with the room's bookkeeping. */
 export function markdownOf(ydoc: Y.Doc, editorJson: JsonDoc): string {
   const meta = readMeta(ydoc);
-  return fromDoc(settle(roomSchema(), editorJson) as JsonNode, meta.tail, printsOf(ydoc), meta.dialect);
+  return fromDoc(
+    settle(roomSchema(), editorJson) as JsonNode,
+    meta.tail,
+    printsOf(ydoc),
+    meta.dialect,
+  );
 }
 
 /** The name of the room for one file: its project and the item's id (a post's id, or a book file's path). */

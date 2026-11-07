@@ -17,7 +17,13 @@ import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
-import { briefOf, buildVoicePack, PACK_POSTS, readVoicePack, saveVoiceGuide } from "~/lib/voice.server";
+import {
+  briefOf,
+  buildVoicePack,
+  PACK_POSTS,
+  readVoicePack,
+  saveVoiceGuide,
+} from "~/lib/voice.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.voice";
@@ -31,7 +37,12 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read");
   const pack = await readVoicePack(env.DB, project);
   return {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
+    project: {
+      slug: project.slug,
+      name: project.name,
+      site: siteEntry(project.site).name,
+      mentions: can(project.role, "read_mentions"),
+    },
     canManage: can(project.role, "manage"),
     brief: briefOf(pack),
     own: pack.own,
@@ -47,14 +58,22 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   if (intent === "rebuild") {
     const project = await requireSiteProject(env.DB, viewer, params.project, "read");
     const pack = await buildVoicePack(env, project);
-    const read = pack.from === "own" ? `${pack.pieces} pieces of your own writing` : `${pack.pieces} published posts`;
+    const read =
+      pack.from === "own"
+        ? `${pack.pieces} pieces of your own writing`
+        : `${pack.pieces} published posts`;
     return {
-      done: pack.excerpts.length ? `Rebuilt from ${read}: ${pack.excerpts.length} excerpts.` : `Read ${read}: none had enough prose for an excerpt yet.`,
+      done: pack.excerpts.length
+        ? `Rebuilt from ${read}: ${pack.excerpts.length} excerpts.`
+        : `Read ${read}: none had enough prose for an excerpt yet.`,
     };
   }
   const project = await requireSiteProject(env.DB, viewer, params.project, "manage");
   if (intent === "save") {
-    await saveVoiceGuide(env.DB, project, { guide: String(form.get("guide") ?? ""), own: String(form.get("own") ?? "") });
+    await saveVoiceGuide(env.DB, project, {
+      guide: String(form.get("guide") ?? ""),
+      own: String(form.get("own") ?? ""),
+    });
     return { done: "Saved." };
   }
   throw new Response("Bad request", { status: 400 });
@@ -78,7 +97,13 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
 
       <Panel
         title={fromOwn ? "From your own writing" : "From your published posts"}
-        src={!brief.builtAt ? "Not built yet" : fromOwn ? `${brief.pieces} pieces` : `${brief.pieces} posts`}
+        src={
+          !brief.builtAt
+            ? "Not built yet"
+            : fromOwn
+              ? `${brief.pieces} pieces`
+              : `${brief.pieces} posts`
+        }
         actions={
           <Form method="post">
             <Button type="submit" name="intent" value="rebuild" size="sm" pending={busy}>
@@ -88,18 +113,29 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
         }
       >
         {fromOwn ? (
-          <p>Chosen from the own writing below. Your published posts are not read while there is any.</p>
+          <p>
+            Chosen from the own writing below. Your published posts are not read while there is any.
+          </p>
         ) : brief.builtAt ? (
           <p>
-            Read from the newest {limits.posts} published posts, <Time at={brief.builtAt} />. Rebuild after publishing a few more.
+            Read from the newest {limits.posts} published posts, <Time at={brief.builtAt} />.
+            Rebuild after publishing a few more.
           </p>
         ) : (
-          <p>Built from the newest {limits.posts} published posts the first time a session asks for it, or now with Rebuild.</p>
+          <p>
+            Built from the newest {limits.posts} published posts the first time a session asks for
+            it, or now with Rebuild.
+          </p>
         )}
-        {brief.builtAt && brief.excerpts.length === 0 ? <p>{fromOwn ? "No piece" : "No post"} had enough prose for an excerpt yet.</p> : null}
+        {brief.builtAt && brief.excerpts.length === 0 ? (
+          <p>{fromOwn ? "No piece" : "No post"} had enough prose for an excerpt yet.</p>
+        ) : null}
         {brief.excerpts.length > 0 ? (
           <details>
-            <summary>The {brief.excerpts.length} excerpts a session writes from, and its drafts are scanned against</summary>
+            <summary>
+              The {brief.excerpts.length} excerpts a session writes from, and its drafts are scanned
+              against
+            </summary>
             {brief.excerpts.map((excerpt, i) => (
               <blockquote key={i} className="app-voice-excerpt">
                 {excerpt}
@@ -109,16 +145,34 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
         ) : null}
       </Panel>
 
-      <Panel title="Your guide and writing" src={canManage ? "Yours to edit" : "The Owner edits it"}>
+      <Panel
+        title="Your guide and writing"
+        src={canManage ? "Yours to edit" : "The Owner edits it"}
+      >
         <Form method="post" className="app-fm" aria-label="Voice guide and own writing">
-          <Field label="Guide" help="Anything a session should know about how you write here: who reads it, what you never say, how you open and close.">
-            <textarea className="cap-input" name="guide" rows={6} defaultValue={brief.guide} readOnly={!canManage} />
+          <Field
+            label="Guide"
+            help="Anything a session should know about how you write here: who reads it, what you never say, how you open and close."
+          >
+            <textarea
+              className="cap-input"
+              name="guide"
+              rows={6}
+              defaultValue={brief.guide}
+              readOnly={!canManage}
+            />
           </Field>
           <Field
             label="Your own writing"
             help="Things you wrote yourself, with no AI help: papers, letters, old posts. Put a line holding only --- between pieces. While there is any, the excerpts come from it and not from the published posts."
           >
-            <textarea className="cap-input" name="own" rows={12} defaultValue={own} readOnly={!canManage} />
+            <textarea
+              className="cap-input"
+              name="own"
+              rows={12}
+              defaultValue={own}
+              readOnly={!canManage}
+            />
           </Field>
           {canManage ? (
             <div className="app-actions">
@@ -129,7 +183,6 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
           ) : null}
         </Form>
       </Panel>
-
     </div>
   );
 }

@@ -10,10 +10,21 @@
 // every tool calls the same functions the buttons do, and those functions refuse. check:mcp-roles
 // fails the build if role logic appears in this folder.
 
-import { invokeTool, mcpCacheHints, routeMcpEra, toolsForGrant, type McpCaller } from "@dustinedwards/site-runtime/mcp-server";
+import {
+  invokeTool,
+  mcpCacheHints,
+  routeMcpEra,
+  toolsForGrant,
+  type McpCaller,
+} from "@dustinedwards/site-runtime/mcp-server";
 
 import { fetchUntil } from "~/lib/timed-fetch.server";
-import { fromJsonSchema, isLegacyRequest, McpServer, type JsonSchemaType } from "@modelcontextprotocol/server";
+import {
+  fromJsonSchema,
+  isLegacyRequest,
+  McpServer,
+  type JsonSchemaType,
+} from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 
 import { SCOPE_READ, SCOPE_WRITE } from "./scopes";
@@ -33,7 +44,12 @@ const SERVER_INFO = {
 };
 
 /** Carrel's server as refusals and the call log name it. */
-export const MCP_SERVER = { site: "Carrel", scopes: { read: SCOPE_READ, write: SCOPE_WRITE }, name: SERVER_INFO.name, version: SERVER_INFO.version };
+export const MCP_SERVER = {
+  site: "Carrel",
+  scopes: { read: SCOPE_READ, write: SCOPE_WRITE },
+  name: SERVER_INFO.name,
+  version: SERVER_INFO.version,
+};
 
 const INSTRUCTIONS = [
   "Carrel is Dustin's private writing hub. These tools read his posts, save AI drafts beside his own, flag problems, preview, and (for the Owner's own sessions) publish on his instruction, the site's text or the session's own AI draft.",
@@ -50,7 +66,12 @@ const MAX_TOOL_INPUT_ELEMENTS = 10_000;
 function callerOf(session: McpSession): McpCaller {
   const agent = /^agent:(.+)$/.exec(session.viewer.email);
   if (agent) return { kind: "agent", principal: agent[1]!, scopes: session.scopes };
-  return { kind: "person", email: session.viewer.email, clientId: session.clientId, scopes: session.scopes };
+  return {
+    kind: "person",
+    email: session.viewer.email,
+    clientId: session.clientId,
+    scopes: session.scopes,
+  };
 }
 
 /**
@@ -78,7 +99,11 @@ function buildServer(env: Env, who: Who, deps: ToolDeps) {
     // registerTools does the same, but it sets its own scopeChallenge from the token's raw scopes, and a pre-2026-10-10
     // "carrel" token must read as both. Every Carrel tool has a fixed scope, so a listed tool is always one the grant
     // can call and no step-up is left to offer; invokeTool still checks the scope on every call.
-    const listed = toolsForGrant(TOOLS, "probe" in who ? [SCOPE_READ] : who.session.scopes, MCP_SERVER.scopes);
+    const listed = toolsForGrant(
+      TOOLS,
+      "probe" in who ? [SCOPE_READ] : who.session.scopes,
+      MCP_SERVER.scopes,
+    );
     for (const tool of listed) {
       server.registerTool(
         tool.name,
@@ -96,9 +121,22 @@ function buildServer(env: Env, who: Who, deps: ToolDeps) {
           // The request's abort signal (P11) reaches the tool and every outbound fetch it makes.
           const run =
             "session" in who
-              ? (signal?: AbortSignal) => runTool(tool, input, { env, session: who.session, deps: { ...deps, fetcher: fetchUntil(signal, deps.fetcher) }, signal })
+              ? (signal?: AbortSignal) =>
+                  runTool(tool, input, {
+                    env,
+                    session: who.session,
+                    deps: { ...deps, fetcher: fetchUntil(signal, deps.fetcher) },
+                    signal,
+                  })
               : () => Promise.reject(new Error("The list-only test key runs no tool."));
-          return invokeTool(env, MCP_SERVER, { caller, tool, args: input, meta: ctx.mcpReq._meta, signal: ctx.mcpReq.signal, run });
+          return invokeTool(env, MCP_SERVER, {
+            caller,
+            tool,
+            args: input,
+            meta: ctx.mcpReq._meta,
+            signal: ctx.mcpReq.signal,
+            run,
+          });
         },
       );
     }
@@ -119,7 +157,12 @@ export async function handleMcp(
 ): Promise<Response> {
   const factory = buildServer(env, "probe" in who ? who : { session: who }, deps);
   const host = new URL(request.url).hostname;
-  const options = { route: MCP_ROUTE, allowedHostnames: [host], allowedOriginHostnames: [host], corsOptions: false as const };
+  const options = {
+    route: MCP_ROUTE,
+    allowedHostnames: [host],
+    allowedOriginHostnames: [host],
+    corsOptions: false as const,
+  };
 
   // The one legacy call site. Prior-era clients (Claude Code and claude.ai open with `initialize`, as
   // last measured in dustinedwards-info's probe) go to the stateless shim, everything else, malformed

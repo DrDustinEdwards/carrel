@@ -11,7 +11,13 @@ export const UPLOAD_MAX_BYTES = 26 * 1024 * 1024;
 
 export async function readForm(request: Request, max = FORM_MAX_BYTES): Promise<FormData> {
   const bytes = await readCappedBytes(request, max);
-  if (bytes === null) throw new Response("The form is too large.", { status: 413, headers: { "Cache-Control": "private, no-store" } });
+  if (bytes === null)
+    throw new Response("The form is too large.", {
+      status: 413,
+      headers: { "Cache-Control": "private, no-store" },
+    });
   // readCappedBytes joins the chunks into a fresh ArrayBuffer.
-  return new Response(bytes as Uint8Array<ArrayBuffer>, { headers: { "Content-Type": request.headers.get("Content-Type") ?? "" } }).formData();
+  return new Response(bytes as Uint8Array<ArrayBuffer>, {
+    headers: { "Content-Type": request.headers.get("Content-Type") ?? "" },
+  }).formData();
 }

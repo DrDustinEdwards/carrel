@@ -46,7 +46,9 @@ describe("reportInbox", () => {
     expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe("Bearer key-1");
     expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
       namespace: "carrel",
-      items: [{ title: "2 AI drafts wait for review", link: `${ORIGIN}/`, since: "2026-10-01T00:00:00Z" }],
+      items: [
+        { title: "2 AI drafts wait for review", link: `${ORIGIN}/`, since: "2026-10-01T00:00:00Z" },
+      ],
     });
   });
 
@@ -58,14 +60,19 @@ describe("reportInbox", () => {
 
   it("sends nothing while the key is not set", async () => {
     const { calls, fetcher } = capture();
-    expect(await reportInbox({ ...env, CAPSID_AGENT_KEY: undefined } as Env, fetcher)).toMatchObject({ state: "skipped" });
+    expect(
+      await reportInbox({ ...env, CAPSID_AGENT_KEY: undefined } as Env, fetcher),
+    ).toMatchObject({ state: "skipped" });
     expect(calls).toHaveLength(0);
   });
 
   it("logs and returns a refusal rather than swallowing or throwing it", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const { fetcher } = capture(429);
-    expect(await reportInbox(env, fetcher)).toEqual({ state: "failed", detail: "Capsid answered 429" });
+    expect(await reportInbox(env, fetcher)).toEqual({
+      state: "failed",
+      detail: "Capsid answered 429",
+    });
     expect(log).toHaveBeenCalledWith(expect.stringContaining("report-failed"));
     log.mockRestore();
   });

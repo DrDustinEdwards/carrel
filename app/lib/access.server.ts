@@ -9,7 +9,9 @@
 import { verifyAccessRequest, type AccessRefusal } from "@dustinedwards/site-runtime/access";
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 
-export type AccessResult = { ok: true; email: string } | { ok: false; reason: AccessRefusal | "no-email" };
+export type AccessResult =
+  | { ok: true; email: string }
+  | { ok: false; reason: AccessRefusal | "no-email" };
 
 /**
  * Verifies the request's Access token against one Access application's audience. Every fault is a refusal with its
@@ -21,7 +23,11 @@ export async function verifyAccess(
   config: { teamDomain: string | undefined; audience: string | undefined },
   keys?: KeySource,
 ): Promise<AccessResult> {
-  const verdict = await verifyAccessRequest(request, { teamDomain: config.teamDomain, audience: config.audience, keys });
+  const verdict = await verifyAccessRequest(request, {
+    teamDomain: config.teamDomain,
+    audience: config.audience,
+    keys,
+  });
   if (!verdict.ok) return verdict;
   const email = typeof verdict.claims.email === "string" ? verdict.claims.email.trim() : "";
   if (!email) return { ok: false, reason: "no-email" };

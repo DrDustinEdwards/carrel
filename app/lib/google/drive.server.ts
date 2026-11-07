@@ -26,13 +26,16 @@ type Fetch = typeof fetch;
 const DRIVE = "https://www.googleapis.com/drive/v3/files";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3/files";
 const FOLDER = "application/vnd.google-apps.folder";
-const FILE_FIELDS = "id,name,mimeType,webViewLink,createdTime,modifiedTime,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress)";
+const FILE_FIELDS =
+  "id,name,mimeType,webViewLink,createdTime,modifiedTime,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress)";
 /** How many folders one refresh walks; a manuscripts folder is far smaller. */
 const MAX_FOLDERS = 200;
 
 /** The folder Dustin shares with the service account. A var, read loosely like CARREL_ORIGIN. */
 export function manuscriptsFolder(env: Env): string | null {
-  const id = (env as { GOOGLE_MANUSCRIPTS_FOLDER_ID?: string }).GOOGLE_MANUSCRIPTS_FOLDER_ID?.trim();
+  const id = (
+    env as { GOOGLE_MANUSCRIPTS_FOLDER_ID?: string }
+  ).GOOGLE_MANUSCRIPTS_FOLDER_ID?.trim();
   return id && /^[A-Za-z0-9_-]+$/.test(id) ? id : null;
 }
 
@@ -61,7 +64,13 @@ async function listAll(sa: ReturnType<typeof saClient>, q: string): Promise<Driv
   const out: DriveFile[] = [];
   let pageToken: string | undefined;
   do {
-    const params = new URLSearchParams({ q, fields: `nextPageToken,files(${FILE_FIELDS})`, pageSize: "1000", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+    const params = new URLSearchParams({
+      q,
+      fields: `nextPageToken,files(${FILE_FIELDS})`,
+      pageSize: "1000",
+      supportsAllDrives: "true",
+      includeItemsFromAllDrives: "true",
+    });
     if (pageToken) params.set("pageToken", pageToken);
     const res = await sa.request("GET", `${DRIVE}?${params}`);
     if (!res.ok) throw new Error(`Drive did not list the folder (${res.status}).`);
@@ -73,16 +82,25 @@ async function listAll(sa: ReturnType<typeof saClient>, q: string): Promise<Driv
 }
 
 function peopleOf(f: DriveFile): string[] {
-  const names = [...(f.owners ?? []), ...(f.lastModifyingUser ? [f.lastModifyingUser] : [])].map((p) => p.displayName || p.emailAddress || "").filter(Boolean);
+  const names = [...(f.owners ?? []), ...(f.lastModifyingUser ? [f.lastModifyingUser] : [])]
+    .map((p) => p.displayName || p.emailAddress || "")
+    .filter(Boolean);
   return [...new Set(names)];
 }
 
 export type ManuscriptRefresh = { files: number; removed: number; folders: number; more: boolean };
 
 /** Walks the shared folder and its subfolders, upserts every file, and drops what Drive no longer has. */
-export async function refreshManuscripts(env: Env, fetcher?: Fetch, now = new Date()): Promise<ManuscriptRefresh> {
+export async function refreshManuscripts(
+  env: Env,
+  fetcher?: Fetch,
+  now = new Date(),
+): Promise<ManuscriptRefresh> {
   const root = manuscriptsFolder(env);
-  if (!root) throw new GoogleNotConnected("GOOGLE_MANUSCRIPTS_FOLDER_ID is not set to the shared folder's id.");
+  if (!root)
+    throw new GoogleNotConnected(
+      "GOOGLE_MANUSCRIPTS_FOLDER_ID is not set to the shared folder's id.",
+    );
   const sa = saClient(env, fetcher);
   const at = now.toISOString();
   const queue: { id: string; path: string }[] = [{ id: root, path: "" }];
@@ -92,7 +110,8 @@ export async function refreshManuscripts(env: Env, fetcher?: Fetch, now = new Da
     const folder = queue.shift()!;
     folders++;
     for (const f of await listAll(sa, `${quote(folder.id)} in parents and trashed = false`)) {
-      if (f.mimeType === FOLDER) queue.push({ id: f.id, path: folder.path ? `${folder.path}/${f.name}` : f.name });
+      if (f.mimeType === FOLDER)
+        queue.push({ id: f.id, path: folder.path ? `${folder.path}/${f.name}` : f.name });
       else files.push({ ...f, folder: folder.path });
     }
   }
@@ -108,7 +127,10 @@ export async function refreshManuscripts(env: Env, fetcher?: Fetch, now = new Da
       modifiedTime: f.modifiedTime ?? null,
       syncedAt: at,
     };
-    await d.insert(manuscripts).values({ fileId: f.id, ...values }).onConflictDoUpdate({ target: manuscripts.fileId, set: values });
+    await d
+      .insert(manuscripts)
+      .values({ fileId: f.id, ...values })
+      .onConflictDoUpdate({ target: manuscripts.fileId, set: values });
   }
   // Only a complete walk may drop rows; a walk cut short would make unwalked files look deleted.
   let removed = 0;
@@ -123,12 +145,32 @@ export async function refreshManuscripts(env: Env, fetcher?: Fetch, now = new Da
   return { files: files.length, removed, folders, more: queue.length > 0 };
 }
 
-export type Manuscript = { fileId: string; name: string; mimeType: string; webViewLink: string; folder: string; people: string[]; modifiedTime: string | null };
+export type Manuscript = {
+  fileId: string;
+  name: string;
+  mimeType: string;
+  webViewLink: string;
+  folder: string;
+  people: string[];
+  modifiedTime: string | null;
+};
 
 export async function listManuscripts(db: D1Database, viewer: Viewer): Promise<Manuscript[]> {
   requireOwner(viewer);
-  const rows = await drizzle(db).select().from(manuscripts).orderBy(desc(manuscripts.modifiedTime), asc(manuscripts.name)).all();
-  return rows.map((r) => ({ fileId: r.fileId, name: r.name, mimeType: r.mimeType, webViewLink: r.webViewLink, folder: r.folder, people: JSON.parse(r.people) as string[], modifiedTime: r.modifiedTime }));
+  const rows = await drizzle(db)
+    .select()
+    .from(manuscripts)
+    .orderBy(desc(manuscripts.modifiedTime), asc(manuscripts.name))
+    .all();
+  return rows.map((r) => ({
+    fileId: r.fileId,
+    name: r.name,
+    mimeType: r.mimeType,
+    webViewLink: r.webViewLink,
+    folder: r.folder,
+    people: JSON.parse(r.people) as string[],
+    modifiedTime: r.modifiedTime,
+  }));
 }
 
 export type ManuscriptSearch = { files: Manuscript[]; searched: "text" | "titles" };
@@ -139,7 +181,12 @@ export type ManuscriptSearch = { files: Manuscript[]; searched: "text" | "titles
  * back to Carrel. Google's docs do not say whether a metadata-only scope may run a full-text query;
  * if Drive refuses one, the search falls back to titles and says so.
  */
-export async function searchManuscripts(env: Env, viewer: Viewer, words: string, fetcher?: Fetch): Promise<ManuscriptSearch> {
+export async function searchManuscripts(
+  env: Env,
+  viewer: Viewer,
+  words: string,
+  fetcher?: Fetch,
+): Promise<ManuscriptSearch> {
   requireOwner(viewer);
   const q = words.trim().slice(0, 200);
   const all = await listManuscripts(env.DB, viewer);
@@ -177,7 +224,13 @@ function requireSend(project: SiteProject) {
  * Copies a post into a new Google Doc in Dustin's Drive: his working draft if he has one, else the
  * site's text. Only the body goes; the frontmatter stays in Carrel for Import to put back.
  */
-export async function sendToDocs(env: Env, project: SiteProject, viewer: Viewer, itemId: string, fetcher: Fetch = timedFetch) {
+export async function sendToDocs(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  itemId: string,
+  fetcher: Fetch = timedFetch,
+) {
   requireSend(project);
   const draft = await readDraft(env.DB, project, viewer, itemId);
   const doc = draft ? null : await readDoc(env, project, itemId, fetcher);
@@ -192,7 +245,10 @@ export async function sendToDocs(env: Env, project: SiteProject, viewer: Viewer,
     `--${boundary}`,
     "Content-Type: application/json; charset=UTF-8",
     "",
-    JSON.stringify({ name: `${title} (from Carrel)`, mimeType: "application/vnd.google-apps.document" }),
+    JSON.stringify({
+      name: `${title} (from Carrel)`,
+      mimeType: "application/vnd.google-apps.document",
+    }),
     `--${boundary}`,
     "Content-Type: text/markdown; charset=UTF-8",
     "",
@@ -202,20 +258,36 @@ export async function sendToDocs(env: Env, project: SiteProject, viewer: Viewer,
   ].join("\r\n");
   const res = await fetcher(`${UPLOAD}?uploadType=multipart&fields=id,webViewLink`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": `multipart/related; boundary=${boundary}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`,
+    },
     body: multipart,
   });
-  if (!res.ok) return { ok: false as const, message: `Google Docs did not accept the post (${res.status}).` };
+  if (!res.ok)
+    return { ok: false as const, message: `Google Docs did not accept the post (${res.status}).` };
   const created = (await res.json()) as { id: string; webViewLink?: string };
   const url = created.webViewLink ?? `https://docs.google.com/document/d/${created.id}/edit`;
-  await drizzle(env.DB).insert(sentDocs).values({ projectId: project.id, itemId, personId: viewer.id, docId: created.id, docUrl: url, frontmatter });
+  await drizzle(env.DB).insert(sentDocs).values({
+    projectId: project.id,
+    itemId,
+    personId: viewer.id,
+    docId: created.id,
+    docUrl: url,
+    frontmatter,
+  });
   return { ok: true as const, docId: created.id, url };
 }
 
 export async function lastSentDoc(db: D1Database, project: SiteProject, itemId: string) {
   return (
     (await drizzle(db)
-      .select({ docId: sentDocs.docId, url: sentDocs.docUrl, frontmatter: sentDocs.frontmatter, createdAt: sentDocs.createdAt })
+      .select({
+        docId: sentDocs.docId,
+        url: sentDocs.docUrl,
+        frontmatter: sentDocs.frontmatter,
+        createdAt: sentDocs.createdAt,
+      })
       .from(sentDocs)
       .where(and(eq(sentDocs.projectId, project.id), eq(sentDocs.itemId, itemId)))
       .orderBy(desc(sentDocs.createdAt), desc(sentDocs.id))
@@ -227,21 +299,52 @@ export async function lastSentDoc(db: D1Database, project: SiteProject, itemId: 
  * Brings the Doc's text back as the working copy, never over unsaved work: with changes nobody has
  * saved, it is refused until they are saved or discarded. The frontmatter kept at Send goes back on top.
  */
-export async function importFromDocs(env: Env, project: SiteProject, viewer: Viewer, itemId: string, fetcher: Fetch = timedFetch) {
+export async function importFromDocs(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  itemId: string,
+  fetcher: Fetch = timedFetch,
+) {
   requireSend(project);
   const sent = await lastSentDoc(env.DB, project, itemId);
-  if (!sent) return { ok: false as const, message: "This post has not been sent to Google Docs from Carrel, so there is no Doc to import." };
+  if (!sent)
+    return {
+      ok: false as const,
+      message:
+        "This post has not been sent to Google Docs from Carrel, so there is no Doc to import.",
+    };
   if (await readDraft(env.DB, project, viewer, itemId)) {
-    return { ok: false as const, message: "This post has changes nobody has saved. Save them to the site or discard them first; an import never replaces unsaved work." };
+    return {
+      ok: false as const,
+      message:
+        "This post has changes nobody has saved. Save them to the site or discard them first; an import never replaces unsaved work.",
+    };
   }
   const token = await userAccessToken(env, viewer.id, fetcher);
-  const res = await fetcher(`${DRIVE}/${encodeURIComponent(sent.docId)}/export?mimeType=text%2Fmarkdown`, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) return { ok: false as const, message: `Google did not export the Doc (${res.status}). It may have been deleted or moved out of reach.` };
+  const res = await fetcher(
+    `${DRIVE}/${encodeURIComponent(sent.docId)}/export?mimeType=text%2Fmarkdown`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok)
+    return {
+      ok: false as const,
+      message: `Google did not export the Doc (${res.status}). It may have been deleted or moved out of reach.`,
+    };
   const body = (await res.text()).replace(/\r\n/g, "\n");
   const current = await readDoc(env, project, itemId, fetcher);
   const source = `${sent.frontmatter}${body}`;
   // A file open for live editing takes the import in its room, where everyone sees it.
-  if (await hasRoom(env.DB, project.id, itemId)) await replaceRoom(env, project, viewer, itemId, { markdown: source, version: current?.version ?? null, unsaved: true });
-  else await autosave(env.DB, project, viewer, itemId, { source, baseVersion: current?.version ?? null });
+  if (await hasRoom(env.DB, project.id, itemId))
+    await replaceRoom(env, project, viewer, itemId, {
+      markdown: source,
+      version: current?.version ?? null,
+      unsaved: true,
+    });
+  else
+    await autosave(env.DB, project, viewer, itemId, {
+      source,
+      baseVersion: current?.version ?? null,
+    });
   return { ok: true as const, words: body.split(/\s+/).filter(Boolean).length };
 }

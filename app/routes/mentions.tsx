@@ -33,8 +33,16 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const head = { slug: project.slug, name: project.name, site: siteEntry(project.site).name };
   const search = new URL(request.url).searchParams;
   try {
-    const kit = await loadMentions(mentionsSource(env, project, viewer), readMentionsQuery(kitMentionsSearch(search)));
-    if (!kit.offers.mentions) return { project: head, data: null, unavailable: "This site does not receive webmentions through Carrel yet." };
+    const kit = await loadMentions(
+      mentionsSource(env, project, viewer),
+      readMentionsQuery(kitMentionsSearch(search)),
+    );
+    if (!kit.offers.mentions)
+      return {
+        project: head,
+        data: null,
+        unavailable: "This site does not receive webmentions through Carrel yet.",
+      };
     return { project: head, data: mentionsDataOfKit(kit, search), unavailable: null };
   } catch (error) {
     const message = unreachable(error);
@@ -44,10 +52,13 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ params, request, context }: Route.ActionArgs): Promise<IntentResult> {
+export async function action({
+  params,
+  request,
+  context,
+}: Route.ActionArgs): Promise<IntentResult> {
   return runIntent(getEnv(context), getViewer(context), params.project, await readForm(request));
 }
-
 
 export default function Mentions({ loaderData, actionData }: Route.ComponentProps) {
   const { project, data, unavailable } = loaderData;
@@ -55,14 +66,23 @@ export default function Mentions({ loaderData, actionData }: Route.ComponentProp
   const submit = useKitSubmit(`${base}/api`);
   return (
     <div className="app-page">
-      <PageHead title={project.name} lead={`Webmentions about posts on ${project.site}. Approving one shows it on the post within seconds.`} />
+      <PageHead
+        title={project.name}
+        lead={`Webmentions about posts on ${project.site}. Approving one shows it on the post within seconds.`}
+      />
       <ProjectTabs slug={project.slug} current="mentions" mentions />
       {unavailable || !data ? (
         <Banner tone="warn" title="Mentions are not available for this site yet">
           {unavailable}
         </Banner>
       ) : (
-        <MentionsList data={data} action={base} Form={KitForm} submit={submit} result={actionData ?? null} />
+        <MentionsList
+          data={data}
+          action={base}
+          Form={KitForm}
+          submit={submit}
+          result={actionData ?? null}
+        />
       )}
     </div>
   );

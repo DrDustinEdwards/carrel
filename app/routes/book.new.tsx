@@ -37,7 +37,12 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
   const busy = useNavigation().state !== "idle";
   return (
     <div className="app-page" data-narrow>
-      <PageHead renderLink={RouterLink} crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]} title="New book" lead="A book is a folder in the writing repository. Nothing is written to Git until its first file is saved." />
+      <PageHead
+        renderLink={RouterLink}
+        crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]}
+        title="New book"
+        lead="A book is a folder in the writing repository. Nothing is written to Git until its first file is saved."
+      />
       <Panel title="The book">
         <Form method="post" className="app-form">
           <Field label="Name" required>
@@ -50,7 +55,15 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
             error={actionData?.error}
             announce
           >
-            <input className="cap-input" name="folder" required pattern="[a-z0-9]+(-[a-z0-9]+)*" autoComplete="off" spellCheck={false} data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as paluxy-portal." />
+            <input
+              className="cap-input"
+              name="folder"
+              required
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              autoComplete="off"
+              spellCheck={false}
+              data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as paluxy-portal."
+            />
           </Field>
           <div className="app-actions">
             <Button type="submit" variant="primary" pending={busy}>

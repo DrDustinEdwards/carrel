@@ -10,9 +10,20 @@ import { initProseMirrorDoc, prosemirrorToYXmlFragment } from "@tiptap/y-tiptap"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-import { FRAGMENT, loadMarkdown, patchMarkdown, roomMarkdown, roomSchema } from "~/lib/editor/collab";
+import {
+  FRAGMENT,
+  loadMarkdown,
+  patchMarkdown,
+  roomMarkdown,
+  roomSchema,
+} from "~/lib/editor/collab";
 import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
-import { listSuggestions, settle, suggestingDispatch, suggestionPlugins } from "~/lib/editor/suggest";
+import {
+  listSuggestions,
+  settle,
+  suggestingDispatch,
+  suggestionPlugins,
+} from "~/lib/editor/suggest";
 import { openRoom, saveRoom } from "~/lib/rooms.server";
 import { ROLE_RECHECK_MS } from "../workers/doc-room";
 
@@ -20,7 +31,11 @@ import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { join } from "./room";
 import { viewerFor } from "./site";
 
-const corpus = import.meta.glob("./fixtures/markdown/*.md", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const corpus = import.meta.glob("./fixtures/markdown/*.md", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
 
 let projectId: number;
 let ids: { owner: number; editor: number; reader: number };
@@ -29,7 +44,11 @@ const item = () => `post-${Date.now()}-${n++}`;
 
 beforeEach(async () => {
   await resetDb();
-  ids = { owner: await addPerson("owner@test.invalid", { owner: true }), editor: await addPerson("editor@test.invalid"), reader: await addPerson("reader@test.invalid") };
+  ids = {
+    owner: await addPerson("owner@test.invalid", { owner: true }),
+    editor: await addPerson("editor@test.invalid"),
+    reader: await addPerson("reader@test.invalid"),
+  };
   projectId = await addProject("de-info", "dustinedwards");
   await share(projectId, ids.editor, "editor");
   await share(projectId, ids.reader, "reader");
@@ -37,7 +56,12 @@ beforeEach(async () => {
 
 const project = (role: "owner" | "editor" | "reader") => ({ id: projectId, role });
 
-const as = (id: number, name: string, role: RoomViewer["role"], access: RoomViewer["access"]): RoomViewer => ({ id, name, role, access });
+const as = (
+  id: number,
+  name: string,
+  role: RoomViewer["role"],
+  access: RoomViewer["access"],
+): RoomViewer => ({ id, name, role, access });
 
 /** An edit made the way an editor makes it: a ProseMirror change written into the shared fragment. */
 function edit(doc: Y.Doc, change: (state: EditorState) => EditorState) {
@@ -48,7 +72,8 @@ function edit(doc: Y.Doc, change: (state: EditorState) => EditorState) {
   doc.transact(() => prosemirrorToYXmlFragment(next.doc, fragment));
 }
 
-const typeAtEnd = (text: string) => (state: EditorState) => state.apply(state.tr.insertText(text, state.doc.child(0).nodeSize - 1));
+const typeAtEnd = (text: string) => (state: EditorState) =>
+  state.apply(state.tr.insertText(text, state.doc.child(0).nodeSize - 1));
 
 describe("the shared copy", () => {
   for (const [name, source] of Object.entries(corpus)) {
@@ -68,8 +93,16 @@ describe("a room", () => {
   it("carries one person's change to the other, and a save writes the room's text with both credited", async () => {
     const itemId = item();
     const owner = await viewerFor("owner@test.invalid");
-    const opened = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "First line.\n\nSecond line.\n", version: "v1" } });
-    expect(opened).toMatchObject({ source: "First line.\n\nSecond line.\n", version: "v1", unsaved: false, behind: false });
+    const opened = await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "First line.\n\nSecond line.\n", version: "v1" },
+    });
+    expect(opened).toMatchObject({
+      source: "First line.\n\nSecond line.\n",
+      version: "v1",
+      unsaved: false,
+      behind: false,
+    });
 
     const a = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
     const b = await join(projectId, itemId, as(ids.editor, "editor", "editor", "edit"));
@@ -82,20 +115,40 @@ describe("a room", () => {
     expect(roomMarkdown(a.doc)).toBe("First line. More.\n\nNow Second line.\n");
     expect(roomMarkdown(b.doc)).toBe(roomMarkdown(a.doc));
     const sent: { source: string; version: string | null }[] = [];
-    const saved = await saveRoom(testEnv, project("owner"), owner, itemId, async (source, expectedVersion) => {
-      sent.push({ source, version: expectedVersion });
-      return { ok: true as const, version: "v2", changeId: "change-1" };
-    });
+    const saved = await saveRoom(
+      testEnv,
+      project("owner"),
+      owner,
+      itemId,
+      async (source, expectedVersion) => {
+        sent.push({ source, version: expectedVersion });
+        return { ok: true as const, version: "v2", changeId: "change-1" };
+      },
+    );
     expect(saved.ok).toBe(true);
     expect(sent).toEqual([{ source: "First line. More.\n\nNow Second line.\n", version: "v1" }]);
-    const credited = await testEnv.DB.prepare("SELECT person_id FROM change_contributors WHERE change_id = 'change-1' ORDER BY person_id").all<{ person_id: number }>();
-    expect(credited.results.map((r) => r.person_id)).toEqual([ids.owner, ids.editor].sort((x, y) => x - y));
+    const credited = await testEnv.DB.prepare(
+      "SELECT person_id FROM change_contributors WHERE change_id = 'change-1' ORDER BY person_id",
+    ).all<{ person_id: number }>();
+    expect(credited.results.map((r) => r.person_id)).toEqual(
+      [ids.owner, ids.editor].sort((x, y) => x - y),
+    );
 
     // The room now starts from the saved version; nothing reads as unsaved, and the backup copy has it.
-    const again = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "First line. More.\n\nNow Second line.\n", version: "v2" } });
+    const again = await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "First line. More.\n\nNow Second line.\n", version: "v2" },
+    });
     expect(again).toMatchObject({ version: "v2", unsaved: false, behind: false });
-    const mirror = await testEnv.DB.prepare("SELECT source, base_version FROM rooms WHERE item_id = ?").bind(itemId).first();
-    expect(mirror).toEqual({ source: "First line. More.\n\nNow Second line.\n", base_version: "v2" });
+    const mirror = await testEnv.DB.prepare(
+      "SELECT source, base_version FROM rooms WHERE item_id = ?",
+    )
+      .bind(itemId)
+      .first();
+    expect(mirror).toEqual({
+      source: "First line. More.\n\nNow Second line.\n",
+      base_version: "v2",
+    });
     // An editor's change past a suggestion's 256 KiB cap (a long paste, an offline catch-up) still lands:
     // only a suggester's is held to it.
     edit(b.doc, typeAtEnd("x".repeat(300 * 1024)));
@@ -110,27 +163,54 @@ describe("a room", () => {
   it("follows the site's newer version when nothing is unsaved, and says it is behind when something is", async () => {
     const itemId = item();
     const owner = await viewerFor("owner@test.invalid");
-    await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "One.\n", version: "v1" } });
-    const followed = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "One, from the AI door.\n", version: "v2" } });
-    expect(followed).toMatchObject({ source: "One, from the AI door.\n", version: "v2", behind: false });
+    await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "One.\n", version: "v1" },
+    });
+    const followed = await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "One, from the AI door.\n", version: "v2" },
+    });
+    expect(followed).toMatchObject({
+      source: "One, from the AI door.\n",
+      version: "v2",
+      behind: false,
+    });
 
     const a = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
     edit(a.doc, typeAtEnd(" Mine."));
     await a.flush();
-    const behind = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "Three.\n", version: "v3" } });
-    expect(behind).toMatchObject({ source: "One, from the AI door. Mine.\n", version: "v2", unsaved: true, behind: true });
+    const behind = await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "Three.\n", version: "v3" },
+    });
+    expect(behind).toMatchObject({
+      source: "One, from the AI door. Mine.\n",
+      version: "v2",
+      unsaved: true,
+      behind: true,
+    });
     a.close();
   });
 
   it("starts from the opener's own earlier draft, which then lives in the room", async () => {
     const itemId = item();
     const owner = await viewerFor("owner@test.invalid");
-    await testEnv.DB.prepare("INSERT INTO drafts (project_id, item_id, person_id, source, base_version, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+    await testEnv.DB.prepare(
+      "INSERT INTO drafts (project_id, item_id, person_id, source, base_version, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+    )
       .bind(projectId, itemId, ids.owner, "My draft.\n", "v1", "2026-10-29T00:00:00Z")
       .run();
-    const opened = await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "Site.\n", version: "v1" } });
+    const opened = await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "Site.\n", version: "v1" },
+    });
     expect(opened).toMatchObject({ source: "My draft.\n", unsaved: true });
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM drafts WHERE item_id = ?").bind(itemId).first("n")).toBe(0);
+    expect(
+      await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM drafts WHERE item_id = ?")
+        .bind(itemId)
+        .first("n"),
+    ).toBe(0);
   });
 });
 
@@ -138,7 +218,10 @@ describe("a coauthor who suggests", () => {
   it("PLANT: cannot change the text itself, and their suggestion stays out of the save until accepted", async () => {
     const itemId = item();
     const owner = await viewerFor("owner@test.invalid");
-    await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "The cat sat.\n", version: "v1" } });
+    await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "The cat sat.\n", version: "v1" },
+    });
     const coauthor = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
     const owners = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
 
@@ -151,7 +234,11 @@ describe("a coauthor who suggests", () => {
 
     // A suggestion goes through, marked as theirs, and a save leaves it out.
     const theirs = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
-    const suggest = suggestingDispatch({ by: String(ids.reader), clientId: theirs.doc.clientID, round: () => null });
+    const suggest = suggestingDispatch({
+      by: String(ids.reader),
+      clientId: theirs.doc.clientID,
+      round: () => null,
+    });
     edit(theirs.doc, (start) => {
       let on = start;
       enableSuggestChanges(on, (tr) => (on = on.apply(tr)));
@@ -162,13 +249,21 @@ describe("a coauthor who suggests", () => {
     expect(theirs.said.some((m) => m.t === "refused")).toBe(false);
     expect(roomMarkdown(owners.doc)).toBe("The cat sat.\n");
     const { doc: pm } = initProseMirrorDoc(owners.doc.getXmlFragment(FRAGMENT), roomSchema());
-    expect(listSuggestions(pm).map((s) => ({ by: s.by, inserted: s.inserted }))).toEqual([{ by: String(ids.reader), inserted: " On the mat." }]);
+    expect(listSuggestions(pm).map((s) => ({ by: s.by, inserted: s.inserted }))).toEqual([
+      { by: String(ids.reader), inserted: " On the mat." },
+    ]);
     for (const c of [coauthor, theirs, owners]) c.close();
   });
 
   it("keeps each person's changes their own when one types against another's", () => {
     const schema = roomSchema();
-    let state = EditorState.create({ doc: schema.nodeFromJSON({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }] }), plugins: suggestionPlugins() });
+    let state = EditorState.create({
+      doc: schema.nodeFromJSON({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
+      }),
+      plugins: suggestionPlugins(),
+    });
     enableSuggestChanges(state, (tr) => (state = state.apply(tr)));
     const reader = suggestingDispatch({ by: "3", clientId: 1, round: () => "r1" });
     const editor = suggestingDispatch({ by: "2", clientId: 2, round: () => null });
@@ -178,7 +273,14 @@ describe("a coauthor who suggests", () => {
       ["3", " there", "r1"],
       ["2", " friend", null],
     ]);
-    expect(settle(schema, state.doc.toJSON())).toEqual(schema.nodeFromJSON({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }] }).toJSON());
+    expect(settle(schema, state.doc.toJSON())).toEqual(
+      schema
+        .nodeFromJSON({
+          type: "doc",
+          content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
+        })
+        .toJSON(),
+    );
   });
 });
 
@@ -188,18 +290,28 @@ describe("a person whose role changes while the file is open", () => {
   it("PLANT: is closed out when removed, and has plain edits refused when made a Reader", async () => {
     const itemId = item();
     const owner = await viewerFor("owner@test.invalid");
-    await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "The cat sat.\n", version: "v1" } });
+    await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "The cat sat.\n", version: "v1" },
+    });
     const owners = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
     const editor = await join(projectId, itemId, as(ids.editor, "editor", "editor", "edit"));
     const reader = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
 
-    await testEnv.DB.prepare("UPDATE project_members SET role = 'reader' WHERE project_id = ? AND person_id = ?").bind(projectId, ids.editor).run();
-    await testEnv.DB.prepare("DELETE FROM project_members WHERE project_id = ? AND person_id = ?").bind(projectId, ids.reader).run();
+    await testEnv.DB.prepare(
+      "UPDATE project_members SET role = 'reader' WHERE project_id = ? AND person_id = ?",
+    )
+      .bind(projectId, ids.editor)
+      .run();
+    await testEnv.DB.prepare("DELETE FROM project_members WHERE project_id = ? AND person_id = ?")
+      .bind(projectId, ids.reader)
+      .run();
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(Date.now() + ROLE_RECHECK_MS + 1);
 
     reader.send({ t: "comment", body: "Still here?", anchor: null, quote: "" });
-    for (let i = 0; i < 100 && reader.closed.code === undefined; i++) await new Promise((r) => setTimeout(r, 10));
+    for (let i = 0; i < 100 && reader.closed.code === undefined; i++)
+      await new Promise((r) => setTimeout(r, 10));
     expect(reader.closed.code).toBe(4403);
 
     edit(editor.doc, typeAtEnd(" Plainly."));
@@ -207,7 +319,11 @@ describe("a person whose role changes while the file is open", () => {
     expect(editor.said.some((m) => m.t === "refused")).toBe(true);
     await owners.flush();
     expect(roomMarkdown(owners.doc)).toBe("The cat sat.\n");
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM comments WHERE item_id = ?").bind(itemId).first("n")).toBe(0);
+    expect(
+      await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM comments WHERE item_id = ?")
+        .bind(itemId)
+        .first("n"),
+    ).toBe(0);
     for (const c of [owners, editor]) c.close();
   });
 });
@@ -215,19 +331,34 @@ describe("a person whose role changes while the file is open", () => {
 describe("the Markdown view on a shared copy", () => {
   it("changes only the blocks typed in, keeps another's suggestion elsewhere, and refuses to type over one", () => {
     const room = new Y.Doc();
-    loadMarkdown(room, { markdown: "---\ntitle: A\n---\n\nOne  *two*.\n\nThree.\n", version: "v1", dialect: "site" });
+    loadMarkdown(room, {
+      markdown: "---\ntitle: A\n---\n\nOne  *two*.\n\nThree.\n",
+      version: "v1",
+      dialect: "site",
+    });
     edit(room, (start) => {
       let on = start;
       enableSuggestChanges(on, (tr) => (on = on.apply(tr)));
       const at = on.doc.child(0).nodeSize + on.doc.child(1).nodeSize + on.doc.child(2).nodeSize - 2;
-      return on.apply(suggestingDispatch({ by: "3", clientId: 7, round: () => null })(on, on.tr.insertText(" Four.", at)));
+      return on.apply(
+        suggestingDispatch({ by: "3", clientId: 7, round: () => null })(
+          on,
+          on.tr.insertText(" Four.", at),
+        ),
+      );
     });
-    expect(patchMarkdown(room, "---\ntitle: B\n---\n\nOne  *two*.\n\nThree.\n")).toEqual({ ok: true, changed: true });
+    expect(patchMarkdown(room, "---\ntitle: B\n---\n\nOne  *two*.\n\nThree.\n")).toEqual({
+      ok: true,
+      changed: true,
+    });
     // The front matter changed; the paragraph's odd spacing and the suggestion are untouched.
     expect(roomMarkdown(room)).toBe("---\ntitle: B\n---\n\nOne  *two*.\n\nThree.\n");
     const { doc: pm } = initProseMirrorDoc(room.getXmlFragment(FRAGMENT), roomSchema());
     expect(listSuggestions(pm).map((x) => x.inserted)).toEqual([" Four."]);
-    expect(patchMarkdown(room, "---\ntitle: B\n---\n\nOne  *two*.\n\nThree!\n")).toEqual({ ok: false, reason: "suggestions" });
+    expect(patchMarkdown(room, "---\ntitle: B\n---\n\nOne  *two*.\n\nThree!\n")).toEqual({
+      ok: false,
+      reason: "suggestions",
+    });
   });
 });
 
@@ -235,14 +366,22 @@ describe("comments", () => {
   it("reach everyone in the room, and only the writer or someone who edits resolves a thread", async () => {
     const itemId = item();
     const owner = await viewerFor("owner@test.invalid");
-    await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: { source: "Text.\n", version: "v1" } });
+    await openRoom(testEnv, project("owner"), owner, itemId, {
+      dialect: "site",
+      current: { source: "Text.\n", version: "v1" },
+    });
     const coauthor = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
     const editor = await join(projectId, itemId, as(ids.editor, "editor", "editor", "edit"));
     editor.send({ t: "comment", body: "Is this right?", anchor: null, quote: "Text" });
     await editor.flush();
     await new Promise((r) => setTimeout(r, 50));
-    const latest = () => [...coauthor.said].reverse().find((m) => m.t === "comments") as Extract<ServerMessage, { t: "comments" }> | undefined;
-    expect(latest()?.comments.map((c) => [c.name, c.body, c.quote])).toEqual([["editor", "Is this right?", "Text"]]);
+    const latest = () =>
+      [...coauthor.said].reverse().find((m) => m.t === "comments") as
+        | Extract<ServerMessage, { t: "comments" }>
+        | undefined;
+    expect(latest()?.comments.map((c) => [c.name, c.body, c.quote])).toEqual([
+      ["editor", "Is this right?", "Text"],
+    ]);
 
     const thread = latest()!.comments[0]!.id;
     coauthor.send({ t: "comment-resolve", id: thread, resolved: true });

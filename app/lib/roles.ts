@@ -46,7 +46,20 @@ const ALLOWED: Record<Role, ReadonlySet<Action>> = {
   reader: new Set(["read", "comment", "suggest"]),
   editor: new Set(["read", "comment", "suggest", "edit"]),
   author: new Set(["read", "comment", "suggest", "edit", "publish_own"]),
-  owner: new Set(["read", "comment", "suggest", "edit", "publish", "publish_own", "send_external", "manage", "delete_media", "delete_content", "read_mentions", "decide_mention"]),
+  owner: new Set([
+    "read",
+    "comment",
+    "suggest",
+    "edit",
+    "publish",
+    "publish_own",
+    "send_external",
+    "manage",
+    "delete_media",
+    "delete_content",
+    "read_mentions",
+    "decide_mention",
+  ]),
 };
 
 /** A person with no role on a project may do nothing on it, including read it. */
@@ -60,4 +73,9 @@ export function mayPublish(role: Role | null, wroteIt: boolean): boolean {
 }
 
 /** Each role's name on the screens. */
-export const ROLE_LABEL: Record<Role, string> = { reader: "Reader", editor: "Editor", author: "Author", owner: "Owner" };
+export const ROLE_LABEL: Record<Role, string> = {
+  reader: "Reader",
+  editor: "Editor",
+  author: "Author",
+  owner: "Owner",
+};

@@ -34,15 +34,36 @@ function Reply({ onSend, label }: { onSend: (body: string) => void; label: strin
         setBody("");
       }}
     >
-      <textarea className="cap-input" rows={2} aria-label={label} placeholder={label} value={body} onChange={(e) => setBody(e.target.value)} />
-      <Button size="sm" type="submit" disabledReason={body.trim() ? undefined : "Write something first"}>
+      <textarea
+        className="cap-input"
+        rows={2}
+        aria-label={label}
+        placeholder={label}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+      />
+      <Button
+        size="sm"
+        type="submit"
+        disabledReason={body.trim() ? undefined : "Write something first"}
+      >
         Send
       </Button>
     </form>
   );
 }
 
-function Comment({ c, me, send, canDelete }: { c: RoomComment; me: RoomViewer; send: Send; canDelete: boolean }) {
+function Comment({
+  c,
+  me,
+  send,
+  canDelete,
+}: {
+  c: RoomComment;
+  me: RoomViewer;
+  send: Send;
+  canDelete: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState(c.body);
   return (
@@ -61,7 +82,13 @@ function Comment({ c, me, send, canDelete }: { c: RoomComment; me: RoomViewer; s
             setEditing(false);
           }}
         >
-          <textarea className="cap-input" rows={3} aria-label="Your comment" value={body} onChange={(e) => setBody(e.target.value)} />
+          <textarea
+            className="cap-input"
+            rows={3}
+            aria-label="Your comment"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
           <div className="app-actions">
             <Button size="sm" type="submit">
               Save
@@ -108,7 +135,9 @@ export function CommentsPanel({
   const threads = threadsOf(comments);
   const open = threads.filter((t) => !t.head.resolvedAt);
   const resolved = threads.filter((t) => t.head.resolvedAt);
-  const [selection, setSelection] = useState<{ from: number; to: number; quote: string } | null>(null);
+  const [selection, setSelection] = useState<{ from: number; to: number; quote: string } | null>(
+    null,
+  );
   const [writing, setWriting] = useState<{ from: number; to: number; quote: string } | null>(null);
   const list = useRef<HTMLDivElement>(null);
   // Positions move as people type: a render after any change reads each thread's place again.
@@ -118,7 +147,11 @@ export function CommentsPanel({
     if (!editor) return;
     const read = () => {
       const { from, to, empty } = editor.state.selection;
-      setSelection(empty ? null : { from, to, quote: editor.state.doc.textBetween(from, to, " ").slice(0, 500) });
+      setSelection(
+        empty
+          ? null
+          : { from, to, quote: editor.state.doc.textBetween(from, to, " ").slice(0, 500) },
+      );
       setTick((t) => t + 1);
     };
     editor.on("selectionUpdate", read);
@@ -131,7 +164,8 @@ export function CommentsPanel({
 
   // A thread chosen in the text opens here.
   useEffect(() => {
-    if (active) list.current?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(active)}"]`)?.focus();
+    if (active)
+      list.current?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(active)}"]`)?.focus();
   }, [active]);
 
   const show = (t: Thread) => {
@@ -143,9 +177,17 @@ export function CommentsPanel({
   const canDelete = me.role === "owner";
 
   const renderThread = (t: Thread) => {
-    const gone = Boolean(t.head.anchor) && editor !== null && rangeOf(editor.state, t.head.anchor) === null;
+    const gone =
+      Boolean(t.head.anchor) && editor !== null && rangeOf(editor.state, t.head.anchor) === null;
     return (
-      <article key={t.head.id} className="app-thread" data-thread={t.head.id} data-active={t.head.id === active ? "" : undefined} tabIndex={-1} aria-label={`Comment by ${t.head.name}`}>
+      <article
+        key={t.head.id}
+        className="app-thread"
+        data-thread={t.head.id}
+        data-active={t.head.id === active ? "" : undefined}
+        tabIndex={-1}
+        aria-label={`Comment by ${t.head.name}`}
+      >
         {t.head.quote ? (
           <blockquote className="app-thread-quote">
             {gone ? <span className="app-note">The text this was on is gone: </span> : null}
@@ -164,18 +206,36 @@ export function CommentsPanel({
             </Button>
           ) : null}
           {mayResolve(t) ? (
-            <Button size="xs" variant="quiet" onClick={() => send({ t: "comment-resolve", id: t.head.id, resolved: !t.head.resolvedAt })}>
+            <Button
+              size="xs"
+              variant="quiet"
+              onClick={() =>
+                send({ t: "comment-resolve", id: t.head.id, resolved: !t.head.resolvedAt })
+              }
+            >
               {t.head.resolvedAt ? "Reopen" : "Resolve"}
             </Button>
           ) : null}
         </div>
-        {!t.head.resolvedAt ? <Reply label="Reply" onSend={(body) => send({ t: "comment", body, anchor: null, quote: "", parentId: t.head.id })} /> : null}
+        {!t.head.resolvedAt ? (
+          <Reply
+            label="Reply"
+            onSend={(body) =>
+              send({ t: "comment", body, anchor: null, quote: "", parentId: t.head.id })
+            }
+          />
+        ) : null}
       </article>
     );
   };
 
   return (
-    <Panel title="Comments" count={open.length} src="Everyone in this file sees them at once" id="comments">
+    <Panel
+      title="Comments"
+      count={open.length}
+      src="Everyone in this file sees them at once"
+      id="comments"
+    >
       <div className="app-stack" ref={list}>
         {writing ? (
           <div className="app-thread" data-new="">
@@ -184,7 +244,12 @@ export function CommentsPanel({
               label="Your comment"
               onSend={(body) => {
                 if (!editor) return;
-                send({ t: "comment", body, anchor: anchorOf(editor.state, writing.from, writing.to), quote: writing.quote });
+                send({
+                  t: "comment",
+                  body,
+                  anchor: anchorOf(editor.state, writing.from, writing.to),
+                  quote: writing.quote,
+                });
                 setWriting(null);
               }}
             />
@@ -193,16 +258,22 @@ export function CommentsPanel({
             </Button>
           </div>
         ) : (
-          <Button size="sm" onClick={() => setWriting(selection)} disabledReason={selection ? undefined : "Select the text the comment is about"}>
+          <Button
+            size="sm"
+            onClick={() => setWriting(selection)}
+            disabledReason={selection ? undefined : "Select the text the comment is about"}
+          >
             Comment on the selection
           </Button>
         )}
-        {open.length === 0 && !writing ? <p className="app-note">No open comments.</p> : open.map(renderThread)}
+        {open.length === 0 && !writing ? (
+          <p className="app-note">No open comments.</p>
+        ) : (
+          open.map(renderThread)
+        )}
         {resolved.length > 0 ? (
           <details className="app-resolved">
-            <summary>
-              {resolved.length} resolved
-            </summary>
+            <summary>{resolved.length} resolved</summary>
             {resolved.map(renderThread)}
           </details>
         ) : null}

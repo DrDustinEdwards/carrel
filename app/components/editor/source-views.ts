@@ -32,7 +32,9 @@ export function sourceBlockView(readOnly: () => boolean) {
           const pos = typeof getPos === "function" ? getPos() : undefined;
           if (pos === undefined) return;
           area.rows = Math.max(1, area.value.split("\n").length);
-          editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, text: area.value }));
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, text: area.value }),
+          );
         });
         dom.appendChild(label);
         dom.appendChild(area);

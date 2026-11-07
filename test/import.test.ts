@@ -7,11 +7,20 @@ import { describe, expect, it } from "vitest";
 import { readDocumentXml, readDocx, readZip } from "../scripts/lib/docx.mjs";
 import { buildBook, runsToMarkdown, writeBook } from "../scripts/lib/manuscript.mjs";
 
-import { documentXml, docx, p, PROBLEMS, r, TEST_MANUSCRIPT, zip } from "./fixtures/import/test-manuscript.mjs";
+import {
+  documentXml,
+  docx,
+  p,
+  PROBLEMS,
+  r,
+  TEST_MANUSCRIPT,
+  zip,
+} from "./fixtures/import/test-manuscript.mjs";
 
 async function importDocs(docs: Record<string, string>, bookFolder = "import-test") {
   const sources = [];
-  for (const [name, xml] of Object.entries(docs)) sources.push({ name, ...(await readDocx(await docx(xml))) });
+  for (const [name, xml] of Object.entries(docs))
+    sources.push({ name, ...(await readDocx(await docx(xml))) });
   return writeBook(buildBook(sources), { bookFolder });
 }
 
@@ -29,13 +38,22 @@ describe("the test manuscript", () => {
     expect(book.files.get("chapters/01-arrival/01-the-truck-quit-a-mile.md")).toBe(
       `${HEADER}The truck quit a mile past the *low-water* crossing. I let it roll to the shoulder.\n\nI walked the rest of the way. The river was **loud**, and the cedar smelled like pencil shavings.\n`,
     );
-    expect(book.files.get("chapters/01-arrival/02-at-the-gate-there-was.md")).toBe(`${HEADER}At the gate there was a new lock, brass, and it was shut.\n`);
+    expect(book.files.get("chapters/01-arrival/02-at-the-gate-there-was.md")).toBe(
+      `${HEADER}At the gate there was a new lock, brass, and it was shut.\n`,
+    );
     // The space inside the italic run moves outside its markers.
     expect(book.files.get("chapters/02-the-letters/01-wade-set-the-envelope-on.md")).toBe(
       `${HEADER}Wade set the envelope on the table. *It's got your name on it,* he said.\n\nI did not open it. Not that night.\n`,
     );
-    expect(book.files.get("book.md")).toBe("---\ntitle: The Crossing (a test manuscript)\nauthor:\nlanguage: en\n---\n");
-    expect(book.summary).toMatchObject({ chapters: 2, scenes: 3, flags: 0, title: "The Crossing (a test manuscript)" });
+    expect(book.files.get("book.md")).toBe(
+      "---\ntitle: The Crossing (a test manuscript)\nauthor:\nlanguage: en\n---\n",
+    );
+    expect(book.summary).toMatchObject({
+      chapters: 2,
+      scenes: 3,
+      flags: 0,
+      title: "The Crossing (a test manuscript)",
+    });
     expect(book.report).toContain("Nothing was flagged.");
   });
 
@@ -66,7 +84,19 @@ describe("PLANT: what the importer flags instead of guessing", () => {
   it("marks each problem where it happened and lists it in the report", async () => {
     const book = await importDocs({ "problems.docx": PROBLEMS });
     const what = book.flags.map((f) => f.what);
-    for (const expected of ["table", "image", "footnote", "tracked-change", "list", "line-break", "blank-lines", "heading", "centered", "page-break", "front-matter"]) {
+    for (const expected of [
+      "table",
+      "image",
+      "footnote",
+      "tracked-change",
+      "list",
+      "line-break",
+      "blank-lines",
+      "heading",
+      "centered",
+      "page-break",
+      "front-matter",
+    ]) {
       expect(what, expected).toContain(expected);
     }
     // Every placed flag is an HTML comment on the line the report names.
@@ -74,7 +104,9 @@ describe("PLANT: what the importer flags instead of guessing", () => {
       const lines = book.files.get(f.where)!.split("\n");
       expect(lines[f.line! - 1], `${f.where}:${f.line} ${f.what}`).toMatch(/^<!-- import: /);
     }
-    expect(book.report).toMatch(/^# Import report: import-test\n\n1 chapter, 1 scene, \d+ words, \d+ flags\./);
+    expect(book.report).toMatch(
+      /^# Import report: import-test\n\n1 chapter, 1 scene, \d+ words, \d+ flags\./,
+    );
   });
 
   it("keeps the text around a problem, and drops only what cannot be text", async () => {
@@ -91,20 +123,35 @@ describe("PLANT: what the importer flags instead of guessing", () => {
     expect(scene).toContain("\\# not a heading, \\*not\\* emphasis\\_either");
     expect(scene).toContain("Smart “quotes” stay, and so does café.");
     // Text before the first chapter heading is kept, out of the story.
-    expect(book.files.get("outline/imported-front-matter.md")).toContain("A note before the story, 3 \\* 4 = 12.");
+    expect(book.files.get("outline/imported-front-matter.md")).toContain(
+      "A note before the story, 3 \\* 4 = 12.",
+    );
   });
 
   it("refuses a file that is not a Word document", async () => {
-    await expect(readDocx(new TextEncoder().encode("not a zip"))).rejects.toThrow("This is not a ZIP archive, so it is not a .docx file.");
-    await expect(readDocx(await zip({ "hello.txt": "hi" }))).rejects.toThrow("The archive has no word/document.xml");
-    expect((await readZip(await zip({ "a.txt": "x", "b/c.txt": "y" }, { deflate: true }))).size).toBe(2);
+    await expect(readDocx(new TextEncoder().encode("not a zip"))).rejects.toThrow(
+      "This is not a ZIP archive, so it is not a .docx file.",
+    );
+    await expect(readDocx(await zip({ "hello.txt": "hi" }))).rejects.toThrow(
+      "The archive has no word/document.xml",
+    );
+    expect(
+      (await readZip(await zip({ "a.txt": "x", "b/c.txt": "y" }, { deflate: true }))).size,
+    ).toBe(2);
   });
 });
 
 describe("Markdown for runs and names", () => {
   it("closes emphasis around the words, not the spaces, and marks bold italic", () => {
-    expect(runsToMarkdown([{ text: "a ", italic: false, bold: false }, { text: " b ", italic: true, bold: false }, { text: "c", italic: true, bold: true }])).toBe("a  *b* ***c***");
-    expect(runsToMarkdown([{ text: "1. Not a list", italic: false, bold: false }])).toBe("1\\. Not a list");
+    expect(
+      runsToMarkdown([
+        { text: "a ", italic: false, bold: false },
+        { text: " b ", italic: true, bold: false },
+        { text: "c", italic: true, bold: true },
+      ]),
+    ).toBe("a  *b* ***c***");
+    expect(runsToMarkdown([{ text: "1. Not a list", italic: false, bold: false }])).toBe(
+      "1\\. Not a list",
+    );
   });
-
 });

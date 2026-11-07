@@ -13,7 +13,12 @@ export function sampleProgress(now = new Date()) {
     typed,
     removed: Math.round(typed / 12),
   })).filter((e) => e.typed > 0);
-  const goal: Goal = { mode: "daily", dailyTarget: 1000, writingDays: [0, 1, 2, 3, 4, 5, 6], allowNegative: false };
+  const goal: Goal = {
+    mode: "daily",
+    dailyTarget: 1000,
+    writingDays: [0, 1, 2, 3, 4, 5, 6],
+    allowNegative: false,
+  };
   const deadline = new Date(now.getTime() + 60 * DAY_MS).toISOString().slice(0, 10);
   return { entries, goal, projectTarget: 80_000, deadline, wordsNow: 52_340 };
 }

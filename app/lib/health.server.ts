@@ -18,11 +18,24 @@ import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
-import { durableObjectCheck, emailCheck, healthResponse, kvCheck, r2Check } from "@dustinedwards/site-runtime/health";
+import {
+  durableObjectCheck,
+  emailCheck,
+  healthResponse,
+  kvCheck,
+  r2Check,
+} from "@dustinedwards/site-runtime/health";
 import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiPublications, googleKeysSeen, googleTokens, healthState, people, reports } from "~/db/schema";
+import {
+  aiPublications,
+  googleKeysSeen,
+  googleTokens,
+  healthState,
+  people,
+  reports,
+} from "~/db/schema";
 import { ALL_JOBS } from "~/lib/cron-schedule";
 import { deployedSha } from "~/lib/deployed";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
@@ -38,7 +51,12 @@ type SiteConformance = {
   findings: { severity: "error"; check: "M1"; detail: string }[];
 };
 
-export type CheckResult = { name: string; ok: boolean; detail: string; conformance?: { origin: string } & SiteConformance };
+export type CheckResult = {
+  name: string;
+  ok: boolean;
+  detail: string;
+  conformance?: { origin: string } & SiteConformance;
+};
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -47,7 +65,8 @@ const PLACEHOLDER = /example\.(com|cloudflareaccess\.com)/i;
 async function checkConfig(env: Env): Promise<CheckResult> {
   const missing: string[] = [];
   if (!env.ACCESS_AUD?.trim()) missing.push("ACCESS_AUD");
-  if (!env.ACCESS_TEAM_DOMAIN?.trim() || PLACEHOLDER.test(env.ACCESS_TEAM_DOMAIN)) missing.push("ACCESS_TEAM_DOMAIN");
+  if (!env.ACCESS_TEAM_DOMAIN?.trim() || PLACEHOLDER.test(env.ACCESS_TEAM_DOMAIN))
+    missing.push("ACCESS_TEAM_DOMAIN");
   if (!env.ALERT_EMAIL?.trim() || PLACEHOLDER.test(env.ALERT_EMAIL)) missing.push("ALERT_EMAIL");
   return missing.length === 0
     ? { name: "config", ok: true, detail: "Access and alert settings are present." }
@@ -56,10 +75,18 @@ async function checkConfig(env: Env): Promise<CheckResult> {
 
 async function checkOwner(env: Env): Promise<CheckResult> {
   try {
-    const owners = await drizzle(env.DB).select({ id: people.id }).from(people).where(eq(people.isOwner, true)).all();
+    const owners = await drizzle(env.DB)
+      .select({ id: people.id })
+      .from(people)
+      .where(eq(people.isOwner, true))
+      .all();
     return owners.length === 1
       ? { name: "owner", ok: true, detail: "The database answers and has its Owner." }
-      : { name: "owner", ok: false, detail: "The database has no Owner, so nobody can use Carrel. Run npm run seed:owner." };
+      : {
+          name: "owner",
+          ok: false,
+          detail: "The database has no Owner, so nobody can use Carrel. Run npm run seed:owner.",
+        };
   } catch (error) {
     return { name: "owner", ok: false, detail: `The database did not answer: ${message(error)}` };
   }
@@ -69,13 +96,18 @@ async function checkAccessKeys(env: Env, fetcher: Fetch): Promise<CheckResult> {
   const url = `${accessIssuer(env.ACCESS_TEAM_DOMAIN) ?? ""}/cdn-cgi/access/certs`;
   try {
     const response = await fetcher(url);
-    if (!response.ok) return { name: "access-keys", ok: false, detail: `${url} answered ${response.status}.` };
+    if (!response.ok)
+      return { name: "access-keys", ok: false, detail: `${url} answered ${response.status}.` };
     const body = (await response.json()) as { keys?: unknown[] };
     return Array.isArray(body.keys) && body.keys.length > 0
       ? { name: "access-keys", ok: true, detail: "Access signing keys are published." }
       : { name: "access-keys", ok: false, detail: `${url} lists no signing keys.` };
   } catch (error) {
-    return { name: "access-keys", ok: false, detail: `${url} could not be read: ${message(error)}` };
+    return {
+      name: "access-keys",
+      ok: false,
+      detail: `${url} could not be read: ${message(error)}`,
+    };
   }
 }
 
@@ -93,7 +125,8 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
   const name = `site-${id}`;
   const site = siteEntry(id).name;
   const connection = siteConnection(env, id);
-  if (connection.state === "not-connected") return { name, ok: true, detail: `Not connected: ${connection.detail}` };
+  if (connection.state === "not-connected")
+    return { name, ok: true, detail: `Not connected: ${connection.detail}` };
   if (connection.state === "misconfigured") return { name, ok: false, detail: connection.detail };
   const api = `${connection.origin}/api/carrel/v1`;
   const error = (detail: string): CheckResult["conformance"] => ({
@@ -107,10 +140,18 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
       key: connection.key,
       probeMediaUpload: false,
       fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
-        fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch,
+        fetcher(
+          typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+          init,
+        )) as typeof fetch,
     });
     if (report.ok) {
-      return { name, ok: true, detail: `${site} conforms (${report.checks[0]?.detail ?? "meta ok"}).`, conformance: { origin: connection.origin, status: "pass", findings: [] } };
+      return {
+        name,
+        ok: true,
+        detail: `${site} conforms (${report.checks[0]?.detail ?? "meta ok"}).`,
+        conformance: { origin: connection.origin, status: "pass", findings: [] },
+      };
     }
     const failed = report.checks.filter((c) => !c.ok);
     return {
@@ -118,10 +159,23 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
       ok: false,
       detail: `${site} does not conform. ${failed.map((c) => `${c.name}: ${c.detail}`).join(" | ")}`,
       // The check's name only: its detail can quote the site's answer, which stays in Dustin's email.
-      conformance: { origin: connection.origin, status: "fail", findings: failed.map((c) => ({ severity: "error", check: "M1", detail: `${api} ${c.name} failed` })) },
+      conformance: {
+        origin: connection.origin,
+        status: "fail",
+        findings: failed.map((c) => ({
+          severity: "error",
+          check: "M1",
+          detail: `${api} ${c.name} failed`,
+        })),
+      },
     };
   } catch (thrown) {
-    return { name, ok: false, detail: `${site} could not be checked: ${message(thrown)}`, conformance: error("could not be checked") };
+    return {
+      name,
+      ok: false,
+      detail: `${site} could not be checked: ${message(thrown)}`,
+      conformance: error("could not be checked"),
+    };
   }
 }
 
@@ -129,10 +183,19 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
 async function checkBackup(env: Env, now: Date): Promise<CheckResult> {
   try {
     const { last_ok, age_hours, warning } = await backupHealth(env.BACKUPS, { now });
-    if (last_ok === null || warning) return { name: "backup", ok: false, detail: warning ?? "No complete D1 dump exists yet." };
-    return { name: "backup", ok: true, detail: `The newest complete D1 dump finished ${last_ok}, ${age_hours} hours ago.` };
+    if (last_ok === null || warning)
+      return { name: "backup", ok: false, detail: warning ?? "No complete D1 dump exists yet." };
+    return {
+      name: "backup",
+      ok: true,
+      detail: `The newest complete D1 dump finished ${last_ok}, ${age_hours} hours ago.`,
+    };
   } catch (error) {
-    return { name: "backup", ok: false, detail: `The backup bucket could not be read: ${message(error)}` };
+    return {
+      name: "backup",
+      ok: false,
+      detail: `The backup bucket could not be read: ${message(error)}`,
+    };
   }
 }
 
@@ -145,11 +208,21 @@ async function checkNovels(env: Env, fetcher: Fetch): Promise<CheckResult> {
       : { name: "writing", ok: false, detail: connection.detail };
   }
   try {
-    await installationToken(connection.appId, connection.privateKey, ((input: RequestInfo | URL, init?: RequestInit) =>
-      fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch);
+    await installationToken(connection.appId, connection.privateKey, ((
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) =>
+      fetcher(
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+        init,
+      )) as typeof fetch);
     return { name: "writing", ok: true, detail: `The GitHub App can write to ${NOVELS_REPO}.` };
   } catch (error) {
-    return { name: "writing", ok: false, detail: `The GitHub App could not reach ${NOVELS_REPO}: ${message(error)}` };
+    return {
+      name: "writing",
+      ok: false,
+      detail: `The GitHub App could not reach ${NOVELS_REPO}: ${message(error)}`,
+    };
   }
 }
 
@@ -157,11 +230,17 @@ async function checkNovels(env: Env, fetcher: Fetch): Promise<CheckResult> {
 async function checkAiPublishEmails(env: Env): Promise<CheckResult> {
   try {
     const unsent = await drizzle(env.DB)
-      .select({ changeId: aiPublications.changeId, itemId: aiPublications.itemId, client: aiPublications.client, error: aiPublications.emailError })
+      .select({
+        changeId: aiPublications.changeId,
+        itemId: aiPublications.itemId,
+        client: aiPublications.client,
+        error: aiPublications.emailError,
+      })
       .from(aiPublications)
       .where(isNull(aiPublications.emailedAt))
       .all();
-    if (unsent.length === 0) return { name: "ai-publish-email", ok: true, detail: "Every AI publish was emailed." };
+    if (unsent.length === 0)
+      return { name: "ai-publish-email", ok: true, detail: "Every AI publish was emailed." };
     return {
       name: "ai-publish-email",
       ok: false,
@@ -170,7 +249,11 @@ async function checkAiPublishEmails(env: Env): Promise<CheckResult> {
         .join("; ")}.`,
     };
   } catch (error) {
-    return { name: "ai-publish-email", ok: false, detail: `The record could not be read: ${message(error)}` };
+    return {
+      name: "ai-publish-email",
+      ok: false,
+      detail: `The record could not be read: ${message(error)}`,
+    };
   }
 }
 
@@ -184,37 +267,82 @@ const KEY_MAX_AGE_DAYS = 90;
  */
 async function checkServiceAccount(env: Env, fetcher: Fetch, now: Date): Promise<CheckResult> {
   const connection = saConnection(env);
-  if (connection.state === "not-connected") return { name: "google-service-account", ok: true, detail: `Not connected: ${connection.detail}` };
-  if (connection.state === "misconfigured") return { name: "google-service-account", ok: false, detail: connection.detail };
+  if (connection.state === "not-connected")
+    return {
+      name: "google-service-account",
+      ok: true,
+      detail: `Not connected: ${connection.detail}`,
+    };
+  if (connection.state === "misconfigured")
+    return { name: "google-service-account", ok: false, detail: connection.detail };
   const { key } = connection;
   const d = drizzle(env.DB);
-  await d.insert(googleKeysSeen).values({ privateKeyId: key.privateKeyId, clientEmail: key.clientEmail, firstSeenAt: now.toISOString() }).onConflictDoNothing();
-  const seen = await d.select({ firstSeenAt: googleKeysSeen.firstSeenAt }).from(googleKeysSeen).where(eq(googleKeysSeen.privateKeyId, key.privateKeyId)).get();
+  await d
+    .insert(googleKeysSeen)
+    .values({
+      privateKeyId: key.privateKeyId,
+      clientEmail: key.clientEmail,
+      firstSeenAt: now.toISOString(),
+    })
+    .onConflictDoNothing();
+  const seen = await d
+    .select({ firstSeenAt: googleKeysSeen.firstSeenAt })
+    .from(googleKeysSeen)
+    .where(eq(googleKeysSeen.privateKeyId, key.privateKeyId))
+    .get();
   const days = Math.floor((now.getTime() - Date.parse(seen!.firstSeenAt)) / 86_400_000);
   const id = key.privateKeyId.slice(0, 8);
   try {
     await saAccessToken(key, ((input: RequestInfo | URL, init?: RequestInit) =>
-      fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch);
+      fetcher(
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+        init,
+      )) as typeof fetch);
   } catch (error) {
-    return { name: "google-service-account", ok: false, detail: `Key ${id} (${key.clientEmail}) no longer works: ${message(error)} Create a new key and set GOOGLE_SA_KEY.` };
+    return {
+      name: "google-service-account",
+      ok: false,
+      detail: `Key ${id} (${key.clientEmail}) no longer works: ${message(error)} Create a new key and set GOOGLE_SA_KEY.`,
+    };
   }
   if (days > KEY_MAX_AGE_DAYS) {
-    return { name: "google-service-account", ok: false, detail: `Key ${id} is ${days} days old, past ${KEY_MAX_AGE_DAYS}. Create a new key, set GOOGLE_SA_KEY, then delete the old one in Google Cloud.` };
+    return {
+      name: "google-service-account",
+      ok: false,
+      detail: `Key ${id} is ${days} days old, past ${KEY_MAX_AGE_DAYS}. Create a new key, set GOOGLE_SA_KEY, then delete the old one in Google Cloud.`,
+    };
   }
-  return { name: "google-service-account", ok: true, detail: `Key ${id} (${key.clientEmail}) works; ${days} days old.` };
+  return {
+    name: "google-service-account",
+    ok: true,
+    detail: `Key ${id} (${key.clientEmail}) works; ${days} days old.`,
+  };
 }
 
 /** Dustin's drive.file grant, if he has connected it: Google must still refresh it. */
 async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
   const connection = await oauthConnection(env);
-  if (connection.state === "not-configured") return { name: "google-drive-file", ok: true, detail: `Not connected: ${connection.detail}` };
-  if (connection.state === "misconfigured") return { name: "google-drive-file", ok: false, detail: connection.detail };
-  const grants = await drizzle(env.DB).select({ personId: googleTokens.personId }).from(googleTokens).all();
-  if (grants.length === 0) return { name: "google-drive-file", ok: true, detail: "Not connected: no one has connected Google for Send to Docs yet." };
+  if (connection.state === "not-configured")
+    return { name: "google-drive-file", ok: true, detail: `Not connected: ${connection.detail}` };
+  if (connection.state === "misconfigured")
+    return { name: "google-drive-file", ok: false, detail: connection.detail };
+  const grants = await drizzle(env.DB)
+    .select({ personId: googleTokens.personId })
+    .from(googleTokens)
+    .all();
+  if (grants.length === 0)
+    return {
+      name: "google-drive-file",
+      ok: true,
+      detail: "Not connected: no one has connected Google for Send to Docs yet.",
+    };
   try {
     for (const g of grants) {
       await userAccessToken(env, g.personId, ((input: RequestInfo | URL, init?: RequestInit) =>
-        fetcher(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, init)) as typeof fetch);
+        fetcher(
+          typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+          init,
+        )) as typeof fetch);
     }
     return { name: "google-drive-file", ok: true, detail: "The drive.file grant refreshes." };
   } catch (error) {
@@ -226,7 +354,12 @@ async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
 async function checkSocialTemplates(env: Env): Promise<CheckResult> {
   try {
     const unseen = await unseenTemplates(env.DB);
-    if (unseen.length === 0) return { name: "social-templates", ok: true, detail: "No template post is waiting to be seen." };
+    if (unseen.length === 0)
+      return {
+        name: "social-templates",
+        ok: true,
+        detail: "No template post is waiting to be seen.",
+      };
     return {
       name: "social-templates",
       ok: false,
@@ -235,7 +368,11 @@ async function checkSocialTemplates(env: Env): Promise<CheckResult> {
         .join("; ")}. Mark ${unseen.length === 1 ? "it" : "them"} seen in Carrel's social page.`,
     };
   } catch (error) {
-    return { name: "social-templates", ok: false, detail: `The social record could not be read: ${message(error)}` };
+    return {
+      name: "social-templates",
+      ok: false,
+      detail: `The social record could not be read: ${message(error)}`,
+    };
   }
 }
 
@@ -264,7 +401,12 @@ export async function runChecks(
  */
 function conformanceReport(results: CheckResult[], at: string) {
   const sites: Record<string, SiteConformance> = {};
-  for (const r of results) if (r.conformance) sites[r.conformance.origin] = { status: r.conformance.status, findings: r.conformance.findings };
+  for (const r of results)
+    if (r.conformance)
+      sites[r.conformance.origin] = {
+        status: r.conformance.status,
+        findings: r.conformance.findings,
+      };
   return { check: "carrel-conformance", at, ref: `site-api v${PACKAGE_VERSION}`, sites };
 }
 
@@ -283,7 +425,10 @@ export async function runHealth(
   try {
     const at = now().toISOString();
     const body = JSON.stringify(conformanceReport(results, at));
-    await db.insert(reports).values({ name: "conformance", body, at }).onConflictDoUpdate({ target: reports.name, set: { body, at } });
+    await db
+      .insert(reports)
+      .values({ name: "conformance", body, at })
+      .onConflictDoUpdate({ target: reports.name, set: { body, at } });
   } catch (error) {
     console.error(JSON.stringify({ health: "report-failed", error: message(error) }));
   }
@@ -309,7 +454,10 @@ export async function runHealth(
     const sent = await sendEmail(env.EMAIL, {
       from: env.ALERT_FROM,
       to: env.ALERT_EMAIL,
-      subject: failing.length === 0 ? "Carrel: all checks pass" : `Carrel: ${failing.length} check${failing.length === 1 ? "" : "s"} failing`,
+      subject:
+        failing.length === 0
+          ? "Carrel: all checks pass"
+          : `Carrel: ${failing.length} check${failing.length === 1 ? "" : "s"} failing`,
       text: results.map((r) => `${r.ok ? "ok  " : "FAIL"} ${r.name}: ${r.detail}`).join("\n"),
     });
     if (!sent.sent) return { results, emailed: false };
@@ -322,7 +470,10 @@ export async function runHealth(
       await db
         .insert(healthState)
         .values({ checkName: r.name, ok: r.ok, detail: r.detail, changedAt: at })
-        .onConflictDoUpdate({ target: healthState.checkName, set: { ok: r.ok, detail: r.detail, changedAt: at } });
+        .onConflictDoUpdate({
+          target: healthState.checkName,
+          set: { ok: r.ok, detail: r.detail, changedAt: at },
+        });
     }
   } catch (error) {
     console.error(JSON.stringify({ health: "record-failed", error: message(error) }));
@@ -372,8 +523,17 @@ export function healthAnswer(env: Env): Promise<Response> {
         name: "alerts",
         level: "warn",
         run: async () => {
-          const failing = await drizzle(env.DB).select({ name: healthState.checkName }).from(healthState).where(eq(healthState.ok, false)).all();
-          return failing.length === 0 || { ok: false, detail: `Failing: ${failing.map((f) => f.name).join(", ")}.` };
+          const failing = await drizzle(env.DB)
+            .select({ name: healthState.checkName })
+            .from(healthState)
+            .where(eq(healthState.ok, false))
+            .all();
+          return (
+            failing.length === 0 || {
+              ok: false,
+              detail: `Failing: ${failing.map((f) => f.name).join(", ")}.`,
+            }
+          );
         },
       },
     ],
@@ -382,7 +542,8 @@ export function healthAnswer(env: Env): Promise<Response> {
 
 /** When this version was deployed, from the CF_VERSION_METADATA binding; read loosely, since an older config has none. */
 function deployedAt(env: Env): Date | undefined {
-  const timestamp = (env as { CF_VERSION_METADATA?: { timestamp?: string } }).CF_VERSION_METADATA?.timestamp;
+  const timestamp = (env as { CF_VERSION_METADATA?: { timestamp?: string } }).CF_VERSION_METADATA
+    ?.timestamp;
   const at = timestamp ? new Date(timestamp) : undefined;
   return at && !Number.isNaN(at.getTime()) ? at : undefined;
 }

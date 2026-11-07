@@ -14,11 +14,24 @@ const SECTIONS = [
 ] as const;
 
 /** `mentions` says whether this person may see the Mentions tab: the queue is the Owner's alone (roles.ts). */
-export function ProjectTabs({ slug, current, mentions = false }: { slug: string; current: (typeof SECTIONS)[number]["id"]; mentions?: boolean }) {
+export function ProjectTabs({
+  slug,
+  current,
+  mentions = false,
+}: {
+  slug: string;
+  current: (typeof SECTIONS)[number]["id"];
+  mentions?: boolean;
+}) {
   return (
     <TabsNav aria-label={`Sections of this project`} variant="line">
       {SECTIONS.filter((s) => s.id !== "mentions" || mentions).map((s) => (
-        <Link key={s.id} to={`/p/${slug}${s.path}`} className="cap-tab" aria-current={s.id === current ? "page" : undefined}>
+        <Link
+          key={s.id}
+          to={`/p/${slug}${s.path}`}
+          className="cap-tab"
+          aria-current={s.id === current ? "page" : undefined}
+        >
           {s.label}
         </Link>
       ))}

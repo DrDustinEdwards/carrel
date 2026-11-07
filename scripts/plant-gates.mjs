@@ -31,53 +31,223 @@ const GATES = {
   conformance: [process.execPath, ["node_modules/@dustinedwards/devkit/bin/conformance.mjs"]],
 };
 
-const MCP_TESTS = ["test/mcp.test.ts", "test/mcp-followups.test.ts", "test/door.test.ts", "test/agent-keys.test.ts", "test/mcp-ruling.test.ts", "test/mcp-ownership.test.ts"];
+const MCP_TESTS = [
+  "test/mcp.test.ts",
+  "test/mcp-followups.test.ts",
+  "test/door.test.ts",
+  "test/agent-keys.test.ts",
+  "test/mcp-ruling.test.ts",
+  "test/mcp-ownership.test.ts",
+];
 
 /** Each plant: the gate that must catch it, the file, the exact text replaced, and what replaces it. */
 const PLANTS = [
-  { gate: "typecheck", file: "app/lib/mcp/server.ts", find: "const SERVER_INFO =", replace: 'const PLANTED: number = "a string";\nconst SERVER_INFO =', label: "a type error in the protocol layer" },
-  { gate: "build", file: "app/lib/mcp/door.ts", find: 'import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";', replace: 'import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";\nimport "./no-such-module";', label: "an import that does not resolve" },
+  {
+    gate: "typecheck",
+    file: "app/lib/mcp/server.ts",
+    find: "const SERVER_INFO =",
+    replace: 'const PLANTED: number = "a string";\nconst SERVER_INFO =',
+    label: "a type error in the protocol layer",
+  },
+  {
+    gate: "build",
+    file: "app/lib/mcp/door.ts",
+    find: 'import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";',
+    replace:
+      'import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";\nimport "./no-such-module";',
+    label: "an import that does not resolve",
+  },
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
-    find: 'if (!session.viewer.isOwner || project.role !== "owner") throw new AiRefusal',
-    replace: "if (false) throw new AiRefusal",
+    find: 'if (!session.viewer.isOwner || project.role !== "owner")\n    throw new AiRefusal',
+    replace: "if (false)\n    throw new AiRefusal",
     label: "publish no longer Owner-only",
   },
-  { gate: "tests", file: "app/lib/ai.server.ts", find: "  if (open.length > 0) {", replace: "  if (false) {", label: "publish no longer refused while a flag is open" },
-  { gate: "tests", file: "app/lib/ai.server.ts", find: "    if (draft.baseVersion !== expectedVersion) {", replace: "    if (false) {", label: "an AI draft from an older version may be published over newer text" },
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
-    find: 'if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");',
+    find: "  if (open.length > 0) {",
+    replace: "  if (false) {",
+    label: "publish no longer refused while a flag is open",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/ai.server.ts",
+    find: "    if (draft.baseVersion !== expectedVersion) {",
+    replace: "    if (false) {",
+    label: "an AI draft from an older version may be published over newer text",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/ai.server.ts",
+    find: 'if (session.viewer.isReviewer)\n    throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");',
     replace: "",
     label: "a reviewer may write a draft",
   },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "return viewer ? { personId: viewer.id } : null;", replace: "return { personId: viewer?.id ?? 0 };", label: "an unknown person gets a grant" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (!viewer || viewer.id !== props?.personId) {", replace: "if (!viewer) {", label: "the per-request person check trusts a stale grant" },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: "return viewer ? { personId: viewer.id } : null;",
+    replace: "return { personId: viewer?.id ?? 0 };",
+    label: "an unknown person gets a grant",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: "if (!viewer || viewer.id !== props?.personId) {",
+    replace: "if (!viewer) {",
+    label: "the per-request person check trusts a stale grant",
+  },
   // Named agent keys: the key names an agent and grants nothing.
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (agent) return agentHandler(request, env, ctx, agent);", replace: 'if (agent || request.headers.get("Authorization")) return agentHandler(request, env, ctx, agent ?? "grok");', label: "an unknown key or an OAuth token is treated as the grok agent" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "if (agent) return agentHandler(request, env, ctx, agent);", replace: 'if (agent) return agentHandler(request, env, ctx, request.headers.get("X-Agent-Name") ?? agent);', label: "the agent's name taken from the request" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "{ viewer, client: agentClient(name), scopes: AGENT_SCOPES }", replace: "{ viewer: { ...viewer, isOwner: true }, client: agentClient(name), scopes: AGENT_SCOPES }", label: "an agent key acts as the Owner" },
-  { gate: "tests", file: "app/lib/people.server.ts", find: "return viewer && !viewer.isOwner ? viewer : null;", replace: "return viewer;", label: "a person row marked Owner may be an agent" },
-  { gate: "tests", file: "app/lib/people.server.ts", find: "and(eq(people.email, email.trim()), isNull(people.disabledAt))", replace: "eq(people.email, email.trim())", label: "a disabled person (or agent) is still found" },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: "if (agent) return agentHandler(request, env, ctx, agent);",
+    replace:
+      'if (agent || request.headers.get("Authorization")) return agentHandler(request, env, ctx, agent ?? "grok");',
+    label: "an unknown key or an OAuth token is treated as the grok agent",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: "if (agent) return agentHandler(request, env, ctx, agent);",
+    replace:
+      'if (agent) return agentHandler(request, env, ctx, request.headers.get("X-Agent-Name") ?? agent);',
+    label: "the agent's name taken from the request",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: "    viewer,\n    client: agentClient(name),",
+    replace: "    viewer: { ...viewer, isOwner: true },\n    client: agentClient(name),",
+    label: "an agent key acts as the Owner",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/people.server.ts",
+    find: "return viewer && !viewer.isOwner ? viewer : null;",
+    replace: "return viewer;",
+    label: "a person row marked Owner may be an agent",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/people.server.ts",
+    find: "and(eq(people.email, email.trim()), isNull(people.disabledAt))",
+    replace: "eq(people.email, email.trim())",
+    label: "a disabled person (or agent) is still found",
+  },
   // The MCP ruling of 2026-10-10: the security floor (rule 12), the tightened
   // registration (rule 13), honest hints and a cursor.
-  { gate: "tests", file: "app/lib/projects.server.ts", find: "  const role = await requireAction(db, viewer, row.id, action);", replace: '  const role = "owner" as const;', label: "a site project reachable by anyone who names it" },
-  { gate: "tests", file: "app/lib/books.server.ts", find: "  const role = await requireAction(db, viewer, row.id, action);", replace: '  const role = "owner" as const;', label: "a book reachable by anyone who names it" },
-  { gate: "tests", file: "app/lib/ai.server.ts", find: "if (session.viewer.isReviewer || !session.viewer.isOwner) throw new AiRefusal(\"Social posts", replace: "if (session.viewer.isReviewer) throw new AiRefusal(\"Social posts", label: "a social event reachable by any session" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "    if (foreign) {\n      logEvent(OWASP_EVENTS.authorizationFailure, { door: \"ai\", reason: \"audience\"", replace: "    if (false) {\n      logEvent(OWASP_EVENTS.authorizationFailure, { door: \"ai\", reason: \"audience\"", label: "a token for another audience let through" },
-  { gate: "tests", file: "app/lib/mcp/tools.ts", find: 'title: "Flag a problem",\n    scope: "write",', replace: 'title: "Flag a problem",\n    scope: "read",', label: "a tool that writes declared as reading" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),", replace: "wantsWrite: () => true,", label: "a client asking only to read is offered writing" },
-  { gate: "tests", file: "app/lib/mcp/scopes.ts", find: "  return asked.has(SCOPE_WRITE) ? [SCOPE_READ, SCOPE_WRITE] : [SCOPE_READ];", replace: "  return asked.has(SCOPE_READ) && !asked.has(SCOPE_WRITE) ? [SCOPE_READ] : [SCOPE_READ, SCOPE_WRITE];", label: "a client naming no scope is offered writing" },
-  { gate: "tests", file: "app/lib/mcp/scopes.ts", find: "  carrel: [SCOPE_READ, SCOPE_WRITE],", replace: "  carrel: [SCOPE_READ],", label: "a grant with an earlier scope name (carrel) loses writing" },
-  { gate: "tests", file: "app/lib/mcp/tools.ts", find: "if (tool.outside) return outsideResult(OUTSIDE_LABEL, value) as ToolResult;", replace: "", label: "outside text returned without the data notice" },
-  { gate: "tests", file: "app/lib/mcp/server.ts", find: "const listed = toolsForGrant(TOOLS, \"probe\" in who ? [SCOPE_READ] : who.session.scopes, MCP_SERVER.scopes);", replace: "const listed = TOOLS;", label: "a read-only grant is listed the write tools" },
-  { gate: "tests", file: "app/lib/mcp/tools.ts", find: "Open world: the public site.\n    annotations: { readOnlyHint: false, destructiveHint: true,", replace: "Open world: the public site.\n    annotations: { readOnlyHint: false, destructiveHint: false,", label: "publish no longer marked destructive" },
-  { gate: "tests", file: "app/lib/index.server.ts", find: "hasMore: rows.length > page.limit", replace: "hasMore: false", label: "search pages never say there is more" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "const why = registrationRefusal(allowed, clientMetadata);", replace: "const why = null;", label: "registration takes any callback" },
-  { gate: "tests", file: "app/lib/mcp/door.ts", find: "    if (limited) return limited;\n", replace: "", label: "registration not rate limited" },
-  { gate: "roles", file: "app/lib/mcp/tools.ts", find: "    run: async (args, ctx) => {\n      // Refused on the role", replace: "    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal(\"planted\");\n      // Refused on the role", label: "an Owner check in a tool" },
+  {
+    gate: "tests",
+    file: "app/lib/projects.server.ts",
+    find: "  const role = await requireAction(db, viewer, row.id, action);",
+    replace: '  const role = "owner" as const;',
+    label: "a site project reachable by anyone who names it",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/books.server.ts",
+    find: "  const role = await requireAction(db, viewer, row.id, action);",
+    replace: '  const role = "owner" as const;',
+    label: "a book reachable by anyone who names it",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/ai.server.ts",
+    find: 'if (session.viewer.isReviewer || !session.viewer.isOwner)\n    throw new AiRefusal("Social posts',
+    replace: 'if (session.viewer.isReviewer)\n    throw new AiRefusal("Social posts',
+    label: "a social event reachable by any session",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: '    if (foreign) {\n      logEvent(\n        OWASP_EVENTS.authorizationFailure,\n        { door: "ai", reason: "audience"',
+    replace:
+      '    if (false) {\n      logEvent(\n        OWASP_EVENTS.authorizationFailure,\n        { door: "ai", reason: "audience"',
+    label: "a token for another audience let through",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/tools.ts",
+    find: 'title: "Flag a problem",\n    scope: "write",',
+    replace: 'title: "Flag a problem",\n    scope: "read",',
+    label: "a tool that writes declared as reading",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: "wantsWrite: (requested) => grantScopes(requested).includes(SCOPE_WRITE),",
+    replace: "wantsWrite: () => true,",
+    label: "a client asking only to read is offered writing",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/scopes.ts",
+    find: "  return asked.has(SCOPE_WRITE) ? [SCOPE_READ, SCOPE_WRITE] : [SCOPE_READ];",
+    replace:
+      "  return asked.has(SCOPE_READ) && !asked.has(SCOPE_WRITE) ? [SCOPE_READ] : [SCOPE_READ, SCOPE_WRITE];",
+    label: "a client naming no scope is offered writing",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/scopes.ts",
+    find: "  carrel: [SCOPE_READ, SCOPE_WRITE],",
+    replace: "  carrel: [SCOPE_READ],",
+    label: "a grant with an earlier scope name (carrel) loses writing",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/tools.ts",
+    find: "if (tool.outside) return outsideResult(OUTSIDE_LABEL, value) as ToolResult;",
+    replace: "",
+    label: "outside text returned without the data notice",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/server.ts",
+    find: 'const listed = toolsForGrant(\n      TOOLS,\n      "probe" in who ? [SCOPE_READ] : who.session.scopes,\n      MCP_SERVER.scopes,\n    );',
+    replace: "const listed = TOOLS;",
+    label: "a read-only grant is listed the write tools",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/tools.ts",
+    find: "Open world: the public site.\n    annotations: {\n      readOnlyHint: false,\n      destructiveHint: true,",
+    replace:
+      "Open world: the public site.\n    annotations: {\n      readOnlyHint: false,\n      destructiveHint: false,",
+    label: "publish no longer marked destructive",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/index.server.ts",
+    find: "hasMore: rows.length > page.limit",
+    replace: "hasMore: false",
+    label: "search pages never say there is more",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: "const why = registrationRefusal(allowed, clientMetadata);",
+    replace: "const why = null;",
+    label: "registration takes any callback",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/mcp/door.ts",
+    find: "    if (limited) return limited;\n",
+    replace: "",
+    label: "registration not rate limited",
+  },
+  {
+    gate: "roles",
+    file: "app/lib/mcp/tools.ts",
+    find: "    run: async (args, ctx) => {\n      // Refused on the role",
+    replace:
+      '    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal("planted");\n      // Refused on the role',
+    label: "an Owner check in a tool",
+  },
   {
     gate: "conformance",
     file: "app/lib/mcp/server.ts",
@@ -85,7 +255,13 @@ const PLANTS = [
     replace: "",
     label: "the legacy shim routed to the modern-only handler",
   },
-  { gate: "conformance", file: "app/lib/mcp/door.ts", find: "const why = registrationRefusal(allowed, clientMetadata);", replace: "const why = null;", label: "the door registers a callback off the allowlist" },
+  {
+    gate: "conformance",
+    file: "app/lib/mcp/door.ts",
+    find: "const why = registrationRefusal(allowed, clientMetadata);",
+    replace: "const why = null;",
+    label: "the door registers a callback off the allowlist",
+  },
 ];
 
 /**
@@ -98,7 +274,13 @@ function run(gate, extra) {
   // cmd.exe its path, C:\Program Files\..., splits at the space and exits 1 before any gate runs,
   // which once read here as a caught plant.
   const shell = process.platform === "win32" && (cmd === NPM || cmd === NPX);
-  const result = spawnSync(cmd, args, { cwd: ROOT, encoding: "utf8", shell, env: { ...process.env, NO_COLOR: "1" }, maxBuffer: 64 * 1024 * 1024 });
+  const result = spawnSync(cmd, args, {
+    cwd: ROOT,
+    encoding: "utf8",
+    shell,
+    env: { ...process.env, NO_COLOR: "1" },
+    maxBuffer: 64 * 1024 * 1024,
+  });
   return { code: result.status, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
 }
 
@@ -108,7 +290,9 @@ function run(gate, extra) {
 for (const gate of new Set(PLANTS.map((p) => p.gate))) {
   const { code, out } = run(gate, MCP_TESTS);
   if (code !== 0) {
-    console.log(`  BASELINE RED  ${gate} exits ${code} with nothing planted; fix it first, or no plant result means anything.`);
+    console.log(
+      `  BASELINE RED  ${gate} exits ${code} with nothing planted; fix it first, or no plant result means anything.`,
+    );
     console.log(out.slice(-1500));
     process.exit(2);
   }
@@ -125,29 +309,41 @@ for (const plant of PLANTS) {
   const find = plant.find.replaceAll("\n", eol);
   if (original.split(find).length !== 2) {
     missed += 1;
-    console.log(`  DID NOT LAND  ${plant.gate.padEnd(11)} ${plant.label}: the text to replace is not in ${plant.file} exactly once`);
+    console.log(
+      `  DID NOT LAND  ${plant.gate.padEnd(11)} ${plant.label}: the text to replace is not in ${plant.file} exactly once`,
+    );
     continue;
   }
   try {
-    writeFileSync(`${ROOT}/${plant.file}`, original.replace(find, plant.replace.replaceAll("\n", eol)));
-    if (readFileSync(`${ROOT}/${plant.file}`, "utf8") === original) throw new Error("the plant did not change the file");
+    writeFileSync(
+      `${ROOT}/${plant.file}`,
+      original.replace(find, plant.replace.replaceAll("\n", eol)),
+    );
+    if (readFileSync(`${ROOT}/${plant.file}`, "utf8") === original)
+      throw new Error("the plant did not change the file");
     const { code, out } = run(plant.gate, MCP_TESTS);
     if (code !== 0 && code !== null) {
       caught += 1;
       console.log(`  CAUGHT (exit ${code})  ${plant.gate.padEnd(11)} ${plant.label}`);
     } else {
       missed += 1;
-      console.log(`  MISSED (exit ${code})  ${plant.gate.padEnd(11)} ${plant.label}   <-- the gate does NOT catch this`);
+      console.log(
+        `  MISSED (exit ${code})  ${plant.gate.padEnd(11)} ${plant.label}   <-- the gate does NOT catch this`,
+      );
       console.log(out.slice(-1200));
     }
   } finally {
     writeFileSync(`${ROOT}/${plant.file}`, original);
   }
   if (readFileSync(`${ROOT}/${plant.file}`, "utf8") !== original) {
-    console.log(`  RESTORE FAILED for ${plant.file}; stopping so nothing else runs on a planted tree.`);
+    console.log(
+      `  RESTORE FAILED for ${plant.file}; stopping so nothing else runs on a planted tree.`,
+    );
     process.exit(1);
   }
 }
 
-console.log(`\ncheck:plants: ${caught} caught, ${missed} missed or not landed, of ${PLANTS.length}.`);
+console.log(
+  `\ncheck:plants: ${caught} caught, ${missed} missed or not landed, of ${PLANTS.length}.`,
+);
 process.exit(missed ? 1 : 0);

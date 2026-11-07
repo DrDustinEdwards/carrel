@@ -12,7 +12,10 @@ import { manuscriptsFolder, refreshManuscripts } from "./drive.server";
 import { refreshSearchConsole } from "./search-console.server";
 import { saConnection } from "./service-account.server";
 
-export async function refreshGoogle(env: Env, fetcher?: typeof fetch): Promise<Record<string, unknown>> {
+export async function refreshGoogle(
+  env: Env,
+  fetcher?: typeof fetch,
+): Promise<Record<string, unknown>> {
   if (saConnection(env).state !== "connected") return { skipped: "service account not connected" };
   const out: Record<string, unknown> = {};
   const note = (key: string, error: unknown) => {
@@ -27,11 +30,19 @@ export async function refreshGoogle(env: Env, fetcher?: typeof fetch): Promise<R
       note("manuscripts", error);
     }
   }
-  const sites = await drizzle(env.DB).select({ id: projects.id, slug: projects.slug, site: projects.site }).from(projects).where(isNotNull(projects.site)).all();
+  const sites = await drizzle(env.DB)
+    .select({ id: projects.id, slug: projects.slug, site: projects.site })
+    .from(projects)
+    .where(isNotNull(projects.site))
+    .all();
   for (const row of sites) {
     if (!isSiteId(row.site) || siteConnection(env, row.site).state !== "connected") continue;
     try {
-      out[`search-console:${row.slug}`] = await refreshSearchConsole(env, { id: row.id, site: row.site }, fetcher);
+      out[`search-console:${row.slug}`] = await refreshSearchConsole(
+        env,
+        { id: row.id, site: row.site },
+        fetcher,
+      );
     } catch (error) {
       note(`search-console:${row.slug}`, error);
     }

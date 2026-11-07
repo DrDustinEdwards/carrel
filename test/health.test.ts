@@ -50,7 +50,10 @@ describe("health", () => {
     const env = { ...testEnv, EMAIL: box.EMAIL };
     await runHealth(env, certsDown);
     await runHealth(env, certsOk);
-    expect(box.sent.map((m) => m.subject)).toEqual(["Carrel: 1 check failing", "Carrel: all checks pass"]);
+    expect(box.sent.map((m) => m.subject)).toEqual([
+      "Carrel: 1 check failing",
+      "Carrel: all checks pass",
+    ]);
   });
 
   it("flags a database with no Owner", async () => {
@@ -63,8 +66,13 @@ describe("health", () => {
 
   it("flags a missing ACCESS_AUD and a placeholder alert address", async () => {
     const box = mailbox();
-    await runHealth({ ...testEnv, ACCESS_AUD: "", ALERT_EMAIL: "alerts@example.com", EMAIL: box.EMAIL }, certsOk);
-    expect(box.sent[0]!.text).toMatch(/FAIL config: Missing or placeholder: ACCESS_AUD, ALERT_EMAIL/);
+    await runHealth(
+      { ...testEnv, ACCESS_AUD: "", ALERT_EMAIL: "alerts@example.com", EMAIL: box.EMAIL },
+      certsOk,
+    );
+    expect(box.sent[0]!.text).toMatch(
+      /FAIL config: Missing or placeholder: ACCESS_AUD, ALERT_EMAIL/,
+    );
   });
 
   it("keeps the alert pending when the email fails, and sends it on the next run", async () => {
@@ -103,8 +111,13 @@ describe("site health", () => {
 
   it("PLANT: flags a key too short to be the site's", async () => {
     const box = mailbox();
-    await runHealth({ ...connectedEnv({ SITE_DUSTINEDWARDS_KEY: "short" }), EMAIL: box.EMAIL }, certsOk);
-    expect(box.sent[0]!.text).toMatch(/FAIL site-dustinedwards: SITE_DUSTINEDWARDS_KEY is shorter than 32/);
+    await runHealth(
+      { ...connectedEnv({ SITE_DUSTINEDWARDS_KEY: "short" }), EMAIL: box.EMAIL },
+      certsOk,
+    );
+    expect(box.sent[0]!.text).toMatch(
+      /FAIL site-dustinedwards: SITE_DUSTINEDWARDS_KEY is shorter than 32/,
+    );
   });
 
   it("passes a conforming site, and its write probe changes nothing there", async () => {
@@ -118,10 +131,16 @@ describe("site health", () => {
 
   it("PLANT: a site that decides a mention it does not hold is flagged, by the mentions check", async () => {
     const site = fakeSite();
-    site.adapter.mentions!.decide = async () => ({ status: "approved", version: "m9", purged: null });
+    site.adapter.mentions!.decide = async () => ({
+      status: "approved",
+      version: "m9",
+      purged: null,
+    });
     const box = mailbox();
     await runHealth({ ...connectedEnv(), EMAIL: box.EMAIL }, through(site));
-    expect(box.sent[0]!.text).toMatch(/FAIL site-dustinedwards: dustinedwards\.info does not conform\. mention decide of an unknown id/);
+    expect(box.sent[0]!.text).toMatch(
+      /FAIL site-dustinedwards: dustinedwards\.info does not conform\. mention decide of an unknown id/,
+    );
   });
 
   it("PLANT: a changed schema hash sends one email, and none while it stays changed", async () => {
@@ -132,16 +151,25 @@ describe("site health", () => {
     await runHealth(env, through(site, true));
     await runHealth(env, through(site, true));
     expect(box.sent).toHaveLength(1);
-    expect(box.sent[0]!.text).toMatch(/FAIL site-dustinedwards: dustinedwards\.info does not conform\. meta: answers with this contract's schema hash: schema hash ffffffffffff/);
+    expect(box.sent[0]!.text).toMatch(
+      /FAIL site-dustinedwards: dustinedwards\.info does not conform\. meta: answers with this contract's schema hash: schema hash ffffffffffff/,
+    );
   });
 
   it("PLANT: the public report names a drifted site's failed check, and nothing the site said", async () => {
     const site = fakeSite();
     const env = { ...connectedEnv(), EMAIL: mailbox().EMAIL };
     const report = async () => {
-      const response = await aiDoor(new Request("https://carrel-mcp.test/reports/conformance.json"), env, createExecutionContext());
+      const response = await aiDoor(
+        new Request("https://carrel-mcp.test/reports/conformance.json"),
+        env,
+        createExecutionContext(),
+      );
       expect(response.headers.get("Cache-Control")).toBe("no-store");
-      return (await response.json()) as { check: string; sites: Record<string, { status: string; findings: { detail: string }[] }> };
+      return (await response.json()) as {
+        check: string;
+        sites: Record<string, { status: string; findings: { detail: string }[] }>;
+      };
     };
     await runHealth(env, through(site));
     expect((await report()).sites[SITE_ORIGIN]).toEqual({ status: "pass", findings: [] });
@@ -149,14 +177,22 @@ describe("site health", () => {
     const body = await report();
     expect(body.check).toBe("carrel-conformance");
     expect(body.sites[SITE_ORIGIN]!.status).toBe("fail");
-    expect(body.sites[SITE_ORIGIN]!.findings[0]!.detail).toMatch(new RegExp(`^${SITE_ORIGIN}/api/carrel/v1 meta`));
+    expect(body.sites[SITE_ORIGIN]!.findings[0]!.detail).toMatch(
+      new RegExp(`^${SITE_ORIGIN}/api/carrel/v1 meta`),
+    );
     expect(JSON.stringify(body)).not.toContain("ffffffffffff");
   });
 
   it("PLANT: flags a site that holds a different key", async () => {
     const site = fakeSite();
     const box = mailbox();
-    await runHealth({ ...connectedEnv({ SITE_DUSTINEDWARDS_KEY: "another-key-of-the-right-length-0123456789" }), EMAIL: box.EMAIL }, through(site));
+    await runHealth(
+      {
+        ...connectedEnv({ SITE_DUSTINEDWARDS_KEY: "another-key-of-the-right-length-0123456789" }),
+        EMAIL: box.EMAIL,
+      },
+      through(site),
+    );
     expect(box.sent[0]!.text).toContain("FAIL site-dustinedwards");
   });
 });
@@ -166,12 +202,16 @@ describe("novels health", () => {
   beforeEach(() => clearTokenCache());
 
   function through(gh: ReturnType<typeof fakeNovels>) {
-    return async (url: string, init?: RequestInit) => (url.startsWith("https://api.github.com") ? gh.fetch(url, init) : certsOk());
+    return async (url: string, init?: RequestInit) =>
+      url.startsWith("https://api.github.com") ? gh.fetch(url, init) : certsOk();
   }
 
   it("counts an App not set up yet as not connected, which is not a failure", async () => {
     const { results } = await runHealth({ ...testEnv, EMAIL: mailbox().EMAIL }, certsOk);
-    expect(results.find((r) => r.name === "writing")).toMatchObject({ ok: true, detail: expect.stringMatching(/^Not connected: /) });
+    expect(results.find((r) => r.name === "writing")).toMatchObject({
+      ok: true,
+      detail: expect.stringMatching(/^Not connected: /),
+    });
   });
 
   it("PLANT: flags half a setup, an App id with no key", async () => {
@@ -183,17 +223,32 @@ describe("novels health", () => {
   it("passes when the App gets a token for the repository", async () => {
     const key = await githubStyleKey();
     const { results } = await runHealth(
-      { ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem, EMAIL: mailbox().EMAIL },
+      {
+        ...testEnv,
+        NOVELS_APP_ID: "123",
+        NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem,
+        EMAIL: mailbox().EMAIL,
+      },
       through(fakeNovels()),
     );
-    expect(results.find((r) => r.name === "writing")).toEqual({ name: "writing", ok: true, detail: "The GitHub App can write to DrDustinEdwards/writing." });
+    expect(results.find((r) => r.name === "writing")).toEqual({
+      name: "writing",
+      ok: true,
+      detail: "The GitHub App can write to DrDustinEdwards/writing.",
+    });
   });
 
   it("PLANT: flags an App GitHub will not answer for", async () => {
     const key = await githubStyleKey();
     const box = mailbox();
-    const refused = async (url: string) => (url.startsWith("https://api.github.com") ? new Response("{}", { status: 404 }) : certsOk());
-    await runHealth({ ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem, EMAIL: box.EMAIL }, refused);
-    expect(box.sent[0]!.text).toContain("FAIL writing: The GitHub App could not reach DrDustinEdwards/writing: GitHub did not find the App's installation");
+    const refused = async (url: string) =>
+      url.startsWith("https://api.github.com") ? new Response("{}", { status: 404 }) : certsOk();
+    await runHealth(
+      { ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key.pkcs1Pem, EMAIL: box.EMAIL },
+      refused,
+    );
+    expect(box.sent[0]!.text).toContain(
+      "FAIL writing: The GitHub App could not reach DrDustinEdwards/writing: GitHub did not find the App's installation",
+    );
   });
 });

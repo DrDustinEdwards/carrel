@@ -33,7 +33,8 @@ const SLUG = "test-book";
 const WADE = "---\nname: Wade Pruitt\naliases: [Wade]\nborn: 1996-02-11\n---\nRanch hand.\n";
 const PLACE = "---\nname: Harlan place\n---\n";
 const RULE = "---\nname: No phones past the ridge\nforbidden: [phone rang]\n---\n";
-const HEADER = "---\npov: Wade\ndate: 2024-04-12\nlocation: Harlan place\ncharacters: [Wade]\ngoal: get in\nconflict: the lock\noutcome: he opens it\n---\n\n";
+const HEADER =
+  "---\npov: Wade\ndate: 2024-04-12\nlocation: Harlan place\ncharacters: [Wade]\ngoal: get in\nconflict: the lock\noutcome: he opens it\n---\n\n";
 
 function seedRepo(extra: Record<string, string> = {}) {
   return fakeNovels({
@@ -42,7 +43,8 @@ function seedRepo(extra: Record<string, string> = {}) {
     [`${SLUG}/bible/places/harlan-place.md`]: PLACE,
     [`${SLUG}/bible/rules/phones.md`]: RULE,
     [`${SLUG}/chapters/01-arrival/01-the-gate.md`]: `${HEADER}Wade opened the gate.\n`,
-    [`${SLUG}/chapters/01-arrival/02-supper.md`]: HEADER.replace("2024-04-12", "2024-04-12 19:00") + "They ate at the kitchen table.\n",
+    [`${SLUG}/chapters/01-arrival/02-supper.md`]:
+      HEADER.replace("2024-04-12", "2024-04-12 19:00") + "They ate at the kitchen table.\n",
     [`${SLUG}/outline/plan.md`]: "# Plan\n",
     [`${SLUG}/build/book.epub`]: "ignored",
     [`${SLUG}/notes.txt`]: "ignored",
@@ -81,11 +83,19 @@ describe("opening a book", () => {
   it("creates a book for the Owner only, with a folder name the layout allows", async () => {
     const owner = await viewerFor("owner@test.invalid");
     const editor = await viewerFor("editor@test.invalid");
-    expect(await refusal(createBook(testEnv.DB, editor, { name: "Mine", folder: "mine" }))).toBe(403);
-    expect(await createBook(testEnv.DB, owner, { name: "Paluxy Portal", folder: "paluxy-portal" })).toEqual({ ok: true, slug: "paluxy-portal" });
-    expect((await createBook(testEnv.DB, owner, { name: "Again", folder: "paluxy-portal" })).ok).toBe(false);
+    expect(await refusal(createBook(testEnv.DB, editor, { name: "Mine", folder: "mine" }))).toBe(
+      403,
+    );
+    expect(
+      await createBook(testEnv.DB, owner, { name: "Paluxy Portal", folder: "paluxy-portal" }),
+    ).toEqual({ ok: true, slug: "paluxy-portal" });
+    expect(
+      (await createBook(testEnv.DB, owner, { name: "Again", folder: "paluxy-portal" })).ok,
+    ).toBe(false);
     expect((await createBook(testEnv.DB, owner, { name: "Bad", folder: "../etc" })).ok).toBe(false);
-    expect((await createBook(testEnv.DB, owner, { name: "Shared", folder: "shared" })).ok).toBe(false);
+    expect((await createBook(testEnv.DB, owner, { name: "Shared", folder: "shared" })).ok).toBe(
+      false,
+    );
   });
 });
 
@@ -114,14 +124,23 @@ describe("refresh from Git", () => {
     const { project } = await as("reader@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, project);
     gh.files.delete(`${SLUG}/outline/plan.md`);
-    await gh.commitElsewhere(`${SLUG}/chapters/01-arrival/02-supper.md`, `${HEADER}Great question, they sat.\n`);
+    await gh.commitElsewhere(
+      `${SLUG}/chapters/01-arrival/02-supper.md`,
+      `${HEADER}Great question, they sat.\n`,
+    );
     const before = gh.requests.length;
-    expect(await refreshBook(testEnv.DB, gh.repo, project)).toMatchObject({ read: 1, removed: 1, shared: 0 });
+    expect(await refreshBook(testEnv.DB, gh.repo, project)).toMatchObject({
+      read: 1,
+      removed: 1,
+      shared: 0,
+    });
     expect(gh.requests.slice(before).filter((r) => r.includes("/contents/"))).toEqual([
       `GET /repos/DrDustinEdwards/writing/contents/${SLUG}/chapters/01-arrival/02-supper.md`,
     ]);
     // The checks ran on what changed outside Carrel.
-    expect((await listFindings(testEnv.DB, project)).map((f) => f.excerpt)).toEqual(["Great question"]);
+    expect((await listFindings(testEnv.DB, project)).map((f) => f.excerpt)).toEqual([
+      "Great question",
+    ]);
   });
 });
 
@@ -130,16 +149,40 @@ describe("saving", () => {
     const gh = seedRepo();
     const { viewer, project } = await as("reader@test.invalid");
     const path = "chapters/01-arrival/01-the-gate.md";
-    expect(await refusal(autosave(testEnv.DB, project, viewer, path, { source: "x", baseVersion: null }))).toBe(403);
-    expect(await refusal(saveBookFile(testEnv.DB, gh.repo, project, viewer, path, { source: "x", expectedVersion: null }))).toBe(403);
+    expect(
+      await refusal(
+        autosave(testEnv.DB, project, viewer, path, { source: "x", baseVersion: null }),
+      ),
+    ).toBe(403);
+    expect(
+      await refusal(
+        saveBookFile(testEnv.DB, gh.repo, project, viewer, path, {
+          source: "x",
+          expectedVersion: null,
+        }),
+      ),
+    ).toBe(403);
     expect(gh.requests.filter((r) => r.startsWith("PUT"))).toEqual([]);
   });
 
   it("PLANT: a path outside the layout is refused before Git is asked", async () => {
     const gh = seedRepo();
     const { viewer, project } = await as("owner@test.invalid");
-    for (const path of ["../other-book/book.md", "build/x.md", "chapters/one/two.md", "notes.txt", "chapters/01-a/01-b.md/../../x.md"]) {
-      expect(await refusal(saveBookFile(testEnv.DB, gh.repo, project, viewer, path, { source: "x", expectedVersion: null }))).toBe(404);
+    for (const path of [
+      "../other-book/book.md",
+      "build/x.md",
+      "chapters/one/two.md",
+      "notes.txt",
+      "chapters/01-a/01-b.md/../../x.md",
+    ]) {
+      expect(
+        await refusal(
+          saveBookFile(testEnv.DB, gh.repo, project, viewer, path, {
+            source: "x",
+            expectedVersion: null,
+          }),
+        ),
+      ).toBe(404);
     }
     expect(gh.requests).toEqual([]);
   });
@@ -159,13 +202,28 @@ describe("saving", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(gh.commits).toHaveLength(1);
-    expect(gh.commits[0]).toMatchObject({ path: `${SLUG}/${path}`, author: { name: "editor", email: "editor@test.invalid" } });
-    expect(gh.commits[0]!.message).toBe(`Save ${SLUG}/${path}\n\nCarrel-Change: ${result.changeId}`);
+    expect(gh.commits[0]).toMatchObject({
+      path: `${SLUG}/${path}`,
+      author: { name: "editor", email: "editor@test.invalid" },
+    });
+    expect(gh.commits[0]!.message).toBe(
+      `Save ${SLUG}/${path}\n\nCarrel-Change: ${result.changeId}`,
+    );
     expect(gh.commits[0]!.message).not.toMatch(/claude|anthropic|co-authored/i);
     expect(await readDraft(testEnv.DB, project, viewer, path)).toBeNull();
 
     const record = await authorshipRecord(testEnv.DB, project);
-    expect(record).toMatchObject([{ id: result.changeId, path, who: "editor", client: null, wordsAdded: 2, wordsRemoved: 0, commit: result.commit }]);
+    expect(record).toMatchObject([
+      {
+        id: result.changeId,
+        path,
+        who: "editor",
+        client: null,
+        wordsAdded: 2,
+        wordsRemoved: 0,
+        commit: result.commit,
+      },
+    ]);
     const report = authorshipReport(project, record, new Date("2026-09-27T00:00:00Z"));
     expect(report).toContain("| editor | 1 | 2 | 0 |");
     expect(report).toContain(`| editor | ${path} | 2 | 0 | ${result.commit.slice(0, 7)} |`);
@@ -180,13 +238,15 @@ describe("saving", () => {
     await autosave(testEnv.DB, project, viewer, path, { source: "my words", baseVersion: opened });
     await gh.commitElsewhere(`${SLUG}/${path}`, `${HEADER}Someone else's words.\n`);
 
-    const result = await saveBookFile(testEnv.DB, gh.repo, project, viewer, path, { source: "my words", expectedVersion: opened });
+    const result = await saveBookFile(testEnv.DB, gh.repo, project, viewer, path, {
+      source: "my words",
+      expectedVersion: opened,
+    });
     expect(result).toMatchObject({ ok: false, reason: "conflict" });
     expect(gh.files.get(`${SLUG}/${path}`)!.source).toBe(`${HEADER}Someone else's words.\n`);
     expect((await readDraft(testEnv.DB, project, viewer, path))?.source).toBe("my words");
     expect(await authorshipRecord(testEnv.DB, project)).toEqual([]);
   });
-
 });
 
 describe("checks on save", () => {
@@ -195,31 +255,63 @@ describe("checks on save", () => {
     const { viewer, project } = await as("owner@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, project);
     const path = "chapters/01-arrival/03-late.md";
-    const source = HEADER.replace("characters: [Wade]", "characters: [Wade, Tobias]").replace("2024-04-12", "2024-04-11") + "Then the phone rang. It's not just a farm, it's a promise.\n";
-    const result = await saveBookFile(testEnv.DB, gh.repo, project, viewer, path, { source, expectedVersion: null });
+    const source =
+      HEADER.replace("characters: [Wade]", "characters: [Wade, Tobias]").replace(
+        "2024-04-12",
+        "2024-04-11",
+      ) + "Then the phone rang. It's not just a farm, it's a promise.\n";
+    const result = await saveBookFile(testEnv.DB, gh.repo, project, viewer, path, {
+      source,
+      expectedVersion: null,
+    });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(gh.files.get(`${SLUG}/${path}`)!.source).toBe(source);
-    expect(result.findings.map((f) => f.check).sort()).toEqual(["continuity", "timeline", "voice", "world-rules"]);
-    expect((await listFindings(testEnv.DB, project, { path })).map((f) => f.check).sort()).toEqual(["continuity", "timeline", "voice", "world-rules"]);
+    expect(result.findings.map((f) => f.check).sort()).toEqual([
+      "continuity",
+      "timeline",
+      "voice",
+      "world-rules",
+    ]);
+    expect((await listFindings(testEnv.DB, project, { path })).map((f) => f.check).sort()).toEqual([
+      "continuity",
+      "timeline",
+      "voice",
+      "world-rules",
+    ]);
   });
 
   it("PLANT: the voice check flags another author's passage once shared/voice/ holds Dustin's", async () => {
-    const voice = Object.fromEntries(BASELINE.map((text, i) => [`shared/voice/passage-${i + 1}.md`, text]));
+    const voice = Object.fromEntries(
+      BASELINE.map((text, i) => [`shared/voice/passage-${i + 1}.md`, text]),
+    );
     const gh = seedRepo({ ...voice, "shared/voice/README.md": "Put your passages here." });
     const { viewer, project } = await as("owner@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, project);
-    const result = await saveBookFile(testEnv.DB, gh.repo, project, viewer, "chapters/01-arrival/03-tea.md", {
-      source: HEADER.replace("2024-04-12", "2024-04-13") + PLANT,
-      expectedVersion: null,
-    });
-    expect(result.ok && result.findings.length > 0 && result.findings.every((f) => f.check === "voice")).toBe(true);
+    const result = await saveBookFile(
+      testEnv.DB,
+      gh.repo,
+      project,
+      viewer,
+      "chapters/01-arrival/03-tea.md",
+      {
+        source: HEADER.replace("2024-04-12", "2024-04-13") + PLANT,
+        expectedVersion: null,
+      },
+    );
+    expect(
+      result.ok && result.findings.length > 0 && result.findings.every((f) => f.check === "voice"),
+    ).toBe(true);
 
     // A session drafting a scene reads excerpts holding a long sentence of Dustin's and a short one, and no word list.
     const spread = sentenceSpread(BASELINE)!;
     const brief = await bookVoice(testEnv.DB, project, "chapters/01-arrival/03-tea.md");
-    const lengths = brief.excerpts.flatMap((e) => e.split(/(?<=[.!?]["”]?)\s+/).map((t) => t.split(/\s+/).filter(Boolean).length));
-    expect(lengths.some((n) => n >= spread.long) && lengths.some((n) => n >= 2 && n <= spread.short)).toBe(true);
+    const lengths = brief.excerpts.flatMap((e) =>
+      e.split(/(?<=[.!?]["”]?)\s+/).map((t) => t.split(/\s+/).filter(Boolean).length),
+    );
+    expect(
+      lengths.some((n) => n >= spread.long) && lengths.some((n) => n >= 2 && n <= spread.short),
+    ).toBe(true);
     expect(Object.keys(brief).sort()).toEqual(["excerpts", "rule"]);
   });
 
@@ -228,16 +320,31 @@ describe("checks on save", () => {
     const { viewer, project } = await as("owner@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, project);
     const path = "chapters/01-arrival/03-late.md";
-    const withTobias = HEADER.replace("characters: [Wade]", "characters: [Wade, Tobias]").replace("2024-04-12", "2024-04-13") + "Quiet.\n";
-    const saved = await saveBookFile(testEnv.DB, gh.repo, project, viewer, path, { source: withTobias, expectedVersion: null });
-    expect((await listFindings(testEnv.DB, project, { status: "open" })).map((f) => f.excerpt)).toEqual(["Tobias"]);
+    const withTobias =
+      HEADER.replace("characters: [Wade]", "characters: [Wade, Tobias]").replace(
+        "2024-04-12",
+        "2024-04-13",
+      ) + "Quiet.\n";
+    const saved = await saveBookFile(testEnv.DB, gh.repo, project, viewer, path, {
+      source: withTobias,
+      expectedVersion: null,
+    });
+    expect(
+      (await listFindings(testEnv.DB, project, { status: "open" })).map((f) => f.excerpt),
+    ).toEqual(["Tobias"]);
 
     // Adding Tobias to the bible resolves the scene's flag without touching the scene.
-    const bible = await saveBookFile(testEnv.DB, gh.repo, project, viewer, "bible/characters/tobias.md", { source: "---\nname: Tobias\n---\n", expectedVersion: null });
+    const bible = await saveBookFile(
+      testEnv.DB,
+      gh.repo,
+      project,
+      viewer,
+      "bible/characters/tobias.md",
+      { source: "---\nname: Tobias\n---\n", expectedVersion: null },
+    );
     expect(bible.ok && saved.ok).toBe(true);
     expect(await listFindings(testEnv.DB, project)).toEqual([]);
   });
-
 });
 
 describe("dismissing flags and exporting", () => {
@@ -245,10 +352,18 @@ describe("dismissing flags and exporting", () => {
     const gh = seedRepo();
     const owner = await as("owner@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, owner.project);
-    await saveBookFile(testEnv.DB, gh.repo, owner.project, owner.viewer, "chapters/01-arrival/03-late.md", {
-      source: HEADER.replace("2024-04-12", "2024-04-13") + "A masterpiece. Another masterpiece.\n",
-      expectedVersion: null,
-    });
+    await saveBookFile(
+      testEnv.DB,
+      gh.repo,
+      owner.project,
+      owner.viewer,
+      "chapters/01-arrival/03-late.md",
+      {
+        source:
+          HEADER.replace("2024-04-12", "2024-04-13") + "A masterpiece. Another masterpiece.\n",
+        expectedVersion: null,
+      },
+    );
     return { gh, owner };
   }
 
@@ -264,7 +379,9 @@ describe("dismissing flags and exporting", () => {
     const { gh, owner } = await flagged();
     const editor = await as("editor@test.invalid");
     const [first, second] = await listFindings(testEnv.DB, owner.project);
-    expect(await refusal(dismissFinding(testEnv.DB, editor.project, editor.viewer, first!.id))).toBe(403);
+    expect(
+      await refusal(dismissFinding(testEnv.DB, editor.project, editor.viewer, first!.id)),
+    ).toBe(403);
 
     await dismissFinding(testEnv.DB, owner.project, owner.viewer, first!.id);
     await dismissFinding(testEnv.DB, owner.project, owner.viewer, second!.id);
@@ -273,7 +390,10 @@ describe("dismissing flags and exporting", () => {
     // Saving again with the same words keeps both dismissed; a new masterpiece is a new flag.
     const path = "chapters/01-arrival/03-late.md";
     const current = gh.files.get(`${SLUG}/${path}`)!;
-    await saveBookFile(testEnv.DB, gh.repo, owner.project, owner.viewer, path, { source: `${current.source}A third masterpiece sat on the page that morning.\n`, expectedVersion: current.sha });
+    await saveBookFile(testEnv.DB, gh.repo, owner.project, owner.viewer, path, {
+      source: `${current.source}A third masterpiece sat on the page that morning.\n`,
+      expectedVersion: current.sha,
+    });
     const all = await listFindings(testEnv.DB, owner.project);
     expect(all.map((f) => f.status).sort()).toEqual(["dismissed", "dismissed", "open"]);
   });
@@ -287,7 +407,9 @@ describe("dismissing flags and exporting", () => {
   });
 
   it("assembles the book in reading order with its title and author from book.md", async () => {
-    const gh = seedRepo({ [`${SLUG}/chapters/10-late/01-end.md`]: `${HEADER.replace("2024-04-12", "2024-05-01")}The end.\n` });
+    const gh = seedRepo({
+      [`${SLUG}/chapters/10-late/01-end.md`]: `${HEADER.replace("2024-04-12", "2024-05-01")}The end.\n`,
+    });
     const { viewer, project } = await as("owner@test.invalid");
     await refreshBook(testEnv.DB, gh.repo, project);
     const book = await assembleBook(testEnv.DB, project, viewer);

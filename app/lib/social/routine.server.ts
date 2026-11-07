@@ -10,14 +10,18 @@
 
 import { untrusted, UNTRUSTED_DATA_RULE } from "@dustinedwards/site-runtime/anthropic";
 import { WRITING_RULES } from "@dustinedwards/site-runtime/prose";
-import { routineConfig as checkRoutine, type RoutineConfig } from "@dustinedwards/site-runtime/routine";
+import {
+  routineConfig as checkRoutine,
+  type RoutineConfig,
+} from "@dustinedwards/site-runtime/routine";
 
 export { d1FireStore, fireOnce } from "@dustinedwards/site-runtime/routine";
 
 export function routineConfig(env: Env): RoutineConfig | { missing: string } {
   const url = env.SOCIAL_ROUTINE_URL?.trim() ?? "";
   const token = env.SOCIAL_ROUTINE_TOKEN?.trim() ?? "";
-  if (!url || !token) return { missing: "SOCIAL_ROUTINE_URL and SOCIAL_ROUTINE_TOKEN are not both set." };
+  if (!url || !token)
+    return { missing: "SOCIAL_ROUTINE_URL and SOCIAL_ROUTINE_TOKEN are not both set." };
   return checkRoutine(url, token);
 }
 
@@ -26,7 +30,17 @@ export function routineConfig(env: Env): RoutineConfig | { missing: string } {
  * summaries, addresses and voice guides go in as delimited data (site-runtime's `untrusted`), so a title
  * that reads like an instruction stays text; the style rules are the family's WRITING_RULES.
  */
-export function routinePrompt(items: { eventId: number; account: string; platform: string; voiceGuide: string; title: string; url: string; summary: string }[]): string {
+export function routinePrompt(
+  items: {
+    eventId: number;
+    account: string;
+    platform: string;
+    voiceGuide: string;
+    title: string;
+    url: string;
+    summary: string;
+  }[],
+): string {
   const lines = [
     "Draft one social post for each item below, in that account's voice, and store each with Carrel's carrel_draft_social_post tool (event id, text). Do not post anything and do not reply to anyone.",
     "Rules: the post announces the item and links it, and says nothing the item does not say.",
@@ -35,7 +49,9 @@ export function routinePrompt(items: { eventId: number; account: string; platfor
     "",
   ];
   for (const i of items) {
-    lines.push(`- event ${i.eventId} for ${i.account} (${i.platform}): ${untrusted("title", i.title)} ${untrusted("url", i.url)}`);
+    lines.push(
+      `- event ${i.eventId} for ${i.account} (${i.platform}): ${untrusted("title", i.title)} ${untrusted("url", i.url)}`,
+    );
     if (i.summary) lines.push(`  Dustin's summary: ${untrusted("summary", i.summary)}`);
     if (i.voiceGuide) lines.push(`  Voice: ${untrusted("voice-guide", i.voiceGuide)}`);
   }

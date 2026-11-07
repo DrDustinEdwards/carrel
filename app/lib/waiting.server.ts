@@ -28,7 +28,11 @@ export function titleOf(source: string): string {
 }
 
 /** Every item the person has an AI draft or a draft of their own for, with what is waiting. */
-export async function waitingWork(db: D1Database, project: ProjectRole, viewer: Viewer): Promise<Waiting[]> {
+export async function waitingWork(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+): Promise<Waiting[]> {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   const d = drizzle(db);
   const [ai, own] = await Promise.all([
@@ -46,7 +50,18 @@ export async function waitingWork(db: D1Database, project: ProjectRole, viewer: 
   const byItem = new Map<string, Waiting>();
   const entry = (itemId: string) => {
     let w = byItem.get(itemId);
-    if (!w) byItem.set(itemId, (w = { itemId, aiDrafts: 0, ownDraft: false, title: "", text: itemId.toLowerCase(), at: "" }));
+    if (!w)
+      byItem.set(
+        itemId,
+        (w = {
+          itemId,
+          aiDrafts: 0,
+          ownDraft: false,
+          title: "",
+          text: itemId.toLowerCase(),
+          at: "",
+        }),
+      );
     return w;
   };
   for (const row of own) {
@@ -71,10 +86,19 @@ export async function waitingWork(db: D1Database, project: ProjectRole, viewer: 
  * new draft, listed with its title and what waits. The search applies to it as to the site's posts,
  * every word in the title, id or text.
  */
-export function onlyInCarrel(waiting: Waiting[], known: ReadonlySet<string>, q?: string): Array<Pick<Waiting, "itemId" | "title" | "aiDrafts" | "ownDraft">> {
+export function onlyInCarrel(
+  waiting: Waiting[],
+  known: ReadonlySet<string>,
+  q?: string,
+): Array<Pick<Waiting, "itemId" | "title" | "aiDrafts" | "ownDraft">> {
   const words = q?.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
   if (q && words.length === 0) return [];
   return waiting
     .filter((w) => !known.has(w.itemId) && words.every((word) => w.text.includes(word)))
-    .map(({ itemId, title, aiDrafts, ownDraft }) => ({ itemId, title: title || itemId, aiDrafts, ownDraft }));
+    .map(({ itemId, title, aiDrafts, ownDraft }) => ({
+      itemId,
+      title: title || itemId,
+      aiDrafts,
+      ownDraft,
+    }));
 }

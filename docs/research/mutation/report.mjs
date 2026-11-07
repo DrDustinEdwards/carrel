@@ -2,8 +2,10 @@
 // node docs/research/mutation/report.mjs <chunks-dir> <out-dir>
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 
-const [dir = "docs/research/mutation/chunks", out = "docs/research", vitestJson] = process.argv.slice(2);
-const KEPT = /auth|access|session|oauth|token|key|secret|signing|csp|gate|plant|publish|role|owner|door|permission|origin|redirect|sanit|escape|xss|inject|traversal|refus|forbid|unauthor|403|401|mcp-roles|conformance/i;
+const [dir = "docs/research/mutation/chunks", out = "docs/research", vitestJson] =
+  process.argv.slice(2);
+const KEPT =
+  /auth|access|session|oauth|token|key|secret|signing|csp|gate|plant|publish|role|owner|door|permission|origin|redirect|sanit|escape|xss|inject|traversal|refus|forbid|unauthor|403|401|mcp-roles|conformance/i;
 
 const files = {};
 const tests = {}; // "file :: name" -> { kills:Set, unique:number, protected }
@@ -18,7 +20,14 @@ for (const f of readdirSync(dir).filter((n) => /^chunk-\d+\.json$/.test(n))) {
     }
   }
   for (const [path, v] of Object.entries(r.files)) {
-    const c = (files[path] = { Killed: 0, Timeout: 0, Survived: 0, NoCoverage: 0, Ignored: 0, Other: 0 });
+    const c = (files[path] = {
+      Killed: 0,
+      Timeout: 0,
+      Survived: 0,
+      NoCoverage: 0,
+      Ignored: 0,
+      Other: 0,
+    });
     for (const m of v.mutants) {
       c[m.status in c ? m.status : "Other"]++;
       for (const id of m.coveredBy ?? []) if (byId[id]) tests[byId[id]].covered++;
@@ -64,9 +73,17 @@ const rows = Object.entries(files)
   .map(([p, c]) => ({ p, ...c, score: score(c), n: valid(c) }))
   .sort((a, b) => a.score - b.score);
 const md = [];
-md.push(`TOTAL ${JSON.stringify(tot)} valid=${valid(tot)} score=${score(tot).toFixed(2)} coveredScore=${((100 * (tot.Killed + tot.Timeout)) / covered(tot)).toFixed(2)} noCovPct=${((100 * tot.NoCoverage) / valid(tot)).toFixed(1)}`);
-md.push("| File | Mutants | Killed | Survived | No coverage | Score |", "|---|---|---|---|---|---|");
-for (const r of rows) md.push(`| ${r.p} | ${r.n} | ${r.Killed + r.Timeout} | ${r.Survived} | ${r.NoCoverage} | ${r.score.toFixed(1)}% |`);
+md.push(
+  `TOTAL ${JSON.stringify(tot)} valid=${valid(tot)} score=${score(tot).toFixed(2)} coveredScore=${((100 * (tot.Killed + tot.Timeout)) / covered(tot)).toFixed(2)} noCovPct=${((100 * tot.NoCoverage) / valid(tot)).toFixed(1)}`,
+);
+md.push(
+  "| File | Mutants | Killed | Survived | No coverage | Score |",
+  "|---|---|---|---|---|---|",
+);
+for (const r of rows)
+  md.push(
+    `| ${r.p} | ${r.n} | ${r.Killed + r.Timeout} | ${r.Survived} | ${r.NoCoverage} | ${r.score.toFixed(1)}% |`,
+  );
 writeFileSync(`${out}/mutation-files.md`, md.join("\n") + "\n");
 
 const g = (k, p) => matrix.filter((t) => t.kind === k && t.protected === p).length;
@@ -76,7 +93,9 @@ for (const t of cand) (byFile[t.file] ??= { z: 0, c: 0 })[t.kind === "zero-kill"
 const all = {};
 for (const t of matrix) all[t.file] = (all[t.file] ?? 0) + 1;
 const cl = Object.entries(byFile).sort((a, b) => b[1].z + b[1].c - (a[1].z + a[1].c));
-const o = [`TESTS ${matrix.length} zero(p/u)=${g("zero-kill", true)}/${g("zero-kill", false)} covered(p/u)=${g("covered-by-others", true)}/${g("covered-by-others", false)} unique=${matrix.filter((t) => t.kind === "unique-kills").length}`];
+const o = [
+  `TESTS ${matrix.length} zero(p/u)=${g("zero-kill", true)}/${g("zero-kill", false)} covered(p/u)=${g("covered-by-others", true)}/${g("covered-by-others", false)} unique=${matrix.filter((t) => t.kind === "unique-kills").length}`,
+];
 o.push("| Test file | Tests | Zero-kill | Covered by others |", "|---|---|---|---|");
 for (const [f, v] of cl) o.push(`| ${f} | ${all[f]} | ${v.z} | ${v.c} |`);
 writeFileSync(`${out}/mutation-candidates.md`, o.join("\n") + "\n");

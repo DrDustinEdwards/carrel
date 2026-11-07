@@ -9,17 +9,46 @@ import { useFetcher, useNavigate } from "react-router";
 import { Alert } from "capsomer/react/banner";
 import { Tree, type TreeNode } from "capsomer/react/tree";
 
-import { canMoveTo, fileId, orderFromTree, ROOT, type BinderNode, type Rename } from "~/lib/writing/binder";
+import {
+  canMoveTo,
+  fileId,
+  orderFromTree,
+  ROOT,
+  type BinderNode,
+  type Rename,
+} from "~/lib/writing/binder";
 
 type ReorderAnswer = { reorder?: { ok: true; renames: Rename[] } | { ok: false; message: string } };
 
 const toTree = (nodes: BinderNode[]): TreeNode[] =>
-  nodes.map((n) => ({ id: n.id, label: n.label, href: n.href, meta: n.meta, children: n.children ? toTree(n.children) : undefined }));
+  nodes.map((n) => ({
+    id: n.id,
+    label: n.label,
+    href: n.href,
+    meta: n.meta,
+    children: n.children ? toTree(n.children) : undefined,
+  }));
 
 const fromTree = (nodes: TreeNode[]): BinderNode[] =>
-  nodes.map((n) => ({ id: n.id, label: n.label, href: n.href, meta: typeof n.meta === "string" ? n.meta : undefined, children: n.children ? fromTree(n.children) : undefined }));
+  nodes.map((n) => ({
+    id: n.id,
+    label: n.label,
+    href: n.href,
+    meta: typeof n.meta === "string" ? n.meta : undefined,
+    children: n.children ? fromTree(n.children) : undefined,
+  }));
 
-export function Binder({ nodes, book, current, canEdit }: { nodes: BinderNode[]; book: string; current: string; canEdit: boolean }) {
+export function Binder({
+  nodes,
+  book,
+  current,
+  canEdit,
+}: {
+  nodes: BinderNode[];
+  book: string;
+  current: string;
+  canEdit: boolean;
+}) {
   const shown = useMemo(() => toTree(nodes), [nodes]);
   const [tree, setTree] = useState(shown);
   // A fresh order from the server (after a move, a save or a refresh) replaces what the tree holds,
@@ -46,11 +75,18 @@ export function Binder({ nodes, book, current, canEdit }: { nodes: BinderNode[];
     }
     setProblem(null);
     const moved = answer.renames.find((r) => r.from === current);
-    if (moved) void navigate(`/b/${book}/f/${moved.to}`, { replace: true, preventScrollReset: true });
+    if (moved)
+      void navigate(`/b/${book}/f/${moved.to}`, { replace: true, preventScrollReset: true });
   }, [mover.state, mover.data, current, book, navigate, shown]);
 
   const chapter = current.startsWith("chapters/") ? `ch:${current.split("/")[1]}` : null;
-  const expanded = [ROOT.chapters, ...(chapter ? [chapter] : []), ...(current.startsWith("bible/") ? [ROOT.bible, `group:bible-${current.split("/")[1]}`] : []), ...(current.startsWith("outline/") ? [ROOT.outline] : []), ...(current.startsWith("notes/") ? [ROOT.notes] : [])];
+  const expanded = [
+    ROOT.chapters,
+    ...(chapter ? [chapter] : []),
+    ...(current.startsWith("bible/") ? [ROOT.bible, `group:bible-${current.split("/")[1]}`] : []),
+    ...(current.startsWith("outline/") ? [ROOT.outline] : []),
+    ...(current.startsWith("notes/") ? [ROOT.notes] : []),
+  ];
 
   return (
     <div className="app-stack" data-tight>
@@ -66,7 +102,10 @@ export function Binder({ nodes, book, current, canEdit }: { nodes: BinderNode[];
             ? (_move, next) => {
                 setTree(next);
                 setProblem(null);
-                void mover.submit({ intent: "reorder", order: JSON.stringify(orderFromTree(fromTree(next))) }, { method: "post", action: `/b/${book}` });
+                void mover.submit(
+                  { intent: "reorder", order: JSON.stringify(orderFromTree(fromTree(next))) },
+                  { method: "post", action: `/b/${book}` },
+                );
               }
             : undefined
         }
@@ -75,7 +114,12 @@ export function Binder({ nodes, book, current, canEdit }: { nodes: BinderNode[];
         {mover.state !== "idle" ? "Saving the new order to Git." : ""}
       </p>
       {problem ? <Alert tone="crit">{problem}</Alert> : null}
-      {canEdit ? <p className="cap-muted app-note">Drag a scene or a chapter, or press Alt with an arrow key. The corkboard has buttons for each move.</p> : null}
+      {canEdit ? (
+        <p className="cap-muted app-note">
+          Drag a scene or a chapter, or press Alt with an arrow key. The corkboard has buttons for
+          each move.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -86,7 +130,13 @@ export function SiteBinder({ nodes, current }: { nodes: BinderNode[]; current: s
   const open = nodes.find((k) => k.children?.some((c) => c.id === `item:${current}`))?.id;
   return (
     <div className="app-binder">
-      <Tree nodes={shown} aria-label="Binder" selection="single" defaultSelected={[`item:${current}`]} defaultExpanded={open ? [open] : []} />
+      <Tree
+        nodes={shown}
+        aria-label="Binder"
+        selection="single"
+        defaultSelected={[`item:${current}`]}
+        defaultExpanded={open ? [open] : []}
+      />
     </div>
   );
 }

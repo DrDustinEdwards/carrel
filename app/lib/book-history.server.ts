@@ -29,23 +29,50 @@ export type BookVersion = {
 const PATHS_ASKED = 5;
 const COMMITS_PER_PATH = 30;
 
-export async function bookVersions(db: D1Database, repo: NovelsRepo | null, project: BookProject, path: string): Promise<{ versions: BookVersion[]; gitError: string | null }> {
+export async function bookVersions(
+  db: D1Database,
+  repo: NovelsRepo | null,
+  project: BookProject,
+  path: string,
+): Promise<{ versions: BookVersion[]; gitError: string | null }> {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   const paths = await formerPaths(db, project.id, path);
   const d = drizzle(db);
   const saves = await d
-    .select({ id: authorship.id, personId: authorship.personId, commit: authorship.commitSha, path: authorship.path, at: authorship.createdAt, name: people.name, email: people.email, client: authorship.client, added: authorship.wordsAdded, removed: authorship.wordsRemoved })
+    .select({
+      id: authorship.id,
+      personId: authorship.personId,
+      commit: authorship.commitSha,
+      path: authorship.path,
+      at: authorship.createdAt,
+      name: people.name,
+      email: people.email,
+      client: authorship.client,
+      added: authorship.wordsAdded,
+      removed: authorship.wordsRemoved,
+    })
     .from(authorship)
     .innerJoin(people, eq(people.id, authorship.personId))
     .where(and(eq(authorship.projectId, project.id), inArray(authorship.path, paths)))
     .all();
   const moves = await movesOf(db, project.id, paths);
   const movers = moves.length
-    ? new Map((await d.select({ id: people.id, name: people.name, email: people.email }).from(people).where(inArray(people.id, [...new Set(moves.map((m) => m.personId))])).all()).map((p) => [p.id, p.name || p.email]))
+    ? new Map(
+        (
+          await d
+            .select({ id: people.id, name: people.name, email: people.email })
+            .from(people)
+            .where(inArray(people.id, [...new Set(moves.map((m) => m.personId))]))
+            .all()
+        ).map((p) => [p.id, p.name || p.email]),
+      )
     : new Map<number, string>();
 
   // A save of text several people wrote in the file's room names them all.
-  const others = await coauthorsOf(db, saves.map((s) => ({ changeId: s.id, saver: s.personId })));
+  const others = await coauthorsOf(
+    db,
+    saves.map((s) => ({ changeId: s.id, saver: s.personId })),
+  );
   const byCommit = new Map<string, BookVersion>();
   for (const s of saves) {
     const who = withOthers(s.name || s.email, others.get(s.id));
@@ -59,7 +86,15 @@ export async function bookVersions(db: D1Database, repo: NovelsRepo | null, proj
     });
   }
   for (const m of moves) {
-    if (!byCommit.has(m.commit)) byCommit.set(m.commit, { version: m.commit, path: m.to, at: m.at, author: movers.get(m.personId) ?? "", message: `Moved from ${m.from}`, kind: "move" });
+    if (!byCommit.has(m.commit))
+      byCommit.set(m.commit, {
+        version: m.commit,
+        path: m.to,
+        at: m.at,
+        author: movers.get(m.personId) ?? "",
+        message: `Moved from ${m.from}`,
+        kind: "move",
+      });
   }
 
   let gitError: string | null = null;
@@ -67,7 +102,15 @@ export async function bookVersions(db: D1Database, repo: NovelsRepo | null, proj
     try {
       for (const p of paths.slice(0, PATHS_ASKED)) {
         for (const c of await repo.history(`${project.book}/${p}`, COMMITS_PER_PATH)) {
-          if (!byCommit.has(c.sha)) byCommit.set(c.sha, { version: c.sha, path: p, at: c.at, author: c.author, message: c.message.split("\n")[0] || "No message", kind: "outside" });
+          if (!byCommit.has(c.sha))
+            byCommit.set(c.sha, {
+              version: c.sha,
+              path: p,
+              at: c.at,
+              author: c.author,
+              message: c.message.split("\n")[0] || "No message",
+              kind: "outside",
+            });
         }
       }
     } catch (error) {
@@ -79,7 +122,11 @@ export async function bookVersions(db: D1Database, repo: NovelsRepo | null, proj
 }
 
 /** A version's text, read from Git at its commit; null when Git does not hold the file there. */
-export async function readVersion(repo: NovelsRepo, project: BookProject, version: BookVersion): Promise<string | null> {
+export async function readVersion(
+  repo: NovelsRepo,
+  project: BookProject,
+  version: BookVersion,
+): Promise<string | null> {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   return (await repo.readAt(`${project.book}/${version.path}`, version.version))?.source ?? null;
 }

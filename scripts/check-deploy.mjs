@@ -11,7 +11,11 @@ import { fileURLToPath } from "node:url";
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
 const D1 = "11111111-2222-4333-8444-555555555555";
 const KV = "0123456789abcdef0123456789abcdef";
-const GOOD = { CARREL_D1_DATABASE_ID: D1, CARREL_KV_OAUTH_ID: KV, CARREL_ALERT_EMAIL: "owner@test.invalid" };
+const GOOD = {
+  CARREL_D1_DATABASE_ID: D1,
+  CARREL_KV_OAUTH_ID: KV,
+  CARREL_ALERT_EMAIL: "owner@test.invalid",
+};
 
 const wranglerStub = `
 const { appendFileSync } = require("node:fs");
@@ -74,7 +78,12 @@ function attempt(env, { realConfig = false, args = [] } = {}) {
     encoding: "utf8",
   });
   const calls = existsSync(log) ? readFileSync(log, "utf8").trim().split("\n").filter(Boolean) : [];
-  return { code: result.status, calls, stderr: result.stderr, config: readFileSync(join(proj, "wrangler.jsonc"), "utf8") };
+  return {
+    code: result.status,
+    calls,
+    stderr: result.stderr,
+    config: readFileSync(join(proj, "wrangler.jsonc"), "utf8"),
+  };
 }
 
 /** @type {string[]} */
@@ -96,7 +105,11 @@ const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
   const d = idx(r, "wrangler deploy");
   expect("success: exits 0", r.code === 0, `exit ${r.code}: ${r.stderr}`);
   expect("success: migrations apply runs, then deploy", m >= 0 && d > m, JSON.stringify(r.calls));
-  expect("success: build runs before migrations", idx(r, "build") >= 0 && idx(r, "build") < m, JSON.stringify(r.calls));
+  expect(
+    "success: build runs before migrations",
+    idx(r, "build") >= 0 && idx(r, "build") < m,
+    JSON.stringify(r.calls),
+  );
   expect(
     "success: rendered config has the real ids, email, both routes, the BACKUPS bucket and the nightly cron",
     r.config.includes(D1) &&
@@ -116,8 +129,16 @@ const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
   // CI's pre-deploy guard: every step, then stop. devkit's workflow deploys the build it leaves.
   const r = attempt(GOOD, { args: ["--prepare"] });
   const m = idx(r, "migrations drizzle --apply carrel");
-  expect("--prepare: exits 0 after the migrations, and never deploys", r.code === 0 && m >= 0 && !deployed(r), `exit ${r.code} ${JSON.stringify(r.calls)}`);
-  expect("--prepare: builds and applies migrations first", idx(r, "build") >= 0 && idx(r, "migrations drizzle --apply carrel") > idx(r, "build"), JSON.stringify(r.calls));
+  expect(
+    "--prepare: exits 0 after the migrations, and never deploys",
+    r.code === 0 && m >= 0 && !deployed(r),
+    `exit ${r.code} ${JSON.stringify(r.calls)}`,
+  );
+  expect(
+    "--prepare: builds and applies migrations first",
+    idx(r, "build") >= 0 && idx(r, "migrations drizzle --apply carrel") > idx(r, "build"),
+    JSON.stringify(r.calls),
+  );
 }
 {
   const r = attempt({ ...GOOD, STUB_FAIL: "migrate" });
@@ -145,7 +166,11 @@ const refusals = [
 ];
 for (const [label, env] of refusals) {
   const r = attempt(env);
-  expect(`${label}: refuses before any wrangler call`, r.code !== 0 && r.calls.length === 0, `exit ${r.code} ${JSON.stringify(r.calls)}`);
+  expect(
+    `${label}: refuses before any wrangler call`,
+    r.code !== 0 && r.calls.length === 0,
+    `exit ${r.code} ${JSON.stringify(r.calls)}`,
+  );
 }
 {
   const r = attempt({ ...GOOD, STUB_D1_ID: "99999999-2222-4333-8444-555555555555" });
@@ -157,15 +182,27 @@ for (const [label, env] of refusals) {
 }
 {
   const r = attempt({ ...GOOD, STUB_KV_ID: "ffffffffffffffffffffffffffffffff" });
-  expect("KV id that is not the one titled carrel-desk-oauth: refuses, no deploy", r.code !== 0 && !deployed(r), JSON.stringify(r.calls));
+  expect(
+    "KV id that is not the one titled carrel-desk-oauth: refuses, no deploy",
+    r.code !== 0 && !deployed(r),
+    JSON.stringify(r.calls),
+  );
 }
 {
   const r = attempt({ ...GOOD, STUB_KV_TITLE: "carrel-oauth" });
-  expect("the namespace still under its old title carrel-oauth: deploys", r.code === 0 && deployed(r), `exit ${r.code} ${JSON.stringify(r.calls)}`);
+  expect(
+    "the namespace still under its old title carrel-oauth: deploys",
+    r.code === 0 && deployed(r),
+    `exit ${r.code} ${JSON.stringify(r.calls)}`,
+  );
 }
 {
   const r = attempt({ ...GOOD, STUB_KV_SECOND: "ffffffffffffffffffffffffffffffff" });
-  expect("both titles present: refuses, no deploy", r.code !== 0 && !deployed(r), JSON.stringify(r.calls));
+  expect(
+    "both titles present: refuses, no deploy",
+    r.code !== 0 && !deployed(r),
+    JSON.stringify(r.calls),
+  );
 }
 {
   const r = attempt(GOOD, { realConfig: true });

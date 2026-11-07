@@ -40,7 +40,14 @@ beforeEach(async () => {
   versions = [];
   let expected: string | null = null;
   for (const source of [V1, V2, V3]) {
-    const saved = await writeToSite(env, project, owner, "post-one", { action: "save", source, expectedVersion: expected }, site.fetch);
+    const saved = await writeToSite(
+      env,
+      project,
+      owner,
+      "post-one",
+      { action: "save", source, expectedVersion: expected },
+      site.fetch,
+    );
     if (!saved.ok) throw new Error(saved.message);
     expected = saved.version;
     versions.push(saved.version);
@@ -61,11 +68,15 @@ async function restore(email: string, version: string) {
   const context = new RouterContextProvider();
   context.set(cloudflareContext, { env, ctx: {} as ExecutionContext });
   context.set(viewerContext, await viewerFor(email));
-  const request = new Request(`https://carrel.test/p/${SLUG}/e/post-one/history`, { method: "POST", body: new URLSearchParams({ version }) });
+  const request = new Request(`https://carrel.test/p/${SLUG}/e/post-one/history`, {
+    method: "POST",
+    body: new URLSearchParams({ version }),
+  });
   return historyAction({ request, params: { project: SLUG, item: "post-one" }, context } as never);
 }
 
-const changeRows = async () => (await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM changes").first<{ n: number }>())!.n;
+const changeRows = async () =>
+  (await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM changes").first<{ n: number }>())!.n;
 
 describe("reading history", () => {
   it("lists the revisions newest first for a Reader, and only reads", async () => {
@@ -79,14 +90,29 @@ describe("reading history", () => {
 
   it("opens the source of an old revision", async () => {
     const data = await load("reader@test.invalid", `?version=${versions[0]}`);
-    expect(data.view).toMatchObject({ kind: "source", source: V1, current: false, previous: null, newest: versions[2] });
+    expect(data.view).toMatchObject({
+      kind: "source",
+      source: V1,
+      current: false,
+      previous: null,
+      newest: versions[2],
+    });
     const newest = await load("reader@test.invalid", `?version=${versions[2]}`);
-    expect(newest.view).toMatchObject({ kind: "source", source: V3, current: true, previous: versions[1], newest: null });
+    expect(newest.view).toMatchObject({
+      kind: "source",
+      source: V3,
+      current: true,
+      previous: versions[1],
+      newest: null,
+    });
   });
 
   it("says plainly when the revision is not one the site holds", async () => {
     const data = await load("reader@test.invalid", "?version=nope");
-    expect(data.view).toMatchObject({ kind: "problem", message: "The site has no such revision of this post." });
+    expect(data.view).toMatchObject({
+      kind: "problem",
+      message: "The site has no such revision of this post.",
+    });
   });
 
   it("is answered 404 to someone with no role on the project, before the site is asked", async () => {
@@ -97,7 +123,9 @@ describe("reading history", () => {
 
 describe("restoring a revision", () => {
   it("puts an earlier revision's text back on the site for the Owner, and refuses a Reader", async () => {
-    await expect(restore("reader@test.invalid", versions[0]!)).rejects.toMatchObject({ status: 403 });
+    await expect(restore("reader@test.invalid", versions[0]!)).rejects.toMatchObject({
+      status: 403,
+    });
     expect(await restore("owner@test.invalid", versions[0]!)).toMatchObject({ ok: true });
     expect((await site.adapter.content.get("post-one"))?.source).toBe(V1);
   });
@@ -117,13 +145,25 @@ describe("comparing revisions", () => {
 
   it("by word, hands the two revisions' texts to the word compare, older as Before", async () => {
     const data = await load("reader@test.invalid", `?v=${versions[0]}&v=${versions[1]}&by=word`);
-    expect(data.view).toMatchObject({ kind: "compare", patch: null, before: { text: V1 }, after: { text: V2 } });
+    expect(data.view).toMatchObject({
+      kind: "compare",
+      patch: null,
+      before: { text: V1 },
+      after: { text: V2 },
+    });
   });
 
   it("refuses one pick, the same pick twice and a pick the site does not hold, in words", async () => {
-    for (const search of [`?v=${versions[0]}`, `?v=${versions[0]}&v=${versions[0]}`, `?v=${versions[0]}&v=nope`]) {
+    for (const search of [
+      `?v=${versions[0]}`,
+      `?v=${versions[0]}&v=${versions[0]}`,
+      `?v=${versions[0]}&v=nope`,
+    ]) {
       const data = await load("reader@test.invalid", search);
-      expect(data.view, search).toMatchObject({ kind: "problem", message: "Pick two different revisions to compare." });
+      expect(data.view, search).toMatchObject({
+        kind: "problem",
+        message: "Pick two different revisions to compare.",
+      });
     }
   });
 
@@ -133,8 +173,14 @@ describe("comparing revisions", () => {
       { version: "b", at: "2026-10-02T00:00:00Z", author: "a", message: "" },
       { version: "a", at: "2026-10-01T00:00:00Z", author: "a", message: "" },
     ];
-    expect(orderPair(list, ["c", "a"])).toMatchObject({ from: { version: "a" }, to: { version: "c" } });
-    expect(orderPair(list, ["a", "c"])).toMatchObject({ from: { version: "a" }, to: { version: "c" } });
+    expect(orderPair(list, ["c", "a"])).toMatchObject({
+      from: { version: "a" },
+      to: { version: "c" },
+    });
+    expect(orderPair(list, ["a", "c"])).toMatchObject({
+      from: { version: "a" },
+      to: { version: "c" },
+    });
     expect(orderPair(list, ["a"])).toBeNull();
     expect(orderPair(list, ["a", "a"])).toBeNull();
     expect(orderPair(list, ["a", "z"])).toBeNull();
@@ -167,7 +213,14 @@ describe("comparing the working draft", () => {
 
   it("sets the draft against an AI draft, and a draft that is not the viewer's is not found", async () => {
     const { owner, project } = await ownDraft(V3);
-    const saved = await saveAiDraft(env, project, { viewer: owner, client: "Claude Code" }, "post-one", { source: V3.replace("First words, revised.", "First words, tightened."), note: "" }, site.fetch);
+    const saved = await saveAiDraft(
+      env,
+      project,
+      { viewer: owner, client: "Claude Code" },
+      "post-one",
+      { source: V3.replace("First words, revised.", "First words, tightened."), note: "" },
+      site.fetch,
+    );
     const data = await load("owner@test.invalid", `?compare=ai&ai=${saved.id}`);
     const view = data.view as { kind: string; heading: string; patch: string };
     expect(view.kind).toBe("compare");
@@ -180,12 +233,20 @@ describe("comparing the working draft", () => {
 
 describe("the local patch", () => {
   it("names both sides but one file, shows only the changed lines with context, and says nothing changed when nothing did", () => {
-    const patch = unifiedPatch("post-one.md", { text: "a\nb\nc\nd\ne\nf\ng\nh\n", label: "On the site" }, { text: "a\nb\nc\nD\ne\nf\ng\nh\n", label: "Your draft" });
+    const patch = unifiedPatch(
+      "post-one.md",
+      { text: "a\nb\nc\nd\ne\nf\ng\nh\n", label: "On the site" },
+      { text: "a\nb\nc\nD\ne\nf\ng\nh\n", label: "Your draft" },
+    );
     expect(patch).toContain("--- post-one.md\tOn the site");
     expect(patch).toContain("+++ post-one.md\tYour draft");
     expect(patch).toContain("-d\n+D\n");
     expect(hasChanges(patch)).toBe(true);
-    const same = unifiedPatch("post-one.md", { text: "same\n", label: "a" }, { text: "same\n", label: "b" });
+    const same = unifiedPatch(
+      "post-one.md",
+      { text: "same\n", label: "a" },
+      { text: "same\n", label: "b" },
+    );
     expect(hasChanges(same)).toBe(false);
   });
 });

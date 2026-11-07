@@ -15,7 +15,14 @@ import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
 
 import { DraftLinks } from "~/components/history/draft-links";
-import { ComparePanel, type Side, SourcePanel, sides, utc, type View } from "~/components/history/history-view";
+import {
+  ComparePanel,
+  type Side,
+  SourcePanel,
+  sides,
+  utc,
+  type View,
+} from "~/components/history/history-view";
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
@@ -50,10 +57,17 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     doc = await readDoc(env, project, itemId);
     revisions = await listRevisions(env, project, itemId);
   } catch (error) {
-    siteError = error instanceof SiteNotConnected ? error.detail : "The site did not answer, so its history cannot be shown.";
+    siteError =
+      error instanceof SiteNotConnected
+        ? error.detail
+        : "The site did not answer, so its history cannot be shown.";
   }
-  const [draft, aiDrafts] = await Promise.all([readDraft(env.DB, project, viewer, itemId), listAiDrafts(env.DB, project, viewer, itemId)]);
-  if (!doc && !draft && aiDrafts.length === 0 && !siteError) throw new Response("Not found", { status: 404 });
+  const [draft, aiDrafts] = await Promise.all([
+    readDraft(env.DB, project, viewer, itemId),
+    listAiDrafts(env.DB, project, viewer, itemId),
+  ]);
+  if (!doc && !draft && aiDrafts.length === 0 && !siteError)
+    throw new Response("Not found", { status: 404 });
 
   const noun = kindNoun(doc?.kind);
   const list = revisions ?? [];
@@ -62,12 +76,44 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   let picked: string[] = [];
 
   if (query.get("compare") === "site") {
-    if (!draft) view = { kind: "problem", message: `You have no working draft of this ${noun} in Carrel, so there is nothing to set against the site's text.` };
-    else if (!doc) view = { kind: "problem", message: siteError ?? `This ${noun} is not on the site yet, so there is no site version to compare with.` };
+    if (!draft)
+      view = {
+        kind: "problem",
+        message: `You have no working draft of this ${noun} in Carrel, so there is nothing to set against the site's text.`,
+      };
+    else if (!doc)
+      view = {
+        kind: "problem",
+        message:
+          siteError ??
+          `This ${noun} is not on the site yet, so there is no site version to compare with.`,
+      };
     else {
-      const before: Side = { title: "On the site", who: doc.status === "published" ? "Published" : doc.status === "scheduled" ? "Scheduled" : "Draft", time: doc.updatedAt ?? undefined, text: doc.source };
-      const after: Side = { title: "Your working draft", who: viewer.name, time: draft.updatedAt, text: draft.source };
-      view = sides("Your working draft against the site's version", "Your autosaved copy in Carrel, set against what the site holds now.", `${itemId}.md`, before, after, by);
+      const before: Side = {
+        title: "On the site",
+        who:
+          doc.status === "published"
+            ? "Published"
+            : doc.status === "scheduled"
+              ? "Scheduled"
+              : "Draft",
+        time: doc.updatedAt ?? undefined,
+        text: doc.source,
+      };
+      const after: Side = {
+        title: "Your working draft",
+        who: viewer.name,
+        time: draft.updatedAt,
+        text: draft.source,
+      };
+      view = sides(
+        "Your working draft against the site's version",
+        "Your autosaved copy in Carrel, set against what the site holds now.",
+        `${itemId}.md`,
+        before,
+        after,
+        by,
+      );
     }
   } else if (query.get("compare") === "ai") {
     const id = Number(query.get("ai"));
@@ -76,12 +122,24 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     } else {
       const ai = await readAiDraft(env.DB, project, viewer, itemId, id);
       const mine: Side = draft
-        ? { title: "Your working draft", who: viewer.name, time: draft.updatedAt, text: draft.source }
+        ? {
+            title: "Your working draft",
+            who: viewer.name,
+            time: draft.updatedAt,
+            text: draft.source,
+          }
         : { title: "On the site", time: doc?.updatedAt ?? undefined, text: doc?.source ?? "" };
-      const theirs: Side = { title: `AI draft from ${ai.client}`, who: ai.client, time: ai.createdAt, text: ai.source };
+      const theirs: Side = {
+        title: `AI draft from ${ai.client}`,
+        who: ai.client,
+        time: ai.createdAt,
+        text: ai.source,
+      };
       view = sides(
         `Your ${draft ? "draft" : noun} against the AI draft from ${ai.client}`,
-        draft ? "Your autosaved copy in Carrel, set against the AI draft saved beside it." : "You have no working draft, so this is the site's text against the AI draft saved beside it.",
+        draft
+          ? "Your autosaved copy in Carrel, set against the AI draft saved beside it."
+          : "You have no working draft, so this is the site's text against the AI draft saved beside it.",
         `${itemId}.md`,
         mine,
         theirs,
@@ -100,8 +158,22 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       const source = await readRevision(env, project, itemId, version);
       view =
         source === null
-          ? { kind: "problem", message: "The site could not open that revision's source. A site on an older version of the site API cannot." }
-          : { kind: "source", version, message: revision.message, author: revision.author, at: revision.at, source, current: at === 0, previous: list[at + 1]?.version ?? null, newest: at === 0 ? null : list[0]!.version };
+          ? {
+              kind: "problem",
+              message:
+                "The site could not open that revision's source. A site on an older version of the site API cannot.",
+            }
+          : {
+              kind: "source",
+              version,
+              message: revision.message,
+              author: revision.author,
+              at: revision.at,
+              source,
+              current: at === 0,
+              previous: list[at + 1]?.version ?? null,
+              newest: at === 0 ? null : list[0]!.version,
+            };
     }
   } else if (picks.length > 0) {
     const pair = orderPair(list, picks);
@@ -114,19 +186,42 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       const lead = `What changed on the site between the revision by ${pair.from.author} and the one by ${pair.to.author}.`;
       if (by === "line") {
         const patch = await revisionPatch(env, project, itemId, pair.from.version, pair.to.version);
-        view = patch === null ? { kind: "problem", message: "The site could not give the changes between those revisions." } : { kind: "compare", heading, lead, patch, before: null, after: null };
+        view =
+          patch === null
+            ? {
+                kind: "problem",
+                message: "The site could not give the changes between those revisions.",
+              }
+            : { kind: "compare", heading, lead, patch, before: null, after: null };
       } else {
-        const [before, after] = await Promise.all([readRevision(env, project, itemId, pair.from.version), readRevision(env, project, itemId, pair.to.version)]);
+        const [before, after] = await Promise.all([
+          readRevision(env, project, itemId, pair.from.version),
+          readRevision(env, project, itemId, pair.to.version),
+        ]);
         view =
           before === null || after === null
-            ? { kind: "problem", message: "The site could not open one of those revisions' source. A site on an older version of the site API cannot." }
+            ? {
+                kind: "problem",
+                message:
+                  "The site could not open one of those revisions' source. A site on an older version of the site API cannot.",
+              }
             : {
                 kind: "compare",
                 heading,
                 lead,
                 patch: null,
-                before: { title: "Earlier revision", who: pair.from.author, time: pair.from.at, text: before },
-                after: { title: "Later revision", who: pair.to.author, time: pair.to.at, text: after },
+                before: {
+                  title: "Earlier revision",
+                  who: pair.from.author,
+                  time: pair.from.at,
+                  text: before,
+                },
+                after: {
+                  title: "Later revision",
+                  who: pair.to.author,
+                  time: pair.to.at,
+                  text: after,
+                },
               };
       }
     }
@@ -142,7 +237,12 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     view,
     picked,
     // A save of text several people wrote in the post's room names them all.
-    revisions: list.map((r) => ({ version: r.version, at: r.at, author: withOthers(r.author, coauthors.get(r.version)), message: r.message })),
+    revisions: list.map((r) => ({
+      version: r.version,
+      at: r.at,
+      author: withOthers(r.author, coauthors.get(r.version)),
+      message: r.message,
+    })),
     siteError,
     againstSite: Boolean(draft && doc),
     aiDrafts: aiDrafts.map((d) => ({ id: d.id, client: d.client, createdAt: d.createdAt })),
@@ -152,8 +252,16 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 
 /** A live post's earlier text goes back live, which is a publish (the Owner's, or the Author's on their
  * own post); a draft's goes back as the site's draft. writeToSite holds the same rule. */
-const mayRestore = (db: D1Database, project: Parameters<typeof mayPublishItem>[1], viewer: Parameters<typeof mayPublishItem>[2], itemId: string, status: string) =>
-  status === "draft" ? Promise.resolve(can(project.role, "edit")) : mayPublishItem(db, project, viewer, itemId);
+const mayRestore = (
+  db: D1Database,
+  project: Parameters<typeof mayPublishItem>[1],
+  viewer: Parameters<typeof mayPublishItem>[2],
+  itemId: string,
+  status: string,
+) =>
+  status === "draft"
+    ? Promise.resolve(can(project.role, "edit"))
+    : mayPublishItem(db, project, viewer, itemId);
 
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
@@ -163,25 +271,46 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const version = String(form.get("version") ?? "");
   const doc = await readDoc(env, project, params.item);
   if (!doc || !version) throw new Response("Not found", { status: 404 });
-  if (!(await mayRestore(env.DB, project, viewer, params.item, doc.status))) throw new Response("Forbidden", { status: 403 });
+  if (!(await mayRestore(env.DB, project, viewer, params.item, doc.status)))
+    throw new Response("Forbidden", { status: 403 });
   const source = await readRevision(env, project, params.item, version);
-  if (source === null) return { ok: false as const, message: "The site could not open that revision's source." };
+  if (source === null)
+    return { ok: false as const, message: "The site could not open that revision's source." };
   const outcome = await writeToSite(
     env,
     project,
     viewer,
     params.item,
-    doc.status === "draft" ? { action: "save", source, expectedVersion: doc.version } : { action: "publish", source, expectedVersion: doc.version },
+    doc.status === "draft"
+      ? { action: "save", source, expectedVersion: doc.version }
+      : { action: "publish", source, expectedVersion: doc.version },
     undefined,
     { keepDraft: true },
   );
   return outcome.ok
-    ? { ok: true as const, message: doc.status === "draft" ? "Restored as the site's draft." : "Restored and published." }
+    ? {
+        ok: true as const,
+        message:
+          doc.status === "draft" ? "Restored as the site's draft." : "Restored and published.",
+      }
     : { ok: false as const, message: outcome.message };
 }
 
 export default function History({ loaderData, actionData }: Route.ComponentProps) {
-  const { project, itemId, title, noun, by, view, picked, revisions, siteError, aiDrafts, againstSite, canRestore } = loaderData;
+  const {
+    project,
+    itemId,
+    title,
+    noun,
+    by,
+    view,
+    picked,
+    revisions,
+    siteError,
+    aiDrafts,
+    againstSite,
+    canRestore,
+  } = loaderData;
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const historyPath = `${editor}/history`;
 
@@ -189,7 +318,11 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
     <div className="app-page">
       <PageHead
         renderLink={RouterLink}
-        crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: title || itemId, href: editor }, { label: "History" }]}
+        crumbs={[
+          { label: project.name, href: `/p/${project.slug}` },
+          { label: title || itemId, href: editor },
+          { label: "History" },
+        ]}
         title={`History of ${title || itemId}`}
         lead={`What the site remembers of this ${noun}, newest first. Looking here changes nothing.`}
         actions={
@@ -202,7 +335,13 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
       {siteError ? <Banner tone="warn">{siteError}</Banner> : null}
 
       {view.kind === "problem" ? <Alert tone="warn">{view.message}</Alert> : null}
-      {actionData ? actionData.ok ? <Banner tone="ok">{actionData.message}</Banner> : <Alert tone="crit">{actionData.message}</Alert> : null}
+      {actionData ? (
+        actionData.ok ? (
+          <Banner tone="ok">{actionData.message}</Banner>
+        ) : (
+          <Alert tone="crit">{actionData.message}</Alert>
+        )
+      ) : null}
 
       {view.kind === "source" ? (
         <SourcePanel
@@ -220,7 +359,17 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
         />
       ) : null}
 
-      {view.kind === "compare" ? <ComparePanel view={view} by={by} id="history" options={[{ value: "line", label: "By line" }, { value: "word", label: "By word" }]} /> : null}
+      {view.kind === "compare" ? (
+        <ComparePanel
+          view={view}
+          by={by}
+          id="history"
+          options={[
+            { value: "line", label: "By line" },
+            { value: "word", label: "By word" },
+          ]}
+        />
+      ) : null}
 
       {againstSite || aiDrafts.length > 0 ? (
         <Panel title="Your draft" src="Your autosaved copy in Carrel">
@@ -231,10 +380,17 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
       <Panel title="Revisions" count={revisions.length} src="Saves and publishes on the site">
         {revisions.length === 0 ? (
           <Empty kind="nothing-yet" title="No history to show">
-            {siteError ? "The site is not answering." : `The site has no saved revisions of this ${noun} yet.`}
+            {siteError
+              ? "The site is not answering."
+              : `The site has no saved revisions of this ${noun} yet.`}
           </Empty>
         ) : (
-          <RevisionPicker revisions={revisions} historyPath={historyPath} picked={picked} label={`Revisions of this ${noun}`} />
+          <RevisionPicker
+            revisions={revisions}
+            historyPath={historyPath}
+            picked={picked}
+            label={`Revisions of this ${noun}`}
+          />
         )}
       </Panel>
     </div>

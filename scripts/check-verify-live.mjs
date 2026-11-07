@@ -16,7 +16,11 @@ const healthy = () => ({
   metadata: { status: 200, body: "" },
   mcp: { status: 401, body: "" },
   unknown: { status: 404, body: "Not found." },
-  browser: { status: 302, location: "https://dustinedwards.cloudflareaccess.com/cdn-cgi/access/login/desk.dustinedwards.info" },
+  browser: {
+    status: 302,
+    location:
+      "https://dustinedwards.cloudflareaccess.com/cdn-cgi/access/login/desk.dustinedwards.info",
+  },
 });
 
 /** @type {ReturnType<typeof healthy>} */
@@ -27,7 +31,10 @@ async function serve(pick) {
   const server = createServer((req, res) => {
     req.resume();
     const a = pick(req);
-    res.writeHead(a.status, a.location ? { Location: a.location } : { "Content-Type": "application/json" });
+    res.writeHead(
+      a.status,
+      a.location ? { Location: a.location } : { "Content-Type": "application/json" },
+    );
     res.end(a.body ?? "");
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(undefined)));
@@ -38,7 +45,11 @@ async function serve(pick) {
 
 const mcp = await serve((req) => {
   if (req.url === "/health") return answers.health;
-  if (req.url === "/.well-known/oauth-authorization-server") return { ...answers.metadata, body: answers.metadata.body || JSON.stringify({ issuer: mcp.origin }) };
+  if (req.url === "/.well-known/oauth-authorization-server")
+    return {
+      ...answers.metadata,
+      body: answers.metadata.body || JSON.stringify({ issuer: mcp.origin }),
+    };
   if (req.url === "/mcp") return answers.mcp;
   return answers.unknown;
 });
@@ -48,7 +59,14 @@ const browser = await serve(() => answers.browser);
 function run(env) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [script], {
-      env: { PATH: process.env.PATH, VERIFY_RETRY_MS: "0", CARREL_MCP_ORIGIN: mcp.origin, CARREL_ORIGIN: browser.origin, EXPECT_SHA: SHA, ...env },
+      env: {
+        PATH: process.env.PATH,
+        VERIFY_RETRY_MS: "0",
+        CARREL_MCP_ORIGIN: mcp.origin,
+        CARREL_ORIGIN: browser.origin,
+        EXPECT_SHA: SHA,
+        ...env,
+      },
     });
     let out = "";
     child.stdout.on("data", (d) => (out += d));
@@ -69,23 +87,71 @@ async function expectCase(name, plant, want, env = {}) {
 }
 
 await expectCase("a healthy Carrel passes", {}, 0);
-await expectCase("an abbreviated sha on /health passes", { health: { status: 200, body: JSON.stringify({ sha: SHA.slice(0, 8) }) } }, 0);
-await expectCase("a 401 from Access on the browser host passes", { browser: { status: 401, location: "" } }, 0);
-await expectCase("PLANT /health names another commit: refused", { health: { status: 200, body: JSON.stringify({ sha: "376eecb3bc27c6d744de35453cfad7a08bdc1d5f" }) } }, 1);
-await expectCase("PLANT /health says unknown: refused", { health: { status: 200, body: JSON.stringify({ sha: "unknown" }) } }, 1);
+await expectCase(
+  "an abbreviated sha on /health passes",
+  { health: { status: 200, body: JSON.stringify({ sha: SHA.slice(0, 8) }) } },
+  0,
+);
+await expectCase(
+  "a 401 from Access on the browser host passes",
+  { browser: { status: 401, location: "" } },
+  0,
+);
+await expectCase(
+  "PLANT /health names another commit: refused",
+  {
+    health: {
+      status: 200,
+      body: JSON.stringify({ sha: "376eecb3bc27c6d744de35453cfad7a08bdc1d5f" }),
+    },
+  },
+  1,
+);
+await expectCase(
+  "PLANT /health says unknown: refused",
+  { health: { status: 200, body: JSON.stringify({ sha: "unknown" }) } },
+  1,
+);
 await expectCase("PLANT /health is a 500: refused", { health: { status: 500, body: "" } }, 1);
-await expectCase("PLANT the OAuth metadata names another issuer: refused", { metadata: { status: 200, body: JSON.stringify({ issuer: "https://elsewhere.test" }) } }, 1);
-await expectCase("PLANT the OAuth metadata is a 500: refused", { metadata: { status: 500, body: "x" } }, 1);
-await expectCase("PLANT /mcp answers without a token: refused", { mcp: { status: 200, body: "{}" } }, 1);
-await expectCase("PLANT the AI door serves an unknown path: refused", { unknown: { status: 200, body: "<html>" } }, 1);
-await expectCase("PLANT the browser host serves Carrel with no sign-in: refused", { browser: { status: 200, location: "" } }, 1);
-await expectCase("PLANT the browser host redirects somewhere other than Access: refused", { browser: { status: 302, location: "https://evil.test/login" } }, 1);
+await expectCase(
+  "PLANT the OAuth metadata names another issuer: refused",
+  { metadata: { status: 200, body: JSON.stringify({ issuer: "https://elsewhere.test" }) } },
+  1,
+);
+await expectCase(
+  "PLANT the OAuth metadata is a 500: refused",
+  { metadata: { status: 500, body: "x" } },
+  1,
+);
+await expectCase(
+  "PLANT /mcp answers without a token: refused",
+  { mcp: { status: 200, body: "{}" } },
+  1,
+);
+await expectCase(
+  "PLANT the AI door serves an unknown path: refused",
+  { unknown: { status: 200, body: "<html>" } },
+  1,
+);
+await expectCase(
+  "PLANT the browser host serves Carrel with no sign-in: refused",
+  { browser: { status: 200, location: "" } },
+  1,
+);
+await expectCase(
+  "PLANT the browser host redirects somewhere other than Access: refused",
+  { browser: { status: 302, location: "https://evil.test/login" } },
+  1,
+);
 await expectCase("no EXPECT_SHA: could not run, not a refusal", {}, 3, { EXPECT_SHA: "" });
 
 mcp.server.close();
 browser.server.close();
 // Nothing listening: every check goes unanswered, which is exit 3, never a refusal. Slow (retries), so last.
-await expectCase("nothing answers: could not run (exit 3)", {}, 3, { CARREL_MCP_ORIGIN: "http://127.0.0.1:9", CARREL_ORIGIN: "http://127.0.0.1:9" });
+await expectCase("nothing answers: could not run (exit 3)", {}, 3, {
+  CARREL_MCP_ORIGIN: "http://127.0.0.1:9",
+  CARREL_ORIGIN: "http://127.0.0.1:9",
+});
 
 if (failures.length) {
   console.error(`check:verify-live: ${failures.length} failed.\n${failures.join("\n")}`);

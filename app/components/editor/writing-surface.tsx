@@ -35,7 +35,11 @@ function insertIntoMarkdown(root: HTMLElement | null, text: string) {
   const { from, to } = view.state.selection.main;
   const line = view.state.doc.lineAt(from);
   const prefix = line.from === from && line.text.trim() === "" ? "" : "\n\n";
-  view.dispatch({ changes: { from, to, insert: `${prefix}${text}` }, selection: { anchor: from + prefix.length + text.length }, scrollIntoView: true });
+  view.dispatch({
+    changes: { from, to, insert: `${prefix}${text}` },
+    selection: { anchor: from + prefix.length + text.length },
+    scrollIntoView: true,
+  });
   view.focus();
 }
 
@@ -93,7 +97,10 @@ export function WritingSurface({
         return { url: uploaded.src };
       }
     : undefined;
-  const imageMarkdown = images ? ({ url, alt }: { url: string; alt: string }) => images.figure(sites.current.get(url) ?? url, alt) : undefined;
+  const imageMarkdown = images
+    ? ({ url, alt }: { url: string; alt: string }) =>
+        images.figure(sites.current.get(url) ?? url, alt)
+    : undefined;
 
   return (
     <div className="app-writing" ref={root} data-mode={mode}>
@@ -131,7 +138,13 @@ export function WritingSurface({
       </div>
       {mode === "formatted" && room && !room.rich ? (
         // The room's copy has not arrived yet: the text as the server read it, not yet editable.
-        <textarea className="cap-input cap-md-source" aria-label={`${label}, loading`} value={value} readOnly rows={12} />
+        <textarea
+          className="cap-input cap-md-source"
+          aria-label={`${label}, loading`}
+          value={value}
+          readOnly
+          rows={12}
+        />
       ) : mode === "formatted" ? (
         <RichEditor
           key={room?.rich?.key}
@@ -154,20 +167,24 @@ export function WritingSurface({
         />
       ) : (
         <>
-        {room?.markdownLocked ? <Alert tone="info">{room.markdownLocked}</Alert> : null}
-        <MarkdownEditor
-          label={<span className="cap-sr-only">{label}</span>}
-          ariaLabel={readOnly || room?.markdownLocked ? `${label}, markdown, read only` : `${label}, markdown`}
-          value={value}
-          onChange={onChange}
-          readOnly={readOnly || Boolean(room?.markdownLocked)}
-          placeholder="Write in markdown."
-          scaffolds={SCAFFOLDS}
-          linkTargets={linkTargets}
-          accept={images?.accept}
-          onUpload={onUpload}
-          imageMarkdown={imageMarkdown}
-        />
+          {room?.markdownLocked ? <Alert tone="info">{room.markdownLocked}</Alert> : null}
+          <MarkdownEditor
+            label={<span className="cap-sr-only">{label}</span>}
+            ariaLabel={
+              readOnly || room?.markdownLocked
+                ? `${label}, markdown, read only`
+                : `${label}, markdown`
+            }
+            value={value}
+            onChange={onChange}
+            readOnly={readOnly || Boolean(room?.markdownLocked)}
+            placeholder="Write in markdown."
+            scaffolds={SCAFFOLDS}
+            linkTargets={linkTargets}
+            accept={images?.accept}
+            onUpload={onUpload}
+            imageMarkdown={imageMarkdown}
+          />
         </>
       )}
     </div>

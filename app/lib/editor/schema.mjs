@@ -21,7 +21,12 @@ import { BLOCK_TYPES } from "./markdown.mjs";
 const MdOrigin = Extension.create({
   name: "mdOrigin",
   addGlobalAttributes() {
-    return [{ types: BLOCK_TYPES, attributes: { md: { default: null, rendered: false, keepOnSplit: false } } }];
+    return [
+      {
+        types: BLOCK_TYPES,
+        attributes: { md: { default: null, rendered: false, keepOnSplit: false } },
+      },
+    ];
   },
 });
 
@@ -53,7 +58,15 @@ function suggestionMark(name, tag, extra = {}) {
       return [{ tag: `${tag}[data-suggestion]` }];
     },
     renderHTML({ mark }) {
-      return [tag, { "data-suggestion": name, "data-by": mark.attrs.by ?? "", "data-round": mark.attrs.round ?? "" }, 0];
+      return [
+        tag,
+        {
+          "data-suggestion": name,
+          "data-by": mark.attrs.by ?? "",
+          "data-round": mark.attrs.round ?? "",
+        },
+        0,
+      ];
     },
   });
 }
@@ -71,10 +84,17 @@ const Modification = suggestionMark("modification", "span", {
 const Suggestable = Extension.create({
   name: "suggestable",
   addGlobalAttributes() {
-    return [{ types: SUGGESTION_BLOCKS, attributes: { smark: { default: null, rendered: false, keepOnSplit: false } } }];
+    return [
+      {
+        types: SUGGESTION_BLOCKS,
+        attributes: { smark: { default: null, rendered: false, keepOnSplit: false } },
+      },
+    ];
   },
   extendNodeSchema(extension) {
-    return ["doc", "bulletList", "orderedList", "listItem", "blockquote"].includes(extension.name) ? { marks: SUGGESTION_MARKS } : {};
+    return ["doc", "bulletList", "orderedList", "listItem", "blockquote"].includes(extension.name)
+      ? { marks: SUGGESTION_MARKS }
+      : {};
   },
 });
 
@@ -85,7 +105,10 @@ export const SourceBlock = Node.create({
   selectable: true,
   draggable: false,
   addAttributes() {
-    return { text: { default: "", rendered: false }, kind: { default: "Markdown", rendered: false } };
+    return {
+      text: { default: "", rendered: false },
+      kind: { default: "Markdown", rendered: false },
+    };
   },
   parseHTML() {
     return [{ tag: "pre[data-source-block]", getAttrs: (el) => ({ text: el.textContent ?? "" }) }];
@@ -105,7 +128,9 @@ export const SourceInline = Node.create({
     return { text: { default: "", rendered: false } };
   },
   parseHTML() {
-    return [{ tag: "code[data-source-inline]", getAttrs: (el) => ({ text: el.textContent ?? "" }) }];
+    return [
+      { tag: "code[data-source-inline]", getAttrs: (el) => ({ text: el.textContent ?? "" }) },
+    ];
   },
   renderHTML({ node }) {
     return ["code", { "data-source-inline": "" }, node.attrs.text];
@@ -133,7 +158,12 @@ export function baseExtensions(options = {}) {
       trailingNode: false,
       listItem: false,
       listKeymap: false,
-      link: { openOnClick: false, autolink: false, linkOnPaste: false, HTMLAttributes: { target: null, rel: null } },
+      link: {
+        openOnClick: false,
+        autolink: false,
+        linkOnPaste: false,
+        HTMLAttributes: { target: null, rel: null },
+      },
     }),
     ListItemNoTab,
     MdOrigin,

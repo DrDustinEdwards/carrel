@@ -49,10 +49,13 @@ const requestHandler = createRequestHandler(
  * and expiry as the public page's, www/build.mjs; renew both together). Its CSP sink is cspReport, which answers CORS for
  * Desk's pages, so the wrapper's own is never reached.
  */
-const door = withMcpHeaders<Env>((request, env, ctx) => aiDoor(request, env, ctx as ExecutionContext), {
-  site: carrelMcp,
-  securityTxt: { contact: "security@dustinedwards.info", expires: "2027-10-26T00:00:00Z" },
-});
+const door = withMcpHeaders<Env>(
+  (request, env, ctx) => aiDoor(request, env, ctx as ExecutionContext),
+  {
+    site: carrelMcp,
+    securityTxt: { contact: "security@dustinedwards.info", expires: "2027-10-26T00:00:00Z" },
+  },
+);
 
 /**
  * Two doors, told apart by the hostname alone. The AI door (carrel-mcp.dustinedwards.info) speaks OAuth and MCP and
@@ -65,7 +68,8 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
     if (isCspReport(request)) return cspReport(request, env, carrelOrigin(env));
     const response = await door(request, env, ctx);
     // The door's set says nofollow on every response; /health keeps site-runtime's own noindex, as every family site's does.
-    if (new URL(request.url).pathname === "/health") response.headers.set("X-Robots-Tag", "noindex");
+    if (new URL(request.url).pathname === "/health")
+      response.headers.set("X-Robots-Tag", "noindex");
     return response;
   }
   const nonce = newNonce();
@@ -77,7 +81,8 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
     return deskHeaders(list, nonce, env);
   }
   // The chart demo (workers/demo.ts): one sample page, GET only, before the door.
-  if (isDemo(request)) return deskHeaders(demoHeaders(await demoRender(env, ctx, nonce)(request)), nonce, env);
+  if (isDemo(request))
+    return deskHeaders(demoHeaders(await demoRender(env, ctx, nonce)(request)), nonce, env);
   const response = await gate(request, env, deskRender(env, ctx, nonce));
   return deskHeaders(response, nonce, env);
 }
@@ -104,7 +109,11 @@ function deskRender(env: Env, ctx: ExecutionContext, nonce: string): Render {
   return async (req, viewer) => {
     // A live editor's WebSocket into its file's room (rooms.server.ts): the same sign-in and role as the page.
     if (new URL(req.url).pathname.startsWith("/collab/")) {
-      return connectRoom(req, env, viewer, (kind, slug) => (kind === "p" ? requireSiteProject(env.DB, viewer, slug, "read") : requireBookProject(env.DB, viewer, slug, "read"))).catch((error: unknown) => {
+      return connectRoom(req, env, viewer, (kind, slug) =>
+        kind === "p"
+          ? requireSiteProject(env.DB, viewer, slug, "read")
+          : requireBookProject(env.DB, viewer, slug, "read"),
+      ).catch((error: unknown) => {
         if (error instanceof Response) return error;
         throw error;
       });
@@ -119,7 +128,10 @@ function deskRender(env: Env, ctx: ExecutionContext, nonce: string): Render {
 }
 
 function deskHeaders(response: Response, nonce: string, env: Env): Response {
-  return withSecurityHeaders(response, nonce, { imageOrigins: siteOrigins(env), reportOrigin: mcpOrigin(env) });
+  return withSecurityHeaders(response, nonce, {
+    imageOrigins: siteOrigins(env),
+    reportOrigin: mcpOrigin(env),
+  });
 }
 
 /** The browser door after Access, for the signed-in crawl: the same admission, page and headers a signed-in browser gets. */
@@ -149,7 +161,8 @@ const WORK: Record<JobName, (env: Env, ctx: ExecutionContext) => Promise<unknown
   "prune-404": (env) => pruneNotFound(env.DB),
   "signed-in-crawl": (env, ctx) => runSignedInCrawl(env, deskAs(env, ctx)),
   "tool-call-log-export": (env) => {
-    if (!env.AUDIT_BUCKET) throw new Error("AUDIT_BUCKET is not bound; the tool-call log is not copied");
+    if (!env.AUDIT_BUCKET)
+      throw new Error("AUDIT_BUCKET is not bound; the tool-call log is not copied");
     return exportAuditLog(env, env.AUDIT_BUCKET);
   },
 };
@@ -159,20 +172,34 @@ const WORK: Record<JobName, (env: Env, ctx: ExecutionContext) => Promise<unknown
  * recorded in cron_runs for /health's cron check (site-runtime's runJobs). The nightly trigger runs the dump, then the
  * 404 prune. A trigger with no list is a config and code mismatch: logged, and the invocation fails.
  */
-async function scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+async function scheduled(
+  controller: ScheduledController,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<void> {
   const jobs = CRON_JOBS[controller.cron];
   if (!jobs) {
     logEvent("cron_unknown_trigger", { cron: controller.cron }, { level: "error" });
     throw new Error(`No jobs for the cron trigger ${controller.cron}.`);
   }
-  await runJobs(env.DB, jobs.map((job) => ({ ...job, run: () => WORK[job.name](env, ctx) })));
+  await runJobs(
+    env.DB,
+    jobs.map((job) => ({ ...job, run: () => WORK[job.name](env, ctx) })),
+  );
 }
 
 // An admin idle for an hour is signed out of Access (site-runtime ./access). Every request writes one `request` log line
 // with its status and the deployed commit (site-runtime's withRequestLog).
 export default {
-  fetch: withRequestLog((request: Request, env: Env, ctx: ExecutionContext) => withAdminIdle(request, () => fetchCounted(request, env, ctx), { prefixes: ["/"], secret: env.ADMIN_IDLE_SECRET }), {
-    sha: (env) => deployedSha(env),
-  }),
+  fetch: withRequestLog(
+    (request: Request, env: Env, ctx: ExecutionContext) =>
+      withAdminIdle(request, () => fetchCounted(request, env, ctx), {
+        prefixes: ["/"],
+        secret: env.ADMIN_IDLE_SECRET,
+      }),
+    {
+      sha: (env) => deployedSha(env),
+    },
+  ),
   scheduled,
 } satisfies ExportedHandler<Env>;

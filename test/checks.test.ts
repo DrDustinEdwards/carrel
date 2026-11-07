@@ -27,13 +27,25 @@ const BIBLE: Bible = {
     { name: "June Harlan", aliases: ["Mrs. Harlan"], born: "1931-05-02", died: "2019-08-30" },
     { name: "Nell", aliases: [], born: "2031-01-01", died: "" },
   ],
-  places: [{ name: "Harlan place", aliases: ["the farm"] }, { name: "Paluxy crossing", aliases: [] }],
-  rules: [{ name: "No phones past the ridge", forbidden: ["\\bphone rang\\b", "text(?:ed)? (?:her|him|me)"] }],
+  places: [
+    { name: "Harlan place", aliases: ["the farm"] },
+    { name: "Paluxy crossing", aliases: [] },
+  ],
+  rules: [
+    {
+      name: "No phones past the ridge",
+      forbidden: ["\\bphone rang\\b", "text(?:ed)? (?:her|him|me)"],
+    },
+  ],
 };
 
-function scene(header: Partial<Record<keyof SceneHeader, string | string[] | boolean>>, body = "Plain prose.\n"): string {
+function scene(
+  header: Partial<Record<keyof SceneHeader, string | string[] | boolean>>,
+  body = "Plain prose.\n",
+): string {
   const lines = ["---"];
-  for (const [k, v] of Object.entries(header)) lines.push(`${k}: ${Array.isArray(v) ? `[${v.join(", ")}]` : String(v)}`);
+  for (const [k, v] of Object.entries(header))
+    lines.push(`${k}: ${Array.isArray(v) ? `[${v.join(", ")}]` : String(v)}`);
   lines.push("---", "", body);
   return lines.join("\n");
 }
@@ -44,7 +56,15 @@ function headerOf(path: string, source: string): SceneHeader {
   return meta.header;
 }
 
-const FULL = { pov: "Wade", date: "2024-04-12", location: "Harlan place", characters: ["Wade"], goal: "g", conflict: "c", outcome: "o" };
+const FULL = {
+  pov: "Wade",
+  date: "2024-04-12",
+  location: "Harlan place",
+  characters: ["Wade"],
+  goal: "g",
+  conflict: "c",
+  outcome: "o",
+};
 
 describe("PLANT: continuity", () => {
   const path = "chapters/01-arrival/01-the-gate.md";
@@ -52,14 +72,18 @@ describe("PLANT: continuity", () => {
 
   it("flags a character not in the bible", () => {
     const found = run(scene({ ...FULL, characters: ["Wade", "Tobias"] }));
-    expect(found.map((f) => f.message)).toEqual(["Tobias is in this scene but not in the bible (bible/characters/)."]);
+    expect(found.map((f) => f.message)).toEqual([
+      "Tobias is in this scene but not in the bible (bible/characters/).",
+    ]);
     expect(found[0]!.line).toBe(5);
   });
 
   it("flags a dead character present, found by alias", () => {
     const found = run(scene({ ...FULL, characters: ["Wade", "Mrs. Harlan"] }));
     expect(found).toHaveLength(1);
-    expect(found[0]!.message).toBe("June Harlan died 2019-08-30, before this scene (2024-04-12), and is present in it.");
+    expect(found[0]!.message).toBe(
+      "June Harlan died 2019-08-30, before this scene (2024-04-12), and is present in it.",
+    );
   });
 
   it("flags a character not born yet, and a location not in the bible", () => {
@@ -70,15 +94,33 @@ describe("PLANT: continuity", () => {
   });
 
   it("CLEAN TWIN: everyone known and alive, the place known by alias: nothing", () => {
-    expect(run(scene({ ...FULL, characters: ["Wade", "Mrs. Harlan"], date: "2012-06-01", location: "the farm" }))).toEqual([]);
+    expect(
+      run(
+        scene({
+          ...FULL,
+          characters: ["Wade", "Mrs. Harlan"],
+          date: "2012-06-01",
+          location: "the farm",
+        }),
+      ),
+    ).toEqual([]);
   });
 });
 
 describe("PLANT: timeline", () => {
   const scenes = [
-    { path: "chapters/01-arrival/01-the-gate.md", header: headerOf("chapters/01-a/01-b.md", scene({ ...FULL, date: "2024-04-12" })) },
-    { path: "chapters/01-arrival/02-supper.md", header: headerOf("chapters/01-a/01-b.md", scene({ ...FULL, date: "2024-04-12 19:00" })) },
-    { path: "chapters/02-letters/01-morning.md", header: headerOf("chapters/01-a/01-b.md", scene({ ...FULL, date: "2024-04-13" })) },
+    {
+      path: "chapters/01-arrival/01-the-gate.md",
+      header: headerOf("chapters/01-a/01-b.md", scene({ ...FULL, date: "2024-04-12" })),
+    },
+    {
+      path: "chapters/01-arrival/02-supper.md",
+      header: headerOf("chapters/01-a/01-b.md", scene({ ...FULL, date: "2024-04-12 19:00" })),
+    },
+    {
+      path: "chapters/02-letters/01-morning.md",
+      header: headerOf("chapters/01-a/01-b.md", scene({ ...FULL, date: "2024-04-13" })),
+    },
   ].map((s) => ({ ...s, header: { ...s.header } }));
   const path = "chapters/02-letters/02-the-letter.md";
 
@@ -97,14 +139,22 @@ describe("PLANT: timeline", () => {
   });
 
   it("CLEAN TWIN: a scene in order is not flagged, and a flashback before it does not move the clock", () => {
-    const withFlashback = [...scenes, { path: "chapters/02-letters/02-summer-1990.md", header: { ...scenes[0]!.header, date: "1990-07-01", flashback: true } }];
+    const withFlashback = [
+      ...scenes,
+      {
+        path: "chapters/02-letters/02-summer-1990.md",
+        header: { ...scenes[0]!.header, date: "1990-07-01", flashback: true },
+      },
+    ];
     const next = "chapters/02-letters/03-noon.md";
     const source = scene({ ...FULL, date: "2024-04-13 12:00" });
     expect(checkTimeline(next, source, headerOf(next, source), withFlashback)).toEqual([]);
   });
 
   it("orders chapter 100 after chapter 99", () => {
-    const late = [{ path: "chapters/99-late/01-a.md", header: { ...scenes[0]!.header, date: "2030-01-01" } }];
+    const late = [
+      { path: "chapters/99-late/01-a.md", header: { ...scenes[0]!.header, date: "2030-01-01" } },
+    ];
     const p = "chapters/100-later/01-b.md";
     const source = scene({ ...FULL, date: "2029-01-01" });
     expect(checkTimeline(p, source, headerOf(p, source), late)).toHaveLength(1);
@@ -126,17 +176,33 @@ describe("PLANT: world rules", () => {
     const found = checkWorldRules(path, source, BIBLE.rules);
     expect(found).toHaveLength(1);
     expect(found[0]).toMatchObject({ check: "world-rules", line: 13, excerpt: "phone rang" });
-    expect(found[0]!.message).toBe('Breaks the rule "No phones past the ridge" (forbidden: \\bphone rang\\b).');
+    expect(found[0]!.message).toBe(
+      'Breaks the rule "No phones past the ridge" (forbidden: \\bphone rang\\b).',
+    );
   });
 
   it("CLEAN TWIN: prose that keeps the rule is not flagged", () => {
-    expect(checkWorldRules(path, scene(FULL, "He had no signal, and the phone stayed dark.\n"), BIBLE.rules)).toEqual([]);
+    expect(
+      checkWorldRules(
+        path,
+        scene(FULL, "He had no signal, and the phone stayed dark.\n"),
+        BIBLE.rules,
+      ),
+    ).toEqual([]);
   });
 
   it("flags a rule whose pattern cannot compile, on the rule's own file", () => {
-    const found = checkRuleFile("bible/rules/phones.md", "---\nname: Phones\nforbidden: [\"(unclosed\"]\n---\n", { name: "Phones", forbidden: ["(unclosed"] });
+    const found = checkRuleFile(
+      "bible/rules/phones.md",
+      '---\nname: Phones\nforbidden: ["(unclosed"]\n---\n',
+      { name: "Phones", forbidden: ["(unclosed"] },
+    );
     expect(found).toHaveLength(1);
-    expect(found[0]).toMatchObject({ path: "bible/rules/phones.md", line: 3, excerpt: "(unclosed" });
+    expect(found[0]).toMatchObject({
+      path: "bible/rules/phones.md",
+      line: 3,
+      excerpt: "(unclosed",
+    });
   });
 });
 
@@ -148,15 +214,21 @@ describe("PLANT: the voice scan", () => {
   const run = (body: string, own = examples) => checkVoice(path, scene(FULL, body), own);
 
   it("flags a model's filler and a model's word Dustin's passages never use, on the file's own line", () => {
-    expect(run("She stood a while.\nGreat question, the gate was shut.\n")).toMatchObject([{ check: "voice", line: 12, excerpt: "Great question" }]);
-    expect(run("The masterpiece of the hills.\n")).toMatchObject([{ check: "voice", line: 11, excerpt: "masterpiece" }]);
+    expect(run("She stood a while.\nGreat question, the gate was shut.\n")).toMatchObject([
+      { check: "voice", line: 12, excerpt: "Great question" },
+    ]);
+    expect(run("The masterpiece of the hills.\n")).toMatchObject([
+      { check: "voice", line: 11, excerpt: "masterpiece" },
+    ]);
   });
 
   it("flags another author's long sentences among Dustin's", () => {
     const found = run(PLANT);
     expect(found.length).toBeGreaterThan(0);
     expect(found.every((f) => f.check === "voice")).toBe(true);
-    expect(found.some((f) => /The long sentences in the excerpts are about 18/.test(f.message))).toBe(true);
+    expect(
+      found.some((f) => /The long sentences in the excerpts are about 18/.test(f.message)),
+    ).toBe(true);
   });
 
   it("CLEAN TWIN: more of Dustin's register, not in the passages, is not flagged", () => {
@@ -164,9 +236,14 @@ describe("PLANT: the voice scan", () => {
   });
 
   it("a word Dustin uses is his; a scene is never its own example", () => {
-    const masterpiece = { path: "chapters/01-arrival/02-supper.md", text: "Mother's masterpiece hung in the hall." };
+    const masterpiece = {
+      path: "chapters/01-arrival/02-supper.md",
+      text: "Mother's masterpiece hung in the hall.",
+    };
     expect(run("The masterpiece of the hills.\n", [...examples, masterpiece])).toEqual([]);
-    expect(run("The masterpiece of the hills.\n", [...examples, { ...masterpiece, path }])).toHaveLength(1);
+    expect(
+      run("The masterpiece of the hills.\n", [...examples, { ...masterpiece, path }]),
+    ).toHaveLength(1);
   });
 });
 
@@ -174,28 +251,63 @@ describe("the header and checkFile", () => {
   const context: BookContext = { bible: BIBLE, scenes: [], examples: [] };
 
   it("PLANT: a scene with no header is flagged, and so is a missing field", () => {
-    expect(checkFile("chapters/01-a/01-b.md", "Just prose.\n", context).map((f) => f.check)).toContain("header");
-    const found = checkFile("chapters/01-a/01-b.md", scene({ ...FULL, location: "", outcome: "" }), context);
-    expect(found.map((f) => f.message)).toEqual(["The header has no location.", "The beats have no outcome yet."]);
+    expect(
+      checkFile("chapters/01-a/01-b.md", "Just prose.\n", context).map((f) => f.check),
+    ).toContain("header");
+    const found = checkFile(
+      "chapters/01-a/01-b.md",
+      scene({ ...FULL, location: "", outcome: "" }),
+      context,
+    );
+    expect(found.map((f) => f.message)).toEqual([
+      "The header has no location.",
+      "The beats have no outcome yet.",
+    ]);
   });
-
 });
 
 // The chart check (E4) and the drafted finding (E5) run Prelum's own chart code on the blocks Carrel
 // finds and writes; these hold Carrel's side of it.
-const CSV = 'year,Visits,Readers\n2024,1204,300\n2025,1530,410\n2026,987,350';
+const CSV = "year,Visits,Readers\n2024,1204,300\n2025,1530,410\n2026,987,350";
 
 describe("the chart check", () => {
   it("PLANT: flags a chart with no title at its line, and its titled twin is clean", () => {
-    const fields = { type: "bar", x: "year", y: ["Visits"], alt: 'Visits peaked in 2025 at 1,530 "all told".', caption: "", csv: CSV } as const;
-    const body = ["Intro.", "", "```md", ":::chart{type=bar}", "```", "", chartBlock({ ...fields, title: "" })].join("\n");
+    const fields = {
+      type: "bar",
+      x: "year",
+      y: ["Visits"],
+      alt: 'Visits peaked in 2025 at 1,530 "all told".',
+      caption: "",
+      csv: CSV,
+    } as const;
+    const body = [
+      "Intro.",
+      "",
+      "```md",
+      ":::chart{type=bar}",
+      "```",
+      "",
+      chartBlock({ ...fields, title: "" }),
+    ].join("\n");
     const findings = checkCharts(body);
-    expect(findings.filter((f) => f.strict)).toEqual([{ line: 7, message: expect.stringMatching(/no title/), strict: true }]);
-    expect(checkCharts(chartBlock({ ...fields, title: "Visits per year" })).filter((f) => f.strict)).toEqual([]);
+    expect(findings.filter((f) => f.strict)).toEqual([
+      { line: 7, message: expect.stringMatching(/no title/), strict: true },
+    ]);
+    expect(
+      checkCharts(chartBlock({ ...fields, title: "Visits per year" })).filter((f) => f.strict),
+    ).toEqual([]);
   });
 
   it("drafts a finding from the data for Dustin to take or leave", () => {
-    const block = chartBlock({ type: "line", x: "year", y: ["Visits", "Readers"], title: "Visits and readers", alt: "A chart.", caption: "", csv: CSV });
+    const block = chartBlock({
+      type: "line",
+      x: "year",
+      y: ["Visits", "Readers"],
+      title: "Visits and readers",
+      alt: "A chart.",
+      caption: "",
+      csv: CSV,
+    });
     expect(suggestFinding(block)).toMatch(/^Visits .*2024.*2026.*\.$/);
   });
 });

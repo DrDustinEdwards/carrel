@@ -20,15 +20,32 @@ export type FrameData = {
 function Icon({ d, stroke }: { d: string; stroke?: boolean }) {
   return (
     <svg className="cap-admin-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <path d={d} fill={stroke ? "none" : "currentColor"} stroke={stroke ? "currentColor" : "none"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d={d}
+        fill={stroke ? "none" : "currentColor"}
+        stroke={stroke ? "currentColor" : "none"}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 const ICONS = {
   home: <Icon d="M2.5 7.5 8 3l5.5 4.5V13h-3.5V9.5H6V13H2.5z" stroke />,
-  site: <Icon d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM2 8h12M8 2c2 1.8 2 10.2 0 12M8 2c-2 1.8-2 10.2 0 12" stroke />,
-  book: <Icon d="M2.5 3.5c2-.8 4-.6 5.5.6 1.5-1.2 3.5-1.4 5.5-.6v9c-2-.8-4-.6-5.5.6-1.5-1.2-3.5-1.4-5.5-.6z M8 4.1v9" stroke />,
+  site: (
+    <Icon
+      d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM2 8h12M8 2c2 1.8 2 10.2 0 12M8 2c-2 1.8-2 10.2 0 12"
+      stroke
+    />
+  ),
+  book: (
+    <Icon
+      d="M2.5 3.5c2-.8 4-.6 5.5.6 1.5-1.2 3.5-1.4 5.5-.6v9c-2-.8-4-.6-5.5.6-1.5-1.2-3.5-1.4-5.5-.6z M8 4.1v9"
+      stroke
+    />
+  ),
   manuscripts: <Icon d="M4 2.5h5l3 3v8H4zM9 2.5v3h3M6 8.5h4M6 11h4" stroke />,
   social: <Icon d="M2.5 9.5V6.5l8-3.5v10l-8-3.5zM5 10.5l.8 3h2" stroke />,
 };
@@ -57,7 +74,13 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
 
   const { nav, tabs } = useMemo(() => {
     const at = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
-    const home: AdminEntry = { id: "home", label: "Home", href: "/", icon: ICONS.home, current: pathname === "/" };
+    const home: AdminEntry = {
+      id: "home",
+      label: "Home",
+      href: "/",
+      icon: ICONS.home,
+      current: pathname === "/",
+    };
     const projects = (data?.projects ?? [])
       .filter((p) => p.kind !== null)
       .map<AdminEntry>((p) => ({
@@ -73,8 +96,22 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
     const books = projects.filter((e) => e.group === "Books");
     const library: AdminEntry[] = owner
       ? [
-          { id: "manuscripts", label: "Manuscripts", href: "/manuscripts", icon: ICONS.manuscripts, current: at("/manuscripts"), group: "Owner" },
-          { id: "social", label: "Social", href: "/social", icon: ICONS.social, current: at("/social"), group: "Owner" },
+          {
+            id: "manuscripts",
+            label: "Manuscripts",
+            href: "/manuscripts",
+            icon: ICONS.manuscripts,
+            current: at("/manuscripts"),
+            group: "Owner",
+          },
+          {
+            id: "social",
+            label: "Social",
+            href: "/social",
+            icon: ICONS.social,
+            current: at("/social"),
+            group: "Owner",
+          },
         ]
       : [];
     return {
@@ -96,7 +133,9 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
         name: data?.name ?? "Signed out",
         initials: initialsOf(data?.name ?? ""),
         role: owner ? "Owner" : undefined,
-        appLinks: owner ? [{ label: "Settings", href: "/people", current: pathname === "/people" }] : undefined,
+        appLinks: owner
+          ? [{ label: "Settings", href: "/people", current: pathname === "/people" }]
+          : undefined,
         onSignOut: data ? () => location.assign("/cdn-cgi/access/logout") : undefined,
       }}
       prefKey="carrel-rail"

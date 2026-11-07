@@ -34,54 +34,109 @@ beforeEach(async () => {
 
 const writes = () => site.requests.filter((r) => !r.startsWith("GET"));
 const record = () =>
-  testEnv.DB.prepare("SELECT item_id AS itemId, action, version_before AS before, version_after AS after, renamed_from AS renamedFrom FROM changes ORDER BY created_at, rowid").all().then((r) => r.results);
+  testEnv.DB.prepare(
+    "SELECT item_id AS itemId, action, version_before AS before, version_after AS after, renamed_from AS renamedFrom FROM changes ORDER BY created_at, rowid",
+  )
+    .all()
+    .then((r) => r.results);
 
 /** A draft the Author wrote in Carrel, so the authorship record names them. */
 async function draft(id: string) {
   const viewer = await viewerFor("author@test.invalid");
   const project = await requireSiteProject(env.DB, viewer, SLUG, "edit");
-  const saved = await writeToSite(env, project, viewer, id, { action: "save", source: `---\ntitle: "${id}"\n---\n\nText.\n`, expectedVersion: null });
+  const saved = await writeToSite(env, project, viewer, id, {
+    action: "save",
+    source: `---\ntitle: "${id}"\n---\n\nText.\n`,
+    expectedVersion: null,
+  });
   if (!saved.ok) throw new Error(saved.message);
   return saved.version;
 }
 
 /** Posts the list's form with no script, as `email`. */
 async function post(email: string, fields: Record<string, string | string[]>) {
-  const body = new URLSearchParams(Object.entries(fields).flatMap(([k, v]) => [v].flat().map((one) => [k, one])));
+  const body = new URLSearchParams(
+    Object.entries(fields).flatMap(([k, v]) => [v].flat().map((one) => [k, one])),
+  );
   const context = await routeContext(env, email);
-  return projectAction({ request: new Request(`https://carrel.test/p/${SLUG}`, { method: "POST", body }), params: { project: SLUG }, context } as never);
+  return projectAction({
+    request: new Request(`https://carrel.test/p/${SLUG}`, { method: "POST", body }),
+    params: { project: SLUG },
+    context,
+  } as never);
 }
 
 describe("the posts list's writes", () => {
   it("records a move to the Trash and its Undo with their versions, and the index follows", async () => {
     const version = await draft("old-notes");
-    const trashed = await post("author@test.invalid", { intent: "trash", ids: "old-notes", versions: version });
+    const trashed = await post("author@test.invalid", {
+      intent: "trash",
+      ids: "old-notes",
+      versions: version,
+    });
     expect(trashed).toMatchObject({ ok: true, undo: { intent: "restore" } });
     expect(await searchItems(env.DB, projectId, {})).toEqual([]);
 
     const undo = "undo" in trashed ? trashed.undo! : null;
-    expect(await post("author@test.invalid", { intent: undo!.intent, ...undo!.fields })).toMatchObject({ ok: true });
+    expect(
+      await post("author@test.invalid", { intent: undo!.intent, ...undo!.fields }),
+    ).toMatchObject({ ok: true });
     expect((await searchItems(env.DB, projectId, {})).map((i) => i.itemId)).toEqual(["old-notes"]);
 
-    const [created, toTrash, back] = (await record()) as Array<{ itemId: string; action: string; before: string | null; after: string | null }>;
+    const [created, toTrash, back] = (await record()) as Array<{
+      itemId: string;
+      action: string;
+      before: string | null;
+      after: string | null;
+    }>;
     expect(created).toMatchObject({ action: "save", before: null });
-    expect(toTrash).toMatchObject({ itemId: "old-notes", action: "content-trash", before: version });
-    expect(back).toMatchObject({ itemId: "old-notes", action: "content-restore", before: toTrash!.after });
+    expect(toTrash).toMatchObject({
+      itemId: "old-notes",
+      action: "content-trash",
+      before: version,
+    });
+    expect(back).toMatchObject({
+      itemId: "old-notes",
+      action: "content-restore",
+      before: toTrash!.after,
+    });
   });
 
   it("keeps the Author of a renamed draft, so they still publish it", async () => {
     const version = await draft("first-name");
-    expect(await post("author@test.invalid", { intent: "rename", ids: "first-name", versions: version, newId: "second-name" })).toMatchObject({ ok: true });
-    expect((await record()).at(-1)).toMatchObject({ itemId: "second-name", action: "content-rename", renamedFrom: "first-name" });
+    expect(
+      await post("author@test.invalid", {
+        intent: "rename",
+        ids: "first-name",
+        versions: version,
+        newId: "second-name",
+      }),
+    ).toMatchObject({ ok: true });
+    expect((await record()).at(-1)).toMatchObject({
+      itemId: "second-name",
+      action: "content-rename",
+      renamedFrom: "first-name",
+    });
     const viewer = await viewerFor("author@test.invalid");
-    expect(await mayPublishItem(env.DB, { id: projectId, role: "author" }, viewer, "second-name")).toBe(true);
+    expect(
+      await mayPublishItem(env.DB, { id: projectId, role: "author" }, viewer, "second-name"),
+    ).toBe(true);
   });
 
   it("PLANT: refuses every intent a Reader posts, and the site and the record do not move", async () => {
     const version = await draft("kept");
     const before = writes().length;
     for (const intent of ["trash", "tag-add", "duplicate", "rename", "unpublish", "delete"]) {
-      expect(await post("reader@test.invalid", { intent, ids: "kept", versions: version, tag: "x", newId: "taken" }), intent).toMatchObject({ ok: false });
+      expect(
+        await post("reader@test.invalid", {
+          intent,
+          ids: "kept",
+          versions: version,
+          tag: "x",
+          newId: "taken",
+        }),
+        intent,
+      ).toMatchObject({ ok: false });
     }
     expect(writes().length).toBe(before);
     expect(await record()).toHaveLength(1);

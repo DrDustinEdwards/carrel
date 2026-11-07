@@ -36,6 +36,8 @@ jobs:
       - run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Format check
+        run: npm run format:check
       - run: npm test
       # The public site (www/) builds, so a Capsomer or Prelum bump cannot break it unseen.
       - run: npm run www
@@ -141,7 +143,7 @@ jobs:
   deploy:
     needs: [check]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@e2914d9fdd2b2ef4eb7d393db739c3bb2a808583 # v0.23.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@507d1be20e6cbf76badcfeaadf944818c66cf54f # v0.26.1
     with:
       worker-name: carrel-desk
       # site-runtime withAdminIdle's key and audit-log's signing key (0.85), minted once by the deploy and never shown (devkit "generated-secrets").
@@ -171,7 +173,7 @@ jobs:
   deploy-www:
     needs: [check]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@e2914d9fdd2b2ef4eb7d393db739c3bb2a808583 # v0.23.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@507d1be20e6cbf76badcfeaadf944818c66cf54f # v0.26.1
     with:
       worker-name: carrel
       health-url: https://carrel.dustinedwards.info/health

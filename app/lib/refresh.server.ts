@@ -8,7 +8,10 @@ import { projects } from "~/db/schema";
 import { refreshIndex, type RefreshResult } from "~/lib/index.server";
 import { isSiteId, siteConnection } from "~/lib/sites.server";
 
-export async function refreshAllSites(env: Env, fetcher?: typeof fetch): Promise<Record<string, RefreshResult | string>> {
+export async function refreshAllSites(
+  env: Env,
+  fetcher?: typeof fetch,
+): Promise<Record<string, RefreshResult | string>> {
   const rows = await drizzle(env.DB)
     .select({ id: projects.id, slug: projects.slug, site: projects.site })
     .from(projects)

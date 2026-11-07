@@ -7,7 +7,14 @@ import { reactRouter } from "@react-router/dev/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [cloudflare({ configPath: "./test/harness/wrangler.jsonc", viteEnvironment: { name: "ssr" }, persistState: false }), reactRouter()],
+  plugins: [
+    cloudflare({
+      configPath: "./test/harness/wrangler.jsonc",
+      viteEnvironment: { name: "ssr" },
+      persistState: false,
+    }),
+    reactRouter(),
+  ],
   build: {
     // A font is always a file of its own: a font inlined as a data: URI is refused by font-src 'self'.
     assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf)$/.test(file) ? false : undefined),

@@ -34,7 +34,10 @@ function inboxReport(waiting: number, since: string | null, origin: string): Inb
 export type ReportResult = { state: "skipped" | "sent" | "failed"; detail: string };
 
 /** Counts the waiting AI drafts and reports them. Never throws; a failure is logged and returned. */
-export async function reportInbox(env: Env, fetcher: typeof fetch = timedFetch): Promise<ReportResult> {
+export async function reportInbox(
+  env: Env,
+  fetcher: typeof fetch = timedFetch,
+): Promise<ReportResult> {
   const key = env.CAPSID_AGENT_KEY?.trim();
   if (!key) return { state: "skipped", detail: "CAPSID_AGENT_KEY is not set." };
   try {

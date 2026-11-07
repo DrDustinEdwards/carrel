@@ -8,13 +8,13 @@ The site's own media screen (`app/routes/admin.media._index.tsx`) is not touched
 
 Carrel talks to the site only through site-api. For a media file it sends (all with a `changeId`, and, except for delete, the `expectedVersion` it last read):
 
-| Call | Adapter method | Answer |
-|---|---|---|
-| `PUT /media/:id/alt` | `setAlt(id, { alt, expectedVersion, changeId })` | `{ version }` after the write |
-| `PUT /media/:id/tags` | `setTags(id, { tags, expectedVersion, changeId })` (the whole tag set) | `{ version }` |
-| `POST /media/:id/trash` | `trash(id, { expectedVersion, changeId })` | `{ version }` |
-| `POST /media/:id/restore` | `restore(id, { expectedVersion, changeId })` | `{ version }` |
-| `POST /media/bulk`, `POST /media/trash/empty` | none: site-api loops over the methods above and `delete` | per file |
+| Call                                          | Adapter method                                                         | Answer                        |
+| --------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------- |
+| `PUT /media/:id/alt`                          | `setAlt(id, { alt, expectedVersion, changeId })`                       | `{ version }` after the write |
+| `PUT /media/:id/tags`                         | `setTags(id, { tags, expectedVersion, changeId })` (the whole tag set) | `{ version }`                 |
+| `POST /media/:id/trash`                       | `trash(id, { expectedVersion, changeId })`                             | `{ version }`                 |
+| `POST /media/:id/restore`                     | `restore(id, { expectedVersion, changeId })`                           | `{ version }`                 |
+| `POST /media/bulk`, `POST /media/trash/empty` | none: site-api loops over the methods above and `delete`               | per file                      |
 
 Bulk and empty-trash need no new site code. site-api calls the adapter once per file, in order, and turns each file's `VersionConflictError`, `NotFoundError`, `RefusedError` or `MediaInUseError` into that file's outcome. `list` already receives `tag` and `trashed: "only"` in its query.
 

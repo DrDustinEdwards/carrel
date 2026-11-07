@@ -38,24 +38,49 @@ beforeEach(async () => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-const env = (extra: Record<string, string> = {}): Env => connectedEnv({ AGENT_KEY_GROK: KEY, ...extra });
+const env = (extra: Record<string, string> = {}): Env =>
+  connectedEnv({ AGENT_KEY_GROK: KEY, ...extra });
 
 async function door(request: Request, e: Env = env()) {
   return aiDoor(request, e, createExecutionContext());
 }
 
-function authed(authorization: string | null, name: string, args: Record<string, unknown> = {}, headers: Record<string, string> = {}) {
-  return modernRequest(3, "tools/call", { name, arguments: args }, { ...(authorization ? { Authorization: authorization } : {}), ...headers });
+function authed(
+  authorization: string | null,
+  name: string,
+  args: Record<string, unknown> = {},
+  headers: Record<string, string> = {},
+) {
+  return modernRequest(
+    3,
+    "tools/call",
+    { name, arguments: args },
+    { ...(authorization ? { Authorization: authorization } : {}), ...headers },
+  );
 }
 
-async function call(name: string, args: Record<string, unknown> = {}, opts: { key?: string; env?: Env; headers?: Record<string, string> } = {}) {
-  const response = await door(authed(`Bearer ${opts.key ?? KEY}`, name, args, opts.headers), opts.env);
-  if (response.status !== 200) return { status: response.status, result: undefined as ToolCallResult | undefined };
+async function call(
+  name: string,
+  args: Record<string, unknown> = {},
+  opts: { key?: string; env?: Env; headers?: Record<string, string> } = {},
+) {
+  const response = await door(
+    authed(`Bearer ${opts.key ?? KEY}`, name, args, opts.headers),
+    opts.env,
+  );
+  if (response.status !== 200)
+    return { status: response.status, result: undefined as ToolCallResult | undefined };
   return { status: 200, result: (await readMessage(response)).result as unknown as ToolCallResult };
 }
 
 async function seedPost() {
-  return (await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: Post one\n---\nDustin's words.\n", expectedVersion: null, changeId: "seed" })).version;
+  return (
+    await site.adapter.content.saveDraft("post-one", {
+      source: "---\ntitle: Post one\n---\nDustin's words.\n",
+      expectedVersion: null,
+      changeId: "seed",
+    })
+  ).version;
 }
 
 const rows = async (sql: string) => (await testEnv.DB.prepare(sql).all()).results;
@@ -64,32 +89,61 @@ describe("what a named agent key does", () => {
   it("lets the agent read, save an AI draft beside Dustin's, flag and preview, credited as agent:grok", async () => {
     await seedPost();
     const listed = await call("carrel_list_projects");
-    expect(listed.result!.structuredContent).toMatchObject({ projects: [{ slug: SLUG, role: "editor" }] });
-    expect(((listed.result!.structuredContent as { projects: unknown[] }).projects).length).toBe(1);
+    expect(listed.result!.structuredContent).toMatchObject({
+      projects: [{ slug: SLUG, role: "editor" }],
+    });
+    expect((listed.result!.structuredContent as { projects: unknown[] }).projects.length).toBe(1);
 
-    const saved = await call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "---\ntitle: Post one\n---\nGrok's try.\n", note: "A try." });
+    const saved = await call("carrel_save_draft", {
+      project: SLUG,
+      sources: [],
+      item: "post-one",
+      source: "---\ntitle: Post one\n---\nGrok's try.\n",
+      note: "A try.",
+    });
     expect(saved.result!.isError).toBeUndefined();
-    expect(await rows("SELECT client, source FROM ai_drafts")).toEqual([{ client: "agent:grok", source: "---\ntitle: Post one\n---\nGrok's try.\n" }]);
+    expect(await rows("SELECT client, source FROM ai_drafts")).toEqual([
+      { client: "agent:grok", source: "---\ntitle: Post one\n---\nGrok's try.\n" },
+    ]);
     const owner = await viewerFor("owner@test.invalid");
     expect(await rows(`SELECT person_id FROM ai_drafts WHERE person_id = ${owner.id}`)).toEqual([]);
-    expect(await rows(`SELECT person_id FROM ai_drafts WHERE person_id = ${agentId}`)).toHaveLength(1);
+    expect(await rows(`SELECT person_id FROM ai_drafts WHERE person_id = ${agentId}`)).toHaveLength(
+      1,
+    );
 
-    const flagged = await call("carrel_add_finding", { project: SLUG, item: "post-one", message: "A flag." });
+    const flagged = await call("carrel_add_finding", {
+      project: SLUG,
+      item: "post-one",
+      message: "A flag.",
+    });
     expect(flagged.result!.structuredContent).toMatchObject({ flagged: true });
-    expect(await rows("SELECT message FROM findings")).toEqual([{ message: "A flag. (from agent:grok)" }]);
+    expect(await rows("SELECT message FROM findings")).toEqual([
+      { message: "A flag. (from agent:grok)" },
+    ]);
 
     const preview = await call("carrel_preview_item", { project: SLUG, item: "post-one" });
     expect(preview.result!.isError).toBeUndefined();
 
     // Nothing reached the site's record: an agent's saved draft lives only in Carrel, and nothing is credited to Dustin.
     expect(await rows("SELECT id FROM changes")).toEqual([]);
-    expect(site.requests.filter((r) => (r.startsWith("POST") || r.startsWith("PUT")) && !r.endsWith("/preview"))).toEqual([]);
+    expect(
+      site.requests.filter(
+        (r) => (r.startsWith("POST") || r.startsWith("PUT")) && !r.endsWith("/preview"),
+      ),
+    ).toEqual([]);
   });
 
   it("PLANT: a key trying publish is refused with the Owner-only message, and nothing is published", async () => {
     const version = await seedPost();
-    const { result } = await call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
-    expect(result).toMatchObject({ isError: true, content: [{ text: "Only the Owner's own sessions may publish." }] });
+    const { result } = await call("carrel_publish_item", {
+      project: SLUG,
+      item: "post-one",
+      expected_version: version,
+    });
+    expect(result).toMatchObject({
+      isError: true,
+      content: [{ text: "Only the Owner's own sessions may publish." }],
+    });
     expect((await site.adapter.content.get("post-one"))!.status).not.toBe("published");
     expect(await rows("SELECT * FROM ai_publications")).toEqual([]);
     expect(await rows("SELECT id FROM changes")).toEqual([]);
@@ -97,9 +151,19 @@ describe("what a named agent key does", () => {
 
   it("PLANT: the role is the person's role in People, never the key's: a Reader agent cannot save a draft", async () => {
     await seedPost();
-    await testEnv.DB.prepare("UPDATE project_members SET role = 'reader' WHERE person_id = ?").bind(agentId).run();
-    const { result } = await call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "x" });
-    expect(result).toMatchObject({ isError: true, content: [{ text: "You may not write drafts on this project." }] });
+    await testEnv.DB.prepare("UPDATE project_members SET role = 'reader' WHERE person_id = ?")
+      .bind(agentId)
+      .run();
+    const { result } = await call("carrel_save_draft", {
+      project: SLUG,
+      sources: [],
+      item: "post-one",
+      source: "x",
+    });
+    expect(result).toMatchObject({
+      isError: true,
+      content: [{ text: "You may not write drafts on this project." }],
+    });
     expect(await rows("SELECT id FROM ai_drafts")).toEqual([]);
   });
 
@@ -114,7 +178,10 @@ describe("what a named agent key does", () => {
       ["carrel_publish_item", { item: "post-one", expected_version: "v" }],
     ] as const) {
       const { result } = await call(name, { project: UNSHARED, ...args });
-      expect(result, name).toMatchObject({ isError: true, content: [{ text: "Not found, or not shared with this person." }] });
+      expect(result, name).toMatchObject({
+        isError: true,
+        content: [{ text: "Not found, or not shared with this person." }],
+      });
     }
     expect(await rows("SELECT id FROM ai_drafts")).toEqual([]);
     expect(await rows("SELECT id FROM findings")).toEqual([]);
@@ -147,12 +214,17 @@ describe("what a named agent key refuses", () => {
     delete revoked.AGENT_KEY_GROK;
     expect((await call("carrel_list_projects", {}, { env: revoked })).status).toBe(401);
     // A blank secret admits nobody, and is not a key that matches the empty string.
-    expect((await call("carrel_list_projects", {}, { env: env({ AGENT_KEY_GROK: "  " }), key: " " })).status).toBe(401);
+    expect(
+      (await call("carrel_list_projects", {}, { env: env({ AGENT_KEY_GROK: "  " }), key: " " }))
+        .status,
+    ).toBe(401);
   });
 
   it("PLANT: a key whose person row is disabled, or missing, is refused at once, and never falls through to OAuth", async () => {
     expect((await call("carrel_list_projects")).status).toBe(200);
-    await testEnv.DB.prepare("UPDATE people SET disabled_at = '2026-10-07T00:00:00Z' WHERE email = 'agent:grok'").run();
+    await testEnv.DB.prepare(
+      "UPDATE people SET disabled_at = '2026-10-07T00:00:00Z' WHERE email = 'agent:grok'",
+    ).run();
     expect((await call("carrel_list_projects")).status).toBe(403);
     await testEnv.DB.prepare("DELETE FROM project_members").run();
     await testEnv.DB.prepare("DELETE FROM people WHERE email = 'agent:grok'").run();
@@ -173,22 +245,59 @@ describe("what a named agent key refuses", () => {
       "Cf-Access-Jwt-Assertion": "x.y.z",
       "Mcp-Client": "agent:other",
     };
-    const saved = await call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "x" }, { headers: claims });
+    const saved = await call(
+      "carrel_save_draft",
+      { project: SLUG, sources: [], item: "post-one", source: "x" },
+      { headers: claims },
+    );
     expect(saved.result!.isError).toBeUndefined();
     // A body that claims an identity is refused by the tool's own schema; nothing is written.
-    for (const claim of [{ agent: "other" }, { client: "agent:other" }, { person: "owner@test.invalid" }]) {
-      const refused = await door(authed(`Bearer ${KEY}`, "carrel_save_draft", { project: SLUG, item: "post-one", source: "y", ...claim }, claims));
-      expect(JSON.stringify(await readMessage(refused)), JSON.stringify(claim)).toMatch(/error|invalid|unrecognized|additional/i);
+    for (const claim of [
+      { agent: "other" },
+      { client: "agent:other" },
+      { person: "owner@test.invalid" },
+    ]) {
+      const refused = await door(
+        authed(
+          `Bearer ${KEY}`,
+          "carrel_save_draft",
+          { project: SLUG, item: "post-one", source: "y", ...claim },
+          claims,
+        ),
+      );
+      expect(JSON.stringify(await readMessage(refused)), JSON.stringify(claim)).toMatch(
+        /error|invalid|unrecognized|additional/i,
+      );
     }
     expect(await rows("SELECT client FROM ai_drafts")).toEqual([{ client: "agent:grok" }]);
     // Two agents with two keys: each key is its own name, whichever the request claims to be.
-    const second = await call("carrel_save_draft", { project: SLUG, sources: [], item: "post-one", source: "z" }, { env: env({ AGENT_KEY_OTHER: OTHER_KEY }), key: OTHER_KEY, headers: { "X-Agent-Name": "grok" } });
+    const second = await call(
+      "carrel_save_draft",
+      { project: SLUG, sources: [], item: "post-one", source: "z" },
+      {
+        env: env({ AGENT_KEY_OTHER: OTHER_KEY }),
+        key: OTHER_KEY,
+        headers: { "X-Agent-Name": "grok" },
+      },
+    );
     expect(second.result!.isError).toBeUndefined();
-    expect((await rows("SELECT client FROM ai_drafts ORDER BY id")).map((r) => r.client)).toEqual(["agent:grok", "agent:other"]);
+    expect((await rows("SELECT client FROM ai_drafts ORDER BY id")).map((r) => r.client)).toEqual([
+      "agent:grok",
+      "agent:other",
+    ]);
   });
 
   it("PLANT: a malformed Authorization header is never an agent: it goes to the OAuth path and is refused there", async () => {
-    for (const header of [`Basic ${KEY}`, "Bearer", "Bearer ", `Bearer ${KEY} extra`, `Token ${KEY}`, KEY, `Bearer\t${KEY}`, ""]) {
+    for (const header of [
+      `Basic ${KEY}`,
+      "Bearer",
+      "Bearer ",
+      `Bearer ${KEY} extra`,
+      `Token ${KEY}`,
+      KEY,
+      `Bearer\t${KEY}`,
+      "",
+    ]) {
       expect((await door(authed(header || null, "carrel_list_projects"))).status, header).toBe(401);
     }
     // The scheme is case-insensitive, as HTTP's is.
@@ -203,7 +312,9 @@ describe("what a named agent key refuses", () => {
 
   it("keeps the agent key to /mcp: another path on the door is never an agent's", async () => {
     for (const path of ["/", "/p/de-info", "/authorize", "/token", "/health"]) {
-      const response = await door(new Request(`https://${MCP_HOST}${path}`, { headers: { Authorization: `Bearer ${KEY}` } }));
+      const response = await door(
+        new Request(`https://${MCP_HOST}${path}`, { headers: { Authorization: `Bearer ${KEY}` } }),
+      );
       if (path !== "/health") expect(response.status, path).toBeGreaterThanOrEqual(400);
       expect(await response.text(), path).not.toContain("projects");
     }
@@ -214,13 +325,25 @@ describe("adding an agent in People", () => {
   it("is the Owner's alone, and the agent row is never an Owner or a reviewer, with no role until one is set", async () => {
     const owner = await viewerFor("owner@test.invalid");
     const added = await addAgent(testEnv.DB, owner, { name: " Claude-Two ", label: "Claude Two" });
-    expect(added).toMatchObject({ email: "agent:claude-two", name: "Claude Two", isOwner: false, isReviewer: false, roles: [] });
-    expect(await findAgentViewer(testEnv.DB, "claude-two")).toMatchObject({ email: "agent:claude-two" });
+    expect(added).toMatchObject({
+      email: "agent:claude-two",
+      name: "Claude Two",
+      isOwner: false,
+      isReviewer: false,
+      roles: [],
+    });
+    expect(await findAgentViewer(testEnv.DB, "claude-two")).toMatchObject({
+      email: "agent:claude-two",
+    });
 
     const editor = await addPerson("editor@test.invalid");
     await share(projectId, editor, "editor");
-    await expect(addAgent(testEnv.DB, await viewerFor("editor@test.invalid"), { name: "sneaky" })).rejects.toMatchObject({ status: 404 });
-    await expect(addAgent(testEnv.DB, await viewerFor("agent:grok"), { name: "sneaky" })).rejects.toMatchObject({ status: 404 });
+    await expect(
+      addAgent(testEnv.DB, await viewerFor("editor@test.invalid"), { name: "sneaky" }),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      addAgent(testEnv.DB, await viewerFor("agent:grok"), { name: "sneaky" }),
+    ).rejects.toMatchObject({ status: 404 });
     expect(await rows("SELECT email FROM people WHERE email = 'agent:sneaky'")).toEqual([]);
   });
 
@@ -228,7 +351,9 @@ describe("adding an agent in People", () => {
     const owner = await viewerFor("owner@test.invalid");
     const before = await rows("SELECT email FROM people");
     for (const name of ["grok", "GROK", "", "a b", "a@b.co", "-x", "x".repeat(33), "agent:x"]) {
-      await expect(addAgent(testEnv.DB, owner, { name }), name).rejects.toBeInstanceOf(PeopleRefusal);
+      await expect(addAgent(testEnv.DB, owner, { name }), name).rejects.toBeInstanceOf(
+        PeopleRefusal,
+      );
     }
     expect(await rows("SELECT email FROM people")).toEqual(before);
   });
@@ -239,6 +364,8 @@ describe("adding an agent in People", () => {
     const fresh = (await viewerFor("agent:fresh")).id;
     await setProjectRole(testEnv.DB, owner, fresh, projectId, "editor");
     const { people } = await listPeople(testEnv.DB, owner);
-    expect(people.find((p) => p.email === "agent:fresh")!.roles).toEqual([{ projectId, role: "editor" }]);
+    expect(people.find((p) => p.email === "agent:fresh")!.roles).toEqual([
+      { projectId, role: "editor" },
+    ]);
   });
 });

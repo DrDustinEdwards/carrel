@@ -30,15 +30,25 @@ import { SUGGESTION_BLOCKS } from "./schema.mjs";
 const SUGGESTION_TYPES = ["insertion", "deletion", "modification"] as const;
 
 type MarkJson = { type: string; attrs?: Record<string, unknown> };
-export type JsonDoc = { type: string; attrs?: Record<string, unknown>; content?: JsonDoc[]; marks?: MarkJson[]; text?: string };
+export type JsonDoc = {
+  type: string;
+  attrs?: Record<string, unknown>;
+  content?: JsonDoc[];
+  marks?: MarkJson[];
+  text?: string;
+};
 
-const isSuggestion = (mark: Mark) => (SUGGESTION_TYPES as readonly string[]).includes(mark.type.name);
+const isSuggestion = (mark: Mark) =>
+  (SUGGESTION_TYPES as readonly string[]).includes(mark.type.name);
 const blockSuggestions = (node: PmNode) => node.marks.filter(isSuggestion);
-const markJson = (marks: readonly Mark[]): string | null => (marks.length ? JSON.stringify(marks.map((m) => m.toJSON())) : null);
+const markJson = (marks: readonly Mark[]): string | null =>
+  marks.length ? JSON.stringify(marks.map((m) => m.toJSON())) : null;
 
 /** A transaction that came from the room (another person, or undo through Yjs) rather than this editor. */
 function fromRoom(tr: Transaction): boolean {
-  const meta = tr.getMeta("y-sync$") as { isChangeOrigin?: boolean; isUndoRedoOperation?: boolean } | undefined;
+  const meta = tr.getMeta("y-sync$") as
+    | { isChangeOrigin?: boolean; isUndoRedoOperation?: boolean }
+    | undefined;
   return Boolean(meta?.isChangeOrigin || meta?.isUndoRedoOperation);
 }
 
@@ -49,7 +59,8 @@ function restoreBlockMarks(doc: PmNode): PmNode {
   doc.descendants((node, pos) => {
     const held = node.attrs.smark as string | null | undefined;
     if (!held || blockSuggestions(node).length) return true;
-    for (const mark of JSON.parse(held) as MarkJson[]) tr.addNodeMark(pos, doc.type.schema.markFromJSON(mark));
+    for (const mark of JSON.parse(held) as MarkJson[])
+      tr.addNodeMark(pos, doc.type.schema.markFromJSON(mark));
     return true;
   });
   if (!tr.docChanged) return doc;
@@ -79,7 +90,8 @@ export function suggestionCounts(schema: Schema, json: JsonDoc): Map<string, num
   const counts = new Map<string, number>();
   const add = (by: unknown, n: number) => counts.set(String(by), (counts.get(String(by)) ?? 0) + n);
   restoreBlockMarks(schema.nodeFromJSON(json)).descendants((node) => {
-    for (const mark of node.marks) if (isSuggestion(mark)) add(mark.attrs.by, node.isText ? (node.text?.length ?? 0) : 1);
+    for (const mark of node.marks)
+      if (isSuggestion(mark)) add(mark.attrs.by, node.isText ? (node.text?.length ?? 0) : 1);
     return true;
   });
   return counts;
@@ -128,14 +140,20 @@ function idMaker(s: Suggester) {
   let n = 0;
   return () => `${s.clientId}:${Date.now().toString(36)}${(n++).toString(36)}`;
 }
-const ownId = (s: Suggester, id: unknown) => typeof id === "string" && id.startsWith(`${s.clientId}:`);
+const ownId = (s: Suggester, id: unknown) =>
+  typeof id === "string" && id.startsWith(`${s.clientId}:`);
 
 /**
  * Gives every suggestion run the library just made or touched its rightful owner: content this
  * transaction put in, or newly marked for deletion, is the writer's, under an id of the writer's own;
  * a run that was already someone's suggestion gets its earlier mark back exactly.
  */
-function stamp(tracked: Transaction, before: PmNode, s: Suggester, nextId: () => string): Transaction {
+function stamp(
+  tracked: Transaction,
+  before: PmNode,
+  s: Suggester,
+  nextId: () => string,
+): Transaction {
   const back = tracked.mapping.invert();
   const at = new Date().toISOString();
   const doc = tracked.doc;
@@ -156,7 +174,13 @@ function stamp(tracked: Transaction, before: PmNode, s: Suggester, nextId: () =>
     for (const mark of node.marks) {
       if (!isSuggestion(mark) || mark.attrs.by != null) continue;
       const was = earlier(pos, mark, !node.isInline);
-      fixes.push({ from: pos, to: pos + node.nodeSize, node: !node.isInline, old: mark, next: was ?? mine(mark) });
+      fixes.push({
+        from: pos,
+        to: pos + node.nodeSize,
+        node: !node.isInline,
+        old: mark,
+        next: was ?? mine(mark),
+      });
     }
     return true;
   });
@@ -174,7 +198,14 @@ function stamp(tracked: Transaction, before: PmNode, s: Suggester, nextId: () =>
 export function suggestingDispatch(s: Suggester) {
   const nextId = idMaker(s);
   return (state: EditorState, tr: Transaction): Transaction => {
-    if (!isSuggestChangesEnabled(state) || !tr.docChanged || fromRoom(tr) || tr.getMeta("history$") || tr.getMeta("carrel-direct")) return tr;
+    if (
+      !isSuggestChangesEnabled(state) ||
+      !tr.docChanged ||
+      fromRoom(tr) ||
+      tr.getMeta("history$") ||
+      tr.getMeta("carrel-direct")
+    )
+      return tr;
     const tracked = transformToSuggestionTransaction(tr, state, () => nextId());
     return stamp(tracked, state.doc, s, nextId);
   };
@@ -209,8 +240,23 @@ export function listSuggestions(doc: PmNode): Suggestion[] {
       const id = String(mark.attrs.id);
       const by = String(mark.attrs.by ?? "");
       const key = `${id}|${by}`;
-      const s = out.get(key) ?? { key, id, by, round: (mark.attrs.round as string | null) ?? null, at: (mark.attrs.at as string | null) ?? null, inserted: "", deleted: "", formatting: false, from: pos, to: pos };
-      const text = node.isText ? (node.text ?? "").replace(/​/g, "") : node.isBlock ? (s.inserted || s.deleted ? "\n" : "") + node.textContent : "";
+      const s = out.get(key) ?? {
+        key,
+        id,
+        by,
+        round: (mark.attrs.round as string | null) ?? null,
+        at: (mark.attrs.at as string | null) ?? null,
+        inserted: "",
+        deleted: "",
+        formatting: false,
+        from: pos,
+        to: pos,
+      };
+      const text = node.isText
+        ? (node.text ?? "").replace(/​/g, "")
+        : node.isBlock
+          ? (s.inserted || s.deleted ? "\n" : "") + node.textContent
+          : "";
       if (mark.type.name === "insertion") s.inserted += text;
       else if (mark.type.name === "deletion") s.deleted += text;
       else s.formatting = true;

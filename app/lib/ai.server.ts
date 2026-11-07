@@ -48,7 +48,11 @@ export type ItemFinding = {
   createdAt: string;
 };
 
-export async function itemFindings(db: D1Database, project: ProjectRole, itemId: string): Promise<ItemFinding[]> {
+export async function itemFindings(
+  db: D1Database,
+  project: ProjectRole,
+  itemId: string,
+): Promise<ItemFinding[]> {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   return drizzle(db)
     .select({
@@ -80,9 +84,11 @@ export async function addFinding(
   itemId: string,
   input: { message: string; excerpt?: string | null },
 ): Promise<{ id: number; duplicate: boolean }> {
-  if (!can(project.role, "comment")) throw new AiRefusal("You may not flag anything on this project.");
+  if (!can(project.role, "comment"))
+    throw new AiRefusal("You may not flag anything on this project.");
   const message = input.message.trim();
-  if (!message || message.length > 2000) throw new AiRefusal("A flag needs a message of up to 2,000 characters.");
+  if (!message || message.length > 2000)
+    throw new AiRefusal("A flag needs a message of up to 2,000 characters.");
   const excerpt = input.excerpt?.trim() || null;
   const check = session.viewer.isReviewer ? "review" : "ai";
   const full = `${message} (from ${session.client})`;
@@ -90,14 +96,27 @@ export async function addFinding(
   const d = drizzle(db);
   const inserted = await d
     .insert(findings)
-    .values({ projectId: project.id, path: itemId, checkName: check, message: full, excerpt, fingerprint: key })
+    .values({
+      projectId: project.id,
+      path: itemId,
+      checkName: check,
+      message: full,
+      excerpt,
+      fingerprint: key,
+    })
     .onConflictDoNothing()
     .returning({ id: findings.id });
   if (inserted[0]) return { id: inserted[0].id, duplicate: false };
   const existing = await d
     .select({ id: findings.id })
     .from(findings)
-    .where(and(eq(findings.projectId, project.id), eq(findings.path, itemId), eq(findings.fingerprint, key)))
+    .where(
+      and(
+        eq(findings.projectId, project.id),
+        eq(findings.path, itemId),
+        eq(findings.fingerprint, key),
+      ),
+    )
     .get();
   return { id: existing!.id, duplicate: true };
 }
@@ -123,15 +142,29 @@ export async function projectFlags(db: D1Database, project: ProjectRole): Promis
       title: siteItems.title,
     })
     .from(findings)
-    .leftJoin(siteItems, and(eq(siteItems.projectId, findings.projectId), eq(siteItems.itemId, findings.path)))
+    .leftJoin(
+      siteItems,
+      and(eq(siteItems.projectId, findings.projectId), eq(siteItems.itemId, findings.path)),
+    )
     .where(eq(findings.projectId, project.id))
-    .orderBy(asc(sql`${findings.status} = 'dismissed'`), desc(findings.createdAt), desc(findings.id))
+    .orderBy(
+      asc(sql`${findings.status} = 'dismissed'`),
+      desc(findings.createdAt),
+      desc(findings.id),
+    )
     .all();
   return rows.map((r) => ({ ...r, onSite: r.title !== null }));
 }
 
 /** Checks and reviewers flag; a person decides. Dismissing clears a flag for publish, so it is the Owner's. */
-export async function dismissItemFinding(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string, id: number, now = new Date()) {
+export async function dismissItemFinding(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+  id: number,
+  now = new Date(),
+) {
   if (!can(project.role, "publish")) throw new Response("Forbidden", { status: 403 });
   const result = await drizzle(db)
     .update(findings)
@@ -151,7 +184,8 @@ export async function saveAiDraft(
   input: { source: string; note?: string; sources?: string[] },
   fetcher?: typeof fetch,
 ): Promise<{ id: number; baseVersion: string | null }> {
-  if (session.viewer.isReviewer) throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");
+  if (session.viewer.isReviewer)
+    throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");
   if (!can(project.role, "edit")) throw new AiRefusal("You may not write drafts on this project.");
   if (!input.source.trim()) throw new AiRefusal("The draft is empty.");
   let baseVersion: string | null = null;
@@ -176,26 +210,67 @@ export async function saveAiDraft(
   return { id: row!.id, baseVersion };
 }
 
-export type AiDraftSummary = { id: number; client: string; note: string; createdAt: string; baseVersion: string | null; words: number };
+export type AiDraftSummary = {
+  id: number;
+  client: string;
+  note: string;
+  createdAt: string;
+  baseVersion: string | null;
+  words: number;
+};
 
 /** The AI drafts a person's own sessions saved for this item, newest first. Private to the person, as drafts are. */
-export async function listAiDrafts(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string): Promise<AiDraftSummary[]> {
+export async function listAiDrafts(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+): Promise<AiDraftSummary[]> {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   const rows = await drizzle(db)
-    .select({ id: aiDrafts.id, client: aiDrafts.client, note: aiDrafts.note, createdAt: aiDrafts.createdAt, baseVersion: aiDrafts.baseVersion, source: aiDrafts.source })
+    .select({
+      id: aiDrafts.id,
+      client: aiDrafts.client,
+      note: aiDrafts.note,
+      createdAt: aiDrafts.createdAt,
+      baseVersion: aiDrafts.baseVersion,
+      source: aiDrafts.source,
+    })
     .from(aiDrafts)
-    .where(and(eq(aiDrafts.projectId, project.id), eq(aiDrafts.itemId, itemId), eq(aiDrafts.personId, viewer.id)))
+    .where(
+      and(
+        eq(aiDrafts.projectId, project.id),
+        eq(aiDrafts.itemId, itemId),
+        eq(aiDrafts.personId, viewer.id),
+      ),
+    )
     .orderBy(desc(aiDrafts.createdAt), desc(aiDrafts.id))
     .all();
-  return rows.map(({ source, ...r }) => ({ ...r, words: source.split(/\s+/).filter(Boolean).length }));
+  return rows.map(({ source, ...r }) => ({
+    ...r,
+    words: source.split(/\s+/).filter(Boolean).length,
+  }));
 }
 
-export async function readAiDraft(db: D1Database, project: ProjectRole, viewer: Viewer, itemId: string, id: number) {
+export async function readAiDraft(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+  id: number,
+) {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   const row = await drizzle(db)
     .select()
     .from(aiDrafts)
-    .where(and(eq(aiDrafts.id, id), eq(aiDrafts.projectId, project.id), eq(aiDrafts.itemId, itemId), eq(aiDrafts.personId, viewer.id)))
+    .where(
+      and(
+        eq(aiDrafts.id, id),
+        eq(aiDrafts.projectId, project.id),
+        eq(aiDrafts.itemId, itemId),
+        eq(aiDrafts.personId, viewer.id),
+      ),
+    )
     .get();
   if (!row) throw new Response("Not found", { status: 404 });
   return { ...row, sources: row.sources === null ? null : (JSON.parse(row.sources) as string[]) };
@@ -203,7 +278,9 @@ export async function readAiDraft(db: D1Database, project: ProjectRole, viewer: 
 
 // ---------- publish by instruction
 
-export type AiPublishResult = { ok: true; version: string; changeId: string; emailed: boolean } | { ok: false; message: string };
+export type AiPublishResult =
+  | { ok: true; version: string; changeId: string; emailed: boolean }
+  | { ok: false; message: string };
 
 /** The line the record, the email and the editor all use (decision 2c). */
 export function publishedByLine(client: string): string {
@@ -226,7 +303,8 @@ export async function aiPublish(
 ): Promise<AiPublishResult> {
   if (session.viewer.isReviewer) throw new AiRefusal("A reviewer never publishes.");
   // Owner only, whatever a shared person's role: decision 2a gives publish to Dustin's sessions alone.
-  if (!session.viewer.isOwner || project.role !== "owner") throw new AiRefusal("Only the Owner's own sessions may publish.");
+  if (!session.viewer.isOwner || project.role !== "owner")
+    throw new AiRefusal("Only the Owner's own sessions may publish.");
   const open = (await itemFindings(env.DB, project, itemId)).filter((f) => f.status === "open");
   if (open.length > 0) {
     throw new AiRefusal(
@@ -237,8 +315,13 @@ export async function aiPublish(
   }
   let source: string | undefined;
   if (opts.aiDraftId !== undefined) {
-    const draft = await readAiDraft(env.DB, project, session.viewer, itemId, opts.aiDraftId).catch(() => null);
-    if (!draft) throw new AiRefusal(`There is no AI draft ${opts.aiDraftId} of ${itemId} from your sessions.`);
+    const draft = await readAiDraft(env.DB, project, session.viewer, itemId, opts.aiDraftId).catch(
+      () => null,
+    );
+    if (!draft)
+      throw new AiRefusal(
+        `There is no AI draft ${opts.aiDraftId} of ${itemId} from your sessions.`,
+      );
     if (draft.baseVersion !== expectedVersion) {
       throw new AiRefusal(
         `AI draft ${opts.aiDraftId} was written from version ${draft.baseVersion ?? "(none)"}, not ${expectedVersion}. Read the post again and save a new draft from the current version.`,
@@ -248,10 +331,18 @@ export async function aiPublish(
   }
 
   // Dustin's own working draft stays: an AI publish never takes his unsaved text away.
-  const outcome: WriteOutcome = await writeToSite(env, project, session.viewer, itemId, { action: "publish", expectedVersion, source }, opts.fetcher, {
-    client: session.client,
-    keepDraft: true,
-  });
+  const outcome: WriteOutcome = await writeToSite(
+    env,
+    project,
+    session.viewer,
+    itemId,
+    { action: "publish", expectedVersion, source },
+    opts.fetcher,
+    {
+      client: session.client,
+      keepDraft: true,
+    },
+  );
   if (!outcome.ok) return { ok: false, message: outcome.message };
 
   const d = drizzle(env.DB);
@@ -279,7 +370,9 @@ export async function aiPublish(
         "",
         `${title} on ${siteEntry(project.site).name}${doc?.path ? `: ${doc.path}` : ""}`,
         `Version ${outcome.version}, change ${outcome.changeId}.`,
-        ...(source !== undefined ? [`It published the AI draft ${opts.aiDraftId}, replacing version ${expectedVersion}.`] : []),
+        ...(source !== undefined
+          ? [`It published the AI draft ${opts.aiDraftId}, replacing version ${expectedVersion}.`]
+          : []),
         "",
         `Unpublish it: ${base}/unpublish`,
         `Earlier versions, to restore one: ${base}/history`,
@@ -288,11 +381,19 @@ export async function aiPublish(
     });
     if (!sent.sent) throw new Error(sent.error);
     emailed = true;
-    await d.update(aiPublications).set({ emailedAt: new Date().toISOString() }).where(eq(aiPublications.changeId, outcome.changeId));
+    await d
+      .update(aiPublications)
+      .set({ emailedAt: new Date().toISOString() })
+      .where(eq(aiPublications.changeId, outcome.changeId));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(JSON.stringify({ aiPublish: "email-failed", changeId: outcome.changeId, error: message }));
-    await d.update(aiPublications).set({ emailError: message }).where(eq(aiPublications.changeId, outcome.changeId));
+    console.error(
+      JSON.stringify({ aiPublish: "email-failed", changeId: outcome.changeId, error: message }),
+    );
+    await d
+      .update(aiPublications)
+      .set({ emailError: message })
+      .where(eq(aiPublications.changeId, outcome.changeId));
   }
   return { ok: true, version: outcome.version, changeId: outcome.changeId, emailed };
 }
@@ -301,7 +402,11 @@ export async function aiPublish(
 export async function lastAiPublication(db: D1Database, project: SiteProject, itemId: string) {
   return (
     (await drizzle(db)
-      .select({ client: aiPublications.client, publishedAt: aiPublications.publishedAt, emailedAt: aiPublications.emailedAt })
+      .select({
+        client: aiPublications.client,
+        publishedAt: aiPublications.publishedAt,
+        emailedAt: aiPublications.emailedAt,
+      })
       .from(aiPublications)
       .where(and(eq(aiPublications.projectId, project.id), eq(aiPublications.itemId, itemId)))
       .orderBy(desc(aiPublications.publishedAt))
@@ -318,12 +423,19 @@ export async function lastAiPublication(db: D1Database, project: SiteProject, it
 export async function aiDraftSocialPost(
   db: D1Database,
   session: AiSession,
-  input: { eventId: number; text: string } | { accountKey: string; projectId: number; itemId: string; text: string },
+  input:
+    | { eventId: number; text: string }
+    | { accountKey: string; projectId: number; itemId: string; text: string },
 ): Promise<{ postId: number }> {
-  if (session.viewer.isReviewer || !session.viewer.isOwner) throw new AiRefusal("Social posts are Dustin's: only his own sessions may draft them.");
+  if (session.viewer.isReviewer || !session.viewer.isOwner)
+    throw new AiRefusal("Social posts are Dustin's: only his own sessions may draft them.");
   const result =
     "eventId" in input
-      ? await draftForEvent(db, { eventId: input.eventId, text: input.text, createdBy: session.client })
+      ? await draftForEvent(db, {
+          eventId: input.eventId,
+          text: input.text,
+          createdBy: session.client,
+        })
       : await draftSocialPost(db, { ...input, createdBy: session.client });
   if (!result.ok) throw new AiRefusal(result.error);
   return { postId: result.postId };

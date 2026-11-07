@@ -36,9 +36,19 @@ let access: Access;
 let other: Access;
 
 beforeAll(async () => {
-  access = await stubAccess({ issuer: TEAM, audience: BROWSER_AUD, email: "owner@test.invalid", install: false });
+  access = await stubAccess({
+    issuer: TEAM,
+    audience: BROWSER_AUD,
+    email: "owner@test.invalid",
+    install: false,
+  });
   // A second stub signs with a key Access does not publish.
-  other = await stubAccess({ issuer: TEAM, audience: BROWSER_AUD, email: "owner@test.invalid", install: false });
+  other = await stubAccess({
+    issuer: TEAM,
+    audience: BROWSER_AUD,
+    email: "owner@test.invalid",
+    install: false,
+  });
 });
 
 beforeEach(async () => {
@@ -48,7 +58,11 @@ beforeEach(async () => {
   await addPerson("gone@test.invalid", { disabled: true });
 });
 
-const doorEnv = (): Env => ({ ...testEnv, ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
+const doorEnv = (): Env => ({
+  ...testEnv,
+  ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT,
+  ACCESS_SAAS_CLIENT_SECRET: "saas-secret",
+});
 
 // ---------- the browser door
 
@@ -72,15 +86,24 @@ async function browser(path: string, jwt: string) {
 
 describe("the browser door", () => {
   it("lets the browser's Access token in", async () => {
-    expect(await browser("/", await accessToken(BROWSER_AUD))).toEqual({ status: 200, rendered: true });
+    expect(await browser("/", await accessToken(BROWSER_AUD))).toEqual({
+      status: 200,
+      rendered: true,
+    });
   });
 
   it("PLANT: a token from any other Access application is refused, the retired MCP Access app's included", async () => {
-    expect(await browser("/", await accessToken("test-mcp-audience-tag"))).toEqual({ status: 403, rendered: false });
+    expect(await browser("/", await accessToken("test-mcp-audience-tag"))).toEqual({
+      status: 403,
+      rendered: false,
+    });
   });
 
   it("PLANT: a reviewer is refused at the browser door", async () => {
-    expect(await browser("/", await accessToken(BROWSER_AUD, "reviewer@test.invalid"))).toEqual({ status: 403, rendered: false });
+    expect(await browser("/", await accessToken(BROWSER_AUD, "reviewer@test.invalid"))).toEqual({
+      status: 403,
+      rendered: false,
+    });
   });
 
   it("PLANT: /mcp on the browser's host is a page behind Access like any other, never the AI door", async () => {
@@ -94,7 +117,12 @@ describe("which door", () => {
     expect(isMcpHost(new Request(`${DOOR}/mcp`), testEnv)).toBe(true);
     expect(isMcpHost(new Request(`${DOOR}/p/x/e/y`), testEnv)).toBe(true);
     expect(isMcpHost(new Request(`https://CARREL-MCP.test/mcp`), testEnv)).toBe(true);
-    for (const url of ["https://carrel.test/mcp", "https://carrel-mcp.test.evil.example/mcp", "https://evil.example/carrel-mcp.test/mcp", "http://carrel-mcp.test:8443/mcp"]) {
+    for (const url of [
+      "https://carrel.test/mcp",
+      "https://carrel-mcp.test.evil.example/mcp",
+      "https://evil.example/carrel-mcp.test/mcp",
+      "http://carrel-mcp.test:8443/mcp",
+    ]) {
       expect(isMcpHost(new Request(url), testEnv), url).toBe(false);
     }
   });
@@ -117,11 +145,23 @@ function cookieHeader(jar: Jar): string {
 }
 
 async function s256(value: string) {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
-  return btoa(String.fromCharCode(...digest)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+  );
+  return btoa(String.fromCharCode(...digest))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
-type IdClaims = { email?: string; nonce?: string; aud?: string; iss?: string; signer?: Access; email_verified?: boolean };
+type IdClaims = {
+  email?: string;
+  nonce?: string;
+  aud?: string;
+  iss?: string;
+  signer?: Access;
+  email_verified?: boolean;
+};
 
 /** The fake Access for SaaS (and the client's CIMD document), behind the stubbed fetch. */
 function fakeAccess(claims: (nonce: string) => IdClaims) {
@@ -143,7 +183,12 @@ function fakeAccess(claims: (nonce: string) => IdClaims) {
     if (request.url === `${SAAS_ISSUER}/jwks`) return Response.json({ keys: [access.jwk] });
     if (request.url === `${SAAS_ISSUER}/token` && request.method === "POST") {
       const form = new URLSearchParams(await request.text());
-      if (form.get("client_secret") !== "saas-secret" || form.get("code") !== "access-code" || !form.get("code_verifier")) return Response.json({ error: "invalid_grant" }, { status: 400 });
+      if (
+        form.get("client_secret") !== "saas-secret" ||
+        form.get("code") !== "access-code" ||
+        !form.get("code_verifier")
+      )
+        return Response.json({ error: "invalid_grant" }, { status: 400 });
       const c = claims(nonce);
       const idToken = await (c.signer ?? access).token({
         email: c.email ?? "owner@test.invalid",
@@ -152,7 +197,11 @@ function fakeAccess(claims: (nonce: string) => IdClaims) {
         aud: c.aud ?? SAAS_CLIENT,
         ...(c.email_verified === undefined ? {} : { email_verified: c.email_verified }),
       });
-      return Response.json({ id_token: idToken, access_token: "access-access-token", token_type: "Bearer" });
+      return Response.json({
+        id_token: idToken,
+        access_token: "access-access-token",
+        token_type: "Bearer",
+      });
     }
     throw new Error(`the fake Access does not answer ${request.method} ${request.url}`);
   });
@@ -169,7 +218,12 @@ async function door(request: Request, env: Env = doorEnv()) {
  */
 async function signIn(
   claims: (nonce: string) => IdClaims = () => ({}),
-  opts: { decision?: "approve" | "deny" | "read-only" | "tick-write"; accessError?: boolean; scope?: string; resource?: string } = {},
+  opts: {
+    decision?: "approve" | "deny" | "read-only" | "tick-write";
+    accessError?: boolean;
+    scope?: string;
+    resource?: string;
+  } = {},
 ) {
   const access = fakeAccess(claims);
   vi.stubGlobal("fetch", access.fetch);
@@ -198,8 +252,15 @@ async function signIn(
   expect(html).toContain("client.test");
   const handle = /name="handle" value="([^"]+)"/.exec(html)![1]!;
   // As a browser would send it: the write box as the page set it, unticked for "read-only", ticked for "tick-write".
-  const form = new URLSearchParams({ handle, decision: opts.decision === "deny" ? "deny" : "approve" });
-  if (opts.decision === "tick-write" || (opts.decision !== "read-only" && /name="allow_write" value="1" checked/.test(html))) form.set("allow_write", "1");
+  const form = new URLSearchParams({
+    handle,
+    decision: opts.decision === "deny" ? "deny" : "approve",
+  });
+  if (
+    opts.decision === "tick-write" ||
+    (opts.decision !== "read-only" && /name="allow_write" value="1" checked/.test(html))
+  )
+    form.set("allow_write", "1");
 
   const approve = await door(
     new Request(`${DOOR}/authorize`, {
@@ -229,7 +290,14 @@ async function tokenFor(code: string): Promise<string> {
     new Request(`${DOOR}/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: REDIRECT, client_id: CLIENT_ID, code_verifier: VERIFIER, resource: RESOURCE }),
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: REDIRECT,
+        client_id: CLIENT_ID,
+        code_verifier: VERIFIER,
+        resource: RESOURCE,
+      }),
     }),
   );
   const body = (await response.json()) as { access_token?: string };
@@ -237,9 +305,18 @@ async function tokenFor(code: string): Promise<string> {
   return body.access_token!;
 }
 
-async function callTool(token: string, name: string, args: Record<string, unknown> = {}, env?: Env): Promise<{ status: number; result?: ToolCallResult; challenge?: string | null }> {
-  const response = await door(modernRequest(7, "tools/call", { name, arguments: args }, { Authorization: `Bearer ${token}` }), env);
-  if (response.status !== 200) return { status: response.status, challenge: response.headers.get("WWW-Authenticate") };
+async function callTool(
+  token: string,
+  name: string,
+  args: Record<string, unknown> = {},
+  env?: Env,
+): Promise<{ status: number; result?: ToolCallResult; challenge?: string | null }> {
+  const response = await door(
+    modernRequest(7, "tools/call", { name, arguments: args }, { Authorization: `Bearer ${token}` }),
+    env,
+  );
+  if (response.status !== 200)
+    return { status: response.status, challenge: response.headers.get("WWW-Authenticate") };
   return { status: 200, result: (await readMessage(response)).result as unknown as ToolCallResult };
 }
 
@@ -253,13 +330,19 @@ describe("the AI door's OAuth surface", () => {
   it("answers /mcp without a token with a Bearer challenge that points at its metadata", async () => {
     const response = await door(modernRequest(1, "tools/list"));
     expect(response.status).toBe(401);
-    expect(response.headers.get("WWW-Authenticate")).toContain(`resource_metadata="${DOOR}/.well-known/oauth-protected-resource/mcp"`);
-    const meta = (await (await door(new Request(`${DOOR}/.well-known/oauth-protected-resource/mcp`))).json()) as Record<string, unknown>;
+    expect(response.headers.get("WWW-Authenticate")).toContain(
+      `resource_metadata="${DOOR}/.well-known/oauth-protected-resource/mcp"`,
+    );
+    const meta = (await (
+      await door(new Request(`${DOOR}/.well-known/oauth-protected-resource/mcp`))
+    ).json()) as Record<string, unknown>;
     expect(meta).toMatchObject({ resource: RESOURCE, authorization_servers: [DOOR] });
   });
 
   it("advertises CIMD, the tightened registration endpoint, and the two scopes", async () => {
-    const meta = (await (await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))).json()) as Record<string, unknown>;
+    const meta = (await (
+      await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))
+    ).json()) as Record<string, unknown>;
     expect(meta.client_id_metadata_document_supported).toBe(true);
     expect(meta.registration_endpoint).toBe(`${DOOR}/register`);
     expect(meta.scopes_supported).toEqual(["carrel.read", "carrel.write"]);
@@ -269,18 +352,35 @@ describe("the AI door's OAuth surface", () => {
   // outside Access, so a failing check's detail (an item id, a post's text) must never reach it, only its name.
   it("/health is the shared answer with the deployed commit, naming a failing check but never its detail", async () => {
     const sha = "4df127439ed3aa19aef8e350ab6311957b8f8611";
-    await testEnv.DB.prepare("INSERT INTO health_state (check_name, ok, detail, changed_at) VALUES ('social-templates', 0, 'private post text', '2026-10-31T00:00:00Z')").run();
-    const live = await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: sha } as Env);
+    await testEnv.DB.prepare(
+      "INSERT INTO health_state (check_name, ok, detail, changed_at) VALUES ('social-templates', 0, 'private post text', '2026-10-31T00:00:00Z')",
+    ).run();
+    const live = await door(new Request(`${DOOR}/health`), {
+      ...doorEnv(),
+      DEPLOY_SHA: sha,
+    } as Env);
     expect(live.status).toBe(200);
     const text = await live.text();
     expect(text).not.toContain("private post text");
-    expect(JSON.parse(text)).toMatchObject({ db: "up", sha, checks: expect.arrayContaining([{ name: "alerts", status: "warn", detail: "Failing: social-templates." }]) });
+    expect(JSON.parse(text)).toMatchObject({
+      db: "up",
+      sha,
+      checks: expect.arrayContaining([
+        { name: "alerts", status: "warn", detail: "Failing: social-templates." },
+      ]),
+    });
     // A manual deploy sets no DEPLOY_SHA, and a value that is not a sha is never echoed.
-    expect(await (await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: "<script>" } as Env)).json()).toMatchObject({ sha: "unknown" });
+    expect(
+      await (
+        await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: "<script>" } as Env)
+      ).json(),
+    ).toMatchObject({ sha: "unknown" });
   });
 
   it("names itself as the issuer in its OAuth metadata", async () => {
-    const meta = (await (await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))).json()) as Record<string, unknown>;
+    const meta = (await (
+      await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))
+    ).json()) as Record<string, unknown>;
     expect(String(meta.issuer).replace(/\/+$/, "")).toBe(DOOR);
   });
 
@@ -291,7 +391,10 @@ describe("the AI door's OAuth surface", () => {
   });
 
   it("PLANT: stays shut until the Access for SaaS app is configured", async () => {
-    const response = await door(new Request(`${DOOR}/authorize?client_id=${encodeURIComponent(CLIENT_ID)}`), testEnv);
+    const response = await door(
+      new Request(`${DOOR}/authorize?client_id=${encodeURIComponent(CLIENT_ID)}`),
+      testEnv,
+    );
     expect(response.status).toBe(503);
   });
 });
@@ -308,15 +411,31 @@ describe("signing in through Access for SaaS", () => {
 
     await addProject("de-info", "dustinedwards");
     const { result } = await callTool(token, "carrel_list_projects");
-    expect(result!.structuredContent).toMatchObject({ projects: [{ slug: "de-info", role: "owner" }] });
+    expect(result!.structuredContent).toMatchObject({
+      projects: [{ slug: "de-info", role: "owner" }],
+    });
 
     // The client is credited by its CIMD name on what it writes.
     const site = fakeSite();
-    await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: One\n---\nWords.\n", expectedVersion: null, changeId: "seed" });
-    const env = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
+    await site.adapter.content.saveDraft("post-one", {
+      source: "---\ntitle: One\n---\nWords.\n",
+      expectedVersion: null,
+      changeId: "seed",
+    });
+    const env = connectedEnv({
+      ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT,
+      ACCESS_SAAS_CLIENT_SECRET: "saas-secret",
+    });
     vi.stubGlobal("fetch", site.fetch);
-    await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env);
-    expect(await testEnv.DB.prepare("SELECT message FROM findings").first()).toEqual({ message: "A flag. (from Claude Code)" });
+    await callTool(
+      token,
+      "carrel_add_finding",
+      { project: "de-info", item: "post-one", message: "A flag." },
+      env,
+    );
+    expect(await testEnv.DB.prepare("SELECT message FROM findings").first()).toEqual({
+      message: "A flag. (from Claude Code)",
+    });
   });
 
   it("PLANT: OAuth is unchanged while an agent key is configured: the grant is still the person, an Owner here, never an agent", async () => {
@@ -324,14 +443,27 @@ describe("signing in through Access for SaaS", () => {
     const token = await tokenFor(final.searchParams.get("code")!);
     await addProject("de-info", "dustinedwards");
     await addPerson("agent:grok");
-    const withKey = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret", AGENT_KEY_GROK: "grok-test-key-0123456789abcdefghijklmnop" });
+    const withKey = connectedEnv({
+      ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT,
+      ACCESS_SAAS_CLIENT_SECRET: "saas-secret",
+      AGENT_KEY_GROK: "grok-test-key-0123456789abcdefghijklmnop",
+    });
     const site = fakeSite();
     vi.stubGlobal("fetch", site.fetch);
     const { status, result } = await callTool(token, "carrel_list_projects", {}, withKey);
     expect(status).toBe(200);
-    expect(result!.structuredContent).toMatchObject({ projects: [{ slug: "de-info", role: "owner" }] });
-    await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, withKey);
-    expect(await testEnv.DB.prepare("SELECT message FROM findings").first()).toEqual({ message: "A flag. (from Claude Code)" });
+    expect(result!.structuredContent).toMatchObject({
+      projects: [{ slug: "de-info", role: "owner" }],
+    });
+    await callTool(
+      token,
+      "carrel_add_finding",
+      { project: "de-info", item: "post-one", message: "A flag." },
+      withKey,
+    );
+    expect(await testEnv.DB.prepare("SELECT message FROM findings").first()).toEqual({
+      message: "A flag. (from Claude Code)",
+    });
     // And a token that is not a grant is still refused by the provider, not read as an agent key.
     expect((await callTool("not-a-token", "carrel_list_projects", {}, withKey)).status).toBe(401);
   });
@@ -363,7 +495,9 @@ describe("signing in through Access for SaaS", () => {
   });
 
   it("PLANT: Access reporting an error, and a person who clicks Deny, end with access_denied", async () => {
-    expect((await signIn(undefined, { accessError: true })).final.searchParams.get("error")).toBe("access_denied");
+    expect((await signIn(undefined, { accessError: true })).final.searchParams.get("error")).toBe(
+      "access_denied",
+    );
     const denied = await signIn(undefined, { decision: "deny" });
     expect(denied.final.searchParams.get("error")).toBe("access_denied");
     expect(denied.access.seen.some((s) => s.includes("/token"))).toBe(false);
@@ -373,7 +507,9 @@ describe("signing in through Access for SaaS", () => {
     const { final } = await signIn();
     const token = await tokenFor(final.searchParams.get("code")!);
     expect((await callTool(token, "carrel_list_projects")).status).toBe(200);
-    await testEnv.DB.prepare("UPDATE people SET disabled_at = '2026-09-27T00:00:00Z' WHERE email = 'owner@test.invalid'").run();
+    await testEnv.DB.prepare(
+      "UPDATE people SET disabled_at = '2026-09-27T00:00:00Z' WHERE email = 'owner@test.invalid'",
+    ).run();
     expect((await callTool(token, "carrel_list_projects")).status).toBe(403);
   });
 
@@ -382,7 +518,9 @@ describe("signing in through Access for SaaS", () => {
     const token = await tokenFor(final.searchParams.get("code")!);
     expect((await callTool(token, "carrel_list_projects")).status).toBe(200);
     // The same email, now a different person (the row was replaced): the old grant must not carry over.
-    await testEnv.DB.prepare("UPDATE people SET id = id + 1000 WHERE email = 'owner@test.invalid'").run();
+    await testEnv.DB.prepare(
+      "UPDATE people SET id = id + 1000 WHERE email = 'owner@test.invalid'",
+    ).run();
     expect((await callTool(token, "carrel_list_projects")).status).toBe(403);
   });
 
@@ -390,15 +528,26 @@ describe("signing in through Access for SaaS", () => {
     const { final } = await signIn(() => ({ email: "reviewer@test.invalid" }));
     const token = await tokenFor(final.searchParams.get("code")!);
     const id = await addProject("de-info", "dustinedwards");
-    const reviewer = await testEnv.DB.prepare("SELECT id FROM people WHERE email = 'reviewer@test.invalid'").first<{ id: number }>();
+    const reviewer = await testEnv.DB.prepare(
+      "SELECT id FROM people WHERE email = 'reviewer@test.invalid'",
+    ).first<{ id: number }>();
     await share(id, reviewer!.id, "reader");
-    const { result } = await callTool(token, "carrel_publish_item", { project: "de-info", item: "post-one", expected_version: "v1" });
-    expect(result).toMatchObject({ isError: true, content: [{ text: "A reviewer never publishes." }] });
+    const { result } = await callTool(token, "carrel_publish_item", {
+      project: "de-info",
+      item: "post-one",
+      expected_version: "v1",
+    });
+    expect(result).toMatchObject({
+      isError: true,
+      content: [{ text: "A reviewer never publishes." }],
+    });
   });
 
   it("PLANT: a forged or foreign bearer token is refused", async () => {
     expect((await callTool("not-a-token", "carrel_list_projects")).status).toBe(401);
-    expect((await callTool(await accessToken(BROWSER_AUD), "carrel_list_projects")).status).toBe(401);
+    expect((await callTool(await accessToken(BROWSER_AUD), "carrel_list_projects")).status).toBe(
+      401,
+    );
   });
 });
 
@@ -409,7 +558,13 @@ let address = 0;
 
 /** A registration from its own address unless one is given, so the per-address limit never leaks between tests. */
 function register(body: Record<string, unknown>, from = `198.51.100.${(address += 1)}`) {
-  return door(new Request(`${DOOR}/register`, { method: "POST", headers: { "Content-Type": "application/json", "CF-Connecting-IP": from }, body: JSON.stringify(body) }));
+  return door(
+    new Request(`${DOOR}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "CF-Connecting-IP": from },
+      body: JSON.stringify(body),
+    }),
+  );
 }
 
 const dayKey = () => `dcr-rate:all:${Math.floor(Date.now() / 86_400_000)}`;
@@ -420,7 +575,11 @@ describe("tightened registration", () => {
   });
 
   it("registers a client whose callbacks are all on the allowlist, and the registration grants nothing", async () => {
-    const response = await register({ client_name: "Grok", redirect_uris: [GROK_CALLBACK], token_endpoint_auth_method: "none" });
+    const response = await register({
+      client_name: "Grok",
+      redirect_uris: [GROK_CALLBACK],
+      token_endpoint_auth_method: "none",
+    });
     const body = (await response.json()) as Record<string, unknown>;
     expect(response.status, JSON.stringify(body)).toBe(201);
     expect(body.redirect_uris).toEqual([GROK_CALLBACK]);
@@ -429,40 +588,79 @@ describe("tightened registration", () => {
     expect(body.scope).toBeUndefined();
     expect((await callTool(String(body.client_id), "carrel_list_projects")).status).toBe(401);
     const machine = await door(
-      new Request(`${DOOR}/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "client_credentials", client_id: String(body.client_id) }) }),
+      new Request(`${DOOR}/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: String(body.client_id),
+        }),
+      }),
     );
     expect(machine.status).toBe(400);
   });
 
   it("PLANT: a callback off the allowlist, a prefix of one, a pattern or localhost is refused", async () => {
-    for (const uri of ["https://evil.example/callback", `${GROK_CALLBACK}/x`, "https://grok.com/connectors/oauth/callback?next=https://evil.example", "http://127.0.0.1:3000/callback", "https://grok.com/"]) {
+    for (const uri of [
+      "https://evil.example/callback",
+      `${GROK_CALLBACK}/x`,
+      "https://grok.com/connectors/oauth/callback?next=https://evil.example",
+      "http://127.0.0.1:3000/callback",
+      "https://grok.com/",
+    ]) {
       const response = await register({ redirect_uris: [uri] });
       expect(response.status, uri).toBe(400);
       expect(((await response.json()) as { error: string }).error).toBe("invalid_redirect_uri");
     }
     // One bad callback among good ones spoils the registration.
-    expect((await register({ redirect_uris: [GROK_CALLBACK, "https://evil.example/callback"] })).status).toBe(400);
+    expect(
+      (await register({ redirect_uris: [GROK_CALLBACK, "https://evil.example/callback"] })).status,
+    ).toBe(400);
   });
 
   it("an exact callback added in DCR_REDIRECT_URIS is allowed, and only that one", async () => {
     const extra = "https://chatgpt.com/connector/oauth/abc123";
     const env = { ...doorEnv(), DCR_REDIRECT_URIS: `${extra} http://insecure.example/cb` } as Env;
-    const ok = await door(new Request(`${DOOR}/register`, { method: "POST", headers: { "Content-Type": "application/json", "CF-Connecting-IP": "198.51.100.200" }, body: JSON.stringify({ redirect_uris: [extra] }) }), env);
+    const ok = await door(
+      new Request(`${DOOR}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "CF-Connecting-IP": "198.51.100.200" },
+        body: JSON.stringify({ redirect_uris: [extra] }),
+      }),
+      env,
+    );
     expect(ok.status).toBe(201);
     for (const uri of [`${extra}x`, "http://insecure.example/cb"]) {
-      const refused = await door(new Request(`${DOOR}/register`, { method: "POST", headers: { "Content-Type": "application/json", "CF-Connecting-IP": "198.51.100.201" }, body: JSON.stringify({ redirect_uris: [uri] }) }), env);
+      const refused = await door(
+        new Request(`${DOOR}/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "CF-Connecting-IP": "198.51.100.201" },
+          body: JSON.stringify({ redirect_uris: [uri] }),
+        }),
+        env,
+      );
       expect(refused.status, uri).toBe(400);
     }
   });
 
   it("a client asking for a grant beyond the code and refresh grants is refused (by the provider)", async () => {
-    expect((await register({ redirect_uris: [GROK_CALLBACK], grant_types: ["authorization_code", "client_credentials"] })).status).toBe(400);
-    expect((await register({ redirect_uris: [GROK_CALLBACK], response_types: ["token"] })).status).toBe(400);
+    expect(
+      (
+        await register({
+          redirect_uris: [GROK_CALLBACK],
+          grant_types: ["authorization_code", "client_credentials"],
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (await register({ redirect_uris: [GROK_CALLBACK], response_types: ["token"] })).status,
+    ).toBe(400);
   });
 
   it("PLANT: registration is rate limited per address, and in all per day", async () => {
     const from = "192.0.2.50";
-    for (let i = 0; i < 5; i += 1) expect((await register({ redirect_uris: [GROK_CALLBACK] }, from)).status).toBe(201);
+    for (let i = 0; i < 5; i += 1)
+      expect((await register({ redirect_uris: [GROK_CALLBACK] }, from)).status).toBe(201);
     const limited = await register({ redirect_uris: [GROK_CALLBACK] }, from);
     expect(limited.status).toBe(429);
     expect(limited.headers.get("Retry-After")).toBe("3600");
@@ -472,7 +670,13 @@ describe("tightened registration", () => {
   });
 
   it("a registered client gets the consent page every time, saying its name is its own claim", async () => {
-    const registered = (await (await register({ client_name: "Grok", redirect_uris: [GROK_CALLBACK], token_endpoint_auth_method: "none" })).json()) as { client_id: string };
+    const registered = (await (
+      await register({
+        client_name: "Grok",
+        redirect_uris: [GROK_CALLBACK],
+        token_endpoint_auth_method: "none",
+      })
+    ).json()) as { client_id: string };
     const authorize = new URL(`${DOOR}/authorize`);
     authorize.search = new URLSearchParams({
       response_type: "code",
@@ -501,24 +705,47 @@ describe("least scope", () => {
   async function seeded() {
     await addProject("de-info", "dustinedwards");
     const site = fakeSite();
-    await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: One\n---\nWords.\n", expectedVersion: null, changeId: "seed" });
+    await site.adapter.content.saveDraft("post-one", {
+      source: "---\ntitle: One\n---\nWords.\n",
+      expectedVersion: null,
+      changeId: "seed",
+    });
     vi.stubGlobal("fetch", site.fetch);
-    return connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
+    return connectedEnv({
+      ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT,
+      ACCESS_SAAS_CLIENT_SECRET: "saas-secret",
+    });
   }
 
   /** A flag from a read-only grant: the tool is unknown to it, nothing runs and no finding is stored. */
   async function expectFlagRefused(token: string, env: Env) {
-    expectNotRun(await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env));
-    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({ n: 0 });
+    expectNotRun(
+      await callTool(
+        token,
+        "carrel_add_finding",
+        { project: "de-info", item: "post-one", message: "A flag." },
+        env,
+      ),
+    );
+    expect(await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings").first()).toEqual({
+      n: 0,
+    });
   }
 
   it("PLANT: a client that asks only to read gets read: reads work, the write tools are not listed, and a write runs nothing (T7)", async () => {
     const { final } = await signIn(undefined, { scope: "carrel.read" });
     const token = await tokenFor(final.searchParams.get("code")!);
     const env = await seeded();
-    expect((await callTool(token, "carrel_list_projects", {}, env)).result).toMatchObject({ structuredContent: { projects: [{ slug: "de-info" }] } });
-    const listed = await door(modernRequest(8, "tools/list", {}, { Authorization: `Bearer ${token}` }), env);
-    const names = ((await readMessage(listed)).result as unknown as { tools: { name: string }[] }).tools.map((t) => t.name);
+    expect((await callTool(token, "carrel_list_projects", {}, env)).result).toMatchObject({
+      structuredContent: { projects: [{ slug: "de-info" }] },
+    });
+    const listed = await door(
+      modernRequest(8, "tools/list", {}, { Authorization: `Bearer ${token}` }),
+      env,
+    );
+    const names = (
+      (await readMessage(listed)).result as unknown as { tools: { name: string }[] }
+    ).tools.map((t) => t.name);
     expect(names).toContain("carrel_read_item");
     expect(names).not.toContain("carrel_add_finding");
     await expectFlagRefused(token, env);
@@ -532,12 +759,24 @@ describe("least scope", () => {
   });
 
   // A client still sending the legacy scope carrel is asked for both, as its first consent was.
-  it.each(["carrel.read carrel.write", "carrel"])("a client that asked to write (%s), and was allowed, can write", async (scope) => {
-    const { final } = await signIn(undefined, { scope });
-    const token = await tokenFor(final.searchParams.get("code")!);
-    const env = await seeded();
-    expect((await callTool(token, "carrel_add_finding", { project: "de-info", item: "post-one", message: "A flag." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
-  });
+  it.each(["carrel.read carrel.write", "carrel"])(
+    "a client that asked to write (%s), and was allowed, can write",
+    async (scope) => {
+      const { final } = await signIn(undefined, { scope });
+      const token = await tokenFor(final.searchParams.get("code")!);
+      const env = await seeded();
+      expect(
+        (
+          await callTool(
+            token,
+            "carrel_add_finding",
+            { project: "de-info", item: "post-one", message: "A flag." },
+            env,
+          )
+        ).result,
+      ).toMatchObject({ structuredContent: { flagged: true } });
+    },
+  );
 
   it("PLANT: a client that asks for no scope gets reading only unless the person ticks write on the consent page", async () => {
     const { final } = await signIn(undefined, { scope: "" });
@@ -547,27 +786,59 @@ describe("least scope", () => {
     // The same request, with the box ticked by the person, can write.
     const ticked = await signIn(undefined, { scope: "", decision: "tick-write" });
     const writer = await tokenFor(ticked.final.searchParams.get("code")!);
-    expect((await callTool(writer, "carrel_add_finding", { project: "de-info", item: "post-one", message: "Another." }, env)).result).toMatchObject({ structuredContent: { flagged: true } });
+    expect(
+      (
+        await callTool(
+          writer,
+          "carrel_add_finding",
+          { project: "de-info", item: "post-one", message: "Another." },
+          env,
+        )
+      ).result,
+    ).toMatchObject({ structuredContent: { flagged: true } });
   });
 
   it("PLANT: a token from a grant with an earlier scope name (carrel, carrel:write) can still write; carrel:read cannot", async () => {
     // The provider hands the handler the grant's own scope, and a refresh keeps it (it only narrows a
     // requested scope to the grant's), so an old connection arrives with ["carrel"] until it signs in again.
     await seeded();
-    const owner = await testEnv.DB.prepare("SELECT id FROM people WHERE email = 'owner@test.invalid'").first<{ id: number }>();
+    const owner = await testEnv.DB.prepare(
+      "SELECT id FROM people WHERE email = 'owner@test.invalid'",
+    ).first<{ id: number }>();
     const call = async (scope: string[]) => {
       const ctx = Object.assign(createExecutionContext(), {
-        props: { personId: owner!.id, email: "owner@test.invalid", client: "Claude", clientId: CLIENT_ID },
+        props: {
+          personId: owner!.id,
+          email: "owner@test.invalid",
+          client: "Claude",
+          clientId: CLIENT_ID,
+        },
         // As the provider sets it, so the SDK's scope challenge reads the grant's own scopes.
         auth: { audience: RESOURCE, scope, token: "opaque-token", clientId: CLIENT_ID },
       });
-      const env = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
-      return apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_add_finding", arguments: { project: "de-info", item: "post-one", message: `As ${scope.join(" ")}.` } }), env, ctx);
+      const env = connectedEnv({
+        ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT,
+        ACCESS_SAAS_CLIENT_SECRET: "saas-secret",
+      });
+      return apiHandler.fetch(
+        modernRequest(1, "tools/call", {
+          name: "carrel_add_finding",
+          arguments: { project: "de-info", item: "post-one", message: `As ${scope.join(" ")}.` },
+        }),
+        env,
+        ctx,
+      );
     };
-    expect((await readMessage(await call(["carrel"]))).result).toMatchObject({ structuredContent: { flagged: true } });
-    expect((await readMessage(await call(["carrel:read", "carrel:write"]))).result).toMatchObject({ structuredContent: { flagged: true } });
+    expect((await readMessage(await call(["carrel"]))).result).toMatchObject({
+      structuredContent: { flagged: true },
+    });
+    expect((await readMessage(await call(["carrel:read", "carrel:write"]))).result).toMatchObject({
+      structuredContent: { flagged: true },
+    });
     const readOnly = await readMessage(await call(["carrel:read"]));
-    expect(readOnly.error ?? (readOnly.result as { isError?: boolean } | undefined)?.isError).toBeTruthy();
+    expect(
+      readOnly.error ?? (readOnly.result as { isError?: boolean } | undefined)?.isError,
+    ).toBeTruthy();
   });
 });
 
@@ -595,13 +866,24 @@ describe("the token's audience", () => {
   });
 
   it("PLANT: a token that reached the handler for any other audience is refused before the tools", async () => {
-    const owner = await testEnv.DB.prepare("SELECT id FROM people WHERE email = 'owner@test.invalid'").first<{ id: number }>();
+    const owner = await testEnv.DB.prepare(
+      "SELECT id FROM people WHERE email = 'owner@test.invalid'",
+    ).first<{ id: number }>();
     const call = (audience: string) => {
       const ctx = Object.assign(createExecutionContext(), {
-        props: { personId: owner!.id, email: "owner@test.invalid", client: "Claude", clientId: CLIENT_ID },
+        props: {
+          personId: owner!.id,
+          email: "owner@test.invalid",
+          client: "Claude",
+          clientId: CLIENT_ID,
+        },
         auth: { audience, scope: ["carrel.read"] },
       });
-      return apiHandler.fetch(modernRequest(1, "tools/call", { name: "carrel_list_projects", arguments: {} }), doorEnv(), ctx);
+      return apiHandler.fetch(
+        modernRequest(1, "tools/call", { name: "carrel_list_projects", arguments: {} }),
+        doorEnv(),
+        ctx,
+      );
     };
     expect((await call("https://mcp.dustinedwards.info/mcp")).status).toBe(401);
     expect((await call(`${DOOR}/other`)).status).toBe(401);
@@ -613,15 +895,27 @@ describe("the token's audience", () => {
     const token = await tokenFor(final.searchParams.get("code")!);
     await addProject("de-info", "dustinedwards");
     const site = fakeSite();
-    await site.adapter.content.saveDraft("post-one", { source: "---\ntitle: One\n---\nWords.\n", expectedVersion: null, changeId: "seed" });
+    await site.adapter.content.saveDraft("post-one", {
+      source: "---\ntitle: One\n---\nWords.\n",
+      expectedVersion: null,
+      changeId: "seed",
+    });
     const sent: string[] = [];
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
       sent.push(`${request.headers.get("Authorization") ?? ""} ${request.url}`);
       return site.fetch(request);
     });
-    const env = connectedEnv({ ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT, ACCESS_SAAS_CLIENT_SECRET: "saas-secret" });
-    const { result } = await callTool(token, "carrel_read_item", { project: "de-info", item: "post-one" }, env);
+    const env = connectedEnv({
+      ACCESS_SAAS_CLIENT_ID: SAAS_CLIENT,
+      ACCESS_SAAS_CLIENT_SECRET: "saas-secret",
+    });
+    const { result } = await callTool(
+      token,
+      "carrel_read_item",
+      { project: "de-info", item: "post-one" },
+      env,
+    );
     expect(result!.isError).toBeFalsy();
     expect(sent.length).toBeGreaterThan(0);
     for (const line of sent) expect(line).not.toContain(token);
@@ -632,10 +926,18 @@ describe("the token's audience", () => {
 // Owner, and the AI door serves the report devkit's scoreboard reads. It must never pass with no one signed in, never
 // send anything but a GET, and go through the door's own admission and headers.
 
-type CrawlReport = { check: string; ref: string; sites: Record<string, { status: string; findings: { check: string; detail: string }[] }> };
+type CrawlReport = {
+  check: string;
+  ref: string;
+  sites: Record<string, { status: string; findings: { check: string; detail: string }[] }>;
+};
 
 async function crawlReport(): Promise<CrawlReport> {
-  const response = await aiDoor(new Request("https://carrel-mcp.test/reports/signed-in-security.json"), testEnv, createExecutionContext());
+  const response = await aiDoor(
+    new Request("https://carrel-mcp.test/reports/signed-in-security.json"),
+    testEnv,
+    createExecutionContext(),
+  );
   expect(response.status).toBe(200);
   expect(response.headers.get("Cache-Control")).toBe("no-store");
   return (await response.json()) as CrawlReport;
@@ -649,15 +951,24 @@ describe("the signed-in crawl", () => {
       const page = await admit(request, viewer, async (req, who) => {
         seen.push(`${req.method} ${new URL(req.url).pathname} ${who.email}`);
         const missing = new URL(req.url).pathname === "/signed-in-crawl-404";
-        return new Response(`<!doctype html><title>Desk</title><script nonce="${nonce}" src="/assets/app.js"></script>`, {
-          status: missing ? 404 : 200,
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        });
+        return new Response(
+          `<!doctype html><title>Desk</title><script nonce="${nonce}" src="/assets/app.js"></script>`,
+          {
+            status: missing ? 404 : 200,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          },
+        );
       });
-      return withSecurityHeaders(page, nonce, { imageOrigins: [], reportOrigin: "https://carrel-mcp.test" });
+      return withSecurityHeaders(page, nonce, {
+        imageOrigins: [],
+        reportOrigin: "https://carrel-mcp.test",
+      });
     };
 
-    const owners = (disabledAt: string | null) => testEnv.DB.prepare("UPDATE people SET disabled_at = ? WHERE is_owner = 1").bind(disabledAt).run();
+    const owners = (disabledAt: string | null) =>
+      testEnv.DB.prepare("UPDATE people SET disabled_at = ? WHERE is_owner = 1")
+        .bind(disabledAt)
+        .run();
     await owners("2026-01-01T00:00:00Z");
     await runSignedInCrawl(testEnv, deskAs);
     const none = (await crawlReport()).sites[carrelDesk.origin];
@@ -670,8 +981,12 @@ describe("the signed-in crawl", () => {
     const body = await crawlReport();
     expect(body.check).toBe("signed-in-security");
     expect(body.sites[carrelDesk.origin]?.status).not.toBe("error");
-    expect(seen.every((line) => line.startsWith("GET ") && line.endsWith(" owner@test.invalid"))).toBe(true);
-    expect(seen.map((line) => line.split(" ")[1])).toEqual(expect.arrayContaining(["/", "/p/de-info", "/signed-in-crawl-404", "/assets/app.js"]));
+    expect(
+      seen.every((line) => line.startsWith("GET ") && line.endsWith(" owner@test.invalid")),
+    ).toBe(true);
+    expect(seen.map((line) => line.split(" ")[1])).toEqual(
+      expect.arrayContaining(["/", "/p/de-info", "/signed-in-crawl-404", "/assets/app.js"]),
+    );
     // Findings only: no page body or cookie in the report.
     expect(JSON.stringify(body)).not.toMatch(/<title>|owner@test\.invalid/);
   });

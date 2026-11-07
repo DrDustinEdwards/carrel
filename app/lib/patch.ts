@@ -10,8 +10,14 @@ import { createTwoFilesPatch } from "diff";
  * so the viewer shows one file changed and not a rename; what each side is goes in its header.
  * Texts that are the same give a patch with no hunks, which the viewer says in words.
  */
-export function unifiedPatch(name: string, before: { text: string; label: string }, after: { text: string; label: string }): string {
-  return createTwoFilesPatch(name, name, before.text, after.text, before.label, after.label, { context: 3 });
+export function unifiedPatch(
+  name: string,
+  before: { text: string; label: string },
+  after: { text: string; label: string },
+): string {
+  return createTwoFilesPatch(name, name, before.text, after.text, before.label, after.label, {
+    context: 3,
+  });
 }
 
 /** True when a patch carries at least one changed line. */

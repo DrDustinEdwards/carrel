@@ -59,11 +59,15 @@ function sameName(a: string, b: string): boolean {
 }
 
 function findCharacter(bible: Bible, name: string): CharacterEntry | undefined {
-  return bible.characters.find((c) => sameName(c.name, name) || c.aliases.some((a) => sameName(a, name)));
+  return bible.characters.find(
+    (c) => sameName(c.name, name) || c.aliases.some((a) => sameName(a, name)),
+  );
 }
 
 function findPlace(bible: Bible, name: string): PlaceEntry | undefined {
-  return bible.places.find((p) => sameName(p.name, name) || p.aliases.some((a) => sameName(a, name)));
+  return bible.places.find(
+    (p) => sameName(p.name, name) || p.aliases.some((a) => sameName(a, name)),
+  );
 }
 
 /** The line in the file where the header key sits, for a finding about it. */
@@ -86,16 +90,43 @@ function matchesIn(body: string, bodyLine: number, re: RegExp): { line: number; 
 // ---------- the checks
 
 /** The header is where the other checks get their facts; a missing field makes them silent, so it is flagged. */
-function checkHeader(path: string, source: string, header: SceneHeader, hasHeader: boolean): Finding[] {
+function checkHeader(
+  path: string,
+  source: string,
+  header: SceneHeader,
+  hasHeader: boolean,
+): Finding[] {
   if (!hasHeader) {
-    return [{ path, check: "header", message: "This scene has no header, so the continuity and timeline checks cannot run.", line: 1, excerpt: null }];
+    return [
+      {
+        path,
+        check: "header",
+        message: "This scene has no header, so the continuity and timeline checks cannot run.",
+        line: 1,
+        excerpt: null,
+      },
+    ];
   }
   const out: Finding[] = [];
   for (const key of ["pov", "date", "location"] as const) {
-    if (!header[key]) out.push({ path, check: "header", message: `The header has no ${key}.`, line: headerLine(source, key) ?? 1, excerpt: null });
+    if (!header[key])
+      out.push({
+        path,
+        check: "header",
+        message: `The header has no ${key}.`,
+        line: headerLine(source, key) ?? 1,
+        excerpt: null,
+      });
   }
   for (const key of ["goal", "conflict", "outcome"] as const) {
-    if (!header[key]) out.push({ path, check: "header", message: `The beats have no ${key} yet.`, line: headerLine(source, key) ?? 1, excerpt: null });
+    if (!header[key])
+      out.push({
+        path,
+        check: "header",
+        message: `The beats have no ${key} yet.`,
+        line: headerLine(source, key) ?? 1,
+        excerpt: null,
+      });
   }
   if (header.date && !storyDate(header.date)) {
     out.push({
@@ -110,7 +141,12 @@ function checkHeader(path: string, source: string, header: SceneHeader, hasHeade
 }
 
 /** Continuity: everyone present is in the bible and alive (and born) at the scene's date; the location exists. */
-export function checkContinuity(path: string, source: string, header: SceneHeader, bible: Bible): Finding[] {
+export function checkContinuity(
+  path: string,
+  source: string,
+  header: SceneHeader,
+  bible: Bible,
+): Finding[] {
   const out: Finding[] = [];
   const date = storyDate(header.date);
   const present = [...new Set([header.pov, ...header.characters].filter(Boolean))];
@@ -118,7 +154,13 @@ export function checkContinuity(path: string, source: string, header: SceneHeade
     const key = name === header.pov && !header.characters.includes(name) ? "pov" : "characters";
     const character = findCharacter(bible, name);
     if (!character) {
-      out.push({ path, check: "continuity", message: `${name} is in this scene but not in the bible (bible/characters/).`, line: headerLine(source, key), excerpt: name });
+      out.push({
+        path,
+        check: "continuity",
+        message: `${name} is in this scene but not in the bible (bible/characters/).`,
+        line: headerLine(source, key),
+        excerpt: name,
+      });
       continue;
     }
     const died = storyDate(character.died);
@@ -155,7 +197,12 @@ export function checkContinuity(path: string, source: string, header: SceneHeade
 }
 
 /** Timeline: a scene dated before the scene it follows is flagged, unless its header says flashback: true. */
-export function checkTimeline(path: string, source: string, header: SceneHeader, scenes: SceneRow[]): Finding[] {
+export function checkTimeline(
+  path: string,
+  source: string,
+  header: SceneHeader,
+  scenes: SceneRow[],
+): Finding[] {
   const date = storyDate(header.date);
   if (!date || header.flashback) return [];
   const ordered = readingOrder(scenes.filter((s) => s.path !== path).concat({ path, header }));
@@ -195,7 +242,13 @@ export function checkWorldRules(path: string, source: string, rules: RuleEntry[]
       }
       for (const m of matchesIn(body, bodyLine, re)) {
         if (m.text === "") continue;
-        out.push({ path, check: "world-rules", message: `Breaks the rule "${rule.name}" (forbidden: ${pattern}).`, line: m.line, excerpt: m.text });
+        out.push({
+          path,
+          check: "world-rules",
+          message: `Breaks the rule "${rule.name}" (forbidden: ${pattern}).`,
+          line: m.line,
+          excerpt: m.text,
+        });
       }
     }
   }
@@ -226,10 +279,20 @@ export function checkRuleFile(path: string, source: string, rule: RuleEntry): Fi
  * sentence length against their spread, a model's filler, a model's word they never use, a joiner dash.
  * No global word list: a word the author uses is never flagged. It flags; it never refuses a save.
  */
-export function checkVoice(path: string, source: string, examples: BookContext["examples"]): Finding[] {
+export function checkVoice(
+  path: string,
+  source: string,
+  examples: BookContext["examples"],
+): Finding[] {
   const { body, bodyLine } = parseFile(source);
   const own = examples.filter((e) => e.path !== path).map((e) => e.text);
-  return slopScan(body, own, { firstLine: bodyLine }).findings.map((f) => ({ path, check: "voice", message: f.say, line: f.line, excerpt: f.excerpt }));
+  return slopScan(body, own, { firstLine: bodyLine }).findings.map((f) => ({
+    path,
+    check: "voice",
+    message: f.say,
+    line: f.line,
+    excerpt: f.excerpt,
+  }));
 }
 
 /** Every check that applies to a file of this kind. */

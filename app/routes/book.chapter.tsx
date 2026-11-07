@@ -32,7 +32,9 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
 export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "read");
-  const files = readingOrder(await listFiles(env.DB, project)).filter((f) => chapterOf(f.path) === params.chapter);
+  const files = readingOrder(await listFiles(env.DB, project)).filter(
+    (f) => chapterOf(f.path) === params.chapter,
+  );
   if (files.length === 0) throw new Response("Not found", { status: 404 });
   const open = await listFindings(env.DB, project, { status: "open" });
 
@@ -67,13 +69,17 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const scenes = (await listFiles(env.DB, project))
     .filter((f) => chapterOf(f.path) === params.chapter)
     .map((f) => f.path.split("/")[2]!.replace(/\.md$/, ""));
-  return redirect(`/b/${project.slug}/f/chapters/${params.chapter}/${nextNumbered(scenes, slug)}.md`);
+  return redirect(
+    `/b/${project.slug}/f/chapters/${params.chapter}/${nextNumbered(scenes, slug)}.md`,
+  );
 }
 
 export default function Chapter({ loaderData, actionData }: Route.ComponentProps) {
   const { project, chapter, canEdit, scenes } = loaderData;
   const base = `/b/${project.slug}`;
-  const link = ({ href, children }: { href: string; children: ReactNode }) => <Link to={href}>{children}</Link>;
+  const link = ({ href, children }: { href: string; children: ReactNode }) => (
+    <Link to={href}>{children}</Link>
+  );
   return (
     <div className="app-page">
       <PageHead
@@ -94,7 +100,13 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
             canEdit ? (
               <Form method="post" className="app-inline-form">
                 <Field label="New scene">
-                  <input className="cap-input" name="name" required placeholder="Scene name" autoComplete="off" />
+                  <input
+                    className="cap-input"
+                    name="name"
+                    required
+                    placeholder="Scene name"
+                    autoComplete="off"
+                  />
                 </Field>
                 <Button type="submit">Start it</Button>
               </Form>
@@ -112,16 +124,31 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                 detail={
                   s.header ? (
                     <span className="app-scene-header">
-                      <span><b>Point of view</b> <span>{s.header.pov || "(none)"}</span></span>
-                      <span><b>Date</b> <span>
+                      <span>
+                        <b>Point of view</b> <span>{s.header.pov || "(none)"}</span>
+                      </span>
+                      <span>
+                        <b>Date</b>{" "}
+                        <span>
                           {s.header.date || "(none)"}
                           {s.header.flashback ? " (flashback)" : ""}
-                        </span></span>
-                      <span><b>Location</b> <span>{s.header.location || "(none)"}</span></span>
-                      <span><b>Present</b> <span>{s.header.characters.join(", ") || "(none)"}</span></span>
-                      <span><b>Goal</b> <span>{s.header.goal || "(none)"}</span></span>
-                      <span><b>Conflict</b> <span>{s.header.conflict || "(none)"}</span></span>
-                      <span><b>Outcome</b> <span>{s.header.outcome || "(none)"}</span></span>
+                        </span>
+                      </span>
+                      <span>
+                        <b>Location</b> <span>{s.header.location || "(none)"}</span>
+                      </span>
+                      <span>
+                        <b>Present</b> <span>{s.header.characters.join(", ") || "(none)"}</span>
+                      </span>
+                      <span>
+                        <b>Goal</b> <span>{s.header.goal || "(none)"}</span>
+                      </span>
+                      <span>
+                        <b>Conflict</b> <span>{s.header.conflict || "(none)"}</span>
+                      </span>
+                      <span>
+                        <b>Outcome</b> <span>{s.header.outcome || "(none)"}</span>
+                      </span>
                     </span>
                   ) : undefined
                 }

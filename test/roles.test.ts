@@ -30,7 +30,11 @@ beforeEach(async () => {
   outsider = (await findViewer(testEnv.DB, "outsider@test.invalid"))!;
 });
 
-async function status(viewer: Viewer, project: number, action: Parameters<typeof requireAction>[3]) {
+async function status(
+  viewer: Viewer,
+  project: number,
+  action: Parameters<typeof requireAction>[3],
+) {
   try {
     await requireAction(testEnv.DB, viewer, project, action);
     return 200;
@@ -78,7 +82,14 @@ describe("roles: what is allowed", () => {
   });
 
   it("lets the Owner do everything on every project, shared or not", async () => {
-    for (const action of ["read", "comment", "edit", "publish", "send_external", "manage"] as const) {
+    for (const action of [
+      "read",
+      "comment",
+      "edit",
+      "publish",
+      "send_external",
+      "manage",
+    ] as const) {
       expect(await status(owner, series, action)).toBe(200);
     }
   });
@@ -86,12 +97,17 @@ describe("roles: what is allowed", () => {
 
 describe("roles: what each person sees", () => {
   it("shows a shared user only the projects shared with them", async () => {
-    expect((await visibleProjects(testEnv.DB, reader)).map((p) => p.slug)).toEqual(["paluxy-portal"]);
+    expect((await visibleProjects(testEnv.DB, reader)).map((p) => p.slug)).toEqual([
+      "paluxy-portal",
+    ]);
     expect(await visibleProjects(testEnv.DB, outsider)).toEqual([]);
   });
 
   it("shows the Owner every project", async () => {
-    expect((await visibleProjects(testEnv.DB, owner)).map((p) => p.slug).sort()).toEqual(["blog-series", "paluxy-portal"]);
+    expect((await visibleProjects(testEnv.DB, owner)).map((p) => p.slug).sort()).toEqual([
+      "blog-series",
+      "paluxy-portal",
+    ]);
   });
 });
 
@@ -103,7 +119,9 @@ describe("schema: the Owner cannot be granted twice", () => {
   it("refuses 'owner' as a membership role", async () => {
     const id = await addPerson("sneaky@test.invalid");
     await expect(
-      testEnv.DB.prepare("INSERT INTO project_members (project_id, person_id, role) VALUES (?, ?, 'owner')")
+      testEnv.DB.prepare(
+        "INSERT INTO project_members (project_id, person_id, role) VALUES (?, ?, 'owner')",
+      )
         .bind(novel, id)
         .run(),
     ).rejects.toThrow();

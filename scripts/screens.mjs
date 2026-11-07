@@ -19,10 +19,21 @@ try {
   for (const screen of SCREENS) {
     if (screen.skipFor || (only && !screen.name.includes(only))) continue;
     for (const theme of /** @type {const} */ (["light", "dark"])) {
-      for (const { size, width, height } of [{ size: "desktop", width: 1280, height: 860 }, { size: "phone", width: 390, height: 800 }]) {
-        const { page, context } = await open(browser, harness.origin, { viewer: screen.viewer, theme, width, height });
+      for (const { size, width, height } of [
+        { size: "desktop", width: 1280, height: 860 },
+        { size: "phone", width: 390, height: 800 },
+      ]) {
+        const { page, context } = await open(browser, harness.origin, {
+          viewer: screen.viewer,
+          theme,
+          width,
+          height,
+        });
         await visit(page, harness.origin, screen);
-        await page.screenshot({ path: join(out, `${screen.name}-${theme}-${size}.png`), fullPage: true });
+        await page.screenshot({
+          path: join(out, `${screen.name}-${theme}-${size}.png`),
+          fullPage: true,
+        });
         await screen.restore?.(page).catch(() => undefined);
         await context.close();
       }

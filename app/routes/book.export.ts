@@ -4,7 +4,13 @@
 
 import { buildPolicy } from "@dustinedwards/site-runtime/csp";
 
-import { assembleBook, bookRepo, exportGate, refreshBook, requireBookProject } from "~/lib/books.server";
+import {
+  assembleBook,
+  bookRepo,
+  exportGate,
+  refreshBook,
+  requireBookProject,
+} from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { buildDocx, buildEpub, printHtml, slugFor } from "~/lib/novels/export";
 
@@ -31,10 +37,13 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     try {
       await refreshBook(env.DB, repo, project);
     } catch (error) {
-      return new Response(`Git could not be read, so there is nothing current to export: ${error instanceof Error ? error.message : String(error)}\n`, {
-        status: 502,
-        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-      });
+      return new Response(
+        `Git could not be read, so there is nothing current to export: ${error instanceof Error ? error.message : String(error)}\n`,
+        {
+          status: 502,
+          headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+        },
+      );
     }
   }
   const gate = await exportGate(env.DB, project);
@@ -44,14 +53,26 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const name = slugFor(book.title);
   const download = (body: BodyInit, type: string, ext: string) =>
     new Response(body, {
-      headers: { "Content-Type": type, "Content-Disposition": `attachment; filename="${name}.${ext}"`, "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": type,
+        "Content-Disposition": `attachment; filename="${name}.${ext}"`,
+        "Cache-Control": "no-store",
+      },
     });
 
   switch (format) {
     case "epub":
-      return download(buildEpub(book, { id: crypto.randomUUID(), modified: new Date() }), "application/epub+zip", "epub");
+      return download(
+        buildEpub(book, { id: crypto.randomUUID(), modified: new Date() }),
+        "application/epub+zip",
+        "epub",
+      );
     case "docx":
-      return download(await buildDocx(book), "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx");
+      return download(
+        await buildDocx(book),
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "docx",
+      );
     case "print":
       return new Response(printHtml(book), {
         headers: {

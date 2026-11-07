@@ -10,7 +10,10 @@ import { strToU8, zipSync, type Zippable } from "fflate";
 import type { Assembled } from "~/lib/books.server";
 
 export type Inline = { text: string; em: boolean; strong: boolean };
-export type Block = { type: "p" | "quote"; inlines: Inline[] } | { type: "h"; level: number; inlines: Inline[] } | { type: "break" };
+export type Block =
+  | { type: "p" | "quote"; inlines: Inline[] }
+  | { type: "h"; level: number; inlines: Inline[] }
+  | { type: "break" };
 
 /** `*a* **b** _c_ __d__`, with a backslash escaping the next character. Unclosed markers are text. */
 export function parseInline(text: string): Inline[] {
@@ -64,16 +67,31 @@ export function parseProse(body: string): Block[] {
     }
     const heading = /^(#{1,6})\s+(.*)$/.exec(raw);
     if (heading && !raw.includes("\n")) {
-      blocks.push({ type: "h", level: heading[1]!.length, inlines: parseInline(heading[2]!.trim()) });
+      blocks.push({
+        type: "h",
+        level: heading[1]!.length,
+        inlines: parseInline(heading[2]!.trim()),
+      });
       continue;
     }
     if (raw.split("\n").every((l) => l.startsWith(">"))) {
-      const text = raw.split("\n").map((l) => l.replace(/^>\s?/, "")).join(" ");
+      const text = raw
+        .split("\n")
+        .map((l) => l.replace(/^>\s?/, ""))
+        .join(" ");
       blocks.push({ type: "quote", inlines: parseInline(text) });
       continue;
     }
     // Hard wraps inside a paragraph are one paragraph; a line ending in two spaces is not kept.
-    blocks.push({ type: "p", inlines: parseInline(raw.split("\n").map((l) => l.trim()).join(" ")) });
+    blocks.push({
+      type: "p",
+      inlines: parseInline(
+        raw
+          .split("\n")
+          .map((l) => l.trim())
+          .join(" "),
+      ),
+    });
   }
   return blocks;
 }
@@ -132,11 +150,22 @@ blockquote { margin: 1em 2em; font-style: italic; }
 // ---------- ePub 3
 
 export function slugFor(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "book";
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "book"
+  );
 }
 
-export function buildEpub(book: Assembled, opts: { id: string; modified: Date }): Uint8Array<ArrayBuffer> {
-  const chapterFiles = book.chapters.map((c, i) => ({ file: `chapter-${String(i + 1).padStart(3, "0")}.xhtml`, chapter: c }));
+export function buildEpub(
+  book: Assembled,
+  opts: { id: string; modified: Date },
+): Uint8Array<ArrayBuffer> {
+  const chapterFiles = book.chapters.map((c, i) => ({
+    file: `chapter-${String(i + 1).padStart(3, "0")}.xhtml`,
+    chapter: c,
+  }));
   const xhtml = (title: string, body: string) =>
     `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
@@ -186,10 +215,20 @@ ${chapterFiles.map((c) => `<li><a href="${c.file}">${escapeHtml(c.chapter.title)
     "OEBPS/content.opf": strToU8(opf),
     "OEBPS/nav.xhtml": strToU8(nav),
     "OEBPS/book.css": strToU8(BOOK_CSS),
-    "OEBPS/title.xhtml": strToU8(xhtml(book.title, `<h1>${escapeHtml(book.title)}</h1>\n<p class="scene-break">${escapeHtml(book.author)}</p>`)),
+    "OEBPS/title.xhtml": strToU8(
+      xhtml(
+        book.title,
+        `<h1>${escapeHtml(book.title)}</h1>\n<p class="scene-break">${escapeHtml(book.author)}</p>`,
+      ),
+    ),
   };
   for (const c of chapterFiles) {
-    files[`OEBPS/${c.file}`] = strToU8(xhtml(c.chapter.title, `<h1>${escapeHtml(c.chapter.title)}</h1>\n${blocksToHtml(chapterBlocks(c.chapter))}`));
+    files[`OEBPS/${c.file}`] = strToU8(
+      xhtml(
+        c.chapter.title,
+        `<h1>${escapeHtml(c.chapter.title)}</h1>\n${blocksToHtml(chapterBlocks(c.chapter))}`,
+      ),
+    );
   }
   // Copied into an ArrayBuffer-backed array, which a Response body requires.
   return new Uint8Array(zipSync(files));
@@ -203,16 +242,38 @@ function runs(inlines: Inline[]): TextRun[] {
 
 export async function buildDocx(book: Assembled): Promise<ArrayBuffer> {
   const children: Paragraph[] = [
-    new Paragraph({ heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER, children: [new TextRun(book.title)] }),
+    new Paragraph({
+      heading: HeadingLevel.TITLE,
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun(book.title)],
+    }),
     new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun(book.author)] }),
   ];
   for (const chapter of book.chapters) {
     children.push(new Paragraph({ children: [new PageBreak()] }));
-    children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, children: [new TextRun(chapter.title)] }));
+    children.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun(chapter.title)],
+      }),
+    );
     for (const b of chapterBlocks(chapter)) {
-      if (b.type === "break") children.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun("* * *")] }));
-      else if (b.type === "h") children.push(new Paragraph({ heading: b.level <= 1 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3, children: runs(b.inlines) }));
-      else if (b.type === "quote") children.push(new Paragraph({ indent: { left: 720, right: 720 }, children: runs(b.inlines) }));
+      if (b.type === "break")
+        children.push(
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun("* * *")] }),
+        );
+      else if (b.type === "h")
+        children.push(
+          new Paragraph({
+            heading: b.level <= 1 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3,
+            children: runs(b.inlines),
+          }),
+        );
+      else if (b.type === "quote")
+        children.push(
+          new Paragraph({ indent: { left: 720, right: 720 }, children: runs(b.inlines) }),
+        );
       else children.push(new Paragraph({ indent: { firstLine: 360 }, children: runs(b.inlines) }));
     }
   }
@@ -224,7 +285,10 @@ export async function buildDocx(book: Assembled): Promise<ArrayBuffer> {
 
 export function printHtml(book: Assembled): string {
   const chapters = book.chapters
-    .map((c) => `<section class="chapter"><h1>${escapeHtml(c.title)}</h1>\n${blocksToHtml(chapterBlocks(c))}</section>`)
+    .map(
+      (c) =>
+        `<section class="chapter"><h1>${escapeHtml(c.title)}</h1>\n${blocksToHtml(chapterBlocks(c))}</section>`,
+    )
     .join("\n");
   return `<!doctype html>
 <html lang="${escapeHtml(book.language)}">

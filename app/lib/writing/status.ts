@@ -7,7 +7,8 @@ export type StatusLabel = { label: string; color: number };
 
 export type ProjectKind = "book" | "blog" | "manuscript" | "script";
 
-const list = (...labels: string[]): StatusLabel[] => labels.map((label, i) => ({ label, color: (i % 8) + 1 }));
+const list = (...labels: string[]): StatusLabel[] =>
+  labels.map((label, i) => ({ label, color: (i % 8) + 1 }));
 
 export const STARTING_STATUSES: Record<ProjectKind, StatusLabel[]> = {
   book: list("Idea", "Outlined", "Drafting", "First draft", "Revised", "Final"),
@@ -18,7 +19,16 @@ export const STARTING_STATUSES: Record<ProjectKind, StatusLabel[]> = {
 };
 
 /** The names a person sees for the eight colors, in token order (--series-1 to --series-8). */
-export const COLOR_NAMES = ["Violet", "Orange", "Teal", "Green", "Indigo", "Pine", "Pink", "Wine"] as const;
+export const COLOR_NAMES = [
+  "Violet",
+  "Orange",
+  "Teal",
+  "Green",
+  "Indigo",
+  "Pine",
+  "Pink",
+  "Wine",
+] as const;
 
 export const MAX_LABELS = 12;
 const MAX_LABEL_LENGTH = 40;
@@ -34,20 +44,30 @@ export function labelFor(labels: StatusLabel[], status: string): StatusLabel | n
  * A list as a person submitted it: blank rows dropped, labels trimmed, duplicates (ignoring case)
  * refused, colors kept to 1 to 8. Returns the clean list or why it was refused.
  */
-export function cleanLabels(rows: { label: string; color: string | number }[]): { ok: true; labels: StatusLabel[] } | { ok: false; error: string } {
+export function cleanLabels(
+  rows: { label: string; color: string | number }[],
+): { ok: true; labels: StatusLabel[] } | { ok: false; error: string } {
   const labels: StatusLabel[] = [];
   const seen = new Set<string>();
   for (const row of rows) {
     const label = row.label.trim().replace(/\s+/g, " ");
     if (!label) continue;
-    if (label.length > MAX_LABEL_LENGTH) return { ok: false, error: `Keep each label to ${MAX_LABEL_LENGTH} characters: "${label.slice(0, 20)}..." is longer.` };
+    if (label.length > MAX_LABEL_LENGTH)
+      return {
+        ok: false,
+        error: `Keep each label to ${MAX_LABEL_LENGTH} characters: "${label.slice(0, 20)}..." is longer.`,
+      };
     const key = label.toLowerCase();
     if (seen.has(key)) return { ok: false, error: `"${label}" is in the list twice.` };
     seen.add(key);
     const color = Number(row.color);
-    labels.push({ label, color: Number.isInteger(color) && color >= 1 && color <= 8 ? color : (labels.length % 8) + 1 });
+    labels.push({
+      label,
+      color: Number.isInteger(color) && color >= 1 && color <= 8 ? color : (labels.length % 8) + 1,
+    });
   }
   if (labels.length === 0) return { ok: false, error: "Keep at least one label." };
-  if (labels.length > MAX_LABELS) return { ok: false, error: `Keep the list to ${MAX_LABELS} labels.` };
+  if (labels.length > MAX_LABELS)
+    return { ok: false, error: `Keep the list to ${MAX_LABELS} labels.` };
   return { ok: true, labels };
 }

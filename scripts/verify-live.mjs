@@ -16,8 +16,14 @@
 // CARREL_MCP_ORIGIN and CARREL_ORIGIN override the two origins, for scripts/check-verify-live.mjs, which
 // runs this against local stubs.
 
-const MCP = (process.env.CARREL_MCP_ORIGIN || "https://carrel-mcp.dustinedwards.info").replace(/\/+$/, "");
-const BROWSER = (process.env.CARREL_ORIGIN || "https://desk.dustinedwards.info").replace(/\/+$/, "");
+const MCP = (process.env.CARREL_MCP_ORIGIN || "https://carrel-mcp.dustinedwards.info").replace(
+  /\/+$/,
+  "",
+);
+const BROWSER = (process.env.CARREL_ORIGIN || "https://desk.dustinedwards.info").replace(
+  /\/+$/,
+  "",
+);
 const EXPECT_SHA = (process.env.EXPECT_SHA ?? "").trim().toLowerCase();
 const TRIES = 3;
 // The pause between tries. scripts/check-verify-live.mjs sets it to 0.
@@ -66,7 +72,9 @@ async function json(res) {
 }
 
 if (!/^[0-9a-f]{7,40}$/.test(EXPECT_SHA)) {
-  console.error("verify-live: EXPECT_SHA is not a commit sha, so there is nothing to verify against.");
+  console.error(
+    "verify-live: EXPECT_SHA is not a commit sha, so there is nothing to verify against.",
+  );
   process.exit(3);
 }
 
@@ -74,24 +82,36 @@ await check("the AI door's /health names this run's commit", `${MCP}/health`, as
   if (res.status !== 200) return `answered ${res.status}, not 200`;
   const sha = String((await json(res))?.sha ?? "").toLowerCase();
   if (!/^[0-9a-f]{7,40}$/.test(sha)) return `reported '${sha}', not a sha`;
-  return sha.startsWith(EXPECT_SHA) || EXPECT_SHA.startsWith(sha) ? null : `reported ${sha}, not ${EXPECT_SHA}`;
+  return sha.startsWith(EXPECT_SHA) || EXPECT_SHA.startsWith(sha)
+    ? null
+    : `reported ${sha}, not ${EXPECT_SHA}`;
 });
 
-await check("the AI door serves its OAuth metadata with Carrel's issuer", `${MCP}/.well-known/oauth-authorization-server`, async (res) => {
-  if (res.status !== 200) return `answered ${res.status}, not 200`;
-  const issuer = String((await json(res))?.issuer ?? "").replace(/\/+$/, "");
-  return issuer === MCP ? null : `issuer is '${issuer}', not ${MCP}`;
-});
+await check(
+  "the AI door serves its OAuth metadata with Carrel's issuer",
+  `${MCP}/.well-known/oauth-authorization-server`,
+  async (res) => {
+    if (res.status !== 200) return `answered ${res.status}, not 200`;
+    const issuer = String((await json(res))?.issuer ?? "").replace(/\/+$/, "");
+    return issuer === MCP ? null : `issuer is '${issuer}', not ${MCP}`;
+  },
+);
 
 await check(
   "the AI door's /mcp refuses a request with no token",
   `${MCP}/mcp`,
   async (res) => (res.status === 401 ? null : `answered ${res.status}, not 401`),
-  { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) },
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  },
 );
 
-await check("the AI door answers an unknown path with 404", `${MCP}/verify-live-no-such-route`, async (res) =>
-  res.status === 404 ? null : `answered ${res.status}, not 404`,
+await check(
+  "the AI door answers an unknown path with 404",
+  `${MCP}/verify-live-no-such-route`,
+  async (res) => (res.status === 404 ? null : `answered ${res.status}, not 404`),
 );
 
 await check("the browser host is behind Access", `${BROWSER}/`, async (res) => {
@@ -104,7 +124,9 @@ await check("the browser host is behind Access", `${BROWSER}/`, async (res) => {
     } catch {
       // An unparsable Location is not Access.
     }
-    return host.endsWith(".cloudflareaccess.com") ? null : `redirected to '${location}', not to Access`;
+    return host.endsWith(".cloudflareaccess.com")
+      ? null
+      : `redirected to '${location}', not to Access`;
   }
   return `answered ${res.status} to a request with no sign-in: Access is not in front of Carrel`;
 });

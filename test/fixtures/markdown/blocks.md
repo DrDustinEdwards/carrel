@@ -5,7 +5,7 @@
 
 * a star bullet
 
-+ a plus bullet
+- a plus bullet
 
 1. ordered
 2. second
@@ -32,12 +32,12 @@
 > > Nested quote.
 
 > Lazy continuation
-of a quote.
+> of a quote.
 
-***
+---
 
-* * *
+---
 
-- - -
+---
 
-___
+---

@@ -30,8 +30,18 @@
 import OAuthProvider, { type OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { recordAudit } from "@dustinedwards/site-runtime/audit-log";
 import { logEvent, OWASP_EVENTS } from "@dustinedwards/site-runtime/log";
-import { DCR_CALLBACKS, loginHandler, registrationLimited, registrationRefusal } from "@dustinedwards/site-runtime/mcp-login";
-import { audienceRefusal, checkRateLimit, mcpOriginRefusal, probeDoor } from "@dustinedwards/site-runtime/mcp-server";
+import {
+  DCR_CALLBACKS,
+  loginHandler,
+  registrationLimited,
+  registrationRefusal,
+} from "@dustinedwards/site-runtime/mcp-login";
+import {
+  audienceRefusal,
+  checkRateLimit,
+  mcpOriginRefusal,
+  probeDoor,
+} from "@dustinedwards/site-runtime/mcp-server";
 import { SIGNED_IN_REPORT_PATH } from "@dustinedwards/site-runtime/signed-in-crawl";
 
 import { eq } from "drizzle-orm";
@@ -44,11 +54,24 @@ import { healthAnswer } from "~/lib/health.server";
 import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";
 import { SIGNED_IN_REPORT_NAME } from "~/lib/signed-in-crawl.server";
 
-import { AGENT_SCOPES, effectiveScopes, grantScopes, SCOPE_READ, SCOPE_WRITE, SCOPES_SUPPORTED } from "./scopes";
+import {
+  AGENT_SCOPES,
+  effectiveScopes,
+  grantScopes,
+  SCOPE_READ,
+  SCOPE_WRITE,
+  SCOPES_SUPPORTED,
+} from "./scopes";
 import { carrelOrigin, handleMcp, MCP_ROUTE, MCP_SERVER } from "./server";
 
 /** What a grant stores, encrypted, and hands to every request made with its tokens. */
-type DoorProps = { personId: number; email: string; scopes: string[]; client: string; clientId: string };
+type DoorProps = {
+  personId: number;
+  email: string;
+  scopes: string[];
+  client: string;
+  clientId: string;
+};
 
 type DoorEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
@@ -74,7 +97,10 @@ const PRIVATE_HEADERS: Record<string, string> = {
 };
 
 function text(body: string, status: number): Response {
-  return new Response(body, { status, headers: { "Content-Type": "text/plain; charset=utf-8", ...PRIVATE_HEADERS } });
+  return new Response(body, {
+    status,
+    headers: { "Content-Type": "text/plain; charset=utf-8", ...PRIVATE_HEADERS },
+  });
 }
 
 /**
@@ -85,7 +111,12 @@ async function rateLimited(env: Env, personId: number, caller: string): Promise<
   const { allowed, retryAfter } = await checkRateLimit(env.MCP_RATE_LIMIT, `person:${personId}`);
   if (allowed) return null;
   logEvent(OWASP_EVENTS.rateLimitExceeded, { door: "ai", personId, retryAfter }, { level: "warn" });
-  await recordAudit(env, { callId: crypto.randomUUID(), phase: "rate-limited", caller, server: { name: MCP_SERVER.name, version: MCP_SERVER.version } });
+  await recordAudit(env, {
+    callId: crypto.randomUUID(),
+    phase: "rate-limited",
+    caller,
+    server: { name: MCP_SERVER.name, version: MCP_SERVER.version },
+  });
   const out = text(`Too many requests. Try again in ${retryAfter} seconds.`, 429);
   out.headers.set("Retry-After", String(retryAfter));
   return out;
@@ -101,7 +132,8 @@ async function rateLimited(env: Env, personId: number, caller: string): Promise<
  */
 const REGISTER_PATH = "/register";
 const REPORT_PATH = "/reports/conformance.json";
-const registrationAllowlist = (env: Env) => [...DCR_CALLBACKS, (env as { DCR_REDIRECT_URIS?: string }).DCR_REDIRECT_URIS ?? ""].join(",");
+const registrationAllowlist = (env: Env) =>
+  [...DCR_CALLBACKS, (env as { DCR_REDIRECT_URIS?: string }).DCR_REDIRECT_URIS ?? ""].join(",");
 
 /**
  * Everything else on this host the provider does not own: the consent page (shown for every authorization
@@ -112,7 +144,10 @@ const login = loginHandler<DoorEnv>({
   scopes: { read: SCOPE_READ, write: SCOPE_WRITE },
   about:
     "<p>It can read as you. With changes allowed it can also save AI drafts beside yours and flag problems. Either way it can do only what your role in Carrel allows. Publishing, the site's text or the session's own AI draft, is for Dustin's own sessions only, and never while a flag is open.</p>",
-  admits: { consent: "Only people Carrel already knows are let in.", refusal: "This person is not in Carrel." },
+  admits: {
+    consent: "Only people Carrel already knows are let in.",
+    refusal: "This person is not in Carrel.",
+  },
   // Access let them in, but Carrel must know them too: no row, no access (design section 3). The
   // person's id travels with the grant and is checked again on every request.
   admit: async (env, { email }) => {
@@ -135,23 +170,39 @@ const login = loginHandler<DoorEnv>({
  */
 export const apiHandler = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const { props, auth } = ctx as ExecutionContext & { props?: Partial<DoorProps>; auth?: { audience?: string; scope?: string[] } };
+    const { props, auth } = ctx as ExecutionContext & {
+      props?: Partial<DoorProps>;
+      auth?: { audience?: string; scope?: string[] };
+    };
     // The token must have been issued for this server (RFC 8707), checked here as well as by the
     // provider, so a provider set up for a second resource could never hand Carrel a token for it.
     // Nothing passes the token on: the site and the novels repository take Carrel's own keys.
     const foreign = audienceRefusal(auth, `${mcpOrigin(env)}${MCP_ROUTE}`, [SCOPE_READ]);
     if (foreign) {
-      logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "audience", audience: auth?.audience ?? null }, { level: "warn" });
+      logEvent(
+        OWASP_EVENTS.authorizationFailure,
+        { door: "ai", reason: "audience", audience: auth?.audience ?? null },
+        { level: "warn" },
+      );
       return foreign;
     }
     const viewer = props?.email ? await findViewer(env.DB, props.email) : null;
     if (!viewer || viewer.id !== props?.personId) {
-      logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: viewer ? "person-changed" : "unknown-person" }, { level: "warn" });
+      logEvent(
+        OWASP_EVENTS.authorizationFailure,
+        { door: "ai", reason: viewer ? "person-changed" : "unknown-person" },
+        { level: "warn" },
+      );
       return text("Forbidden. This grant does not belong to an active person in Carrel.", 403);
     }
     const throttled = await rateLimited(env, viewer.id, `access:${viewer.email}`);
     if (throttled) return throttled;
-    const session = { viewer, client: props.client || "an unnamed AI client", clientId: props.clientId, scopes: effectiveScopes(auth?.scope ?? []) };
+    const session = {
+      viewer,
+      client: props.client || "an unnamed AI client",
+      clientId: props.clientId,
+      scopes: effectiveScopes(auth?.scope ?? []),
+    };
     return servePrivate(request, env, ctx, session);
   },
 };
@@ -163,20 +214,38 @@ export const apiHandler = {
  * A key with no active row is refused here and never falls through to anything. Writes are credited
  * to "agent:<name>", the same text as the person, never to Dustin.
  */
-async function agentHandler(request: Request, env: Env, ctx: ExecutionContext, name: string): Promise<Response> {
+async function agentHandler(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  name: string,
+): Promise<Response> {
   const viewer = await findAgentViewer(env.DB, name);
   if (!viewer) {
-    logEvent(OWASP_EVENTS.authorizationFailure, { door: "ai", reason: "agent-not-in-carrel", agent: name }, { level: "warn" });
+    logEvent(
+      OWASP_EVENTS.authorizationFailure,
+      { door: "ai", reason: "agent-not-in-carrel", agent: name },
+      { level: "warn" },
+    );
     return text("Forbidden. This agent key does not belong to an active agent in Carrel.", 403);
   }
   logEvent(OWASP_EVENTS.signInSuccess, { door: "ai", method: "agent-key", agent: name });
   const throttled = await rateLimited(env, viewer.id, `agent:${name}`);
   if (throttled) return throttled;
-  return servePrivate(request, env, ctx, { viewer, client: agentClient(name), scopes: AGENT_SCOPES });
+  return servePrivate(request, env, ctx, {
+    viewer,
+    client: agentClient(name),
+    scopes: AGENT_SCOPES,
+  });
 }
 
 /** Serves one MCP request for a session or the list-only test key, with the private headers. */
-async function servePrivate(request: Request, env: Env, ctx: ExecutionContext, who: Parameters<typeof handleMcp>[3]): Promise<Response> {
+async function servePrivate(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  who: Parameters<typeof handleMcp>[3],
+): Promise<Response> {
   const response = await handleMcp(request, env, ctx, who, { carrelOrigin: carrelOrigin(env) });
   const out = new Response(response.body, response);
   for (const [header, value] of Object.entries(PRIVATE_HEADERS)) out.headers.set(header, value);
@@ -228,9 +297,16 @@ function providerFor(env: Env): OAuthProvider<Env> {
 /** A stored public report, as stored: the health run's conformance report (health.server.ts) or the signed-in crawl's
  *  (signed-in-crawl.server.ts). Before the first run there is none. */
 async function storedReport(env: Env, name: string): Promise<Response> {
-  const row = await drizzle(env.DB).select({ body: reports.body }).from(reports).where(eq(reports.name, name)).get();
+  const row = await drizzle(env.DB)
+    .select({ body: reports.body })
+    .from(reports)
+    .where(eq(reports.name, name))
+    .get();
   if (!row) return text("No report yet.", 404);
-  return new Response(row.body, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", ...PRIVATE_HEADERS } });
+  return new Response(row.body, {
+    status: 200,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...PRIVATE_HEADERS },
+  });
 }
 
 /** Serves one request that arrived on the AI door's hostname. */
@@ -238,14 +314,19 @@ export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext):
   const { pathname } = new URL(request.url);
   if (pathname === "/health") return healthAnswer(env);
   if (pathname === REPORT_PATH && request.method === "GET") return storedReport(env, "conformance");
-  if (pathname === SIGNED_IN_REPORT_PATH && request.method === "GET") return storedReport(env, SIGNED_IN_REPORT_NAME);
+  if (pathname === SIGNED_IN_REPORT_PATH && request.method === "GET")
+    return storedReport(env, SIGNED_IN_REPORT_NAME);
   if (pathname === MCP_ROUTE || pathname.startsWith(`${MCP_ROUTE}/`)) {
     // Before any token is read, so a page on another origin gets 403, never a 401 to retry with a token.
     const foreign = mcpOriginRefusal(request, [], PRIVATE_HEADERS);
     if (foreign) return foreign;
     // The list-only test key for the daily live check (secret MCP_PROBE_KEY): it lists the read tools,
     // runs none, and never reaches a person. Without the key, nothing changes.
-    const probed = await probeDoor(request, env, { server: MCP_SERVER, limiter: env.MCP_RATE_LIMIT, serve: (req, caller) => servePrivate(req, env, ctx, { probe: caller }) });
+    const probed = await probeDoor(request, env, {
+      server: MCP_SERVER,
+      limiter: env.MCP_RATE_LIMIT,
+      serve: (req, caller) => servePrivate(req, env, ctx, { probe: caller }),
+    });
     if (probed) return probed;
     // Tried, never required: no match (no secret, a bad header, an OAuth token) is the OAuth path, unchanged.
     const agent = await agentPrincipal(env, request.headers.get("Authorization"));

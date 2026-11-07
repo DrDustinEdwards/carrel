@@ -35,7 +35,12 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read");
   return {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name, mentions: can(project.role, "read_mentions") },
+    project: {
+      slug: project.slug,
+      name: project.name,
+      site: siteEntry(project.site).name,
+      mentions: can(project.role, "read_mentions"),
+    },
     canDismiss: can(project.role, "publish"),
     flags: await projectFlags(env.DB, project),
   };
@@ -70,7 +75,9 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
   const [target, setTarget] = useState<{ flag: Flag; opener: HTMLElement | null } | null>(null);
   const open = flags.filter((f) => f.status === "open").length;
   const dismissed = fetcher.data?.dismissed ?? actionData?.dismissed;
-  const link = ({ href, children }: { href: string; children: ReactNode }) => <Link to={href}>{children}</Link>;
+  const link = ({ href, children }: { href: string; children: ReactNode }) => (
+    <Link to={href}>{children}</Link>
+  );
 
   return (
     <div className="app-page">
@@ -83,7 +90,12 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
 
       {dismissed ? <Banner tone="ok">Dismissed flag {dismissed}.</Banner> : null}
 
-      <Panel title="Flags" count={open} src={`${open} open, ${flags.length - open} dismissed`} flush>
+      <Panel
+        title="Flags"
+        count={open}
+        src={`${open} open, ${flags.length - open} dismissed`}
+        flush
+      >
         {flags.length === 0 ? (
           <Empty kind="all-clear" flush title={<Status tone="ok">All clear</Status>}>
             No flags on this project.
@@ -95,13 +107,24 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
               return (
                 <Row
                   key={flag.id}
-                  status={isOpen ? <Status tone="warn">Open</Status> : <Pill variant="secondary">Dismissed</Pill>}
+                  status={
+                    isOpen ? (
+                      <Status tone="warn">Open</Status>
+                    ) : (
+                      <Pill variant="secondary">Dismissed</Pill>
+                    )
+                  }
                   title={flag.message}
-                  href={flag.onSite ? `/p/${project.slug}/e/${encodeURIComponent(flag.itemId)}` : undefined}
+                  href={
+                    flag.onSite
+                      ? `/p/${project.slug}/e/${encodeURIComponent(flag.itemId)}`
+                      : undefined
+                  }
                   renderLink={link}
                   detail={
                     <>
-                      {source(flag.check)} on {flag.onSite ? flag.title || flag.itemId : flag.itemId}
+                      {source(flag.check)} on{" "}
+                      {flag.onSite ? flag.title || flag.itemId : flag.itemId}
                       {flag.onSite ? null : ". Not on the site: no editor page reaches this flag"}
                       {flag.excerpt ? (
                         <>
@@ -148,7 +171,10 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
         returnTo={target?.opener}
         perform={async () => {
           if (!target) return;
-          await fetcher.submit({ intent: "dismiss", flag: String(target.flag.id), item: target.flag.itemId }, { method: "post" });
+          await fetcher.submit(
+            { intent: "dismiss", flag: String(target.flag.id), item: target.flag.itemId },
+            { method: "post" },
+          );
         }}
         onClose={() => setTarget(null)}
       />

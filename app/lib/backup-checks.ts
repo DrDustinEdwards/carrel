@@ -39,7 +39,8 @@ function ownerProblems(dump: DumpResult): string[] {
 
 /** Columns d1-dump's credential check would flag that hold no credential. */
 const CREDENTIAL_ALLOW = {
-  "google_keys_seen.private_key_id": "the service account key's public id and first-seen date, never the key",
+  "google_keys_seen.private_key_id":
+    "the service account key's public id and first-seen date, never the key",
 };
 
 export const BACKUP_OPTIONS = {

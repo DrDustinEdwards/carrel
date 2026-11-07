@@ -6,7 +6,15 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "capsomer/react/button";
-import { Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "capsomer/react/dialog";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "capsomer/react/dialog";
 import { Check, Field } from "capsomer/react/field";
 import { Segmented } from "capsomer/react/segmented";
 import { Select } from "capsomer/react/select";
@@ -25,7 +33,13 @@ export type ChartPreview = {
   source: (block: string) => string;
 };
 
-export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onInsert: (block: string) => void }) {
+export function ChartInsert({
+  preview,
+  onInsert,
+}: {
+  preview: ChartPreview;
+  onInsert: (block: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [opener, setOpener] = useState<HTMLElement | null>(null);
   const [type, setType] = useState<ChartKind>("bar");
@@ -37,7 +51,11 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
   const [alt, setAlt] = useState("");
   const [caption, setCaption] = useState("");
   // The check of one block; shown only while that block is the one in the dialog.
-  const [checked, setChecked] = useState<{ block: string; findings: ChartFinding[]; suggestion: string | null } | null>(null);
+  const [checked, setChecked] = useState<{
+    block: string;
+    findings: ChartFinding[];
+    suggestion: string | null;
+  } | null>(null);
   const [previewed, setPreviewed] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const frame = `chart-preview-${useId().replace(/[^a-z0-9]/gi, "")}`;
@@ -62,7 +80,9 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
   // The check reads the block as written, so a blank alt is flagged by Prelum's required-alt rule (B52).
   // Only the suggested finding, which needs a drawable chart to summarize, draws it with a stand-in.
   const block = ready ? chartBlock({ type, x, y, title, alt, caption, csv }) : "";
-  const drawable = ready ? chartBlock({ type, x, y, title, alt: alt.trim() || "Draft.", caption, csv }) : "";
+  const drawable = ready
+    ? chartBlock({ type, x, y, title, alt: alt.trim() || "Draft.", caption, csv })
+    : "";
   const final = alt.trim() ? block : "";
 
   // The check and the drafted finding, on Prelum's code, loaded only once the dialog has a chart.
@@ -72,7 +92,11 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
     const timer = setTimeout(() => {
       void import("~/lib/chart-check.client").then((m) => {
         if (!live) return;
-        setChecked({ block, findings: m.checkCharts(block), suggestion: m.suggestFinding(drawable) });
+        setChecked({
+          block,
+          findings: m.checkCharts(block),
+          suggestion: m.suggestFinding(drawable),
+        });
       });
     }, 300);
     return () => {
@@ -100,8 +124,12 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
   async function readFile(file: File | undefined) {
     setFileError("");
     if (!file) return;
-    if (file.size > MAX_CSV_BYTES) return setFileError(`${file.name} is ${Math.ceil(file.size / 1024)} KB; a chart's data must be under ${MAX_CSV_BYTES / 1024} KB.`);
-    if (!/\.csv$/i.test(file.name) && file.type !== "text/csv") return setFileError(`${file.name} is not a CSV file.`);
+    if (file.size > MAX_CSV_BYTES)
+      return setFileError(
+        `${file.name} is ${Math.ceil(file.size / 1024)} KB; a chart's data must be under ${MAX_CSV_BYTES / 1024} KB.`,
+      );
+    if (!/\.csv$/i.test(file.name) && file.type !== "text/csv")
+      return setFileError(`${file.name} is not a CSV file.`);
     setCsv(await file.text());
   }
 
@@ -117,24 +145,61 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
       >
         Insert chart
       </Button>
-      <Dialog open={open} onOpenChange={(o) => !o && close()} placement="center" size="lg" returnTo={opener} aria-labelledby="chart-insert-title">
+      <Dialog
+        open={open}
+        onOpenChange={(o) => !o && close()}
+        placement="center"
+        size="lg"
+        returnTo={opener}
+        aria-labelledby="chart-insert-title"
+      >
         <DialogHeader divider>
           <DialogTitle id="chart-insert-title">Insert a chart</DialogTitle>
-          <DialogDescription>Paste the data or choose a CSV file, pick the type and the columns, then write its title and finding. Nothing is in the post until you insert it.</DialogDescription>
+          <DialogDescription>
+            Paste the data or choose a CSV file, pick the type and the columns, then write its title
+            and finding. Nothing is in the post until you insert it.
+          </DialogDescription>
         </DialogHeader>
         <DialogBody>
           <div className="app-stack">
-            <Segmented legend="Chart type" size="sm" value={type} onChange={setType} options={CHART_KINDS.map((k) => ({ value: k.value, label: k.label }))} />
-            <Field label="Data, as CSV" help="The first line names the columns. Paste it here, or choose a file below." required>
-              <textarea className="cap-input app-chart-csv" rows={6} spellCheck={false} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={"year,visits\n2024,1204\n2025,1530"} />
+            <Segmented
+              legend="Chart type"
+              size="sm"
+              value={type}
+              onChange={setType}
+              options={CHART_KINDS.map((k) => ({ value: k.value, label: k.label }))}
+            />
+            <Field
+              label="Data, as CSV"
+              help="The first line names the columns. Paste it here, or choose a file below."
+              required
+            >
+              <textarea
+                className="cap-input app-chart-csv"
+                rows={6}
+                spellCheck={false}
+                value={csv}
+                onChange={(e) => setCsv(e.target.value)}
+                placeholder={"year,visits\n2024,1204\n2025,1530"}
+              />
             </Field>
             <Field label="Or choose a CSV file" error={fileError || undefined}>
-              <input className="cap-input" type="file" accept=".csv,text/csv" onChange={(e) => void readFile(e.target.files?.[0])} />
+              <input
+                className="cap-input"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => void readFile(e.target.files?.[0])}
+              />
             </Field>
             {columns.length >= 2 ? (
               <>
                 <Field label="Along the bottom (x)" required>
-                  <Select size="sm" value={x} onChange={(e) => setX(e.target.value)} options={columns.map((c) => ({ value: c.name, label: c.name }))} />
+                  <Select
+                    size="sm"
+                    value={x}
+                    onChange={(e) => setX(e.target.value)}
+                    options={columns.map((c) => ({ value: c.name, label: c.name }))}
+                  />
                 </Field>
                 <fieldset className="app-chart-y">
                   <legend>Measured (y), one series each</legend>
@@ -145,7 +210,11 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
                         key={c.name}
                         label={c.numeric ? c.name : `${c.name} (not all numbers)`}
                         checked={y.includes(c.name)}
-                        onChange={(e) => setY((cur) => (e.target.checked ? [...cur, c.name] : cur.filter((n) => n !== c.name)))}
+                        onChange={(e) =>
+                          setY((cur) =>
+                            e.target.checked ? [...cur, c.name] : cur.filter((n) => n !== c.name),
+                          )
+                        }
                       />
                     ))}
                 </fieldset>
@@ -154,10 +223,23 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
               <p className="app-note">The data needs a header line and at least two columns.</p>
             ) : null}
             <Field label="Title" help="What the chart is about, shown above it.">
-              <input className="cap-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input
+                className="cap-input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
             </Field>
-            <Field label="Finding" required help="What the reader should see in it, in a sentence. It is shown under the title and read out in place of the chart.">
-              <textarea className="cap-input" rows={2} value={alt} onChange={(e) => setAlt(e.target.value)} />
+            <Field
+              label="Finding"
+              required
+              help="What the reader should see in it, in a sentence. It is shown under the title and read out in place of the chart."
+            >
+              <textarea
+                className="cap-input"
+                rows={2}
+                value={alt}
+                onChange={(e) => setAlt(e.target.value)}
+              />
             </Field>
             {suggestion ? (
               <div className="app-chart-suggestion" role="group" aria-label="Suggested finding">
@@ -170,7 +252,11 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
               </div>
             ) : null}
             <Field label="Caption" help="Optional. Shown under the chart.">
-              <input className="cap-input" value={caption} onChange={(e) => setCaption(e.target.value)} />
+              <input
+                className="cap-input"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+              />
             </Field>
             {findings?.length ? (
               <div role="status">
@@ -186,14 +272,31 @@ export function ChartInsert({ preview, onInsert }: { preview: ChartPreview; onIn
                 The chart check flags nothing.
               </p>
             ) : null}
-            <form ref={form} method="post" action={preview.action} target={frame} onSubmit={() => setPreviewed(true)}>
+            <form
+              ref={form}
+              method="post"
+              action={preview.action}
+              target={frame}
+              onSubmit={() => setPreviewed(true)}
+            >
               <input type="hidden" name="source" value={final ? preview.source(final) : ""} />
-              <Button type="submit" size="sm" variant="quiet" disabledReason={final ? undefined : NOT_READY}>
+              <Button
+                type="submit"
+                size="sm"
+                variant="quiet"
+                disabledReason={final ? undefined : NOT_READY}
+              >
                 Preview as the site shows it
               </Button>
             </form>
             {/* Sandboxed with no permissions, as the editor's own preview is. */}
-            <iframe className="app-chart-preview" name={frame} title="The chart as the site renders it" sandbox="" hidden={!previewed} />
+            <iframe
+              className="app-chart-preview"
+              name={frame}
+              title="The chart as the site renders it"
+              sandbox=""
+              hidden={!previewed}
+            />
           </div>
         </DialogBody>
         <DialogFooter align="between">

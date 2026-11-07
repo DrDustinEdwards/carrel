@@ -25,7 +25,5 @@
     "test/**/*.ts",
     "*.{ts,mjs}"
   ],
-  "ignoreUnresolved": [
-    "^\\./\\+types/"
-  ]
+  "ignoreUnresolved": ["^\\./\\+types/"]
 }
