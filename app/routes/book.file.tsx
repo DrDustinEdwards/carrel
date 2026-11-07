@@ -52,8 +52,7 @@ import { can } from "~/lib/roles";
 import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
-import { readForm } from "@dustinedwards/site-runtime/body";
-import { FORM_MAX_BYTES } from "~/lib/form.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.file";
 
@@ -204,7 +203,7 @@ export async function action({
   const project = await requireBookProject(env.DB, viewer, params.project, "read");
   const path = params["*"] ?? "";
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
-  const form = await readForm(request, FORM_MAX_BYTES);
+  const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   const source = String(form.get("source") ?? "").replace(/\r\n/g, "\n");
 

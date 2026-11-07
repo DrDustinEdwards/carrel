@@ -29,8 +29,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteConnection, siteEntry, siteUnreachable } from "~/lib/sites.server";
 import { onlyInCarrel, waitingWork } from "~/lib/waiting.server";
-import { readForm } from "@dustinedwards/site-runtime/body";
-import { FORM_MAX_BYTES } from "~/lib/form.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project";
 
@@ -118,7 +117,7 @@ export async function action({
 }: Route.ActionArgs): Promise<IntentResult | { share: Awaited<ReturnType<typeof shareFromForm>> }> {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const form = await readForm(request, FORM_MAX_BYTES);
+  const form = await readForm(request);
   if (form.get("intent") === "share") {
     const project = await requireSiteProject(env.DB, viewer, params.project, "read");
     return { share: await shareFromForm(env, viewer, project.id, form) };

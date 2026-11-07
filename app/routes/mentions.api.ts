@@ -5,8 +5,7 @@
 import { getEnv, getViewer } from "~/lib/context";
 import { runIntent } from "~/lib/mentions.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { readForm } from "@dustinedwards/site-runtime/body";
-import { FORM_MAX_BYTES } from "~/lib/form.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/mentions.api";
 
@@ -22,7 +21,5 @@ export async function action({ params, request, context }: Route.ActionArgs) {
       return Response.json({ error: "Deciding mentions is the Owner's step." }, { status: 403 });
     throw thrown;
   }
-  return Response.json(
-    await runIntent(env, viewer, params.project, await readForm(request, FORM_MAX_BYTES)),
-  );
+  return Response.json(await runIntent(env, viewer, params.project, await readForm(request)));
 }

@@ -23,8 +23,7 @@ import { deleteSection, listSections, saveSection, sectionsCurrent } from "~/lib
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry, SiteNotConnected } from "~/lib/sites.server";
-import { readForm } from "@dustinedwards/site-runtime/body";
-import { FORM_MAX_BYTES } from "~/lib/form.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/legal";
 
@@ -82,7 +81,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
-  const form = await readForm(request, FORM_MAX_BYTES);
+  const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   const key = String(form.get("key") ?? "");
   if (intent === "delete-section") {

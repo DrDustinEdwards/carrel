@@ -17,8 +17,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { mentionsSource, runIntent, unreachable } from "~/lib/mentions.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { siteEntry } from "~/lib/sites.server";
-import { readForm } from "@dustinedwards/site-runtime/body";
-import { FORM_MAX_BYTES } from "~/lib/form.server";
+import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/mentions";
 
@@ -58,12 +57,7 @@ export async function action({
   request,
   context,
 }: Route.ActionArgs): Promise<IntentResult> {
-  return runIntent(
-    getEnv(context),
-    getViewer(context),
-    params.project,
-    await readForm(request, FORM_MAX_BYTES),
-  );
+  return runIntent(getEnv(context), getViewer(context), params.project, await readForm(request));
 }
 
 export default function Mentions({ loaderData, actionData }: Route.ComponentProps) {

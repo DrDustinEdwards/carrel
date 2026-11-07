@@ -1,4 +1,5 @@
 import { createContext, type RouterContextProvider } from "react-router";
+
 import {
   cloudflareContext,
   cspNonceContext,
@@ -7,8 +8,6 @@ import {
 } from "@dustinedwards/site-runtime/context";
 
 import type { Viewer } from "~/lib/people.server";
-
-export { cloudflareContext, cspNonceContext, getEnv, getNonce };
 
 /** Set by the gate before any route runs. A route never sees a request without one. */
 export const viewerContext = createContext<Viewer>();
@@ -27,3 +26,6 @@ export function getZone(context: Readonly<RouterContextProvider>): string {
 export function getViewer(context: Readonly<RouterContextProvider>): Viewer {
   return context.get(viewerContext);
 }
+
+// The request context and the render nonce are site-runtime's (./context); re-exported so routes keep one import.
+export { cloudflareContext, cspNonceContext, getEnv, getNonce };

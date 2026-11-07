@@ -23,8 +23,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { mediaBytes, mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { absoluteMediaUrl } from "~/lib/sites.server";
-import { readForm } from "@dustinedwards/site-runtime/body";
-import { UPLOAD_MAX_BYTES } from "~/lib/form.server";
+import { readForm, UPLOAD_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/media.api";
 
