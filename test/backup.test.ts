@@ -13,7 +13,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { BACKUP_CRON, BACKUP_OPTIONS, EXCLUDED_TABLES, REQUIRED_TABLES } from "~/lib/backup-checks";
 import { runBackup } from "~/lib/backup.server";
-import { CRON_JOBS } from "~/lib/cron-schedule";
+import { ALL_JOBS, CRON_JOBS } from "~/lib/cron-schedule";
+import { operatorAnswer } from "~/lib/operator.server";
 import example from "../wrangler.jsonc.example?raw";
 
 import { addPerson, resetDb, testEnv } from "./env";
@@ -33,6 +34,38 @@ const problems = (dump: DumpResult) => [
   ...standardProblems(dump, BACKUP_OPTIONS),
   ...BACKUP_OPTIONS.check(dump),
 ];
+
+describe("back up now", () => {
+  it("runs the jobs marked backup through the operator API's run_job, recorded in cron_runs, behind the bearer", async () => {
+    const env = { ...testEnv, OPERATOR_TOKEN: "sample-operator-token-0123456789abcdef" };
+    // Every job, as workers/app.ts gives them; any but the dump fails, so a wrong mark shows.
+    const jobs = () =>
+      ALL_JOBS.map((job) => ({
+        ...job,
+        run: () =>
+          job.name === "backup" ? runBackup(env) : Promise.reject(new Error(`${job.name} ran`)),
+      }));
+    const call = (token: string) =>
+      operatorAnswer(
+        new Request("https://carrel-mcp.test/api/operator", {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          body: JSON.stringify({ tool: "run_job", args: { backup: true } }),
+        }),
+        env,
+        jobs,
+      );
+    expect((await call("not-the-operator-token-0123456789abcdef")).status).toBe(401);
+    const answer = await call(env.OPERATOR_TOKEN);
+    const body = (await answer.json()) as { data: { runs: { job: string; status: string }[] } };
+    expect(body.data.runs.map((r) => [r.job, r.status])).toEqual([["backup", "ok"]]);
+    const row = await testEnv.DB.prepare(
+      "SELECT last_ok_at FROM cron_runs WHERE name = 'backup'",
+    ).first<{ last_ok_at: number | null }>();
+    expect(row?.last_ok_at).toBeGreaterThan(0);
+    expect((await latestDump(testEnv.BACKUPS))?.run_id).toBeTruthy();
+  });
+});
 
 describe("the nightly dump", () => {
   it("writes a complete run without the credential tables, keeps the required ones, and reports its age", async () => {

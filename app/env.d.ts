@@ -72,6 +72,11 @@ interface CarrelSecrets {
    * `Get-Clipboard | npx wrangler secret put CAPSID_AGENT_KEY`.
    */
   CAPSID_AGENT_KEY?: string;
+  /**
+   * The operator API's bearer (workers/app.ts, /api/operator on the AI door's host): Capsid Admin's run a job now. Set
+   * by Capsid Admin's site key control, never shown; unset, the route answers 503.
+   */
+  OPERATOR_TOKEN?: string;
 }
 
 interface Env extends CarrelSecrets {}

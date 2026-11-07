@@ -1,0 +1,22 @@
+// The operator API Capsid Admin calls (site-runtime ./operator): run a job now. One tool, run_job, over every cron job
+// with the work workers/app.ts gives it, so a hand run goes through the path its trigger runs, under the job's own
+// timeout, and lands in cron_runs where /health's cron check sees it. `{ backup: true }` runs the jobs marked backup.
+
+import { runJobTool, type CronJob } from "@dustinedwards/site-runtime/cron";
+import { operatorResponse } from "@dustinedwards/site-runtime/operator";
+
+/** On the AI door's host only: Desk's host is behind Access, which a bearer cannot pass. */
+export const OPERATOR_PATH = "/api/operator";
+
+/** The OPERATOR_TOKEN bearer and the AI door's limiter, 30 calls a minute; closed (503) until the secret is set. */
+export function operatorAnswer(
+  request: Request,
+  env: Env,
+  jobs: () => CronJob[],
+): Promise<Response> {
+  return operatorResponse(request, {
+    token: env.OPERATOR_TOKEN,
+    limiter: env.MCP_RATE_LIMIT,
+    tools: { run_job: runJobTool(env.DB, jobs) },
+  });
+}
