@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { joinSource, splitSource } from "@dustinedwards/site-api/frontmatter";
+import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 import { readFields, setField } from "~/lib/frontmatter";
 

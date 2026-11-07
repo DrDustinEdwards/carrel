@@ -15,7 +15,7 @@ import {
   valuesOf,
   type SharedSection,
 } from "~/lib/legal";
-import { splitSource } from "@dustinedwards/site-api/frontmatter";
+import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";

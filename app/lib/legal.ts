@@ -4,7 +4,7 @@
 // page, so the shared text reaches a site only when its page is published. Pure, so the server, the
 // editor and the tests read it the same way.
 
-import { joinSource, splitSource } from "@dustinedwards/site-api/frontmatter";
+import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { readFields, setField } from "~/lib/frontmatter";
 
 export const LEGAL_TYPES = ["privacy", "terms"] as const;
