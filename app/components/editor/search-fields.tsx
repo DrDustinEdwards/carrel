@@ -11,7 +11,12 @@ import { Check, Field } from "capsomer/react/field";
 import { Meter } from "capsomer/react/meter";
 
 import { joinSource, readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { searchFieldsOf, setSearchFields, type SearchField, type SearchValues } from "@dustinedwards/site-api/frontmatter";
+import {
+  searchFieldsOf,
+  setSearchFields,
+  type SearchField,
+  type SearchValues,
+} from "@dustinedwards/site-api/frontmatter";
 import { LibraryInsert } from "~/components/media/library-insert";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { SERP_WIDTH, textWidth } from "~/lib/serp-width";
