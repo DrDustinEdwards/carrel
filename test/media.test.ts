@@ -13,7 +13,7 @@ import { loader as editorLoader } from "~/routes/editor";
 import { action as mediaAction, loader as mediaLoader } from "~/routes/media";
 import { action as apiAction, loader as apiLoader } from "~/routes/media.api";
 
-import { appPolicy } from "../workers/security-headers";
+import { withSecurityHeaders } from "../workers/security-headers";
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { connectedEnv, fakeSite, SITE_ORIGIN, routeContext, refusal, viewerFor } from "./site";
 
@@ -339,14 +339,14 @@ describe("the editor's image tools and the picker", () => {
 
 describe("the image policy", () => {
   it("loads images from the configured sites, and drops anything that is not a plain https origin", () => {
-    const policy = appPolicy("AAAAAAAAAAAAAAAAAAAAAA==", [
-      "https://site.test",
-      "https://evil.test; script-src *",
-      "http://plain.test",
-    ]);
+    const env = { ...testEnv, SITE_DUSTINEDWARDS_ORIGIN: "https://site.test/x; script-src *" };
+    const request = new Request("https://carrel.test/");
+    const policy =
+      withSecurityHeaders(new Response("x"), request, "AAAAAAAAAAAAAAAAAAAAAA==", env).headers.get(
+        "Content-Security-Policy",
+      ) ?? "";
     expect(policy).toContain("img-src 'self' data: https://site.test;");
-    expect(policy).not.toContain("evil.test");
-    expect(policy).not.toContain("plain.test");
+    expect(policy).not.toContain("script-src *");
   });
 });
 

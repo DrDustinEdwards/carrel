@@ -20,11 +20,10 @@ import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
 import { runSignedInCrawl, type DeskAs } from "~/lib/signed-in-crawl.server";
 import { reportInbox } from "~/lib/inbox-report.server";
-import { aiDoor, isMcpHost, mcpOrigin } from "~/lib/mcp/door";
+import { aiDoor, isMcpHost } from "~/lib/mcp/door";
 import { carrelOrigin } from "~/lib/mcp/server";
 import { refreshAllSites } from "~/lib/refresh.server";
 import { deskPeopleEmails } from "~/lib/people.server";
-import { siteOrigins } from "~/lib/sites.server";
 import { processSocial } from "~/lib/social/queue.server";
 
 import { requireBookProject } from "~/lib/books.server";
@@ -34,7 +33,7 @@ import { connectRoom } from "~/lib/rooms.server";
 import { cspReport, isCspReport } from "./csp-report";
 import { admit, gate, type Render } from "./gate";
 import { demoHeaders, isDemo } from "./demo";
-import { newNonce, withSecurityHeaders } from "./security-headers";
+import { nonceFor, withSecurityHeaders } from "./security-headers";
 
 export { DocRoom } from "./doc-room";
 // The AI door's rate limiter and tool-call log, site-runtime's (app/lib/mcp/door.ts, server.ts).
@@ -70,7 +69,7 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
   // The maintenance page (site-runtime ./maintenance), on both doors: every path but /health answers 503 while the
   // MAINTENANCE var is on.
   if (maintenanceOn(env) && new URL(request.url).pathname !== "/health")
-    return deskHeaders(maintenanceResponse({ siteName: "Carrel" }), newNonce(), env);
+    return deskHeaders(maintenanceResponse({ siteName: "Carrel" }), request, env);
   if (isMcpHost(request, env)) {
     if (isCspReport(request)) return cspReport(request, env, carrelOrigin(env));
     // Capsid Admin's run a job now (app/lib/operator.server.ts).
@@ -82,19 +81,19 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
       response.headers.set("X-Robots-Tag", "noindex");
     return response;
   }
-  const nonce = newNonce();
+  const nonce = nonceFor(request);
   // The Desk's people, hashed with a fresh salt, for the daily Access drift check (.github/workflows/access-drift.yml).
   // Before the gate, because the caller is carrel-desk-login's service token and not a person: adminListResponse answers
   // only a GET carrying that application's verified Access token from a service token, and 404 to everything else.
   if (new URL(request.url).pathname === ADMIN_LIST_PATH) {
     const list = await adminListResponse(request, env, { admins: await deskPeopleEmails(env.DB) });
-    return deskHeaders(list, nonce, env);
+    return deskHeaders(list, request, env);
   }
   // The chart demo (workers/demo.ts): one sample page, GET only, before the door.
   if (isDemo(request))
-    return deskHeaders(demoHeaders(await demoRender(env, ctx, nonce)(request)), nonce, env);
+    return deskHeaders(demoHeaders(await demoRender(env, ctx, nonce)(request)), request, env);
   const response = await gate(request, env, deskRender(env, ctx, nonce));
-  return deskHeaders(response, nonce, env);
+  return deskHeaders(response, request, env);
 }
 
 /** The demo page, rendered with no viewer: its route reads none (app/routes/demos.progress.tsx). */
@@ -137,18 +136,15 @@ function deskRender(env: Env, ctx: ExecutionContext, nonce: string): Render {
   };
 }
 
-function deskHeaders(response: Response, nonce: string, env: Env): Response {
-  return withSecurityHeaders(response, nonce, {
-    imageOrigins: siteOrigins(env),
-    reportOrigin: mcpOrigin(env),
-  });
+function deskHeaders(response: Response, request: Request, env: Env): Response {
+  return withSecurityHeaders(response, request, nonceFor(request), env);
 }
 
 /** The browser door after Access, for the signed-in crawl: the same admission, page and headers a signed-in browser gets. */
 function deskAs(env: Env, ctx: ExecutionContext): DeskAs {
   return async (request, viewer) => {
-    const nonce = newNonce();
-    return deskHeaders(await admit(request, viewer, deskRender(env, ctx, nonce)), nonce, env);
+    const nonce = nonceFor(request);
+    return deskHeaders(await admit(request, viewer, deskRender(env, ctx, nonce)), request, env);
   };
 }
 

@@ -7,8 +7,7 @@
     "react-router.config.ts",
     "scripts/**/*",
     "app/lib/editor/*.mjs",
-    "www/*.mjs",
-    "workers/security-headers.ts"
+    "www/*.mjs"
   ],
   "compilerOptions": {
     "composite": true,
