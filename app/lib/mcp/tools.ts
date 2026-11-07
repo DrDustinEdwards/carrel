@@ -686,7 +686,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_import_media",
     title: "Add a library photo from its web address",
     scope: "write",
-    description: `Adds a picture to a site's media library from its https address, as the Desk's Import does: the site fetches and checks it and stores it as an upload. A file already in the library is reported, not stored twice. The alt text is required and describes the picture for someone who cannot see it; write only what the picture shows. ${RULE}`,
+    description: `Adds a picture to a site's media library from its https address, as the Desk's Import does: the site fetches and checks it and stores it as an upload. A file already in the library is reported, not stored twice. The alt text is optional here: leave it out to add the picture first and write its alt later with carrel_set_media_alt (find it in carrel_list_media), but a picture with no alt cannot go on a page. When you send it, it describes the picture for someone who cannot see it; write only what the picture shows. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: {
@@ -704,7 +704,7 @@ export const TOOLS: Tool[] = [
           description: "A name for the file; leave out to take it from the address.",
         },
       },
-      required: ["project", "url", "alt"],
+      required: ["project", "url"],
       additionalProperties: false,
     },
     annotations: {
@@ -722,7 +722,7 @@ export const TOOLS: Tool[] = [
         str(args, "project"),
         {
           url: str(args, "url", { max: 2000 }),
-          alt: str(args, "alt", { max: 500 }),
+          alt: str(args, "alt", { optional: true, max: 500 }) ?? "",
           filename: str(args, "filename", { optional: true, max: MAX.path }),
         },
         ctx.deps.fetcher,
