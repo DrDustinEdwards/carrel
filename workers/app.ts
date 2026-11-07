@@ -1,3 +1,4 @@
+import { markdownCopies } from "@drdustinedwards/site-helpers/markdown-copy";
 import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { exportAuditLog } from "@dustinedwards/site-runtime/audit-log";
 import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
@@ -6,7 +7,7 @@ import { maintenanceOn, maintenanceResponse } from "@dustinedwards/site-runtime/
 import { logEvent, withRequestLog } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
-import { carrelMcp } from "@dustinedwards/site-runtime/sites";
+import { carrel, carrelMcp } from "@dustinedwards/site-runtime/sites";
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
 import { cloudflareContext, cspNonceContext, viewerContext, zoneContext } from "~/lib/context";
@@ -199,12 +200,21 @@ async function scheduled(
   await runJobs(env.DB, withWork(jobs, env, ctx));
 }
 
+// Prelum's markdownCopies: the two public pages (the home page and the accessibility statement) have a Markdown copy at
+// their path plus .md and answer Accept: text/markdown, and /llms-full.txt is both. The Desk is behind Access and is not
+// a page for a crawler, so it gets none.
+const PUBLIC_PAGES = new Set(["/", "/accessibility"]);
+const withMarkdownCopies = markdownCopies(
+  (request: Request, env: Env, ctx: ExecutionContext) => fetchCounted(request, env, ctx),
+  { origin: carrel.origin, skip: (path) => !PUBLIC_PAGES.has(path) },
+);
+
 // An admin idle for an hour is signed out of Access (site-runtime ./access). Every request writes one `request` log line
 // with its status and the deployed commit (site-runtime's withRequestLog).
 export default {
   fetch: withRequestLog(
     (request: Request, env: Env, ctx: ExecutionContext) =>
-      withAdminIdle(request, () => fetchCounted(request, env, ctx), {
+      withAdminIdle(request, () => withMarkdownCopies(request, env, ctx), {
         prefixes: ["/"],
         secret: env.ADMIN_IDLE_SECRET,
       }),
