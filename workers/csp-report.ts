@@ -9,7 +9,9 @@
 
 import { receiveCspReport } from "@dustinedwards/site-runtime/csp-report";
 
-import { CSP_REPORT_PATH, doorSecurityHeaders } from "./security-headers";
+import { CSP_REPORT_PATH } from "@dustinedwards/site-runtime/csp";
+
+import { doorSecurityHeaders } from "./security-headers";
 
 /** Whether a request is for the sink. */
 export function isCspReport(request: Request): boolean {
