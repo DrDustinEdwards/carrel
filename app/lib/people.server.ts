@@ -1,4 +1,5 @@
 import { and, asc, eq, isNull, not, like } from "drizzle-orm";
+import { adminEmails, isAdminEmail, isMainAdmin } from "@dustinedwards/site-runtime/access";
 import { drizzle } from "drizzle-orm/d1";
 
 import { people, projectMembers, projects } from "~/db/schema";
@@ -27,28 +28,68 @@ function projectKindOf(row: { site: string | null; book: string | null }): Visib
   return row.site ? "site" : row.book ? "book" : null;
 }
 
-/** The active person with this email, or null. Email matching is case-insensitive, as the column is. */
-export async function findViewer(db: D1Database, email: string): Promise<Viewer | null> {
-  const row = await drizzle(db)
-    .select({
-      id: people.id,
-      email: people.email,
-      name: people.name,
-      isOwner: people.isOwner,
-      isReviewer: people.isReviewer,
-    })
-    .from(people)
-    .where(and(eq(people.email, email.trim()), isNull(people.disabledAt)))
-    .get();
-  return row ?? null;
+type AdminEnv = { ADMIN_EMAIL?: string; CO_OWNER_EMAILS?: string };
+
+/**
+ * The active person with this email, or null. Email matching is case-insensitive, as the column is.
+ *
+ * The Owner is the admin roster (site-runtime ./access, the one model of every site): ADMIN_EMAIL, the main
+ * admin, and CO_OWNER_EMAILS, who have the Owner's use of Carrel. The roster decides, not the row: an admin is
+ * the Owner on every project, is never disabled, and gets a row on first sign-in if the table has none. The
+ * table's one `is_owner` row follows the main admin, so a main admin's change in Cloudflare moves it here.
+ * Everyone else is what their row says, and a row flagged Owner whose email is not on the roster is no Owner.
+ */
+export async function findViewer(
+  db: D1Database,
+  env: AdminEnv,
+  email: string,
+): Promise<Viewer | null> {
+  const d = drizzle(db);
+  const admin = isAdminEmail(env, email);
+  const select = () =>
+    d
+      .select({
+        id: people.id,
+        email: people.email,
+        name: people.name,
+        isOwner: people.isOwner,
+        isReviewer: people.isReviewer,
+        disabledAt: people.disabledAt,
+      })
+      .from(people)
+      .where(eq(people.email, email.trim()))
+      .get();
+  let row = await select();
+  if (!row && admin) {
+    const address = email.trim().toLowerCase();
+    await d
+      .insert(people)
+      .values({ email: address, name: address.split("@")[0], isOwner: false })
+      .onConflictDoNothing();
+    row = await select();
+  }
+  if (!row || (row.disabledAt && !admin)) return null;
+  if (admin && isMainAdmin(env, email) && !row.isOwner) {
+    await db.batch([
+      db.prepare("UPDATE people SET is_owner = 0 WHERE is_owner = 1 AND id != ?").bind(row.id),
+      db.prepare("UPDATE people SET is_owner = 1, disabled_at = NULL WHERE id = ?").bind(row.id),
+    ]);
+  }
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    isOwner: admin,
+    isReviewer: admin ? false : row.isReviewer,
+  };
 }
 
 /**
  * Whether this person reads the AI door's whole tool-call log on its owner page (site-runtime ./owner-page): the
  * Owner only, since the log holds everyone's calls. Anyone else sees only their own grants there.
  */
-export async function readsToolCallLog(db: D1Database, email: string): Promise<boolean> {
-  return (await findViewer(db, email))?.isOwner === true;
+export async function readsToolCallLog(env: AdminEnv, email: string): Promise<boolean> {
+  return isAdminEmail(env, email);
 }
 
 /**
@@ -56,7 +97,7 @@ export async function readsToolCallLog(db: D1Database, email: string): Promise<b
  * `agent:<name>`, which Access can never present). This is the list `carrel-desk-login`'s policies must match, the
  * Owner's `carrel-admin` and the co-authors' `carrel-people` together, which the Access drift check reads hashed.
  */
-export async function deskPeopleEmails(db: D1Database): Promise<string[]> {
+export async function deskPeopleEmails(db: D1Database, env: AdminEnv): Promise<string[]> {
   const rows = await drizzle(db)
     .select({ email: people.email })
     .from(people)
@@ -68,17 +109,20 @@ export async function deskPeopleEmails(db: D1Database): Promise<string[]> {
       ),
     )
     .all();
-  return rows.map((row) => row.email);
+  // The admin roster is let in whether or not it has a row yet (findViewer adds it on first sign-in).
+  const all = new Map<string, string>();
+  for (const email of [...rows.map((row) => row.email), ...adminEmails(env)])
+    all.set(email.toLowerCase(), email);
+  return [...all.values()];
 }
 
 /**
  * The active person row for a named agent key ("agent:<name>"), or null. The row is where the agent's
- * role lives: the key proves who is knocking and grants nothing. An agent is never the Owner, so a row
- * flagged Owner is refused here, whatever the table says.
+ * role lives: the key proves who is knocking and grants nothing. An agent is never the Owner: the roster
+ * decides who is, and an agent's address is never on it.
  */
 export async function findAgentViewer(db: D1Database, name: string): Promise<Viewer | null> {
-  const viewer = await findViewer(db, agentEmail(name));
-  return viewer && !viewer.isOwner ? viewer : null;
+  return findViewer(db, {}, agentEmail(name));
 }
 
 async function roleOn(db: D1Database, viewer: Viewer, projectId: number): Promise<Role | null> {
@@ -97,11 +141,12 @@ async function roleOn(db: D1Database, viewer: Viewer, projectId: number): Promis
  */
 export async function currentRole(
   db: D1Database,
+  env: AdminEnv,
   personId: number,
   projectId: number,
 ): Promise<Role | null> {
   const row = await drizzle(db)
-    .select({ isOwner: people.isOwner, role: projectMembers.role })
+    .select({ email: people.email, role: projectMembers.role })
     .from(people)
     .leftJoin(
       projectMembers,
@@ -109,7 +154,7 @@ export async function currentRole(
     )
     .where(and(eq(people.id, personId), isNull(people.disabledAt)))
     .get();
-  return row?.isOwner ? "owner" : (row?.role ?? null);
+  return row && isAdminEmail(env, row.email) ? "owner" : (row?.role ?? null);
 }
 
 /** Every project the viewer may read: all of them for the Owner, shared ones for everyone else. */

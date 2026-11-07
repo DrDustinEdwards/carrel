@@ -62,7 +62,7 @@ export async function gate(
       keys,
     );
     if (!access.ok) return refuse(request, access.reason);
-    viewer = await findViewer(env.DB, access.email);
+    viewer = await findViewer(env.DB, env, access.email);
   } catch (error) {
     return refuse(request, `error: ${error instanceof Error ? error.message : String(error)}`);
   }

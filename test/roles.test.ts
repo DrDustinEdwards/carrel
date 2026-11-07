@@ -24,10 +24,10 @@ beforeEach(async () => {
   series = await addProject("blog-series");
   await share(novel, readerId, "reader");
   await share(novel, editorId, "editor");
-  owner = (await findViewer(testEnv.DB, "owner@test.invalid"))!;
-  reader = (await findViewer(testEnv.DB, "reader@test.invalid"))!;
-  editor = (await findViewer(testEnv.DB, "editor@test.invalid"))!;
-  outsider = (await findViewer(testEnv.DB, "outsider@test.invalid"))!;
+  owner = (await findViewer(testEnv.DB, testEnv, "owner@test.invalid"))!;
+  reader = (await findViewer(testEnv.DB, testEnv, "reader@test.invalid"))!;
+  editor = (await findViewer(testEnv.DB, testEnv, "editor@test.invalid"))!;
+  outsider = (await findViewer(testEnv.DB, testEnv, "outsider@test.invalid"))!;
 });
 
 async function status(
@@ -125,5 +125,28 @@ describe("schema: the Owner cannot be granted twice", () => {
         .bind(novel, id)
         .run(),
     ).rejects.toThrow();
+  });
+});
+
+describe("the Owner is the admin roster", () => {
+  const roster = { ADMIN_EMAIL: "Boss@Test.invalid", CO_OWNER_EMAILS: "co@test.invalid" };
+
+  it("admits a co-owner as the Owner with a row made on first sign-in, and never disables an admin", async () => {
+    const co = await findViewer(testEnv.DB, roster, "CO@test.invalid");
+    expect(co).toMatchObject({ email: "co@test.invalid", isOwner: true });
+    await testEnv.DB.prepare("UPDATE people SET disabled_at = '2026-09-27T00:00:00Z'").run();
+    expect(await findViewer(testEnv.DB, roster, "co@test.invalid")).toMatchObject({
+      isOwner: true,
+    });
+  });
+
+  it("moves the table's one Owner flag to the main admin and demotes a row not on the roster", async () => {
+    const boss = await findViewer(testEnv.DB, roster, "boss@test.invalid");
+    expect(boss?.isOwner).toBe(true);
+    const flagged = await testEnv.DB.prepare("SELECT email FROM people WHERE is_owner = 1").all<{
+      email: string;
+    }>();
+    expect(flagged.results.map((r) => r.email)).toEqual(["boss@test.invalid"]);
+    expect((await findViewer(testEnv.DB, roster, "owner@test.invalid"))?.isOwner).toBe(false);
   });
 });

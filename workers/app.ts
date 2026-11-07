@@ -86,7 +86,9 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
   // Before the gate, because the caller is carrel-desk-login's service token and not a person: adminListResponse answers
   // only a GET carrying that application's verified Access token from a service token, and 404 to everything else.
   if (new URL(request.url).pathname === ADMIN_LIST_PATH) {
-    const list = await adminListResponse(request, env, { admins: await deskPeopleEmails(env.DB) });
+    const list = await adminListResponse(request, env, {
+      admins: await deskPeopleEmails(env.DB, env),
+    });
     return deskHeaders(list, request, env);
   }
   // The chart demo (workers/demo.ts): one sample page, GET only, before the door.

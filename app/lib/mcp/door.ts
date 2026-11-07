@@ -151,7 +151,7 @@ const login = loginHandler<DoorEnv>({
   // Access let them in, but Carrel must know them too: no row, no access (design section 3). The
   // person's id travels with the grant and is checked again on every request.
   admit: async (env, { email }) => {
-    const viewer = await findViewer(env.DB, email);
+    const viewer = await findViewer(env.DB, env, email);
     return viewer ? { personId: viewer.id } : null;
   },
   // The write box starts ticked only for a client that asked for write, by today's name or an earlier one (scopes.ts).
@@ -160,7 +160,7 @@ const login = loginHandler<DoorEnv>({
   audit: { name: MCP_SERVER.name, version: MCP_SERVER.version },
   // The owner page (/owner, site-runtime ./owner-page): each person lists and revokes their own grants, and only the
   // Owner reads the tool-call log, which holds everyone's calls.
-  owner: { readsLog: (env, email) => readsToolCallLog(env.DB, email) },
+  owner: { readsLog: (env, email) => readsToolCallLog(env, email) },
 });
 
 /**
@@ -186,7 +186,7 @@ export const apiHandler = {
       );
       return foreign;
     }
-    const viewer = props?.email ? await findViewer(env.DB, props.email) : null;
+    const viewer = props?.email ? await findViewer(env.DB, env, props.email) : null;
     if (!viewer || viewer.id !== props?.personId) {
       logEvent(
         OWASP_EVENTS.authorizationFailure,

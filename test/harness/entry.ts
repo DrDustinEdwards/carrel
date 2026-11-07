@@ -29,7 +29,7 @@ export default {
     const email =
       request.headers.get("x-harness-viewer") ??
       (cookie ? decodeURIComponent(cookie) : HARNESS_OWNER);
-    const viewer = await findViewer(world.env.DB, email);
+    const viewer = await findViewer(world.env.DB, world.env, email);
     if (!viewer) return new Response("Forbidden", { status: 403 });
     if (new URL(request.url).pathname.startsWith("/collab/")) {
       return connectRoom(request, world.env, viewer, (kind, slug) =>

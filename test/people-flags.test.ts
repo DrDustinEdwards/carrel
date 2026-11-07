@@ -138,13 +138,13 @@ describe("the people page", () => {
       context,
     } as never);
     // Disabled means refused at both doors, since every request looks the person up again.
-    expect(await findViewer(testEnv.DB, "wife@test.invalid")).toBeNull();
+    expect(await findViewer(testEnv.DB, testEnv, "wife@test.invalid")).toBeNull();
     await peopleAction({
       request: form({ intent: "enable", person: String(id) }),
       params: {},
       context,
     } as never);
-    expect(await findViewer(testEnv.DB, "wife@test.invalid")).toMatchObject({
+    expect(await findViewer(testEnv.DB, testEnv, "wife@test.invalid")).toMatchObject({
       email: "wife@test.invalid",
     });
   });
@@ -152,7 +152,7 @@ describe("the people page", () => {
   it("gives the drift check everyone the Desk lets in: not a reviewer, an agent or a disabled person", async () => {
     await addPerson("agent:sample");
     await addPerson("gone@test.invalid", { disabled: true });
-    expect((await deskPeopleEmails(testEnv.DB)).sort()).toEqual([
+    expect((await deskPeopleEmails(testEnv.DB, testEnv)).sort()).toEqual([
       "editor@test.invalid",
       "owner@test.invalid",
       "reader@test.invalid",

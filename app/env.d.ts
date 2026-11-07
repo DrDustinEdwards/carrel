@@ -79,6 +79,10 @@ interface CarrelSecrets {
    * by Capsid Admin's site key control, never shown; unset, the route answers 503.
    */
   OPERATOR_TOKEN?: string;
+  /** The main admin, the Owner (site-runtime ./access, the one admin model of every site). Unset: nobody is Owner. Set with `wrangler secret put ADMIN_EMAIL`. */
+  ADMIN_EMAIL: string;
+  /** Co-owners, comma-separated: the Owner's full use of Carrel, no say over who is admin. Optional. */
+  CO_OWNER_EMAILS?: string;
 }
 
 interface Env extends CarrelSecrets {}
