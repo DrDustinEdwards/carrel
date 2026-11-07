@@ -18,7 +18,13 @@ export type JobName =
   | "signed-in-crawl"
   | "tool-call-log-export";
 
-type ScheduledJob = { name: JobName; everyMinutes: number; timeoutMs: number };
+// `backup` marks the jobs Capsid Admin's back up now runs (site-runtime runJobTool's `{ backup: true }`).
+export type ScheduledJob = {
+  name: JobName;
+  everyMinutes: number;
+  timeoutMs: number;
+  backup?: boolean;
+};
 
 const MINUTE = 60_000;
 
@@ -37,7 +43,7 @@ export const CRON_JOBS: Record<string, ScheduledJob[]> = {
     { name: "signed-in-crawl", everyMinutes: 15, timeoutMs: 45_000 },
   ],
   [BACKUP_CRON]: [
-    { name: "backup", everyMinutes: 1440, timeoutMs: 10 * MINUTE },
+    { name: "backup", backup: true, everyMinutes: 1440, timeoutMs: 10 * MINUTE },
     // Carrel's own 404 counts (workers/app.ts) are kept 90 days, site-runtime's default (N7).
     { name: "prune-404", everyMinutes: 1440, timeoutMs: 1 * MINUTE },
     // The AI door's tool-call log copied to R2 and its copied rows past 90 days pruned (site-runtime's exportAuditLog, L6-L7).

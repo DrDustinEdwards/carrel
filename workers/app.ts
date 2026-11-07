@@ -11,8 +11,9 @@ import { createRequestHandler, RouterContextProvider } from "react-router";
 import { cloudflareContext, nonceContext, viewerContext, zoneContext } from "~/lib/context";
 import { knownZone } from "~/lib/writing/progress";
 import { runBackup } from "~/lib/backup.server";
-import { CRON_JOBS, type JobName } from "~/lib/cron-schedule";
+import { ALL_JOBS, CRON_JOBS, type JobName, type ScheduledJob } from "~/lib/cron-schedule";
 import { deployedSha } from "~/lib/deployed";
+import { OPERATOR_PATH, operatorAnswer } from "~/lib/operator.server";
 import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
 import { runSignedInCrawl, type DeskAs } from "~/lib/signed-in-crawl.server";
@@ -66,6 +67,9 @@ const door = withMcpHeaders<Env>(
 async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   if (isMcpHost(request, env)) {
     if (isCspReport(request)) return cspReport(request, env, carrelOrigin(env));
+    // Capsid Admin's run a job now (app/lib/operator.server.ts).
+    if (new URL(request.url).pathname === OPERATOR_PATH)
+      return operatorAnswer(request, env, () => withWork(ALL_JOBS, env, ctx));
     const response = await door(request, env, ctx);
     // The door's set says nofollow on every response; /health keeps site-runtime's own noindex, as every family site's does.
     if (new URL(request.url).pathname === "/health")
@@ -167,6 +171,11 @@ const WORK: Record<JobName, (env: Env, ctx: ExecutionContext) => Promise<unknown
   },
 };
 
+/** Jobs with their work: what a trigger runs, and what the operator API's run_job runs now. */
+function withWork(jobs: ScheduledJob[], env: Env, ctx: ExecutionContext) {
+  return jobs.map((job) => ({ ...job, run: () => WORK[job.name](env, ctx) }));
+}
+
 /*
  * Each trigger runs its own list (app/lib/cron-schedule.ts): each job in turn, isolated, cut off at its timeout and
  * recorded in cron_runs for /health's cron check (site-runtime's runJobs). The nightly trigger runs the dump, then the
@@ -182,10 +191,7 @@ async function scheduled(
     logEvent("cron_unknown_trigger", { cron: controller.cron }, { level: "error" });
     throw new Error(`No jobs for the cron trigger ${controller.cron}.`);
   }
-  await runJobs(
-    env.DB,
-    jobs.map((job) => ({ ...job, run: () => WORK[job.name](env, ctx) })),
-  );
+  await runJobs(env.DB, withWork(jobs, env, ctx));
 }
 
 // An admin idle for an hour is signed out of Access (site-runtime ./access). Every request writes one `request` log line
