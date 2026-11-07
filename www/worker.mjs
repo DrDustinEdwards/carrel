@@ -8,14 +8,18 @@
 // for with a cookie. www/wrangler.jsonc runs it first for every path but the fonts. The writing app (Desk) is a separate
 // Worker behind Cloudflare Access; this one holds no binding to it.
 
+import { serveMarkdownCopies } from "@drdustinedwards/site-helpers/llms";
 import { TDM_RESERVATION_HEADERS } from "@drdustinedwards/site-helpers/robots";
 import { staticSite } from "@dustinedwards/site-runtime/static-site";
 import { carrel } from "@dustinedwards/site-runtime/sites";
 import { PAGE_PRELOADS } from "./headers.mjs";
 
-export default staticSite({
+const site = staticSite({
   site: carrel,
   siteName: "Carrel",
   headers: TDM_RESERVATION_HEADERS,
   preload: PAGE_PRELOADS.header,
 });
+
+// Each page's Markdown copy (path plus .md, or Accept: text/markdown) and /llms-full.txt, written at build.
+export default { fetch: serveMarkdownCopies(site.fetch, { origin: carrel.origin }) };

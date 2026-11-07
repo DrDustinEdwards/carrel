@@ -28,6 +28,7 @@ import {
 import { defineHead, headHtml } from "@drdustinedwards/site-helpers/head";
 import { iconLinks, webManifest } from "@drdustinedwards/site-helpers/icons";
 import { llmsDocument } from "@drdustinedwards/site-helpers/llms";
+import { writeMarkdownCopies } from "@drdustinedwards/site-helpers/markdown-files";
 import { aiTxt, robotsDocument } from "@drdustinedwards/site-helpers/robots";
 import { graph, jsonLd, thing, website } from "@drdustinedwards/site-helpers/schema";
 import { sitemapDocument } from "@drdustinedwards/site-helpers/sitemap";
@@ -556,6 +557,8 @@ export async function buildSite(outDir) {
     ),
   );
   writeFileSync(join(outDir, `${INDEXNOW_KEY}.txt`), INDEXNOW_KEY);
+  // Each page's Markdown copy and /llms-full.txt, which serveMarkdownCopies in worker.mjs serves.
+  await writeMarkdownCopies({ dir: outDir, origin: ORIGIN });
 
   /** @type {string[]} */
   const files = [];
