@@ -11,7 +11,7 @@ import { Banner } from "capsomer/react/banner";
 import { MentionsList } from "capsomer/react/mentions-list";
 import { PageHead } from "capsomer/react/page-head";
 
-import { KitForm, useKitSubmit } from "~/components/kit-form";
+import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
 import { ProjectTabs } from "~/components/project-tabs";
 import { getEnv, getViewer } from "~/lib/context";
 import { mentionsSource, runIntent, unreachable } from "~/lib/mentions.server";

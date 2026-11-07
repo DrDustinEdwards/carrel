@@ -17,7 +17,7 @@ import { PostsList, type PostsData } from "capsomer/react/posts-list";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Pill } from "capsomer/react/status";
 
-import { KitForm, useKitSubmit } from "~/components/kit-form";
+import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
 import { ProjectTabs } from "~/components/project-tabs";
 import { SharePanel } from "~/components/share-panel";
 
