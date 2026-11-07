@@ -8,9 +8,8 @@ import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context
 import { findViewer } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { connectRoom } from "~/lib/rooms.server";
-import { siteOrigins } from "~/lib/sites.server";
 
-import { newNonce, withSecurityHeaders } from "../../workers/security-headers";
+import { nonceFor, withSecurityHeaders } from "../../workers/security-headers";
 import { HARNESS_OWNER, harness } from "./seed";
 
 const requestHandler = createRequestHandler(
@@ -39,13 +38,11 @@ export default {
           : requireBookProject(world.env.DB, viewer, slug, "read"),
       );
     }
-    const nonce = newNonce();
+    const nonce = nonceFor(request);
     const context = new RouterContextProvider();
     context.set(cloudflareContext, { env: world.env, ctx });
     context.set(viewerContext, viewer);
     context.set(cspNonceContext, nonce);
-    return withSecurityHeaders(await requestHandler(request, context), nonce, {
-      imageOrigins: siteOrigins(world.env),
-    });
+    return withSecurityHeaders(await requestHandler(request, context), request, nonce, world.env);
   },
 } satisfies ExportedHandler<Env>;

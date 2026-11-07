@@ -16,7 +16,7 @@ import { aiDoor, apiHandler, isMcpHost } from "~/lib/mcp/door";
 import { runSignedInCrawl, type DeskAs } from "~/lib/signed-in-crawl.server";
 
 import { admit, gate } from "../workers/gate";
-import { newNonce, withSecurityHeaders } from "../workers/security-headers";
+import { nonceFor, withSecurityHeaders } from "../workers/security-headers";
 import { addPerson, addProject, localKeys, resetDb, share, testEnv } from "./env";
 import { MCP_HOST, modernRequest, readMessage, type ToolCallResult } from "./mcp-client";
 import { connectedEnv, fakeSite } from "./site";
@@ -947,7 +947,7 @@ describe("the signed-in crawl", () => {
   it("PLANT: with no Owner it reports error, never a pass; with one it GETs Desk's pages as the Owner through the door", async () => {
     const seen: string[] = [];
     const deskAs: DeskAs = async (request, viewer) => {
-      const nonce = newNonce();
+      const nonce = nonceFor(request);
       const page = await admit(request, viewer, async (req, who) => {
         seen.push(`${req.method} ${new URL(req.url).pathname} ${who.email}`);
         const missing = new URL(req.url).pathname === "/signed-in-crawl-404";
@@ -959,10 +959,7 @@ describe("the signed-in crawl", () => {
           },
         );
       });
-      return withSecurityHeaders(page, nonce, {
-        imageOrigins: [],
-        reportOrigin: "https://carrel-mcp.test",
-      });
+      return withSecurityHeaders(page, request, nonce, testEnv);
     };
 
     const owners = (disabledAt: string | null) =>

@@ -15,7 +15,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { previewPolicy, previewResponse, withSiteBase } from "~/lib/preview.server";
 
 import { gate } from "../workers/gate";
-import { appPolicy, withSecurityHeaders } from "../workers/security-headers";
+import { nonceFor, withSecurityHeaders } from "../workers/security-headers";
 
 import { addPerson, localKeys, resetDb, testEnv } from "./env";
 import { MCP_HOST } from "./mcp-client";
@@ -29,8 +29,9 @@ const failed = (
 
 describe("a page's policy", () => {
   it("PLANT: a page without a policy gets one", () => {
-    const page = withSecurityHeaders(new Response("<html></html>"), NONCE);
-    expect(page.headers.get("Content-Security-Policy")).toBe(appPolicy(NONCE));
+    const request = new Request("https://carrel.test/");
+    const page = withSecurityHeaders(new Response("<html></html>"), request, nonceFor(request));
+    expect(page.headers.get("Content-Security-Policy")).toContain(`'nonce-${nonceFor(request)}'`);
   });
 });
 
@@ -73,10 +74,12 @@ describe("rendered responses through the gate", () => {
   async function through(render: () => Response, { signedIn = true } = {}) {
     const headers: Record<string, string> = signedIn ? { "Cf-Access-Jwt-Assertion": token } : {};
     const request = new Request("https://carrel.test/", { headers });
-    return withSecurityHeaders(await gate(request, testEnv, async () => render(), keys), NONCE, {
-      imageOrigins: ["https://site.test"],
-      reportOrigin: DOOR,
-    });
+    return withSecurityHeaders(
+      await gate(request, testEnv, async () => render(), keys),
+      request,
+      NONCE,
+      { ...testEnv, SITE_DUSTINEDWARDS_ORIGIN: "https://site.test" },
+    );
   }
 
   const html = (body: string, init: ResponseInit = {}) =>
