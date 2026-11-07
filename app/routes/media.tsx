@@ -16,7 +16,7 @@ import type { MediaRecord } from "capsomer/behavior/media";
 import { PageHead } from "capsomer/react/page-head";
 import { loadMedia, readMediaQuery, type IntentResult } from "@dustinedwards/site-api/admin";
 
-import { KitForm, useKitSubmit } from "~/components/kit-form";
+import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
 import { ProjectTabs } from "~/components/project-tabs";
 import { getEnv, getViewer } from "~/lib/context";
 import { mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
