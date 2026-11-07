@@ -10,4 +10,5 @@ const FORM_MAX_BYTES = 4_000_000;
 export const UPLOAD_MAX_BYTES = 26 * 1024 * 1024;
 
 /** The form, read to the ceiling (site-runtime ./body): a thrown 413 over it. */
-export const readForm = (request: Request, max = FORM_MAX_BYTES): Promise<FormData> => readCappedForm(request, max);
+export const readForm = (request: Request, max = FORM_MAX_BYTES): Promise<FormData> =>
+  readCappedForm(request, max);
