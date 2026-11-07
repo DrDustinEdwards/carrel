@@ -31,6 +31,7 @@ export default defineConfig({
         bindings: {
           ACCESS_TEAM_DOMAIN: "https://test-team.cloudflareaccess.com",
           ACCESS_AUD: "test-audience-tag",
+          ADMIN_EMAIL: "owner@test.invalid",
           ALERT_EMAIL: "owner@test.invalid",
           ALERT_FROM: "carrel@test.invalid",
           SITE_DUSTINEDWARDS_ORIGIN: "https://site.test",

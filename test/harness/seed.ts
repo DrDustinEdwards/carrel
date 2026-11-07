@@ -140,8 +140,8 @@ const SCENE_THREE =
   ) +
   "Suddenly the river was loud. Wade stood on the bank with the chain in his hands and the phone rang, the way it never did out past the ridge. He let it ring.\n\nHe hooked the chain and walked the truck backward, one slow yard at a time.\n";
 
-async function viewer(db: D1Database, email: string) {
-  const v = await findViewer(db, email);
+async function viewer(db: D1Database, env: Env, email: string) {
+  const v = await findViewer(db, env, email);
   if (!v) throw new Error(`the harness has no ${email}`);
   return v;
 }
@@ -245,6 +245,7 @@ async function build(base: Env): Promise<World> {
 
   const env = {
     ...base,
+    ADMIN_EMAIL: HARNESS_OWNER,
     SITE_DUSTINEDWARDS_KEY: SITE_KEY,
     NOVELS_APP_ID: "123",
     NOVELS_APP_PRIVATE_KEY: appKey.pkcs1Pem,
@@ -283,8 +284,8 @@ async function build(base: Env): Promise<World> {
       .run();
   await share(siteId, rosa, "editor");
   await share(siteId, sam, "reader");
-  const owner = await viewer(db, HARNESS_OWNER);
-  const rosaV = await viewer(db, HARNESS_EDITOR);
+  const owner = await viewer(db, env, HARNESS_OWNER);
+  const rosaV = await viewer(db, env, HARNESS_EDITOR);
   void dustin;
   void sam;
 

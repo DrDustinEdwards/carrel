@@ -24,10 +24,10 @@ beforeEach(async () => {
   series = await addProject("blog-series");
   await share(novel, readerId, "reader");
   await share(novel, editorId, "editor");
-  owner = (await findViewer(testEnv.DB, "owner@test.invalid"))!;
-  reader = (await findViewer(testEnv.DB, "reader@test.invalid"))!;
-  editor = (await findViewer(testEnv.DB, "editor@test.invalid"))!;
-  outsider = (await findViewer(testEnv.DB, "outsider@test.invalid"))!;
+  owner = (await findViewer(testEnv.DB, testEnv, "owner@test.invalid"))!;
+  reader = (await findViewer(testEnv.DB, testEnv, "reader@test.invalid"))!;
+  editor = (await findViewer(testEnv.DB, testEnv, "editor@test.invalid"))!;
+  outsider = (await findViewer(testEnv.DB, testEnv, "outsider@test.invalid"))!;
 });
 
 async function status(
@@ -103,7 +103,27 @@ describe("roles: what each person sees", () => {
     expect(await visibleProjects(testEnv.DB, outsider)).toEqual([]);
   });
 
-  it("shows the Owner every project", async () => {
+  it("makes the Owner the admin roster, and shows the Owner every project", async () => {
+    const roster = { ADMIN_EMAIL: "Boss@Test.invalid", CO_OWNER_EMAILS: "co@test.invalid" };
+    // A co-owner is the Owner with a row made on first sign-in, and an admin is never disabled.
+    expect(await findViewer(testEnv.DB, roster, "CO@test.invalid")).toMatchObject({
+      email: "co@test.invalid",
+      isOwner: true,
+    });
+    await testEnv.DB.prepare(
+      "UPDATE people SET disabled_at = '2026-09-27T00:00:00Z' WHERE email = 'co@test.invalid'",
+    ).run();
+    expect(await findViewer(testEnv.DB, roster, "co@test.invalid")).toMatchObject({
+      isOwner: true,
+    });
+    // The table's one Owner flag moves to the main admin, and a row not on the roster is no Owner.
+    expect((await findViewer(testEnv.DB, roster, "boss@test.invalid"))?.isOwner).toBe(true);
+    const flagged = await testEnv.DB.prepare("SELECT email FROM people WHERE is_owner = 1").all<{
+      email: string;
+    }>();
+    expect(flagged.results.map((r) => r.email)).toEqual(["boss@test.invalid"]);
+    expect((await findViewer(testEnv.DB, roster, "owner@test.invalid"))?.isOwner).toBe(false);
+
     expect((await visibleProjects(testEnv.DB, owner)).map((p) => p.slug).sort()).toEqual([
       "blog-series",
       "paluxy-portal",

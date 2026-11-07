@@ -504,11 +504,12 @@ describe("signing in through Access for SaaS", () => {
   });
 
   it("PLANT: a person disabled after the grant loses the door at once", async () => {
-    const { final } = await signIn();
+    await addPerson("coauthor@test.invalid");
+    const { final } = await signIn(() => ({ email: "coauthor@test.invalid" }));
     const token = await tokenFor(final.searchParams.get("code")!);
     expect((await callTool(token, "carrel_list_projects")).status).toBe(200);
     await testEnv.DB.prepare(
-      "UPDATE people SET disabled_at = '2026-09-27T00:00:00Z' WHERE email = 'owner@test.invalid'",
+      "UPDATE people SET disabled_at = '2026-09-27T00:00:00Z' WHERE email = 'coauthor@test.invalid'",
     ).run();
     expect((await callTool(token, "carrel_list_projects")).status).toBe(403);
   });

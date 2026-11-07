@@ -420,7 +420,7 @@ export class DocRoom extends YServer<Env> {
       return viewer;
     let role: RoomViewer["role"] | null;
     try {
-      role = await currentRole(this.env.DB, viewer.id, this.#where().projectId);
+      role = await currentRole(this.env.DB, this.env, viewer.id, this.#where().projectId);
     } catch (error) {
       // Unchecked is not allowed: the editor reconnects through the door, which checks again.
       logEvent("room_role_check_failed", { error: String(error) }, { level: "error" });
