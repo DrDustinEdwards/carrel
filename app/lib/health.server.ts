@@ -12,7 +12,6 @@
 // shared scoreboard reads; it carries check names and the site's API address, never a key or site text.
 
 import { sendEmail } from "@dustinedwards/site-runtime/email";
-import { backupHealth } from "@dustinedwards/d1-dump";
 import { PACKAGE_VERSION } from "@dustinedwards/site-api";
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
@@ -36,6 +35,7 @@ import {
   people,
   reports,
 } from "~/db/schema";
+import { backupStatus } from "~/lib/backup.server";
 import { ALL_JOBS } from "~/lib/cron-schedule";
 import { deployedSha } from "~/lib/deployed";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
@@ -182,7 +182,7 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
 /** The newest complete D1 dump must be under 26 hours old (d1-dump's default). No complete dump at all fails too. */
 async function checkBackup(env: Env, now: Date): Promise<CheckResult> {
   try {
-    const { last_ok, age_hours, warning } = await backupHealth(env.BACKUPS, { now });
+    const { last_ok, age_hours, warning } = await backupStatus(env, now);
     if (last_ok === null || warning)
       return { name: "backup", ok: false, detail: warning ?? "No complete D1 dump exists yet." };
     return {
@@ -505,7 +505,7 @@ export async function runHealth(
 export function healthAnswer(env: Env): Promise<Response> {
   return healthResponse({
     ping: () => env.DB.prepare("SELECT 1").first(),
-    backup: () => backupHealth(env.BACKUPS),
+    backup: () => backupStatus(env),
     sha: deployedSha(env),
     checks: [
       { ...kvCheck("oauth-kv", env.OAUTH_KV), level: "warn" },
