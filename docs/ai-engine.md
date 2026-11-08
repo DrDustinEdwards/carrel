@@ -17,16 +17,27 @@ Carrel's AI work runs on one of two engines: Dustin's Claude subscription (a Cla
 
 ## Jobs
 
-| Job                                    | Subscription                                                                   | API                                                                             |
-| -------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| Social post drafts                     | The routine drafts every waiting post in one run (`social/routine.server.ts`). | `draftPostViaApi` drafts each item in the same pass.                            |
-| Germomics episode summary and chapters | The routine, once per episode transcript (`episode-drafts.server.ts`).         | `draftEpisodeViaApi` drafts them from the transcript, once per transcript.      |
-| Search description and title           | None: ask a Claude session.                                                    | The editor's button writes them as an AI draft beside your text (`suggestSeo`). |
+| Job                                    | Subscription                                                                           | API                                                                                   |
+| -------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Social post drafts                     | The routine drafts every waiting post in one run (`social/routine.server.ts`).         | `draftPostViaApi` drafts each item in the same pass.                                  |
+| Germomics episode summary and chapters | The routine, once per episode transcript (`episode-drafts.server.ts`).                 | `draftEpisodeViaApi` drafts them from the transcript, once per transcript.            |
+| Search description and title           | The routine writes them with `carrel_read_item` and `carrel_save_draft`.               | `suggestSeo`, from the editor's button.                                               |
+| Continue my draft, suggest edits       | The routine, told to read the post or book file and store a draft with Carrel's tools. | `ai-write.server.ts`, from the editor and book file buttons, with the voice excerpts. |
+| Alt text for pictures without it       | The routine lists the no-alt files and sets each alt with `carrel_set_media_alt`.      | The site's own suggester (site-api `mediaSuggester`), then the Desk's alt step.       |
 
-An API draft is saved beside your own, never over it. Only the description is written, and the search title on sites
-that keep one apart from the post's title.
+Every result but alt text is an AI draft beside your text, never over it, and starts only from a button press (or, for
+social and episode drafts, the schedule). Alt text sets only files that have none. After any run the editor offers the
+same job on the other engine. The AI engine page also has Draft now (the episode and social passes, without sending any
+post) and a model per job (fast, standard or deep, with list prices) for when the API does it.
+
+The API's alt text calls are metered on each site (its `anthropic_call` log), so they count as calls here but add no
+dollars to the cap. At 80% of the cap Carrel emails the alert address once that month.
 
 ## Setup
 
 `npx wrangler secret put ANTHROPIC_API_KEY` on the Carrel Worker. Without it the API engine reports a missing key and
 the subscription still works.
+
+The subscription route needs the Carrel routine: a Claude Code routine with an API trigger and only the Carrel connector,
+its fire URL in `SOCIAL_ROUTINE_URL` and its token in `SOCIAL_ROUTINE_TOKEN` (both `wrangler secret put`). A routine
+cannot be created from a session; it is made on claude.ai/code/routines.

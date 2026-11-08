@@ -33,8 +33,9 @@ export default [
   route("p/:project/posts/api", "routes/posts.api.ts"),
   route("p/:project/mentions/api", "routes/mentions.api.ts"),
   route("p/:project/e/:item/preview", "routes/preview.ts"),
-  route("p/:project/e/:item/ai-seo", "routes/ai-seo.ts"),
+  route("p/:project/e/:item/ai-write", "routes/ai-write.ts"),
   route("p/:project/e/:item/ai/:id/preview", "routes/ai-draft.preview.ts"),
+  route("b/:project/ai-write", "routes/book.ai-write.ts"),
   route("b/:project/export/:format", "routes/book.export.ts"),
   route("b/:project/authorship", "routes/book.authorship.ts"),
   // The chart demo: sample data, no sign-in, noindex, answered before the door (workers/demo.ts).

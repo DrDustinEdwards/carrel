@@ -275,6 +275,29 @@ export async function listMediaFiles(
 }
 
 /**
+ * What the site's own suggester (site-api's mediaSuggester, behind the media group's `suggestions`) writes as one file's
+ * alt text. Nothing is written: the caller decides, through setMediaAlt.
+ */
+export async function suggestMediaAlt(
+  env: Env,
+  viewer: Viewer,
+  slug: string,
+  id: string,
+  fetcher?: typeof fetch,
+): Promise<{ ok: true; alt: string | null; model: string } | { ok: false; message: string }> {
+  const source = await mediaSourceFor(env, viewer, slug, fetcher);
+  try {
+    const made = await source.client.media.suggestions(id);
+    return { ok: true, alt: made.alt, model: made.model };
+  } catch (error) {
+    const message = unreachable(error);
+    if (message !== null) return { ok: false, message };
+    if (error instanceof SiteApiError) return { ok: false, message: error.message };
+    throw error;
+  }
+}
+
+/**
  * Writes the alt text of one library file for an AI session, or marks it decorative, through the Desk's own alt step: the
  * site refuses an alt that is the file name, a bare word such as "image", an address, or too long, and refuses an alt sent
  * with decorative. The version is read first so a file changed in between is refused, not overwritten.

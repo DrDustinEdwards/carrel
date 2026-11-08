@@ -16,6 +16,7 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useSaveShortcut } from "~/components/editor/save-keys";
@@ -509,6 +510,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   {saveState}
                 </p>
                 {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
+                {data.version ? (
+                  <AiWriteButtons
+                    action={`${base}/ai-write`}
+                    fields={{ path: data.path }}
+                    buttons={[
+                      { job: "continue", label: "Continue this file" },
+                      { job: "edit", label: "Suggest edits" },
+                    ]}
+                  />
+                ) : null}
                 <div className="app-actions">
                   <Button
                     variant="primary"

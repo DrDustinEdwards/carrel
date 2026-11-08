@@ -3,6 +3,7 @@
 // with comments and suggestions; the site's own render in a sandboxed preview; and the writes the
 // viewer's role allows, each sending the room's text through site-api's version check.
 
+import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 import { useHydrated } from "~/lib/hydrated";
@@ -1040,12 +1041,15 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             />
           ) : null}
           {seo ? <SearchSharingPanel check={seo} /> : null}
-          {seo && mayEdit ? (
-            <form method="post" action={`/p/${data.project.slug}/e/${data.itemId}/ai-seo`}>
-              <Button type="submit" size="sm">
-                Write the search description with Claude
-              </Button>
-            </form>
+          {mayEdit ? (
+            <AiWriteButtons
+              action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
+              buttons={[
+                { job: "continue", label: "Continue my draft" },
+                { job: "edit", label: "Suggest edits" },
+                ...(seo ? [{ job: "seo", label: "Write the search description" }] : []),
+              ]}
+            />
           ) : null}
           {data.revisions || data.historyError ? (
             <HistoryPanel
