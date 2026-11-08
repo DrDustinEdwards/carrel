@@ -38,7 +38,7 @@ function episodePrompt(slug: string, title: string): string {
 }
 
 /**
- * One pass, run by the cron: every unpublished Germomics episode with a transcript and an empty summary or chapters gets
+ * One pass, run by the cron: every Germomics episode, published or not, with a transcript and an empty summary or chapters gets
  * the routine once per transcript (keyed by its length, so a replaced transcript is drafted again). Returns what it did.
  */
 export async function draftEpisodes(
@@ -55,7 +55,7 @@ export async function draftEpisodes(
   const spent = await monthSpendMicros(env.DB, now);
   const store = d1FireStore(env.DB);
   const client = siteClient(env, SITE, fetcher);
-  const list = await client.list({ kind: "episode", status: "draft", limit: 50 });
+  const list = await client.list({ kind: "episode", limit: 50 });
   for (const item of list.items) {
     const doc = await client.get(item.id);
     if (!doc?.transcript?.trim() || !needsDraft(doc.source)) continue;
