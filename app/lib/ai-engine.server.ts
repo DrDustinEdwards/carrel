@@ -352,6 +352,27 @@ export const EPISODE_CHAPTER_RULES = [
   "Chapters: one topic to a chapter: split a stretch that covers two, and merge stretches that are one. Start each chapter where its topic is first said, not where the one before it is wrapping up. Title what is said there, plainly, in at most eight words. Skip chatter that belongs to no topic, including the show's welcome line, its introduction of the hosts and its sign-off; give the closing banter a chapter only if it is a segment of its own, and title it by what is said.",
 ].join(" ");
 
+const HOUSE_WORDS = new Set(["germomics", "dustin", "faith", "edwards", "cox"]);
+
+/** Capitalized words inside the summary and chapter titles (not a title's first word) that the written text never uses. */
+export function unwrittenNames(
+  drafted: { excerpt: string; chapters: { title: string }[] },
+  written: string,
+): string[] {
+  const known = written.toLowerCase();
+  const found = new Set<string>();
+  for (const text of [drafted.excerpt, ...drafted.chapters.map((c) => c.title)]) {
+    const words = text.match(/[\p{L}][\p{L}'’-]*/gu) ?? [];
+    words.forEach((w, i) => {
+      const bare = w.replace(/['’]s$/i, "");
+      if (i === 0 || !/^\p{Lu}/u.test(bare) || bare.length < 4) return;
+      const low = bare.toLowerCase();
+      if (!HOUSE_WORDS.has(low) && !known.includes(low)) found.add(bare);
+    });
+  }
+  return [...found];
+}
+
 const isEmpty = (v: string) => v === "" || v === '""' || v === "null" || v === "[]";
 
 /**
@@ -374,35 +395,51 @@ export async function draftEpisodeViaApi(
   const needChapters = isEmpty(readKey(front, "chapters").trim());
   if (!needSummary && !needChapters) return { ok: true };
   const transcript = parseTranscript(episode.transcript);
-  const result = await structured<{
-    excerpt: string;
-    chapters: { opens: string; title: string }[];
-  }>(
-    env,
-    "carrel",
-    {
-      model: aiModel(models, "episode", "standard"),
-      max_tokens: 4000,
-      system: [
-        "Write a summary and chapters for the podcast episode below from its transcript. The summary is two or three plain sentences saying what the listener learns.",
-        EPISODE_CHAPTER_RULES,
-        'Give each chapter as "opens": the first five to ten words said where it starts, copied exactly from the transcript as written there, mishearings and all (do not correct them in "opens"), and its "title" (corrected). Carrel finds the time from "opens", so a quote that is not in the transcript, or two chapters out of order, fails the draft.',
-        WRITING_RULES,
-        UNTRUSTED_DATA_RULE,
-      ].join("\n\n"),
-      messages: [
-        {
-          role: "user",
-          content: [
-            untrusted("title", episode.title),
-            untrusted("transcript", transcript.text.slice(0, 300_000)),
-          ].join("\n"),
-        },
-      ],
-    },
-    EPISODE_SCHEMA,
-    { ...meteredOptions(env, "episode"), ...(fetcher ? { fetcher } : {}) },
-  );
+  // The episode's own written text and credited sources spell its names; the machine-made transcript does not.
+  const written = `${parts.body}\n${readKey(front, "sources")}`;
+  type Drafted = { excerpt: string; chapters: { opens: string; title: string }[] };
+  const ask = (extra?: string) =>
+    structured<Drafted>(
+      env,
+      "carrel",
+      {
+        model: aiModel(models, "episode", "standard"),
+        max_tokens: 4000,
+        system: [
+          "Write a summary and chapters for the podcast episode below from its transcript. The summary is two or three plain sentences saying what the listener learns.",
+          EPISODE_CHAPTER_RULES,
+          "The episode's written text comes with the transcript. It is Dustin's own writing, so take the spelling of every name and term from it before you take it from the transcript or from memory.",
+          'Give each chapter as "opens": the first five to ten words said where it starts, copied exactly from the transcript as written there, mishearings and all (do not correct them in "opens"), and its "title" (corrected). Carrel finds the time from "opens", so a quote that is not in the transcript, or two chapters out of order, fails the draft.',
+          WRITING_RULES,
+          UNTRUSTED_DATA_RULE,
+        ].join("\n\n"),
+        messages: [
+          {
+            role: "user",
+            content: [
+              untrusted("title", episode.title),
+              untrusted("written", written.slice(0, 60_000)),
+              untrusted("transcript", transcript.text.slice(0, 300_000)),
+              ...(extra ? [extra] : []),
+            ].join("\n"),
+          },
+        ],
+      },
+      EPISODE_SCHEMA,
+      { ...meteredOptions(env, "episode"), ...(fetcher ? { fetcher } : {}) },
+    );
+  let result = await ask();
+  // Verify pass: a capitalized word in a title or the summary that the written text never uses is a likely mishearing
+  // ("Gina Geis" for Jeanna Giese). The model gets those words once more, with the instruction to settle each from the text.
+  if (result.ok) {
+    const odd = unwrittenNames(result.value, written);
+    if (odd.length) {
+      const again = await ask(
+        `Your last answer used these capitalized words, which the written text does not contain: ${odd.join(", ")}. For each one that is a mishearing of a name or term in the written text, use the text's spelling. If it is an ordinary word, or a name the text does not have and you cannot settle, keep it or leave it out. Answer again in full.`,
+      );
+      if (again.ok) result = again;
+    }
+  }
   if (!result.ok) return { ok: false, error: result.error };
   let next = front;
   const summary = result.value.excerpt.replace(/\s+/g, " ").trim();
