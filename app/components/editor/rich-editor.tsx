@@ -698,7 +698,6 @@ export function RichEditor(props: RichEditorProps) {
           ref={toolbar}
           onKeyDown={onToolbarKey}
         >
-          {/* oxlint-disable-next-line react/refs -- read when a tool runs, not while rendering */}
           {all.map((t, i) => (
             <span key={t.id} className="app-tool-slot">
               {i === tools.length && blocks.length > 0 ? (
