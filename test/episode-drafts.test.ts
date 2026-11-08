@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { freeDeadClaim, needsDraft } from "~/lib/episode-drafts.server";
 import { d1FireStore } from "~/lib/social/routine.server";
-import { parseTranscript, placeChapters } from "~/lib/transcript";
+import { keyMomentProblems, parseTranscript, placeChapters } from "~/lib/transcript";
 
 import { resetDb, testEnv } from "./env";
 
@@ -66,5 +66,14 @@ describe("a claim left by a pass that died", () => {
     await freeDeadClaim(testEnv.DB, store, "api-episode-draft:y:10", "y", now);
     expect(await store.get("api-episode-draft:x:10")).toBeNull();
     expect(await store.get("api-episode-draft:y:10")).not.toBeNull();
+  });
+});
+
+describe("key moment times", () => {
+  const front = (moments: string) => `---\ntitle: "Pump"\nkeyMoments: ${moments}\n---\nBody`;
+  it("must be the start of a cue; cue numbers written as seconds are flagged", () => {
+    expect(keyMomentProblems(front('[{"seconds":35,"label":"Soup"}]'), vtt)).toEqual([]);
+    expect(keyMomentProblems(front('[{"seconds":3,"label":"Soup"}]'), vtt)).toHaveLength(1);
+    expect(keyMomentProblems(front('[{"seconds":400,"label":"Late"}]'), vtt)).toHaveLength(1);
   });
 });
