@@ -5,8 +5,6 @@
 const CUE = /(\d{2}):(\d{2}):(\d{2})\.\d{3} --> (\d{2}):(\d{2}):(\d{2})\.\d{3}/;
 /** Seconds between markers. */
 const MARK_EVERY = 30;
-/** How far a returned time may sit from a marker before it is not trusted. */
-const SNAP = 10;
 
 export type MarkedTranscript = { text: string; duration: number; marks: number[] };
 
@@ -37,25 +35,37 @@ export function markTranscript(vtt: string): MarkedTranscript {
 }
 
 /**
- * The chapters whose start sits at a marker (within SNAP seconds), moved onto it, in time order and one to a time. Null
- * when fewer than three survive or any was dropped for a time the transcript does not have: the caller then leaves the
- * chapters out rather than save times that point nowhere.
+ * The chapters moved onto the nearest marker (at most one interval away), in time order and one to a chapter per marker. A
+ * time past the end of the episode, or too few chapters left, is refused with the reason, so the caller saves nothing rather
+ * than times that point nowhere.
  */
 export function checkedChapters(
   chapters: { start: number; title: string }[],
   transcript: MarkedTranscript,
-): { start: number; title: string }[] | null {
+): { ok: true; chapters: { start: number; title: string }[] } | { ok: false; why: string } {
   const kept: { start: number; title: string }[] = [];
   for (const c of chapters) {
     const title = c.title.trim();
-    if (!Number.isInteger(c.start) || c.start < 0 || !title) return null;
+    if (!Number.isInteger(c.start) || c.start < 0 || !title)
+      return { ok: false, why: `a chapter has no usable time or title (${JSON.stringify(c)})` };
+    if (c.start > transcript.duration)
+      return {
+        ok: false,
+        why: `"${title}" starts at ${c.start}s, past the end at ${transcript.duration}s`,
+      };
     const near = transcript.marks.reduce(
       (a, b) => (Math.abs(b - c.start) < Math.abs(a - c.start) ? b : a),
       -1e9,
     );
-    if (Math.abs(near - c.start) > SNAP || kept.some((k) => k.start === near)) return null;
-    kept.push({ start: near, title });
+    if (Math.abs(near - c.start) > MARK_EVERY)
+      return {
+        ok: false,
+        why: `"${title}" starts at ${c.start}s, more than ${MARK_EVERY}s from any marker`,
+      };
+    if (!kept.some((k) => k.start === near)) kept.push({ start: near, title });
   }
   kept.sort((a, b) => a.start - b.start);
-  return kept.length >= 3 ? kept : null;
+  return kept.length >= 3
+    ? { ok: true, chapters: kept }
+    : { ok: false, why: `only ${kept.length} chapters were left` };
 }
