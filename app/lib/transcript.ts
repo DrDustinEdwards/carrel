@@ -4,8 +4,8 @@
 
 const CUE = /(\d{2}):(\d{2}):(\d{2})\.\d{3} --> (\d{2}):(\d{2}):(\d{2})\.\d{3}/;
 
-export type Cue = { start: number; text: string };
-export type ParsedTranscript = { text: string; duration: number; cues: Cue[] };
+type Cue = { start: number; text: string };
+type ParsedTranscript = { text: string; duration: number; cues: Cue[] };
 
 /** The transcript's cues as running text, with each cue's start in seconds. */
 export function parseTranscript(vtt: string): ParsedTranscript {
