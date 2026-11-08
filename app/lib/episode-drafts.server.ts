@@ -22,7 +22,7 @@ export function needsDraft(source: string): boolean {
   return empty(value("excerpt")) || empty(value("chapters"));
 }
 
-export function episodePrompt(slug: string, title: string): string {
+function episodePrompt(slug: string, title: string): string {
   return [
     `Draft the summary and the chapters for the Germomics episode below, and store them as one AI draft with Carrel's carrel_save_draft tool (project "${PROJECT}"). Do not publish anything.`,
     `Read it first with carrel_read_item: its transcript comes with it. Keep every other field of the source exactly as it is, and fill only \`excerpt\` (the summary) and \`chapters\` (a list of {"start": seconds, "title": ...}) where they are empty. Take chapter times only from the transcript's own timestamps; if it has none, leave chapters as they are and say so in the note.`,
