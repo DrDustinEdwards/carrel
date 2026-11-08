@@ -9,7 +9,12 @@ import { WRITING_RULES } from "@dustinedwards/site-runtime/prose";
 
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
 
-import { draftEpisodeViaApi, monthSpendMicros, readAiSettings } from "~/lib/ai-engine.server";
+import {
+  draftEpisodeViaApi,
+  EPISODE_CHAPTER_RULES,
+  monthSpendMicros,
+  readAiSettings,
+} from "~/lib/ai-engine.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { findOwner } from "~/lib/signed-in-crawl.server";
 import { d1FireStore, fireOnce, routineConfig } from "./social/routine.server";
@@ -17,6 +22,34 @@ import { siteClient } from "~/lib/sites.server";
 
 const SITE = "germomics";
 const PROJECT = "germomics";
+const API_CLIENT = "Carrel (Claude API)";
+
+/** The most episodes one pass drafts through the API: the cron gives a pass a minute, and a draft takes about six seconds. */
+const API_PER_PASS = 4;
+/** How long a claim on an episode may stand with no draft saved before the next pass takes it over. */
+const CLAIM_LEASE_MS = 10 * 60_000;
+
+/**
+ * Whether an earlier pass claimed this episode and died before saving anything (the cron's time ran out mid-call), so the
+ * claim guards nothing. A claim that produced a draft stays; one older than the lease with no API draft behind it is freed.
+ */
+export async function freeDeadClaim(
+  db: D1Database,
+  store: ReturnType<typeof d1FireStore>,
+  key: string,
+  itemId: string,
+  now: Date,
+): Promise<void> {
+  const claimed = await store.get(key);
+  if (!claimed || now.getTime() - Date.parse(claimed) < CLAIM_LEASE_MS) return;
+  const drafted = await db
+    .prepare(
+      "SELECT 1 AS x FROM ai_drafts WHERE item_id = ?1 AND client = ?2 AND created_at >= ?3 LIMIT 1",
+    )
+    .bind(itemId, API_CLIENT, claimed)
+    .first();
+  if (!drafted) await store.delete(key);
+}
 
 /** Whether a Markdown source with JSON front matter leaves its summary or its chapters empty. */
 export function needsDraft(source: string): boolean {
@@ -30,7 +63,8 @@ export function needsDraft(source: string): boolean {
 function episodePrompt(slug: string, title: string): string {
   return [
     `Draft the summary and the chapters for the Germomics episode below, and store them as one AI draft with Carrel's carrel_save_draft tool (project "${PROJECT}"). Do not publish anything.`,
-    `Read it first with carrel_read_item: its transcript comes with it. Keep every other field of the source exactly as it is, and fill only \`excerpt\` (the summary) and \`chapters\` (a list of {"start": seconds, "title": ...}) where they are empty. Take chapter times only from the transcript's own timestamps; if it has none, leave chapters as they are and say so in the note.`,
+    `Read it first with carrel_read_item: its transcript comes with it. Keep every other field of the source exactly as it is, and fill only \`excerpt\` (the summary) and \`chapters\` (a list of {"start": seconds, "title": ...}) where they are empty. Take chapter times only from the transcript's own timestamps, in whole seconds, never past the episode's last cue; if it has none, leave chapters as they are and say so in the note.`,
+    EPISODE_CHAPTER_RULES,
     WRITING_RULES,
     UNTRUSTED_DATA_RULE,
     `Episode ${untrusted("slug", slug)}: ${untrusted("title", title)}`,
@@ -56,6 +90,7 @@ export async function draftEpisodes(
   const store = d1FireStore(env.DB);
   const client = siteClient(env, SITE, fetcher);
   const list = await client.list({ kind: "episode", limit: 50 });
+  let viaApi = 0;
   for (const item of list.items) {
     const doc = await client.get(item.id);
     if (!doc?.transcript?.trim() || !needsDraft(doc.source)) continue;
@@ -79,10 +114,14 @@ export async function draftEpisodes(
         ? undefined
         : async () => {
             // Once per transcript, as the routine's fire is: the draft sits beside the text, so the episode still
-            // needs one next time. A failed attempt frees the key for the next pass.
-            const key = `api-episode-draft:${item.id}:${transcript.length}`;
+            // needs one next time. A failed attempt frees the key for the next pass, and so does a claim whose pass
+            // died before saving a draft.
+            const key = `api-episode-draft:v2:${item.id}:${transcript.length}`;
+            await freeDeadClaim(env.DB, store, key, item.id, now);
+            if (viaApi >= API_PER_PASS) return { ok: false, error: "next pass", already: true };
             if (!(await store.add(key, now.toISOString())))
               return { ok: false, error: "already drafted", already: true };
+            viaApi++;
             const owner = await findOwner(env.DB);
             if (!owner) {
               await store.delete(key);
