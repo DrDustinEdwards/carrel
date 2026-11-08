@@ -42,13 +42,19 @@ export const FEATURES = [
     note: "The subscription fires a routine that drafts every waiting post in one run. The API drafts them in the same pass.",
   },
   {
+    key: "episode",
+    label: "Germomics episode summaries and chapters",
+    subscription: true,
+    note: "The subscription fires a routine per episode that has a transcript. The API drafts them from the transcript. Either way it is a draft beside yours.",
+  },
+  {
     key: "seo",
     label: "Search title and description",
     subscription: false,
     note: "The API writes it as a draft beside yours. On the subscription, ask a Claude session to write it.",
   },
 ] as const;
-export type FeatureKey = (typeof FEATURES)[number]["key"];
+type FeatureKey = (typeof FEATURES)[number]["key"];
 
 /**
  * The saved settings. Until Dustin saves some, everything stays on the subscription, as before the switch existed: the
@@ -107,7 +113,7 @@ export async function usageThisMonth(db: D1Database, now = new Date()) {
 }
 
 /** Call options that record the call's cost under `feature`, even when the call failed (it still spent tokens). */
-export function metered(db: D1Database, feature: FeatureKey): CallOptions {
+function metered(db: D1Database, feature: FeatureKey): CallOptions {
   return {
     feature,
     onResult: async (r: CallRecord) => {
@@ -174,6 +180,91 @@ export async function draftPostViaApi(env: Env, item: SocialItem, fetcher?: type
     POST_SCHEMA,
     { ...metered(env.DB, "social"), ...(fetcher ? { fetcher } : {}) },
   );
+}
+
+// ---------- an episode's summary and chapters through the API
+
+const EPISODE_SCHEMA = {
+  type: "object",
+  properties: {
+    excerpt: { type: "string" },
+    chapters: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { start: { type: "integer" }, title: { type: "string" } },
+        required: ["start", "title"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["excerpt", "chapters"],
+  additionalProperties: false,
+};
+
+const isEmpty = (v: string) => v === "" || v === '""' || v === "null" || v === "[]";
+
+/**
+ * Drafts an episode's empty summary and chapters from its transcript and saves the episode as an AI draft beside the
+ * working text, as the routine does. Fields that already hold something are left as they are; chapter times come only
+ * from the transcript's own timestamps.
+ */
+export async function draftEpisodeViaApi(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  episode: { id: string; title: string; source: string; transcript: string },
+  fetcher?: typeof fetch,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const parts = splitSource(episode.source.replace(/\r\n/g, "\n"));
+  if (parts.front === null) return { ok: false, error: "The episode has no front matter." };
+  const front = parts.front;
+  const needSummary = isEmpty(readKey(front, "excerpt").trim());
+  const needChapters = isEmpty(readKey(front, "chapters").trim());
+  if (!needSummary && !needChapters) return { ok: true };
+  const result = await structured<{
+    excerpt: string;
+    chapters: { start: number; title: string }[];
+  }>(
+    env,
+    "carrel",
+    {
+      model: MODEL_IDS.standard,
+      max_tokens: 4000,
+      system: [
+        "Write a summary and chapters for the podcast episode below from its transcript. The summary is two or three plain sentences saying what the listener learns. Chapters are a list of { start, title }, start in whole seconds. Take chapter times only from the transcript's own timestamps; if it has none, return an empty list.",
+        WRITING_RULES,
+        UNTRUSTED_DATA_RULE,
+      ].join("\n\n"),
+      messages: [
+        {
+          role: "user",
+          content: [
+            untrusted("title", episode.title),
+            untrusted("transcript", episode.transcript.slice(0, 300_000)),
+          ].join("\n"),
+        },
+      ],
+    },
+    EPISODE_SCHEMA,
+    { ...metered(env.DB, "episode"), ...(fetcher ? { fetcher } : {}) },
+  );
+  if (!result.ok) return { ok: false, error: result.error };
+  let next = front;
+  const summary = result.value.excerpt.replace(/\s+/g, " ").trim();
+  if (needSummary && summary)
+    next = setBlock(next, "excerpt", [`excerpt: ${JSON.stringify(summary)}`]);
+  const chapters = result.value.chapters
+    .filter((c) => Number.isInteger(c.start) && c.start >= 0 && c.title.trim())
+    .map((c) => ({ start: c.start, title: c.title.trim() }));
+  if (needChapters && chapters.length)
+    next = setBlock(next, "chapters", [`chapters: ${JSON.stringify(chapters)}`]);
+  if (next === front) return { ok: true };
+  await saveAiDraft(env, project, { viewer, client: "Carrel (Claude API)" }, episode.id, {
+    source: joinSource({ ...parts, front: next }),
+    note: "Summary and chapters written through the Claude API from the transcript; nothing else changed.",
+  });
+  return { ok: true };
 }
 
 // ---------- search title and description through the API
