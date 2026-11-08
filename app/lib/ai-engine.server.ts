@@ -6,6 +6,7 @@
 import {
   costMicros,
   normalizeSettings,
+  PRICES,
   type EngineSettings,
 } from "@dustinedwards/site-runtime/ai-engine";
 import {
@@ -192,13 +193,30 @@ export async function usageThisMonth(db: D1Database, now = new Date()) {
 }
 
 /**
- * Records an API call another service made for Carrel's job and metered itself (the site's picture suggester), at no cost
- * here: the call is counted, and its tokens are in that site's own log (`anthropic_call`).
+ * What one call of the site's picture suggester costs at most, in tokens. The suggester does not report its usage back: it
+ * sends a 768px JPEG (at most about 790 image tokens) with a prompt of about 300 tokens and the answer schema, and it
+ * caps its answer at 300 tokens. The real tokens are in that site's own log (`anthropic_call`); the cap counts this ceiling.
  */
-export async function recordForeignCall(db: D1Database, feature: FeatureKey, model: string) {
-  await drizzle(db)
+const SUGGESTER_CALL = { input: 1500, output: 300, cacheRead: 0, cacheWrite: 0 };
+
+/**
+ * Records an API call another service made for Carrel's job and metered itself (the site's picture suggester), at the
+ * most it can cost: its model's list price on SUGGESTER_CALL, or the dearest listed price when the model has none, so the
+ * cap never counts less than was spent.
+ */
+export async function recordForeignCall(
+  env: Env,
+  feature: FeatureKey,
+  model: string,
+  call = SUGGESTER_CALL,
+) {
+  const micros =
+    costMicros(model, call) ??
+    Math.max(...Object.keys(PRICES).map((m) => costMicros(m, call) ?? 0));
+  await drizzle(env.DB)
     .insert(aiUsage)
-    .values({ feature, model, micros: 0, promptSize: 0, answerSize: 0, ok: true });
+    .values({ feature, model, micros, promptSize: call.input, answerSize: call.output, ok: true });
+  await capAlert(env);
 }
 
 /** The share of the monthly cap at which Dustin is emailed, once a month. */
