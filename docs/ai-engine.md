@@ -11,7 +11,8 @@ Carrel's AI work runs on one of two engines: Dustin's Claude subscription (a Cla
   search description) on the API, which answers at once and is metered, and a $20 monthly API cap.
 - **Per job:** each job can follow Everything or have its own engine.
 - **Use the API for 1, 3 or 7 days:** an override that beats every setting until its date, for when the subscription
-  runs low. Carrel cannot read the subscription meter (claude.ai/settings/usage is the only one).
+  runs low, and it lifts the monthly cap until then. Carrel cannot read the subscription meter (claude.ai/settings/usage is the
+  only one).
 - **API cap a month:** at the cap the API closes; Subscription is used instead and Automatic stops falling back.
   Every API call is recorded in `ai_usage` at Anthropic's list prices (`PRICES` in site-runtime).
 

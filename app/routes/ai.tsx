@@ -178,7 +178,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
         title="Subscription running low?"
         src={
           settings.override
-            ? `On the API until ${settings.override.until.slice(0, 10)}`
+            ? `On the API until ${settings.override.until.slice(0, 10)}, with no cap`
             : "Using your settings below"
         }
       >
@@ -250,7 +250,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
             ))}
             <Field
               label="API cap a month, $"
-              help="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap."
+              help="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then."
             >
               <input
                 className="cap-input"
