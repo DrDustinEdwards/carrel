@@ -24,7 +24,7 @@ import {
   kvCheck,
   r2Check,
 } from "@dustinedwards/site-runtime/health";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, notLike } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import {
@@ -522,11 +522,15 @@ export function healthAnswer(env: Env): Promise<Response> {
       {
         name: "alerts",
         level: "warn",
+        // Desk's own alert state. The `site-*` checks are other sites' conformance to the contract, which
+        // goes wrong for a while after every site-api release until each site has bumped; each has its own
+        // finding in the conformance report and its own email, and listing them here made Desk read degraded
+        // to the watcher whenever a rollout was under way.
         run: async () => {
           const failing = await drizzle(env.DB)
             .select({ name: healthState.checkName })
             .from(healthState)
-            .where(eq(healthState.ok, false))
+            .where(and(eq(healthState.ok, false), notLike(healthState.checkName, "site-%")))
             .all();
           return (
             failing.length === 0 || {
