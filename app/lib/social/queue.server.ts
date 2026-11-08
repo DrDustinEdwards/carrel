@@ -2,13 +2,14 @@
 // For each account that announces that project, the post comes from, in order:
 //
 //   1. a draft stored ahead by the session that finished the piece (draftSocialPost);
-//   2. else a Claude Code routine Carrel fires, batching every waiting item into one run (the
-//      routine stores its drafts the same way), with a nightly sweep;
+//   2. else the AI switch's engine: a Claude Code routine Carrel fires, batching every waiting item into one run (the
+//      routine stores its drafts the same way), or the Claude API drafting them in the same pass, with a nightly sweep;
 //   3. else, when the routine fails or its daily cap is reached, or it drafted nothing in time, a
 //      template post, which the health check reports to Dustin.
 //
 // Every post is linted; a finding holds it for Dustin. Then each account's switch decides: approval
-// (Dustin approves each post) or auto (it goes when the caps allow). Nothing here calls an AI. The
+// (Dustin approves each post) or auto (it goes when the caps allow). The only AI is the drafting step, on the engine the
+// AI switch names (ai-engine.server.ts). The
 // loop over accounts, the daily cap, the gap between posts and the record of every post are carried
 // over from legacy Recova's social-poster cron.
 
@@ -22,6 +23,8 @@ import { packExcerpts } from "~/lib/voice.server";
 import { lintPost } from "./lint";
 import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
 import { d1FireStore, fireOnce, routineConfig, routinePrompt } from "./routine.server";
+import { draftPostViaApi, monthSpendMicros, readAiSettings } from "~/lib/ai-engine.server";
+import { runAi } from "@dustinedwards/site-runtime/ai-engine";
 import { timedFetch } from "~/lib/timed-fetch.server";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 
@@ -424,7 +427,8 @@ async function sendQueued(
 /** One pass of the queue, run by the cron. Every step is idempotent, so a missed run loses nothing. */
 export async function processSocial(
   env: Env,
-  deps: { fetcher?: Fetch; now?: Date } = {},
+  // `draftNow` is the AI page's button: it drafts what is waiting without the batch delay, and sends nothing.
+  deps: { fetcher?: Fetch; now?: Date; draftNow?: boolean } = {},
 ): Promise<TickResult> {
   const fetcher = deps.fetcher ?? timedFetch;
   const now = deps.now ?? new Date();
@@ -496,7 +500,9 @@ export async function processSocial(
         ),
       )
       .all()
-  ).filter((e) => nightly || Date.parse(e.publishedAt!) <= now.getTime() - BATCH_DELAY_MS);
+  ).filter(
+    (e) => deps.draftNow || nightly || Date.parse(e.publishedAt!) <= now.getTime() - BATCH_DELAY_MS,
+  );
   if (waiting.length > 0) {
     const config = routineConfig(env);
     const runsToday = await d
@@ -510,10 +516,9 @@ export async function processSocial(
       )
       .all();
     let templateAll: string | null = null;
-    if ("missing" in config) templateAll = config.missing;
-    else if (runsToday.length >= ROUTINE_DAILY_CAP)
-      templateAll = `the routine's daily cap of ${ROUTINE_DAILY_CAP} runs is reached`;
-    else {
+    // The routine is open only when it is set up and under its daily cap; the API has neither limit.
+    const routineOpen = !("missing" in config) && runsToday.length < ROUTINE_DAILY_CAP;
+    {
       // The guard against a second fire (R2): a run row is written first, as fired, and the waiting events are
       // claimed for it in one conditional UPDATE. Only the events this tick claimed are sent to the routine, so two
       // overlapping ticks can never both fire for the same piece, and a tick that dies mid-fire leaves its events
@@ -564,39 +569,109 @@ export async function processSocial(
             };
           }),
         );
-        // Through site-runtime's duplicate guard (R2), keyed by this run: a retry of the same run never fires again.
-        const fired = await fireOnce(
-          d1FireStore(env.DB),
-          `social-run:${run!.id}:${now.toISOString()}`,
-          config,
-          prompt,
-          { fetcher, now },
-        );
-        // A fire with no answer may have started a session, and one already fired did: treat both as fired, never fire
-        // them again.
-        const started =
-          fired.ok || fired.outcome === "unknown" || fired.outcome === "already_fired";
-        await d
-          .update(socialRoutineRuns)
-          .set({
-            events: JSON.stringify(claimed.map((e) => e.id)),
-            status: started ? "fired" : "failed",
-            sessionUrl: fired.ok ? fired.sessionUrl : null,
-            error: fired.ok ? null : fired.error,
-          })
-          .where(eq(socialRoutineRuns.id, run!.id));
-        if (started) {
-          result.routineFired++;
-          if (!fired.ok) result.errors.push(`routine: ${fired.error}`);
-        } else {
-          // It certainly started nothing: the claim is released, for the template now or the next tick.
+        // The switch (site-runtime ./ai-engine) picks the engine. The subscription fires the routine through site-runtime's
+        // duplicate guard (R2), keyed by this run: a retry of the same run never fires again. The API drafts each item now.
+        const settings = await readAiSettings(env.DB);
+        const ran = await runAi({
+          settings,
+          feature: "social",
+          spentMicros: await monthSpendMicros(env.DB, now),
+          routine:
+            !routineOpen || "missing" in config
+              ? undefined
+              : () =>
+                  fireOnce(
+                    d1FireStore(env.DB),
+                    `social-run:${run!.id}:${now.toISOString()}`,
+                    config,
+                    prompt,
+                    { fetcher, now },
+                  ),
+          // No key, no API route: the engine then reports it instead of a call throwing.
+          api: !env.ANTHROPIC_API_KEY
+            ? undefined
+            : async () => {
+                const failed: string[] = [];
+                for (const e of claimed) {
+                  const a = accounts.get(e.accountId)!;
+                  const post = await draftPostViaApi(
+                    env,
+                    {
+                      account: `${a.name} (${a.key})`,
+                      platform: a.platform,
+                      voiceGuide: a.voiceGuide,
+                      title: e.title,
+                      url: e.url,
+                      summary: e.summary,
+                    },
+                    fetcher,
+                  );
+                  if (post.ok)
+                    await draftForEvent(env.DB, {
+                      eventId: e.id,
+                      text: post.value.text,
+                      createdBy: "claude-api",
+                    });
+                  else failed.push(`${a.key}: ${post.error}`);
+                }
+                // Items the API could not draft keep their claim, and the template takes them after ROUTINE_WAIT_MS.
+                return failed.length ? { ok: false, error: failed.join("; ") } : { ok: true };
+              },
+        });
+        if (ran.engine === "api") {
           await d
-            .update(socialEvents)
-            .set({ state: "waiting", routineRunId: null })
-            .where(and(eq(socialEvents.routineRunId, run!.id), eq(socialEvents.state, "routine")));
-          if (!fired.retry) templateAll = `the routine refused the run (${fired.error})`;
-          // The hourly limit or a brief outage: the next tick tries again; the items keep waiting.
-          else result.errors.push(`routine: ${fired.error}`);
+            .update(socialRoutineRuns)
+            .set({
+              events: JSON.stringify(claimed.map((e) => e.id)),
+              status: "fired",
+              sessionUrl: null,
+              error: ran.ok ? null : ran.error,
+            })
+            .where(eq(socialRoutineRuns.id, run!.id));
+          result.routineFired++;
+          if (!ran.ok) result.errors.push(`api drafts: ${ran.error}`);
+        } else {
+          const fired = ran.ok
+            ? ran.fire
+            : (ran.fire ?? {
+                ok: false as const,
+                outcome: "refused" as const,
+                retry: false as const,
+                error: ran.error,
+              });
+          // A fire with no answer may have started a session, and one already fired did: treat both as fired, never fire
+          // them again.
+          const started =
+            fired.ok || fired.outcome === "unknown" || fired.outcome === "already_fired";
+          await d
+            .update(socialRoutineRuns)
+            .set({
+              events: JSON.stringify(claimed.map((e) => e.id)),
+              status: started ? "fired" : "failed",
+              sessionUrl: fired.ok ? fired.sessionUrl : null,
+              error: fired.ok ? null : fired.error,
+            })
+            .where(eq(socialRoutineRuns.id, run!.id));
+          if (started) {
+            result.routineFired++;
+            if (!fired.ok) result.errors.push(`routine: ${fired.error}`);
+          } else {
+            // It certainly started nothing: the claim is released, for the template now or the next tick.
+            await d
+              .update(socialEvents)
+              .set({ state: "waiting", routineRunId: null })
+              .where(
+                and(eq(socialEvents.routineRunId, run!.id), eq(socialEvents.state, "routine")),
+              );
+            if (!fired.retry)
+              templateAll = routineOpen
+                ? `the routine refused the run (${fired.error})`
+                : "missing" in config
+                  ? config.missing
+                  : `the routine's daily cap of ${ROUTINE_DAILY_CAP} runs is reached`;
+            // The hourly limit or a brief outage: the next tick tries again; the items keep waiting.
+            else result.errors.push(`routine: ${fired.error}`);
+          }
         }
       }
     }
@@ -609,8 +684,9 @@ export async function processSocial(
     }
   }
 
-  // Posts cleared to go: within each account's caps.
-  for (const account of accounts.values()) await sendQueued(env, account, now, fetcher, result);
+  // Posts cleared to go: within each account's caps. The AI page's button only drafts.
+  if (!deps.draftNow)
+    for (const account of accounts.values()) await sendQueued(env, account, now, fetcher, result);
   return result;
 }
 

@@ -48,6 +48,7 @@ const ICONS = {
   ),
   manuscripts: <Icon d="M4 2.5h5l3 3v8H4zM9 2.5v3h3M6 8.5h4M6 11h4" stroke />,
   social: <Icon d="M2.5 9.5V6.5l8-3.5v10l-8-3.5zM5 10.5l.8 3h2" stroke />,
+  ai: <Icon d="M8 2l1.4 3.6L13 7l-3.6 1.4L8 12l-1.4-3.6L3 7l3.6-1.4z" stroke />,
 };
 
 const initialsOf = (name: string) =>
@@ -110,6 +111,14 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
             href: "/social",
             icon: ICONS.social,
             current: at("/social"),
+            group: "Owner",
+          },
+          {
+            id: "ai",
+            label: "AI engine",
+            href: "/ai",
+            icon: ICONS.ai,
+            current: at("/ai"),
             group: "Owner",
           },
         ]

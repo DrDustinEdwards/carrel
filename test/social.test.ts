@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { monthSpendMicros, saveAiSettings } from "~/lib/ai-engine.server";
 import { runBackup } from "~/lib/backup.server";
 import { writeToSite } from "~/lib/content.server";
 import { runHealth } from "~/lib/health.server";
@@ -39,6 +40,7 @@ type Sent = { url: string; body: Record<string, unknown>; auth: string | null };
 function fakeWorld(routineStatus: number | (() => number) = 200) {
   const sent: Sent[] = [];
   const fires: { text: string; headers: Record<string, string> }[] = [];
+  let claudeCalls = 0;
   const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -62,6 +64,18 @@ function fakeWorld(routineStatus: number | (() => number) = 200) {
         claude_code_session_url: "https://claude.ai/code/session_01TestSession",
       });
     }
+    if (request.url === "https://api.anthropic.com/v1/messages") {
+      claudeCalls++;
+      return Response.json({
+        id: "msg_test",
+        type: "message",
+        role: "assistant",
+        model: "claude-sonnet-5",
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: JSON.stringify({ text: "Spring update is out." }) }],
+        usage: { input_tokens: 1000, output_tokens: 100 },
+      });
+    }
     sent.push({ url: request.url, body, auth: request.headers.get("Authorization") });
     if (request.url.endsWith("createSession"))
       return Response.json({ accessJwt: "jwt", did: "did:plc:test" });
@@ -71,7 +85,7 @@ function fakeWorld(routineStatus: number | (() => number) = 200) {
       return Response.json({ data: { id: `x${sent.length}`, text: body.text } });
     throw new Error(`the tests reach only the fakes, not ${request.url}`);
   }) as typeof globalThis.fetch;
-  return { fetch, sent, fires };
+  return { fetch, sent, fires, claudeCalls: () => claudeCalls };
 }
 
 let projectId: number;
@@ -322,6 +336,11 @@ describe("the primary path: a draft stored ahead", () => {
 });
 
 describe("the routine, and the template only after it fails", () => {
+  // These tests are about the subscription route; the shipped default sends social drafts to the API.
+  beforeEach(async () => {
+    await saveAiSettings(testEnv.DB, await owner(), { master: "subscription" });
+  });
+
   async function published() {
     await account("example-bluesky");
     await recordPublication(testEnv.DB, projectId, PIECE, NOW);
@@ -346,6 +365,18 @@ describe("the routine, and the template only after it fails", () => {
       'Dustin\'s summary: <data label="summary">What changed this season.</data>',
     );
     expect(world.fires[0]!.text).toContain("do not reply to anyone");
+  });
+
+  it("with the API chosen, drafts the post through the API, records the spend, and fires no routine", async () => {
+    await published();
+    await saveAiSettings(testEnv.DB, await owner(), { master: "api" });
+    const world = fakeWorld();
+    const apiEnv = { ...env, ANTHROPIC_API_KEY: "sk-ant-api-test" } as Env;
+    const tick = await processSocial(apiEnv, { fetcher: world.fetch, now: later(BATCH_DELAY_MS) });
+    expect(tick).toMatchObject({ routineFired: 1, templated: 0 });
+    expect(world.fires).toHaveLength(0);
+    expect(world.claudeCalls()).toBe(1);
+    expect(await monthSpendMicros(testEnv.DB, later(BATCH_DELAY_MS))).toBeGreaterThan(0);
   });
 
   it("PLANT: two overlapping ticks fire the routine once for the same piece", async () => {

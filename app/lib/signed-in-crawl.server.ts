@@ -32,7 +32,7 @@ export type DeskAs = (request: Request, viewer: Viewer) => Promise<Response>;
 const R4_NOTE =
   "not probed on Desk: its actions take form bodies by design (no-script forms) and the door refuses a cross-site one by Fetch Metadata; the crawl only reads (GET)";
 
-async function findOwner(db: D1Database): Promise<Viewer | null> {
+export async function findOwner(db: D1Database): Promise<Viewer | null> {
   const row = await drizzle(db)
     .select({
       id: people.id,
@@ -67,6 +67,7 @@ export async function runSignedInCrawl(
       "/",
       "/people",
       "/social",
+      "/ai",
       ...(site ? [`/p/${site.slug}`, `/p/${site.slug}/media`] : []),
       ...(book ? [`/b/${book.slug}`] : []),
       SIGNED_IN_MISSING_PATH,

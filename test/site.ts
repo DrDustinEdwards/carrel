@@ -181,3 +181,13 @@ export function nextSite(
     media.replace = async (id, input) => ({ ...(await replace(id, input)), sizesNeedPurge: true });
   return fakeSite(adapter);
 }
+
+/** Saves and publishes one post ("post-one", titled "Post one", body "Words.") on a fake site. */
+export async function publishPostOne(site: ReturnType<typeof fakeSite>) {
+  const saved = await site.adapter.content.saveDraft("post-one", {
+    source: "---\ntitle: Post one\n---\nWords.\n",
+    expectedVersion: null,
+    changeId: "s",
+  });
+  await site.adapter.content.publish("post-one", { expectedVersion: saved.version, changeId: "p" });
+}

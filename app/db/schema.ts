@@ -613,3 +613,21 @@ export const changeContributors = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.changeId, t.personId] })],
 );
+
+export const aiSettings = sqliteTable("ai_settings", {
+  id: integer("id").primaryKey(),
+  json: text("json").notNull(),
+});
+
+export const aiUsage = sqliteTable("ai_usage", {
+  id: integer("id").primaryKey(),
+  feature: text("feature").notNull(),
+  model: text("model").notNull(),
+  micros: integer("micros").notNull(),
+  promptSize: integer("prompt_size").notNull(),
+  answerSize: integer("answer_size").notNull(),
+  ok: integer("ok", { mode: "boolean" }).notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
