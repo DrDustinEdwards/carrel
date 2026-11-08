@@ -11,7 +11,7 @@ import { action as editorAction, loader as editorLoader } from "~/routes/editor"
 import { action as unpublishAction, loader as unpublishLoader } from "~/routes/unpublish";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor, routeContext, settle } from "./site";
+import { connectedEnv, fakeSite, publishPostOne, viewerFor, routeContext, settle } from "./site";
 
 const SLUG = "de-info";
 let site: ReturnType<typeof fakeSite>;
@@ -31,14 +31,7 @@ beforeEach(async () => {
 
 const context = (email: string) => routeContext(env, email);
 
-async function published() {
-  const saved = await site.adapter.content.saveDraft("post-one", {
-    source: "---\ntitle: Post one\n---\nWords.\n",
-    expectedVersion: null,
-    changeId: "s",
-  });
-  await site.adapter.content.publish("post-one", { expectedVersion: saved.version, changeId: "p" });
-}
+const published = () => publishPostOne(site);
 
 async function as(email: string) {
   const viewer = await viewerFor(email);

@@ -9,7 +9,7 @@ import { writePost } from "~/lib/ai-write.server";
 import { requireSiteProject } from "~/lib/projects.server";
 
 import { addPerson, addProject, resetDb, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, publishPostOne, viewerFor } from "./site";
 
 const SLUG = "de-info";
 let site: ReturnType<typeof fakeSite>;
@@ -19,12 +19,7 @@ beforeEach(async () => {
   await addPerson("owner@test.invalid", { owner: true });
   await addProject(SLUG, "dustinedwards");
   site = fakeSite();
-  const saved = await site.adapter.content.saveDraft("post-one", {
-    source: "---\ntitle: Post one\n---\nWords.\n",
-    expectedVersion: null,
-    changeId: "s",
-  });
-  await site.adapter.content.publish("post-one", { expectedVersion: saved.version, changeId: "p" });
+  await publishPostOne(site);
   // The model, answered here; the site, by the fake site.
   vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);

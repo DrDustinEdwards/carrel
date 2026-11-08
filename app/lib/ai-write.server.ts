@@ -7,7 +7,7 @@
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
 import { structured, untrusted, UNTRUSTED_DATA_RULE } from "@dustinedwards/site-runtime/anthropic";
 import { WRITING_RULES } from "@dustinedwards/site-runtime/prose";
-import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { joinSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 import {
   aiModel,
@@ -17,23 +17,18 @@ import {
   readAiModels,
   readAiSettings,
   suggestSeo,
+  workingParts,
 } from "~/lib/ai-engine.server";
 import { saveAiDraft } from "~/lib/ai.server";
 import { bookVoice, saveBookAiDraft, type BookProject } from "~/lib/books.server";
-import { readDoc, readDraft } from "~/lib/content.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
+import { getEnv, getViewer } from "~/lib/context";
+import { readForm } from "~/lib/form.server";
 import { d1FireStore, fireOnce, routineConfig } from "~/lib/social/routine.server";
 import { briefOf, readVoicePack } from "~/lib/voice.server";
 
 export type WriteJob = "seo" | "continue" | "edit";
-
-/** The feature key a job is switched under, in ai-engine.server's FEATURES. */
-export const FEATURE_OF: Record<WriteJob, "seo" | "continue" | "edit"> = {
-  seo: "seo",
-  continue: "continue",
-  edit: "edit",
-};
 
 const WRITE_SCHEMA = {
   type: "object",
@@ -81,123 +76,177 @@ function routineFor(env: Env, key: string, prompt: string, fetcher?: typeof fetc
   return () => fireOnce(d1FireStore(env.DB), key, config, prompt, fetcher ? { fetcher } : {});
 }
 
-/** One writing job on a post. */
-export async function writePost(
+type Only = "api" | "subscription" | undefined;
+type Models = Awaited<ReturnType<typeof readAiModels>>;
+
+/**
+ * Runs one writing job on the engine its setting names (or the one Dustin forced for this run). `api` writes and stores
+ * the draft and returns its id; `routine` is the prompt the subscription's routine is fired with, once a minute per job.
+ */
+async function runWrite(
   env: Env,
-  project: SiteProject,
-  viewer: Viewer,
-  itemId: string,
   job: WriteJob,
-  only?: "api" | "subscription",
+  only: Only,
+  routine: { key: string; prompt: string },
+  api: (models: Models) => Promise<{ ok: true; draftId: number } | { ok: false; error: string }>,
   fetcher?: typeof fetch,
 ): Promise<WriteResult> {
   const [settings, models] = await Promise.all([readAiSettings(env.DB), readAiModels(env.DB)]);
-  const minute = Math.floor(Date.now() / 60_000);
   let draftId = 0;
   const ran = await runAi({
-    settings: onlyEngine(settings, FEATURE_OF[job], only),
-    feature: FEATURE_OF[job],
+    settings: onlyEngine(settings, job, only),
+    feature: job,
     spentMicros: await monthSpendMicros(env.DB),
     routine: routineFor(
       env,
-      `write:${project.slug}:${itemId}:${job}:${minute}`,
-      postPrompt(project.slug, itemId, job),
+      `${routine.key}:${Math.floor(Date.now() / 60_000)}`,
+      routine.prompt,
       fetcher,
     ),
     api: !env.ANTHROPIC_API_KEY
       ? undefined
       : async () => {
-          if (job === "seo") {
-            const made = await suggestSeo(
-              env,
-              project,
-              viewer,
-              itemId,
-              aiModel(models, "seo", "standard"),
-            );
-            if (made.ok) draftId = made.draftId;
-            return made;
-          }
-          const working =
-            (await readDraft(env.DB, project, viewer, itemId))?.source ??
-            (await readDoc(env, project, itemId))?.source;
-          if (!working) return { ok: false, error: "This item has no text yet." };
-          const parts = splitSource(working.replace(/\r\n/g, "\n"));
-          const brief = briefOf(await readVoicePack(env.DB, project));
-          const written = await writeText(env, job, parts.body, brief, models, fetcher);
-          if (!written.ok) return written;
-          const body =
-            job === "continue"
-              ? `${parts.body.replace(/\s+$/, "")}\n\n${written.text}\n`
-              : written.text;
-          const saved = await saveAiDraft(
-            env,
-            project,
-            { viewer, client: "Carrel (Claude API)" },
-            itemId,
-            { source: joinSource({ ...parts, body }), note: written.note },
-          );
-          draftId = saved.id;
-          return { ok: true };
+          const made = await api(models);
+          if (made.ok) draftId = made.draftId;
+          return made;
         },
   });
-  return answer(ran, () => draftId);
+  if (!ran.ok) return { ok: false, error: ran.error, engine: ran.engine };
+  if (ran.engine === "api") return { ok: true, engine: "api", draftId };
+  const fire = ran.fire as { sessionUrl?: string };
+  return { ok: true, engine: "subscription", sessionUrl: fire.sessionUrl ?? null };
+}
+
+/** The new text of a job: the passage added after what is written, or the whole edited text. */
+const nextText = (job: "continue" | "edit", before: string, written: string) =>
+  job === "continue" ? `${before.replace(/\s+$/, "")}\n\n${written}\n` : written;
+
+/** One writing job on a post. */
+export function writePost(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  itemId: string,
+  job: WriteJob,
+  only?: Only,
+  fetcher?: typeof fetch,
+): Promise<WriteResult> {
+  return runWrite(
+    env,
+    job,
+    only,
+    {
+      key: `write:${project.slug}:${itemId}:${job}`,
+      prompt: postPrompt(project.slug, itemId, job),
+    },
+    async (models) => {
+      if (job === "seo") {
+        const made = await suggestSeo(
+          env,
+          project,
+          viewer,
+          itemId,
+          aiModel(models, "seo", "standard"),
+        );
+        return made.ok ? { ok: true, draftId: made.draftId } : made;
+      }
+      const working = await workingParts(env, project, viewer, itemId);
+      if (!working.ok) return working;
+      const { parts } = working;
+      const brief = briefOf(await readVoicePack(env.DB, project));
+      const written = await writeText(env, job, parts.body, brief, models, fetcher);
+      if (!written.ok) return written;
+      const saved = await saveAiDraft(
+        env,
+        project,
+        { viewer, client: "Carrel (Claude API)" },
+        itemId,
+        {
+          source: joinSource({ ...parts, body: nextText(job, parts.body, written.text) }),
+          note: written.note,
+        },
+      );
+      return { ok: true, draftId: saved.id };
+    },
+    fetcher,
+  );
 }
 
 /** One writing job on a book file. The search description is a post's; a book file has none. */
-export async function writeBookFile(
+export function writeBookFile(
   env: Env,
   project: BookProject,
   viewer: Viewer,
   path: string,
   job: "continue" | "edit",
   source: string,
-  only?: "api" | "subscription",
+  only?: Only,
   fetcher?: typeof fetch,
 ): Promise<WriteResult> {
-  const [settings, models] = await Promise.all([readAiSettings(env.DB), readAiModels(env.DB)]);
-  const minute = Math.floor(Date.now() / 60_000);
-  let draftId = 0;
-  const ran = await runAi({
-    settings: onlyEngine(settings, FEATURE_OF[job], only),
-    feature: FEATURE_OF[job],
-    spentMicros: await monthSpendMicros(env.DB),
-    routine: routineFor(
-      env,
-      `write:${project.slug}:${path}:${job}:${minute}`,
-      bookPrompt(project.slug, path, job),
-      fetcher,
-    ),
-    api: !env.ANTHROPIC_API_KEY
-      ? undefined
-      : async () => {
-          const voice = await bookVoice(env.DB, project, path);
-          const brief = { rules: "", guide: "", excerpts: voice.excerpts };
-          const written = await writeText(env, job, source, brief, models, fetcher);
-          if (!written.ok) return written;
-          const next =
-            job === "continue"
-              ? `${source.replace(/\s+$/, "")}\n\n${written.text}\n`
-              : written.text;
-          const saved = await saveBookAiDraft(
-            env.DB,
-            project,
-            { viewer, client: "Carrel (Claude API)" },
-            path,
-            { source: next, note: written.note },
-          );
-          draftId = saved.id;
-          return { ok: true };
-        },
-  });
-  return answer(ran, () => draftId);
+  return runWrite(
+    env,
+    job,
+    only,
+    {
+      key: `write:${project.slug}:${path}:${job}`,
+      prompt: bookPrompt(project.slug, path, job),
+    },
+    async (models) => {
+      const voice = await bookVoice(env.DB, project, path);
+      const brief = { rules: "", guide: "", excerpts: voice.excerpts };
+      const written = await writeText(env, job, source, brief, models, fetcher);
+      if (!written.ok) return written;
+      const saved = await saveBookAiDraft(
+        env.DB,
+        project,
+        { viewer, client: "Carrel (Claude API)" },
+        path,
+        { source: nextText(job, source, written.text), note: written.note },
+      );
+      return { ok: true, draftId: saved.id };
+    },
+    fetcher,
+  );
 }
 
-function answer(ran: Awaited<ReturnType<typeof runAi>>, draftId: () => number): WriteResult {
-  if (!ran.ok) return { ok: false, error: ran.error, engine: ran.engine };
-  if (ran.engine === "api") return { ok: true, engine: "api", draftId: draftId() };
-  const fire = ran.fire as { sessionUrl?: string };
-  return { ok: true, engine: "subscription", sessionUrl: fire.sessionUrl ?? null };
+/** What both writing routes read first: who is asking, the environment, the form and the job it names. */
+export async function writeRequest(request: Request, context: Parameters<typeof getEnv>[0]) {
+  const form = await readForm(request);
+  return {
+    viewer: getViewer(context),
+    env: getEnv(context),
+    form,
+    job: String(form.get("job") ?? ""),
+  };
+}
+
+/** The engine a run was forced onto by the "run it on the other engine" button, from the form. */
+export function engineFrom(form: FormData): Only {
+  const engine = form.get("engine");
+  return engine === "api" || engine === "subscription" ? engine : undefined;
+}
+
+/** What the writing buttons show for a result, with the job so the other-engine button can repeat it. */
+export function writeAnswer(
+  made: WriteResult,
+  job: string,
+  noun: "text" | "file",
+  draftHref?: string,
+) {
+  if (!made.ok) return { error: made.error, engine: made.engine ?? null, job };
+  return made.engine === "api"
+    ? {
+        engine: made.engine,
+        job,
+        message: `Written through the Claude API and saved beside your ${noun}.`,
+        href: draftHref ? `${draftHref}/${made.draftId}` : null,
+      }
+    : {
+        engine: made.engine,
+        job,
+        message: `Sent to your subscription's routine. The draft appears beside your ${noun} when it finishes.`,
+        href: made.sessionUrl,
+      };
 }
 
 async function writeText(

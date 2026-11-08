@@ -87,10 +87,10 @@ export const FEATURES = [
 type FeatureKey = (typeof FEATURES)[number]["key"];
 
 /** The API cap a month before Dustin sets one: a guard well inside his monthly API credit. */
-export const DEFAULT_CAP_MICROS = 20_000_000;
+const DEFAULT_CAP_MICROS = 20_000_000;
 
 /** The settings before any are saved: Automatic, with each job on the engine it starts with. */
-export function defaultAiSettings(): EngineSettings {
+function defaultAiSettings(): EngineSettings {
   return normalizeSettings({
     master: "auto",
     features: Object.fromEntries(FEATURES.map((f) => [f.key, f.engine])),
@@ -208,7 +208,7 @@ const CAP_ALERT_AT = 0.8;
  * Emails the alert address once a month when the API spend reaches 80% of the cap, so the cap closing never comes as a
  * surprise. A failed email never fails the call that spent: the page shows the spend too.
  */
-export async function capAlert(env: Env, now = new Date()): Promise<boolean> {
+async function capAlert(env: Env, now = new Date()): Promise<boolean> {
   try {
     const settings = await readAiSettings(env.DB);
     if (settings.apiCapMicros <= 0) return false;
@@ -401,6 +401,20 @@ const SEO_SCHEMA = {
   additionalProperties: false,
 };
 
+/** The text a writing job starts from: the person's own working draft, else the site's published text, split at its front matter. */
+export async function workingParts(
+  env: Env,
+  project: SiteProject,
+  viewer: Viewer,
+  itemId: string,
+): Promise<{ ok: true; parts: ReturnType<typeof splitSource> } | { ok: false; error: string }> {
+  const working =
+    (await readDraft(env.DB, project, viewer, itemId))?.source ??
+    (await readDoc(env, project, itemId))?.source;
+  if (!working) return { ok: false, error: "This item has no text yet." };
+  return { ok: true, parts: splitSource(working.replace(/\r\n/g, "\n")) };
+}
+
 export type SeoSuggestion = { ok: true; draftId: number } | { ok: false; error: string };
 
 /**
@@ -414,11 +428,9 @@ export async function suggestSeo(
   itemId: string,
   model: string = MODEL_IDS.standard,
 ): Promise<SeoSuggestion> {
-  const working =
-    (await readDraft(env.DB, project, viewer, itemId))?.source ??
-    (await readDoc(env, project, itemId))?.source;
-  if (!working) return { ok: false, error: "This item has no text yet." };
-  const parts = splitSource(working.replace(/\r\n/g, "\n"));
+  const working = await workingParts(env, project, viewer, itemId);
+  if (!working.ok) return working;
+  const { parts } = working;
   if (parts.front === null)
     return { ok: false, error: "This page has no front matter to put a description in." };
   const { front, body } = { front: parts.front, body: parts.body };
