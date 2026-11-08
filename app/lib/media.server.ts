@@ -284,11 +284,19 @@ export async function suggestMediaAlt(
   slug: string,
   id: string,
   fetcher?: typeof fetch,
-): Promise<{ ok: true; alt: string | null; model: string } | { ok: false; message: string }> {
+): Promise<
+  | {
+      ok: true;
+      alt: string | null;
+      model: string;
+      usage?: { input: number; output: number; cacheRead: number; cacheWrite: number };
+    }
+  | { ok: false; message: string }
+> {
   const source = await mediaSourceFor(env, viewer, slug, fetcher);
   try {
     const made = await source.client.media.suggestions(id);
-    return { ok: true, alt: made.alt, model: made.model };
+    return { ok: true, alt: made.alt, model: made.model, usage: made.usage };
   } catch (error) {
     const message = unreachable(error);
     if (message !== null) return { ok: false, message };

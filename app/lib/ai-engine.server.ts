@@ -194,23 +194,24 @@ export async function usageThisMonth(db: D1Database, now = new Date()) {
 }
 
 /**
- * What one call of the site's picture suggester costs at most, in tokens. The suggester does not report its usage back: it
- * sends a 768px JPEG (at most about 790 image tokens) with a prompt of about 300 tokens and the answer schema, and it
+ * What one call of the site's picture suggester costs at most, in tokens, for a site that does not report its usage
+ * (site-api before 0.34.0): it sends a 768px JPEG (at most about 790 image tokens) with a prompt of about 300 tokens and the answer schema, and it
  * caps its answer at 300 tokens. The real tokens are in that site's own log (`anthropic_call`); the cap counts this ceiling.
  */
 const SUGGESTER_CALL = { input: 1500, output: 300, cacheRead: 0, cacheWrite: 0 };
 
 /**
- * Records an API call another service made for Carrel's job and metered itself (the site's picture suggester), at the
- * most it can cost: its model's list price on SUGGESTER_CALL, or the dearest listed price when the model has none, so the
+ * Records an API call another service made for Carrel's job and metered itself (the site's picture suggester): at the
+ * tokens it reported, else at the most it can cost: its model's list price on SUGGESTER_CALL, or the dearest listed price when the model has none, so the
  * cap never counts less than was spent.
  */
 export async function recordForeignCall(
   env: Env,
   feature: FeatureKey,
   model: string,
-  call = SUGGESTER_CALL,
+  usage?: { input: number; output: number; cacheRead: number; cacheWrite: number },
 ) {
+  const call = usage ?? SUGGESTER_CALL;
   const micros =
     costMicros(model, call) ??
     Math.max(...Object.keys(PRICES).map((m) => costMicros(m, call) ?? 0));
@@ -347,7 +348,7 @@ const EPISODE_SCHEMA = {
 
 /** What makes a chapter list right, for the API's prompt and the routine's alike. */
 export const EPISODE_CHAPTER_RULES = [
-  'The transcript is machine-made and mishears names and terms. Spell every name and term as it is properly written (the show is "Germomics", its hosts are Dustin Edwards and Faith Cox; "Wheel\'s disease" is Weil\'s disease, "Carey Mullis" is Kary Mullis) and correct any other mishearing you can settle from context.',
+  'The transcript is machine-made and mishears names and terms. Spell every name and term as it is properly written (the show is "Germomics", its hosts are Dustin Edwards and Faith Cox; "Wheel\'s disease" is Weil\'s disease, "Carey Mullis" is Kary Mullis) and correct any other mishearing you can settle from context. This holds for the summary and every chapter title alike: write each organism by its correct scientific name (Treponema pallidum, not "Trypanema"), each disease and drug as it is spelled in the literature, and each scientist by the correct spelling of their surname (Hofmann, not "Hoffmann"). Before you answer, reread every title and the summary for a misspelt name or term and fix it. If you cannot settle a spelling, leave the name out rather than guess.',
   "Chapters: [m:ss] markers stand in the transcript every half minute. Start a chapter only at a marker, giving its time in whole seconds (a marker [12:30] is 750), and never later than the episode runs. One topic to a chapter: split a stretch that covers two, and merge stretches that are one. Title what is said there, plainly, in at most eight words. Skip chatter that belongs to no topic; give the closing banter a chapter only if it is a segment of its own, and title it by what is said.",
 ].join(" ");
 

@@ -65,7 +65,7 @@ export async function writeAltText(
         const id = String(file.id);
         const made = await suggestMediaAlt(env, viewer, slug, id, fetcher);
         if (!made.ok) return { ok: false, error: made.message };
-        await recordForeignCall(env, "alt", made.model);
+        await recordForeignCall(env, "alt", made.model, made.usage);
         if (!made.alt) {
           tally.skipped++;
           continue;
