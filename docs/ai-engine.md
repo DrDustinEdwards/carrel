@@ -16,11 +16,11 @@ Carrel's AI work runs on one of two engines: Dustin's Claude subscription (a Cla
 
 ## Jobs
 
-| Job | Subscription | API |
-| --- | --- | --- |
-| Social post drafts | The routine drafts every waiting post in one run (`social/routine.server.ts`). | `draftPostViaApi` drafts each item in the same pass. |
-| Germomics episode summary and chapters | The routine, once per episode transcript (`episode-drafts.server.ts`). | `draftEpisodeViaApi` drafts them from the transcript, once per transcript. |
-| Search description and title | None: ask a Claude session. | The editor's button writes them as an AI draft beside your text (`suggestSeo`). |
+| Job                                    | Subscription                                                                   | API                                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Social post drafts                     | The routine drafts every waiting post in one run (`social/routine.server.ts`). | `draftPostViaApi` drafts each item in the same pass.                            |
+| Germomics episode summary and chapters | The routine, once per episode transcript (`episode-drafts.server.ts`).         | `draftEpisodeViaApi` drafts them from the transcript, once per transcript.      |
+| Search description and title           | None: ask a Claude session.                                                    | The editor's button writes them as an AI draft beside your text (`suggestSeo`). |
 
 An API draft is saved beside your own, never over it. Only the description is written, and the search title on sites
 that keep one apart from the post's title.
