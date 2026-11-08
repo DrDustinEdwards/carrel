@@ -9,7 +9,12 @@ import { WRITING_RULES } from "@dustinedwards/site-runtime/prose";
 
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
 
-import { draftEpisodeViaApi, monthSpendMicros, readAiSettings } from "~/lib/ai-engine.server";
+import {
+  draftEpisodeViaApi,
+  EPISODE_CHAPTER_RULES,
+  monthSpendMicros,
+  readAiSettings,
+} from "~/lib/ai-engine.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { findOwner } from "~/lib/signed-in-crawl.server";
 import { d1FireStore, fireOnce, routineConfig } from "./social/routine.server";
@@ -38,8 +43,10 @@ export async function freeDeadClaim(
   const claimed = await store.get(key);
   if (!claimed || now.getTime() - Date.parse(claimed) < CLAIM_LEASE_MS) return;
   const drafted = await db
-    .prepare("SELECT 1 AS x FROM ai_drafts WHERE item_id = ?1 AND client = ?2 LIMIT 1")
-    .bind(itemId, API_CLIENT)
+    .prepare(
+      "SELECT 1 AS x FROM ai_drafts WHERE item_id = ?1 AND client = ?2 AND created_at >= ?3 LIMIT 1",
+    )
+    .bind(itemId, API_CLIENT, claimed)
     .first();
   if (!drafted) await store.delete(key);
 }
@@ -56,7 +63,8 @@ export function needsDraft(source: string): boolean {
 function episodePrompt(slug: string, title: string): string {
   return [
     `Draft the summary and the chapters for the Germomics episode below, and store them as one AI draft with Carrel's carrel_save_draft tool (project "${PROJECT}"). Do not publish anything.`,
-    `Read it first with carrel_read_item: its transcript comes with it. Keep every other field of the source exactly as it is, and fill only \`excerpt\` (the summary) and \`chapters\` (a list of {"start": seconds, "title": ...}) where they are empty. Take chapter times only from the transcript's own timestamps; if it has none, leave chapters as they are and say so in the note.`,
+    `Read it first with carrel_read_item: its transcript comes with it. Keep every other field of the source exactly as it is, and fill only \`excerpt\` (the summary) and \`chapters\` (a list of {"start": seconds, "title": ...}) where they are empty. Take chapter times only from the transcript's own timestamps, in whole seconds, never past the episode's last cue; if it has none, leave chapters as they are and say so in the note.`,
+    EPISODE_CHAPTER_RULES,
     WRITING_RULES,
     UNTRUSTED_DATA_RULE,
     `Episode ${untrusted("slug", slug)}: ${untrusted("title", title)}`,
@@ -108,7 +116,7 @@ export async function draftEpisodes(
             // Once per transcript, as the routine's fire is: the draft sits beside the text, so the episode still
             // needs one next time. A failed attempt frees the key for the next pass, and so does a claim whose pass
             // died before saving a draft.
-            const key = `api-episode-draft:${item.id}:${transcript.length}`;
+            const key = `api-episode-draft:v2:${item.id}:${transcript.length}`;
             await freeDeadClaim(env.DB, store, key, item.id, now);
             if (viaApi >= API_PER_PASS) return { ok: false, error: "next pass", already: true };
             if (!(await store.add(key, now.toISOString())))

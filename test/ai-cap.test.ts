@@ -23,7 +23,7 @@ describe("alt-text calls in the cap", () => {
 });
 
 describe("a claim left by a pass that died", () => {
-  it("is freed once it is older than the lease and no API draft exists", async () => {
+  it("is freed once it is older than the lease and no API draft was saved since", async () => {
     const env = testEnv;
     const store = d1FireStore(env.DB);
     const now = new Date("2026-11-08T12:00:00Z");

@@ -30,6 +30,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { aiSettings, aiUsage } from "~/db/schema";
 import { saveAiDraft } from "~/lib/ai.server";
+import { checkedChapters, markTranscript } from "~/lib/transcript";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { d1FireStore } from "~/lib/social/routine.server";
 import type { Viewer } from "~/lib/people.server";
@@ -344,6 +345,12 @@ const EPISODE_SCHEMA = {
   additionalProperties: false,
 };
 
+/** What makes a chapter list right, for the API's prompt and the routine's alike. */
+export const EPISODE_CHAPTER_RULES = [
+  'The transcript is machine-made and mishears names and terms. Spell every name and term as it is properly written (the show is "Germomics", its hosts are Dustin Edwards and Faith Cox; "Wheel\'s disease" is Weil\'s disease, "Carey Mullis" is Kary Mullis) and correct any other mishearing you can settle from context.',
+  "Chapters: [m:ss] markers stand in the transcript every half minute. Start a chapter only at a marker, giving its time in whole seconds (a marker [12:30] is 750), and never later than the episode runs. One topic to a chapter: split a stretch that covers two, and merge stretches that are one. Title what is said there, plainly, in at most eight words. Skip chatter that belongs to no topic; give the closing banter a chapter only if it is a segment of its own, and title it by what is said.",
+].join(" ");
+
 const isEmpty = (v: string) => v === "" || v === '""' || v === "null" || v === "[]";
 
 /**
@@ -365,6 +372,7 @@ export async function draftEpisodeViaApi(
   const needSummary = isEmpty(readKey(front, "excerpt").trim());
   const needChapters = isEmpty(readKey(front, "chapters").trim());
   if (!needSummary && !needChapters) return { ok: true };
+  const transcript = markTranscript(episode.transcript);
   const result = await structured<{
     excerpt: string;
     chapters: { start: number; title: string }[];
@@ -375,7 +383,8 @@ export async function draftEpisodeViaApi(
       model: aiModel(models, "episode", "standard"),
       max_tokens: 4000,
       system: [
-        "Write a summary and chapters for the podcast episode below from its transcript. The summary is two or three plain sentences saying what the listener learns. Chapters are a list of { start, title }, start in whole seconds. Take chapter times only from the transcript's own timestamps; if it has none, return an empty list.",
+        "Write a summary and chapters for the podcast episode below from its transcript. The summary is two or three plain sentences saying what the listener learns.",
+        EPISODE_CHAPTER_RULES,
         WRITING_RULES,
         UNTRUSTED_DATA_RULE,
       ].join("\n\n"),
@@ -384,7 +393,8 @@ export async function draftEpisodeViaApi(
           role: "user",
           content: [
             untrusted("title", episode.title),
-            untrusted("transcript", episode.transcript.slice(0, 300_000)),
+            `The episode runs ${Math.floor(transcript.duration / 60)}:${String(transcript.duration % 60).padStart(2, "0")}.`,
+            untrusted("transcript", transcript.text.slice(0, 300_000)),
           ].join("\n"),
         },
       ],
@@ -397,15 +407,17 @@ export async function draftEpisodeViaApi(
   const summary = result.value.excerpt.replace(/\s+/g, " ").trim();
   if (needSummary && summary)
     next = setBlock(next, "excerpt", [`excerpt: ${JSON.stringify(summary)}`]);
-  const chapters = result.value.chapters
-    .filter((c) => Number.isInteger(c.start) && c.start >= 0 && c.title.trim())
-    .map((c) => ({ start: c.start, title: c.title.trim() }));
-  if (needChapters && chapters.length)
+  const chapters = checkedChapters(result.value.chapters, transcript);
+  if (needChapters && chapters)
     next = setBlock(next, "chapters", [`chapters: ${JSON.stringify(chapters)}`]);
   if (next === front) return { ok: true };
   await saveAiDraft(env, project, { viewer, client: "Carrel (Claude API)" }, episode.id, {
     source: joinSource({ ...parts, front: next }),
-    note: "Summary and chapters written through the Claude API from the transcript; nothing else changed.",
+    note:
+      "Summary and chapters written through the Claude API from the transcript; nothing else changed." +
+      (needChapters && !chapters
+        ? " The chapter times did not match the transcript's markers, so no chapters were written."
+        : ""),
   });
   return { ok: true };
 }
