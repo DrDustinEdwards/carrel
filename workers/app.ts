@@ -13,6 +13,7 @@ import { createRequestHandler, RouterContextProvider } from "react-router";
 import { cloudflareContext, cspNonceContext, viewerContext, zoneContext } from "~/lib/context";
 import { knownZone } from "~/lib/writing/progress";
 import { runBackup } from "~/lib/backup.server";
+import { draftEpisodes } from "~/lib/episode-drafts.server";
 import { ALL_JOBS, CRON_JOBS, type JobName, type ScheduledJob } from "~/lib/cron-schedule";
 import { deployedSha } from "~/lib/deployed";
 import { OPERATOR_PATH, operatorAnswer } from "~/lib/operator.server";
@@ -165,6 +166,7 @@ const WORK: Record<JobName, (env: Env, ctx: ExecutionContext) => Promise<unknown
   "refresh-google": (env) => refreshGoogle(env),
   "inbox-report": (env) => reportInbox(env),
   social: (env) => processSocial(env),
+  "episode-drafts": (env) => draftEpisodes(env),
   backup: (env) => runBackup(env),
   "prune-404": (env) => pruneNotFound(env.DB),
   "signed-in-crawl": (env, ctx) => runSignedInCrawl(env, deskAs(env, ctx)),
