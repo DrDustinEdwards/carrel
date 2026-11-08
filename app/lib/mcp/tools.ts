@@ -39,6 +39,7 @@ import {
   saveBookAiDraft,
 } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
+import { keyMomentProblems } from "~/lib/transcript";
 import { readMentions, runIntent as runMentionsIntent } from "~/lib/mentions.server";
 import {
   DELETE_LIMIT,
@@ -414,7 +415,7 @@ export const TOOLS: Tool[] = [
     },
     outputSchema: shape(
       { saved: YES, aiDraftId: ID, where: TEXT, checks: { type: "object" } },
-      { basedOnVersion: ANY, seo: ANY },
+      { basedOnVersion: ANY, seo: ANY, timing: ANY },
     ),
     outside: false,
     run: async (args, ctx) => {
@@ -431,6 +432,8 @@ export const TOOLS: Tool[] = [
       );
       const checks = checkAgainstPack(await packFor(ctx, p), source, sources);
       const seo = await seoOf(ctx.env, p, source, { id: str(args, "item") }, ctx.deps.fetcher);
+      const doc = await readDoc(ctx.env, p, str(args, "item"), ctx.deps.fetcher).catch(() => null);
+      const timing = doc?.transcript ? keyMomentProblems(source, doc.transcript) : [];
       return {
         saved: true,
         aiDraftId: saved.id,
@@ -438,6 +441,7 @@ export const TOOLS: Tool[] = [
         where: "Beside Dustin's draft in Carrel's editor, under AI drafts.",
         checks,
         seo,
+        ...(timing.length ? { timing } : {}),
       };
     },
   },

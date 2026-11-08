@@ -75,3 +75,36 @@ export function placeChapters(
     ? { ok: true, chapters: kept }
     : { ok: false, why: `only ${kept.length} chapters were left` };
 }
+
+/**
+ * What is wrong with an episode source's keyMoments against its transcript: a moment's `seconds` must be the start of a
+ * cue, within the episode. Cue numbers written as seconds (cue 56 is not 0:56) put every moment at the wrong place.
+ */
+export function keyMomentProblems(source: string, vtt: string): string[] {
+  const raw = /^keyMoments:\s*(.*)$/m
+    .exec(/^---\n([\s\S]*?)\n---/.exec(source)?.[1] ?? "")?.[1]
+    ?.trim();
+  if (!raw || raw === "[]") return [];
+  let moments: unknown;
+  try {
+    moments = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(moments)) return [];
+  const { cues, duration } = parseTranscript(vtt);
+  if (!cues.length) return [];
+  const starts = new Set(cues.map((c) => c.start));
+  const problems: string[] = [];
+  for (const m of moments as { seconds?: unknown; label?: unknown }[]) {
+    const at = m?.seconds;
+    const label = typeof m?.label === "string" ? m.label : "";
+    if (typeof at !== "number" || at > duration)
+      problems.push(`"${label}": ${String(at)} s is not inside the ${duration} s episode.`);
+    else if (!starts.has(at))
+      problems.push(
+        `"${label}": ${at} s is not where any transcript cue starts. keyMoments seconds are real seconds, not cue numbers.`,
+      );
+  }
+  return problems;
+}

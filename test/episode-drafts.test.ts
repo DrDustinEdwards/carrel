@@ -2,9 +2,10 @@
 // times past the end of the episode, and later drifted a minute late), and that a claim left by a pass that died is freed.
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { unwrittenNames } from "~/lib/ai-engine.server";
 import { freeDeadClaim, needsDraft } from "~/lib/episode-drafts.server";
 import { d1FireStore } from "~/lib/social/routine.server";
-import { parseTranscript, placeChapters } from "~/lib/transcript";
+import { keyMomentProblems, parseTranscript, placeChapters } from "~/lib/transcript";
 
 import { resetDb, testEnv } from "./env";
 
@@ -52,6 +53,22 @@ describe("chapter times", () => {
     );
     expect(!missing.ok && missing.why).toContain("not in the transcript");
     expect(placeChapters(ch("welcome to the show", "now the soup"), t).ok).toBe(false);
+    // A name the episode's own text never spells is sent back: "Gina Geis" for Jeanna Giese.
+    const drafted = {
+      excerpt: "The hosts cover Pasteur.",
+      chapters: [
+        { title: "Gina Geis and the Milwaukee Protocol" },
+        { title: "Dustin's rabies scare" },
+      ],
+    };
+    expect(unwrittenNames(drafted, "Jeanna Giese survived in Milwaukee. Pasteur. Dustin.")).toEqual(
+      ["Geis", "Protocol"],
+    );
+    // Key moments follow the same rule: a time is a cue's start, and a cue number written as seconds is flagged.
+    const front = (m: string) => `---\ntitle: "Pump"\nkeyMoments: ${m}\n---\nBody`;
+    expect(keyMomentProblems(front('[{"seconds":35,"label":"Soup"}]'), vtt)).toEqual([]);
+    expect(keyMomentProblems(front('[{"seconds":3,"label":"Soup"}]'), vtt)).toHaveLength(1);
+    expect(keyMomentProblems(front('[{"seconds":400,"label":"Late"}]'), vtt)).toHaveLength(1);
   });
 });
 
