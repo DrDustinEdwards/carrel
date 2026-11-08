@@ -52,6 +52,11 @@ describe("chapter times", () => {
     );
     expect(!missing.ok && missing.why).toContain("not in the transcript");
     expect(placeChapters(ch("welcome to the show", "now the soup"), t).ok).toBe(false);
+    // Key moments follow the same rule: a time is a cue's start, and a cue number written as seconds is flagged.
+    const front = (m: string) => `---\ntitle: "Pump"\nkeyMoments: ${m}\n---\nBody`;
+    expect(keyMomentProblems(front('[{"seconds":35,"label":"Soup"}]'), vtt)).toEqual([]);
+    expect(keyMomentProblems(front('[{"seconds":3,"label":"Soup"}]'), vtt)).toHaveLength(1);
+    expect(keyMomentProblems(front('[{"seconds":400,"label":"Late"}]'), vtt)).toHaveLength(1);
   });
 });
 
@@ -66,14 +71,5 @@ describe("a claim left by a pass that died", () => {
     await freeDeadClaim(testEnv.DB, store, "api-episode-draft:y:10", "y", now);
     expect(await store.get("api-episode-draft:x:10")).toBeNull();
     expect(await store.get("api-episode-draft:y:10")).not.toBeNull();
-  });
-});
-
-describe("key moment times", () => {
-  const front = (moments: string) => `---\ntitle: "Pump"\nkeyMoments: ${moments}\n---\nBody`;
-  it("must be the start of a cue; cue numbers written as seconds are flagged", () => {
-    expect(keyMomentProblems(front('[{"seconds":35,"label":"Soup"}]'), vtt)).toEqual([]);
-    expect(keyMomentProblems(front('[{"seconds":3,"label":"Soup"}]'), vtt)).toHaveLength(1);
-    expect(keyMomentProblems(front('[{"seconds":400,"label":"Late"}]'), vtt)).toHaveLength(1);
   });
 });
