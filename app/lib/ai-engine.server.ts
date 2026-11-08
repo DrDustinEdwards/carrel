@@ -407,17 +407,14 @@ export async function draftEpisodeViaApi(
   const summary = result.value.excerpt.replace(/\s+/g, " ").trim();
   if (needSummary && summary)
     next = setBlock(next, "excerpt", [`excerpt: ${JSON.stringify(summary)}`]);
-  const chapters = checkedChapters(result.value.chapters, transcript);
-  if (needChapters && chapters)
-    next = setBlock(next, "chapters", [`chapters: ${JSON.stringify(chapters)}`]);
+  const checked = needChapters ? checkedChapters(result.value.chapters, transcript) : null;
+  if (checked && !checked.ok) return { ok: false, error: `Chapters refused: ${checked.why}` };
+  if (checked?.ok)
+    next = setBlock(next, "chapters", [`chapters: ${JSON.stringify(checked.chapters)}`]);
   if (next === front) return { ok: true };
   await saveAiDraft(env, project, { viewer, client: "Carrel (Claude API)" }, episode.id, {
     source: joinSource({ ...parts, front: next }),
-    note:
-      "Summary and chapters written through the Claude API from the transcript; nothing else changed." +
-      (needChapters && !chapters
-        ? " The chapter times did not match the transcript's markers, so no chapters were written."
-        : ""),
+    note: "Summary and chapters written through the Claude API from the transcript; nothing else changed.",
   });
   return { ok: true };
 }

@@ -27,14 +27,16 @@ const cue = (n: number, from: number, to: number, text: string) =>
 const vtt = `WEBVTT\n\n${[cue(1, 0, 20, "Hello."), cue(2, 35, 50, "Soup."), cue(3, 70, 95, "Bread."), cue(4, 100, 125, "Done.")].join("\n")}`;
 
 describe("chapter times", () => {
-  it("come only from the transcript's markers", () => {
+  it("snap to the transcript's markers, and a time the transcript lacks is refused with its reason", () => {
     const t = markTranscript(vtt);
     expect(t.marks).toEqual([0, 35, 70, 100]);
     expect(t.duration).toBe(125);
     const ch = (...starts: number[]) => starts.map((start, i) => ({ start, title: `T${i}` }));
-    expect(checkedChapters(ch(0, 38, 100), t)?.map((c) => c.start)).toEqual([0, 35, 100]);
-    expect(checkedChapters(ch(0, 35, 3550), t)).toBeNull();
-    expect(checkedChapters(ch(0, 35), t)).toBeNull();
+    const ok = checkedChapters(ch(0, 40, 100), t);
+    expect(ok.ok && ok.chapters.map((c) => c.start)).toEqual([0, 35, 100]);
+    const past = checkedChapters(ch(0, 35, 3550), t);
+    expect(!past.ok && past.why).toContain("past the end");
+    expect(checkedChapters(ch(0, 35), t).ok).toBe(false);
   });
 });
 

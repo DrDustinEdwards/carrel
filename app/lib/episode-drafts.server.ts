@@ -24,8 +24,10 @@ const SITE = "germomics";
 const PROJECT = "germomics";
 const API_CLIENT = "Carrel (Claude API)";
 
-/** The most episodes one pass drafts through the API: the cron gives a pass a minute, and a draft takes about six seconds. */
-const API_PER_PASS = 4;
+/** The most episodes one pass drafts through the API: the cron gives a pass a minute, and a draft takes about ten seconds. */
+const API_PER_PASS = 3;
+/** How many times one transcript is tried before the job stops spending on it: the reason of each failure is in the cron's last error. */
+const MAX_TRIES = 2;
 /** How long a claim on an episode may stand with no draft saved before the next pass takes it over. */
 const CLAIM_LEASE_MS = 10 * 60_000;
 
@@ -117,6 +119,9 @@ export async function draftEpisodes(
             // needs one next time. A failed attempt frees the key for the next pass, and so does a claim whose pass
             // died before saving a draft.
             const key = `api-episode-draft:v2:${item.id}:${transcript.length}`;
+            const failKey = `api-episode-fail:v2:${item.id}:${transcript.length}`;
+            if (Number((await store.get(failKey)) ?? 0) >= MAX_TRIES)
+              return { ok: false, error: "tried enough", already: true };
             await freeDeadClaim(env.DB, store, key, item.id, now);
             if (viaApi >= API_PER_PASS) return { ok: false, error: "next pass", already: true };
             if (!(await store.add(key, now.toISOString())))
@@ -135,7 +140,10 @@ export async function draftEpisodes(
               { id: item.id, title: item.title, source: doc.source, transcript },
               fetcher,
             );
-            if (!made.ok) await store.delete(key);
+            if (!made.ok) {
+              await store.delete(key);
+              await store.put(failKey, String(Number((await store.get(failKey)) ?? 0) + 1));
+            }
             return made;
           },
     });
