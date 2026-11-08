@@ -58,6 +58,12 @@ interface CarrelSecrets {
    * The Claude Code routine that drafts brand posts (design decision 5): its API trigger's /fire URL
    * and the token generated for it, which can fire that one routine and read nothing.
    */
+  /**
+   * The Anthropic API key for the API engine (AI switch, /ai): social drafts and search descriptions. Inert until the
+   * secret exists; without it the API engine reports a missing key and Subscription still works.
+   * `npx wrangler secret put ANTHROPIC_API_KEY`.
+   */
+  ANTHROPIC_API_KEY?: string;
   SOCIAL_ROUTINE_URL?: string;
   SOCIAL_ROUTINE_TOKEN?: string;
   /**

@@ -1040,6 +1040,13 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             />
           ) : null}
           {seo ? <SearchSharingPanel check={seo} /> : null}
+          {seo && mayEdit ? (
+            <form method="post" action={`/p/${data.project.slug}/e/${data.itemId}/ai-seo`}>
+              <Button type="submit" size="sm">
+                Write the search description with Claude
+              </Button>
+            </form>
+          ) : null}
           {data.revisions || data.historyError ? (
             <HistoryPanel
               revisions={data.revisions}

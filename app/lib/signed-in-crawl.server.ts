@@ -67,6 +67,7 @@ export async function runSignedInCrawl(
       "/",
       "/people",
       "/social",
+      "/ai",
       ...(site ? [`/p/${site.slug}`, `/p/${site.slug}/media`] : []),
       ...(book ? [`/b/${book.slug}`] : []),
       SIGNED_IN_MISSING_PATH,
