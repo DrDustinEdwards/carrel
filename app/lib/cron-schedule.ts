@@ -13,6 +13,7 @@ export type JobName =
   | "refresh-google"
   | "inbox-report"
   | "social"
+  | "episode-drafts"
   | "backup"
   | "prune-404"
   | "signed-in-crawl"
@@ -39,6 +40,8 @@ export const CRON_JOBS: Record<string, ScheduledJob[]> = {
     { name: "refresh-google", everyMinutes: 15, timeoutMs: 2 * MINUTE },
     { name: "inbox-report", everyMinutes: 15, timeoutMs: 1 * MINUTE },
     { name: "social", everyMinutes: 15, timeoutMs: 3 * MINUTE },
+    // Germomics episodes with a transcript and no summary or chapters: the routine fired once each (episode-drafts.server.ts).
+    { name: "episode-drafts", everyMinutes: 15, timeoutMs: 1 * MINUTE },
     // Desk's signed-in pages graded in-process for devkit's scoreboard (signed-in-crawl.server.ts): a handful of GETs.
     { name: "signed-in-crawl", everyMinutes: 15, timeoutMs: 45_000 },
   ],
