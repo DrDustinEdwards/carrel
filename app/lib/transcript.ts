@@ -1,22 +1,17 @@
-// A WebVTT transcript as the model reads it, and a check of the chapter times it gives back. The model is shown the text
-// with a [m:ss] marker every half minute and may only start a chapter at a marker, so a time cannot be made up: asked for
-// seconds from raw cues, it gave times past the end of the episode.
+// A WebVTT transcript as the model reads it, and the placing of the chapters it gives back. The model never writes a time:
+// asked for seconds it gave times past the end of the episode, and when it chose from time markers it drifted up to a
+// minute late. It quotes the words a chapter opens with, and the time is the start of the cue that says them.
 
 const CUE = /(\d{2}):(\d{2}):(\d{2})\.\d{3} --> (\d{2}):(\d{2}):(\d{2})\.\d{3}/;
-/** Seconds between markers. */
-const MARK_EVERY = 30;
 
-export type MarkedTranscript = { text: string; duration: number; marks: number[] };
+type Cue = { start: number; text: string };
+type ParsedTranscript = { text: string; duration: number; cues: Cue[] };
 
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
-/** The transcript's cues as running text, a `[m:ss]` marker at the start and then at the first cue after every half minute. */
-export function markTranscript(vtt: string): MarkedTranscript {
+/** The transcript's cues as running text, with each cue's start in seconds. */
+export function parseTranscript(vtt: string): ParsedTranscript {
   const lines = vtt.replace(/\r\n/g, "\n").split("\n");
-  const marks: number[] = [];
-  const out: string[] = [];
+  const cues: Cue[] = [];
   let duration = 0;
-  let last = -MARK_EVERY;
   for (let i = 0; i < lines.length; i++) {
     const m = CUE.exec(lines[i]!);
     if (!m) continue;
@@ -24,47 +19,58 @@ export function markTranscript(vtt: string): MarkedTranscript {
     duration = Math.max(duration, +m[4]! * 3600 + +m[5]! * 60 + +m[6]!);
     const text: string[] = [];
     while (i + 1 < lines.length && lines[i + 1]!.trim() !== "") text.push(lines[++i]!.trim());
-    if (start - last >= MARK_EVERY) {
-      last = start;
-      marks.push(start);
-      out.push(`\n[${clock(start)}]`);
-    }
-    out.push(text.join(" "));
+    cues.push({ start, text: text.join(" ") });
   }
-  return { text: out.join(" ").trim(), duration, marks };
+  return { text: cues.map((c) => c.text).join(" "), duration, cues };
 }
 
+const words = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+/** The fewest words a quote needs to point at one place. */
+const MIN_WORDS = 3;
+
 /**
- * The chapters moved onto the nearest marker (at most one interval away), in time order and one to a chapter per marker. A
- * time past the end of the episode, or too few chapters left, is refused with the reason, so the caller saves nothing rather
- * than times that point nowhere.
+ * Each chapter put at the cue where its opening words are said, searching forward from the chapter before, so a phrase
+ * said twice lands at the right one. A quote the transcript does not have, or chapters out of order, is refused with the
+ * reason: nothing is saved rather than a time that points at the wrong place.
  */
-export function checkedChapters(
-  chapters: { start: number; title: string }[],
-  transcript: MarkedTranscript,
+export function placeChapters(
+  chapters: { opens: string; title: string }[],
+  transcript: ParsedTranscript,
 ): { ok: true; chapters: { start: number; title: string }[] } | { ok: false; why: string } {
+  // One normalized string, and where each cue begins in it.
+  let flat = " ";
+  const offsets = transcript.cues.map((c) => {
+    const at = flat.length;
+    flat += `${words(c.text)} `;
+    return at;
+  });
   const kept: { start: number; title: string }[] = [];
+  let from = 0;
   for (const c of chapters) {
     const title = c.title.trim();
-    if (!Number.isInteger(c.start) || c.start < 0 || !title)
-      return { ok: false, why: `a chapter has no usable time or title (${JSON.stringify(c)})` };
-    if (c.start > transcript.duration)
+    const quote = words(c.opens);
+    if (!title || quote.split(" ").length < MIN_WORDS)
       return {
         ok: false,
-        why: `"${title}" starts at ${c.start}s, past the end at ${transcript.duration}s`,
+        why: `a chapter has no title or too short an opening quote (${JSON.stringify(c)})`,
       };
-    const near = transcript.marks.reduce(
-      (a, b) => (Math.abs(b - c.start) < Math.abs(a - c.start) ? b : a),
-      -1e9,
-    );
-    if (Math.abs(near - c.start) > MARK_EVERY)
+    const hit = flat.indexOf(` ${quote} `, from);
+    if (hit < 0)
       return {
         ok: false,
-        why: `"${title}" starts at ${c.start}s, more than ${MARK_EVERY}s from any marker`,
+        why: `"${title}": the opening words "${c.opens}" are not in the transcript after the chapter before`,
       };
-    if (!kept.some((k) => k.start === near)) kept.push({ start: near, title });
+    let cue = 0;
+    while (cue + 1 < offsets.length && offsets[cue + 1]! <= hit + 1) cue++;
+    from = hit + 1;
+    const start = transcript.cues[cue]!.start;
+    if (!kept.some((k) => k.start === start)) kept.push({ start, title });
   }
-  kept.sort((a, b) => a.start - b.start);
   return kept.length >= 3
     ? { ok: true, chapters: kept }
     : { ok: false, why: `only ${kept.length} chapters were left` };

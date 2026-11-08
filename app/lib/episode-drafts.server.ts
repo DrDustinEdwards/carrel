@@ -65,7 +65,7 @@ export function needsDraft(source: string): boolean {
 function episodePrompt(slug: string, title: string): string {
   return [
     `Draft the summary and the chapters for the Germomics episode below, and store them as one AI draft with Carrel's carrel_save_draft tool (project "${PROJECT}"). Do not publish anything.`,
-    `Read it first with carrel_read_item: its transcript comes with it. Keep every other field of the source exactly as it is, and fill only \`excerpt\` (the summary) and \`chapters\` (a list of {"start": seconds, "title": ...}) where they are empty. Take chapter times only from the transcript's own timestamps, in whole seconds, never past the episode's last cue; if it has none, leave chapters as they are and say so in the note.`,
+    `Read it first with carrel_read_item: its transcript comes with it. Keep every other field of the source exactly as it is, and fill only \`excerpt\` (the summary) and \`chapters\` (a list of {"start": seconds, "title": ...}) where they are empty. Take chapter times only from the transcript's own cue timestamps, in whole seconds, each at the cue where its topic is first said, never past the episode's last cue; if it has none, leave chapters as they are and say so in the note.`,
     EPISODE_CHAPTER_RULES,
     WRITING_RULES,
     UNTRUSTED_DATA_RULE,
@@ -118,8 +118,8 @@ export async function draftEpisodes(
             // Once per transcript, as the routine's fire is: the draft sits beside the text, so the episode still
             // needs one next time. A failed attempt frees the key for the next pass, and so does a claim whose pass
             // died before saving a draft.
-            const key = `api-episode-draft:v2:${item.id}:${transcript.length}`;
-            const failKey = `api-episode-fail:v2:${item.id}:${transcript.length}`;
+            const key = `api-episode-draft:v3:${item.id}:${transcript.length}`;
+            const failKey = `api-episode-fail:v3:${item.id}:${transcript.length}`;
             if (Number((await store.get(failKey)) ?? 0) >= MAX_TRIES)
               return { ok: false, error: "tried enough", already: true };
             await freeDeadClaim(env.DB, store, key, item.id, now);

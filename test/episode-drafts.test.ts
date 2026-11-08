@@ -1,10 +1,10 @@
-// Which episodes get drafted (an empty summary or chapters), that a chapter time is one the transcript has (the model once gave
-// times past the end of the episode), and that a claim left by a pass that died is freed.
+// Which episodes get drafted (an empty summary or chapters), that a chapter's time is the cue that says its opening words (the model once gave
+// times past the end of the episode, and later drifted a minute late), and that a claim left by a pass that died is freed.
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { freeDeadClaim, needsDraft } from "~/lib/episode-drafts.server";
 import { d1FireStore } from "~/lib/social/routine.server";
-import { checkedChapters, markTranscript } from "~/lib/transcript";
+import { parseTranscript, placeChapters } from "~/lib/transcript";
 
 import { resetDb, testEnv } from "./env";
 
@@ -22,21 +22,36 @@ describe("needsDraft", () => {
   });
 });
 
-const cue = (n: number, from: number, to: number, text: string) =>
-  `${n}\n00:${String(Math.floor(from / 60)).padStart(2, "0")}:${String(from % 60).padStart(2, "0")}.000 --> 00:${String(Math.floor(to / 60)).padStart(2, "0")}:${String(to % 60).padStart(2, "0")}.000\n${text}\n`;
-const vtt = `WEBVTT\n\n${[cue(1, 0, 20, "Hello."), cue(2, 35, 50, "Soup."), cue(3, 70, 95, "Bread."), cue(4, 100, 125, "Done.")].join("\n")}`;
+const cue = (n: number, from: number, to: number, text: string) => {
+  const t = (s: number) =>
+    `00:${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}.000`;
+  return `${n}\n${t(from)} --> ${t(to)}\n${text}\n`;
+};
+const vtt = `WEBVTT\n\n${[
+  cue(1, 0, 20, "Welcome to the show, everyone."),
+  cue(2, 35, 50, "Now the soup, which is hot."),
+  cue(3, 70, 95, "Then the bread, which is not."),
+  cue(4, 100, 125, "Now the soup, again, and done."),
+].join("\n")}`;
 
 describe("chapter times", () => {
-  it("snap to the transcript's markers, and a time the transcript lacks is refused with its reason", () => {
-    const t = markTranscript(vtt);
-    expect(t.marks).toEqual([0, 35, 70, 100]);
+  it("come from the cue that says the opening words, searching forward, and a quote the transcript lacks is refused", () => {
+    const t = parseTranscript(vtt);
     expect(t.duration).toBe(125);
-    const ch = (...starts: number[]) => starts.map((start, i) => ({ start, title: `T${i}` }));
-    const ok = checkedChapters(ch(0, 40, 100), t);
-    expect(ok.ok && ok.chapters.map((c) => c.start)).toEqual([0, 35, 100]);
-    const past = checkedChapters(ch(0, 35, 3550), t);
-    expect(!past.ok && past.why).toContain("past the end");
-    expect(checkedChapters(ch(0, 35), t).ok).toBe(false);
+    const ch = (...opens: string[]) => opens.map((o, i) => ({ opens: o, title: `T${i}` }));
+    const ok = placeChapters(ch("welcome to the show", "Now the soup, which", "then the bread"), t);
+    expect(ok.ok && ok.chapters.map((c) => c.start)).toEqual([0, 35, 70]);
+    const again = placeChapters(
+      ch("welcome to the show", "then the bread", "now the soup again"),
+      t,
+    );
+    expect(again.ok && again.chapters.map((c) => c.start)).toEqual([0, 70, 100]);
+    const missing = placeChapters(
+      ch("welcome to the show", "now the soup", "a line nobody said"),
+      t,
+    );
+    expect(!missing.ok && missing.why).toContain("not in the transcript");
+    expect(placeChapters(ch("welcome to the show", "now the soup"), t).ok).toBe(false);
   });
 });
 
