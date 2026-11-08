@@ -427,7 +427,8 @@ async function sendQueued(
 /** One pass of the queue, run by the cron. Every step is idempotent, so a missed run loses nothing. */
 export async function processSocial(
   env: Env,
-  deps: { fetcher?: Fetch; now?: Date } = {},
+  // `draftNow` is the AI page's button: it drafts what is waiting without the batch delay, and sends nothing.
+  deps: { fetcher?: Fetch; now?: Date; draftNow?: boolean } = {},
 ): Promise<TickResult> {
   const fetcher = deps.fetcher ?? timedFetch;
   const now = deps.now ?? new Date();
@@ -499,7 +500,9 @@ export async function processSocial(
         ),
       )
       .all()
-  ).filter((e) => nightly || Date.parse(e.publishedAt!) <= now.getTime() - BATCH_DELAY_MS);
+  ).filter(
+    (e) => deps.draftNow || nightly || Date.parse(e.publishedAt!) <= now.getTime() - BATCH_DELAY_MS,
+  );
   if (waiting.length > 0) {
     const config = routineConfig(env);
     const runsToday = await d
@@ -681,8 +684,9 @@ export async function processSocial(
     }
   }
 
-  // Posts cleared to go: within each account's caps.
-  for (const account of accounts.values()) await sendQueued(env, account, now, fetcher, result);
+  // Posts cleared to go: within each account's caps. The AI page's button only drafts.
+  if (!deps.draftNow)
+    for (const account of accounts.values()) await sendQueued(env, account, now, fetcher, result);
   return result;
 }
 

@@ -336,6 +336,11 @@ describe("the primary path: a draft stored ahead", () => {
 });
 
 describe("the routine, and the template only after it fails", () => {
+  // These tests are about the subscription route; the shipped default sends social drafts to the API.
+  beforeEach(async () => {
+    await saveAiSettings(testEnv.DB, await owner(), { master: "subscription" });
+  });
+
   async function published() {
     await account("example-bluesky");
     await recordPublication(testEnv.DB, projectId, PIECE, NOW);

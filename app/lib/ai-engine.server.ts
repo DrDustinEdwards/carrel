@@ -33,40 +33,55 @@ import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { socialFieldsOf } from "~/lib/seo-checks";
 
-/** The jobs that can run on either engine. `subscription` says whether a routine can do it. */
+/**
+ * The jobs that can run on either engine. `subscription` says whether a routine can do it; `engine` is the setting the job
+ * starts with until Dustin changes it. Background jobs nobody waits on start on the API (it answers at once and is
+ * metered); long writing he steers himself starts on Automatic, the subscription first.
+ */
 export const FEATURES = [
   {
     key: "social",
     label: "Social post drafts",
     subscription: true,
+    engine: "api",
     note: "The subscription fires a routine that drafts every waiting post in one run. The API drafts them in the same pass.",
   },
   {
     key: "episode",
     label: "Germomics episode summaries and chapters",
     subscription: true,
+    engine: "api",
     note: "The subscription fires a routine per episode that has a transcript. The API drafts them from the transcript. Either way it is a draft beside yours.",
   },
   {
     key: "seo",
     label: "Search title and description",
     subscription: false,
+    engine: "api",
     note: "The API writes it as a draft beside yours. On the subscription, ask a Claude session to write it.",
   },
 ] as const;
 type FeatureKey = (typeof FEATURES)[number]["key"];
 
-/**
- * The saved settings. Until Dustin saves some, everything stays on the subscription, as before the switch existed: the
- * API spends money, so it is never the default.
- */
+/** The API cap a month before Dustin sets one: a guard well inside his monthly API credit. */
+export const DEFAULT_CAP_MICROS = 20_000_000;
+
+/** The settings before any are saved: Automatic, with each job on the engine it starts with. */
+export function defaultAiSettings(): EngineSettings {
+  return normalizeSettings({
+    master: "auto",
+    features: Object.fromEntries(FEATURES.map((f) => [f.key, f.engine])),
+    apiCapMicros: DEFAULT_CAP_MICROS,
+  }) as EngineSettings;
+}
+
+/** The saved settings, or the defaults when none are saved (or the saved row is unreadable). */
 export async function readAiSettings(db: D1Database): Promise<EngineSettings> {
   const row = await drizzle(db).select().from(aiSettings).where(eq(aiSettings.id, 1)).get();
   try {
-    if (!row) return { ...(normalizeSettings(null) as EngineSettings), master: "subscription" };
-    return normalizeSettings(JSON.parse(row.json)) as EngineSettings;
+    return row ? (normalizeSettings(JSON.parse(row.json)) as EngineSettings) : defaultAiSettings();
   } catch {
-    return { ...(normalizeSettings(null) as EngineSettings), master: "subscription" };
+    return defaultAiSettings();
   }
 }
 

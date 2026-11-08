@@ -7,7 +7,8 @@ Carrel's AI work runs on one of two engines: Dustin's Claude subscription (a Cla
 ## Settings
 
 - **Everything:** Subscription, API, or Automatic (the subscription, then the API only when the routine certainly
-  started nothing). Until settings are saved it is Subscription: the API spends money, so it is never the default.
+  started nothing). Until settings are saved it is Automatic, with the background jobs (social drafts, episode drafts,
+  search description) on the API, which answers at once and is metered, and a $20 monthly API cap.
 - **Per job:** each job can follow Everything or have its own engine.
 - **Use the API for 1, 3 or 7 days:** an override that beats every setting until its date, for when the subscription
   runs low. Carrel cannot read the subscription meter (claude.ai/settings/usage is the only one).

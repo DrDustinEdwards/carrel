@@ -19,7 +19,9 @@ import {
   usageThisMonth,
 } from "~/lib/ai-engine.server";
 import { getEnv, getViewer } from "~/lib/context";
+import { draftEpisodes } from "~/lib/episode-drafts.server";
 import { readForm } from "~/lib/form.server";
+import { processSocial } from "~/lib/social/queue.server";
 import { routineConfig } from "~/lib/social/routine.server";
 
 import type { Route } from "./+types/ai";
@@ -60,7 +62,19 @@ export async function action({ request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const form = await readForm(request);
+  if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
   const current = await readAiSettings(env.DB);
+  if (form.get("draft-now") !== null) {
+    // The cron's two drafting passes, run on the spot instead of waiting for the next tick.
+    const [episodes, social] = await Promise.all([
+      draftEpisodes(env),
+      processSocial(env, { draftNow: true }),
+    ]);
+    const problems = episodes.errors.length;
+    return {
+      done: `Episodes: ${episodes.fired.length} started${problems ? `, ${problems} failed (${episodes.errors[0]})` : ""}. Social posts: ${social.routineFired} sent to the routine, ${social.templated} from the template.`,
+    };
+  }
   if (form.get("override") !== null) {
     // "The subscription is low": the API for a few days, then back to the saved settings by itself.
     const days = Number(form.get("override"));
@@ -131,6 +145,16 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
             </Button>
           ) : null}
         </Form>
+      </Panel>
+      <Panel title="Draft now" src="Episodes and social posts">
+        <Form method="post" className="app-actions">
+          <Button type="submit" name="draft-now" value="1" size="sm" pending={busy}>
+            Draft what is waiting
+          </Button>
+        </Form>
+        <p className="cap-muted app-note">
+          Runs the same pass the schedule runs, now, on the engines set below.
+        </p>
       </Panel>
       <Form method="post" className="app-form">
         <Panel title="Engine">
