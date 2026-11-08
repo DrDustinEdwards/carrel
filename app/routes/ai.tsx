@@ -2,7 +2,7 @@
 // Claude API. One setting for everything, an optional setting per job, and a monthly cap on API spend. The Owner's alone.
 
 import { Form, useNavigation } from "react-router";
-import { Alert } from "capsomer/react/banner";
+import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
@@ -20,6 +20,7 @@ import {
 } from "~/lib/ai-engine.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { readForm } from "~/lib/form.server";
+import { routineConfig } from "~/lib/social/routine.server";
 
 import type { Route } from "./+types/ai";
 
@@ -43,7 +44,16 @@ export async function loader({ context }: Route.LoaderArgs) {
     monthSpendMicros(env.DB),
     usageThisMonth(env.DB),
   ]);
-  return { settings, spent, usage, features: FEATURES.map((f) => ({ ...f })) };
+  const routine = routineConfig(env);
+  return {
+    settings,
+    spent,
+    usage,
+    features: FEATURES.map((f) => ({ ...f })),
+    // What each engine can do right now, so a setting that cannot work says so.
+    routineMissing: "missing" in routine ? routine.missing : null,
+    apiKeyMissing: !env.ANTHROPIC_API_KEY,
+  };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -81,7 +91,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
-  const { settings, spent, usage, features } = loaderData;
+  const { settings, spent, usage, features, routineMissing, apiKeyMissing } = loaderData;
   const busy = useNavigation().state !== "idle";
   return (
     <div className="app-page">
@@ -90,6 +100,17 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
         lead="Choose whether Carrel's AI work runs on your Claude subscription or on the Claude API."
       />
       {actionData && "done" in actionData ? <Alert tone="ok">{actionData.done}</Alert> : null}
+      {routineMissing ? (
+        <Banner tone="warn" title="The subscription has no routine to start">
+          {routineMissing} Until it is set up, Subscription drafts nothing (posts get the template),
+          and Automatic uses the API.
+        </Banner>
+      ) : null}
+      {apiKeyMissing ? (
+        <Banner tone="warn" title="The API has no key">
+          Carrel has no ANTHROPIC_API_KEY secret, so the API engine cannot draft anything.
+        </Banner>
+      ) : null}
       <Panel
         title="Subscription running low?"
         src={
