@@ -32,7 +32,7 @@ import { listRevisions, orderPair, readRevision, revisionPatch } from "~/lib/his
 import { kindNoun } from "~/lib/kind-words";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
-import { siteCoauthors, withOthers } from "~/lib/rooms.server";
+import { siteClients, siteCoauthors, viaClient, withOthers } from "~/lib/rooms.server";
 import { SiteNotConnected } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
 
@@ -228,6 +228,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   }
 
   const coauthors = await siteCoauthors(env.DB, project.id, itemId);
+  const clients = await siteClients(env.DB, project.id, itemId);
   return {
     project: { slug: project.slug, name: project.name },
     itemId,
@@ -240,7 +241,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     revisions: list.map((r) => ({
       version: r.version,
       at: r.at,
-      author: withOthers(r.author, coauthors.get(r.version)),
+      author: viaClient(withOthers(r.author, coauthors.get(r.version)), clients.get(r.version)),
       message: r.message,
     })),
     siteError,

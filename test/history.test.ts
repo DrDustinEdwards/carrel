@@ -80,10 +80,17 @@ const changeRows = async () =>
 
 describe("reading history", () => {
   it("lists the revisions newest first for a Reader, and only reads", async () => {
+    // An AI client's save reads "<person> via <client>"; a browser save does not.
+    await testEnv.DB.prepare("UPDATE changes SET client = ? WHERE version_after = ?")
+      .bind("Grok Bot", versions[1])
+      .run();
     const before = await changeRows();
     const data = await load("reader@test.invalid");
     expect(data.revisions.map((r) => r.version)).toEqual([...versions].reverse());
     expect(data.revisions).toHaveLength(3);
+    const author = new Map(data.revisions.map((r) => [r.version, r.author]));
+    expect(author.get(versions[1]!)).toMatch(/ via Grok Bot$/);
+    expect(author.get(versions[0]!)).not.toContain(" via ");
     expect(site.requests.every((r) => r.startsWith("GET "))).toBe(true);
     expect(await changeRows()).toBe(before);
   });
