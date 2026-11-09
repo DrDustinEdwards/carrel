@@ -70,6 +70,7 @@ function callerOf(session: McpSession): McpCaller {
     kind: "person",
     email: session.viewer.email,
     clientId: session.clientId,
+    clientName: session.client,
     scopes: session.scopes,
   };
 }

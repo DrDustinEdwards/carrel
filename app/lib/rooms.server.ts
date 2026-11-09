@@ -274,6 +274,30 @@ export async function siteCoauthors(
   );
 }
 
+/**
+ * The AI client that made each save on a post's site, by the version it made: the history shows
+ * "Dustin via Grok Bot". The change record keeps the person who authorized the write and the client's
+ * name from its consent screen; a save from the browser has no client.
+ */
+export async function siteClients(
+  db: D1Database,
+  projectId: number,
+  itemId: string,
+): Promise<Map<string, string>> {
+  const rows = await drizzle(db)
+    .select({ version: changes.versionAfter, client: changes.client })
+    .from(changes)
+    .where(and(eq(changes.projectId, projectId), eq(changes.itemId, itemId)))
+    .all();
+  return new Map(
+    rows.flatMap((r) => (r.version && r.client ? [[r.version, r.client] as const] : [])),
+  );
+}
+
+/** A save's author with the AI client that sent it: "Dustin via Grok Bot". */
+export const viaClient = (author: string, client: string | undefined) =>
+  client ? `${author} via ${client}` : author;
+
 /** The path a page's editor connects to: /collab/p/<project>/<post> or /collab/b/<book>/<file path>. */
 export function roomPath(kind: "p" | "b", slug: string, itemId: string): string {
   return `/collab/${kind}/${encodeURIComponent(slug)}/${itemId.split("/").map(encodeURIComponent).join("/")}`;
