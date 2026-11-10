@@ -3,12 +3,18 @@
 // the logo and the tab title come from Capsomer's FAMILY_APPS (app="carrel"); the theme is the header's
 // button (Capsomer 0.9.0).
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { CommandMenu, type Command } from "capsomer/react/command-menu";
+import type { Command } from "capsomer/react/command-menu";
 import { Link } from "capsomer/react/link";
 import { MessageProvider } from "capsomer/react/message";
 import { AdminShell, type AdminEntry, type LinkProps } from "capsomer/react/admin-shell";
+
+// The search palette loads once the page is idle, or at once when the search button is pressed first, so
+// its code is not on every page's first load (devkit-route-weight). It binds Ctrl or Cmd K and / itself.
+const CommandMenu = lazy(() =>
+  import("capsomer/react/command-menu").then((m) => ({ default: m.CommandMenu })),
+);
 
 type FrameProject = { slug: string; name: string; kind: "site" | "book" | null };
 
@@ -82,6 +88,15 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
   const { pathname } = useLocation();
   const owner = data?.isOwner ?? false;
   const [searching, setSearching] = useState(false);
+  const [opened, setOpened] = useState(false);
+  useEffect(() => {
+    if (typeof requestIdleCallback !== "function") {
+      const t = setTimeout(() => setOpened(true), 200);
+      return () => clearTimeout(t);
+    }
+    const id = requestIdleCallback(() => setOpened(true), { timeout: 2000 });
+    return () => cancelIdleCallback(id);
+  }, []);
   const navigate = useNavigate();
   const needs = data?.needs ?? 0;
 
@@ -209,7 +224,14 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
       nav={nav}
       tabs={tabs}
       renderLink={RouterLink}
-      onSearch={data ? () => setSearching(true) : undefined}
+      onSearch={
+        data
+          ? () => {
+              setOpened(true);
+              setSearching(true);
+            }
+          : undefined
+      }
       inbox={data ? { count: needs, countNote: "need you", href: "/" } : undefined}
       account={{
         name: data?.name ?? "Signed out",
@@ -221,15 +243,17 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
     >
       <MessageProvider>
         {children}
-        {data ? (
-          <CommandMenu
-            open={searching}
-            onOpenChange={setSearching}
-            commands={commands}
-            search={search}
-            label="Search Desk"
-            placeholder="Search posts, books and actions"
-          />
+        {data && opened ? (
+          <Suspense fallback={null}>
+            <CommandMenu
+              open={searching}
+              onOpenChange={setSearching}
+              commands={commands}
+              search={search}
+              label="Search Desk"
+              placeholder="Search posts, books and actions"
+            />
+          </Suspense>
         ) : null}
         {/* Capsomer's publish gate only says its results when it finds [data-cap="message"] in the page, and
             the React message region carries no such attribute, so the gate would stay silent here. This empty
