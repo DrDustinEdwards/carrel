@@ -27,6 +27,7 @@ import {
 } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 
+import { APP_MIME_TYPE, POST_APP_HTML, POST_APP_TOOL, POST_APP_URI } from "./post-app";
 import { SCOPE_READ, SCOPE_WRITE } from "./scopes";
 import { type McpSession, outputSchemaOf, runTool, TOOLS, type ToolDeps } from "./tools";
 
@@ -115,6 +116,9 @@ function buildServer(env: Env, who: Who, deps: ToolDeps) {
           outputSchema: fromJsonSchema(outputSchemaOf(tool) as JsonSchemaType),
           annotations: tool.annotations,
           icons: SERVER_INFO.icons,
+          // The one MCP App: the host shows this view beside the answer (post-app.ts). Only a tool the grant can call
+          // is listed, so a grant that cannot read posts sees no view either.
+          ...(tool.name === POST_APP_TOOL ? { _meta: { ui: { resourceUri: POST_APP_URI } } } : {}),
         },
         async (args: unknown, ctx) => {
           const input = (args ?? {}) as Record<string, unknown>;
@@ -141,6 +145,15 @@ function buildServer(env: Env, who: Who, deps: ToolDeps) {
         },
       );
     }
+    // The view's page. It holds no data: the host passes it the tool's answer, which already went through the grant.
+    server.registerResource(
+      "post-versions",
+      POST_APP_URI,
+      { title: "Post versions", mimeType: APP_MIME_TYPE, _meta: { ui: { prefersBorder: true } } },
+      async (uri) => ({
+        contents: [{ uri: uri.href, mimeType: APP_MIME_TYPE, text: POST_APP_HTML }],
+      }),
+    );
     return server;
   };
 }
