@@ -2,23 +2,19 @@
 // draft" puts its text in their working draft (autosave), where they edit it before anything reaches
 // the site. Nothing here writes to the site.
 
-import { useRef, useState } from "react";
-import { Form, redirect, useNavigation } from "react-router";
+import { useState } from "react";
+import { redirect } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Segmented } from "capsomer/react/segmented";
-import { Time } from "capsomer/react/time";
-import { PageHead } from "capsomer/react/page-head";
 
+import { DraftHead, draftIdParam } from "~/components/editor/draft-head";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
 import { Inspector } from "~/components/editor/inspector";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
-import { RouterLink } from "~/components/frame";
 
 import { readAiDraft } from "~/lib/ai.server";
 import { autosave } from "~/lib/content.server";
@@ -34,17 +30,11 @@ export function meta() {
   return [{ title: "AI draft · Carrel" }];
 }
 
-function draftId(value: string | undefined): number {
-  const id = Number(value);
-  if (!Number.isInteger(id) || id <= 0) throw new Response("Not found", { status: 404 });
-  return id;
-}
-
 export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
-  const draft = await readAiDraft(env.DB, project, viewer, params.item, draftId(params.id));
+  const draft = await readAiDraft(env.DB, project, viewer, params.item, draftIdParam(params.id));
   return {
     project: { slug: project.slug, name: project.name },
     itemId: params.item,
@@ -72,7 +62,7 @@ export async function action({ params, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
-  const draft = await readAiDraft(env.DB, project, viewer, params.item, draftId(params.id));
+  const draft = await readAiDraft(env.DB, project, viewer, params.item, draftIdParam(params.id));
   await autosave(env.DB, project, viewer, params.item, {
     source: draft.source,
     baseVersion: draft.baseVersion,
@@ -83,43 +73,26 @@ export async function action({ params, context }: Route.ActionArgs) {
 export default function AiDraft({ loaderData }: Route.ComponentProps) {
   const { project, itemId, draft, canEdit, checks, seo } = loaderData;
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
-  const busy = useNavigation().state !== "idle";
-  const [asking, setAsking] = useState<HTMLElement | null>(null);
   const [view, setView] = useState<"rendered" | "source">("rendered");
-  const form = useRef<HTMLFormElement>(null);
   return (
     <div className="app-page app-editor">
-      <PageHead
-        renderLink={RouterLink}
-        crumbs={[
-          { label: project.name, href: `/p/${project.slug}` },
-          { label: itemId, href: editor },
-          { label: "AI draft" },
-        ]}
-        title={`AI draft from ${draft.client}`}
-        lead={
-          <>
-            Saved <Time at={draft.createdAt} format="exact" />
-            {draft.note ? ` · ${draft.note}` : ""}
-          </>
+      <DraftHead
+        project={project}
+        itemId={itemId}
+        kind="AI draft"
+        draft={draft}
+        use={
+          canEdit
+            ? {
+                label: "Use as my draft",
+                title: "Use the AI draft as your draft?",
+                lead: "Its text replaces your working draft in Carrel, and your current draft is not kept. Nothing is sent to the site: the text waits in the editor until you save it there.",
+                action: "Replace my draft",
+              }
+            : null
         }
-        actions={
+        links={
           <>
-            {canEdit ? (
-              <Form method="post" ref={form}>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  pending={busy}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setAsking(event.currentTarget);
-                  }}
-                >
-                  Use as my draft
-                </Button>
-              </Form>
-            ) : null}
             <Link to={`${editor}/history?compare=ai&ai=${draft.id}`} className="cap-btn">
               Compare with my draft
             </Link>
@@ -240,19 +213,6 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
           ]}
         />
       </div>
-      <ConfirmDialog
-        open={asking !== null}
-        title="Use the AI draft as your draft?"
-        lead="Its text replaces your working draft in Carrel, and your current draft is not kept. Nothing is sent to the site: the text waits in the editor until you save it there."
-        body={[]}
-        action="Replace my draft"
-        returnTo={asking}
-        perform={async () => {
-          // Submitting the form itself does not press the button again, so it does not ask twice.
-          form.current?.requestSubmit();
-        }}
-        onClose={() => setAsking(null)}
-      />
     </div>
   );
 }

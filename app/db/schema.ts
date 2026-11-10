@@ -173,16 +173,23 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
 // mcp_calls (0012_mcp_calls.sql) holds the tool calls logged before the call log moved to site-runtime's
 // ToolCallLog. Nothing writes it now, and its triggers still refuse UPDATE and DELETE.
 
+/** The columns every draft kept beside a person's own starts with: whose, of what, and from which client. Fresh per table. */
+function draftOwner() {
+  return {
+    id: integer("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    itemId: text("item_id").notNull(),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    client: text("client").notNull(),
+  };
+}
+
 export const aiDrafts = sqliteTable("ai_drafts", {
-  id: integer("id").primaryKey(),
-  projectId: integer("project_id")
-    .notNull()
-    .references(() => projects.id, { onDelete: "cascade" }),
-  itemId: text("item_id").notNull(),
-  personId: integer("person_id")
-    .notNull()
-    .references(() => people.id, { onDelete: "cascade" }),
-  client: text("client").notNull(),
+  ...draftOwner(),
   source: text("source").notNull(),
   baseVersion: text("base_version"),
   note: text("note").notNull().default(""),
@@ -209,6 +216,38 @@ export const aiPublications = sqliteTable("ai_publications", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   emailedAt: text("emailed_at"),
   emailError: text("email_error"),
+});
+
+// An episode's whole WebVTT transcript beside the site's (migration 0032): an AI session's fix, or the transcript a
+// publish replaced, kept so it can be put back. Published only from base_transcript_version.
+export const transcriptDrafts = sqliteTable("transcript_drafts", {
+  ...draftOwner(),
+  transcript: text("transcript").notNull(),
+  baseTranscriptVersion: text("base_transcript_version"),
+  note: text("note").notNull().default(""),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+// The authorship record of each transcript put live (migration 0032), apart from changes: the versions are the
+// transcript's own, and the item's version does not move.
+export const transcriptChanges = sqliteTable("transcript_changes", {
+  id: text("id").primaryKey(),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id),
+  client: text("client"),
+  draftId: integer("draft_id"),
+  versionBefore: text("version_before"),
+  versionAfter: text("version_after").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
 export const bookFiles = sqliteTable(

@@ -4,6 +4,7 @@
 
 import { SiteApiError } from "@dustinedwards/site-api/client";
 
+import { draftIdParam } from "~/components/editor/draft-head";
 import { readAiDraft } from "~/lib/ai.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { previewFailure, previewResponse } from "~/lib/preview.server";
@@ -16,9 +17,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
-  const id = Number(params.id);
-  if (!Number.isInteger(id) || id <= 0) throw new Response("Not found", { status: 404 });
-  const draft = await readAiDraft(env.DB, project, viewer, params.item, id);
+  const draft = await readAiDraft(env.DB, project, viewer, params.item, draftIdParam(params.id));
   const connection = siteConnection(env, project.site);
   if (connection.state !== "connected")
     return previewFailure(`The site is not connected: ${connection.detail}`);
@@ -34,7 +33,12 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     if (error instanceof SiteApiError && error.body)
       return previewFailure(`The site could not render this: ${error.body.message}`);
     console.error(
-      JSON.stringify({ preview: "failed", itemId: params.item, aiDraft: id, error: String(error) }),
+      JSON.stringify({
+        preview: "failed",
+        itemId: params.item,
+        aiDraft: draft.id,
+        error: String(error),
+      }),
     );
     return previewFailure("The site did not answer the preview request.");
   }

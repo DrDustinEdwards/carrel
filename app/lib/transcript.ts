@@ -108,3 +108,88 @@ export function keyMomentProblems(source: string, vtt: string): string[] {
   }
   return problems;
 }
+
+/** One cue as written: its timing line exactly, and its text lines joined. */
+type WrittenCue = { timing: string; start: number; text: string };
+
+const TIMING = /^((\d{2,}):)?(\d{2}):(\d{2})\.(\d{3}) --> \S+/;
+
+function writtenCues(vtt: string): WrittenCue[] {
+  const lines = vtt.replace(/\r\n/g, "\n").split("\n");
+  const cues: WrittenCue[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = TIMING.exec(lines[i]!.trim());
+    if (!m) continue;
+    const text: string[] = [];
+    while (i + 1 < lines.length && lines[i + 1]!.trim() !== "") text.push(lines[++i]!.trim());
+    cues.push({
+      timing: lines[i - text.length]!.trim(),
+      start: +(m[2] ?? 0) * 3600 + +m[3]! * 60 + +m[4]!,
+      text: text.join(" "),
+    });
+  }
+  return cues;
+}
+
+type TranscriptChange = { cue: number; at: number; before: string; after: string };
+
+/** The most changed cues a summary lists; the counts cover them all. */
+const LISTED = 200;
+
+/**
+ * What a transcript draft changes against the site's transcript, cue by cue in order: the cues whose words changed
+ * (the first LISTED), and how many cues were added, removed or moved in time. A fix of misheard words changes text only;
+ * a retimed cue moves the chapters and key moments that point at it, so a reader is told.
+ */
+export function transcriptChanges(before: string, after: string) {
+  const a = writtenCues(before);
+  const b = writtenCues(after);
+  const changed: TranscriptChange[] = [];
+  let textChanged = 0;
+  let retimed = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (a[i]!.timing !== b[i]!.timing) retimed++;
+    if (a[i]!.text !== b[i]!.text) {
+      textChanged++;
+      if (changed.length < LISTED)
+        changed.push({ cue: i + 1, at: b[i]!.start, before: a[i]!.text, after: b[i]!.text });
+    }
+  }
+  return {
+    cues: b.length,
+    textChanged,
+    changed,
+    retimed,
+    added: Math.max(0, b.length - a.length),
+    removed: Math.max(0, a.length - b.length),
+  };
+}
+
+/** Why a text is not a transcript the site takes, or null: WebVTT, the WEBVTT line first and at least one cue. */
+export function transcriptRefusal(vtt: string): string | null {
+  if (!/^\uFEFF?WEBVTT(?:[ \t][^\n]*)?\r?\n/.test(vtt))
+    return "A transcript is WebVTT: it starts with the line WEBVTT.";
+  if (writtenCues(vtt).length === 0) return "The transcript has no cues.";
+  return null;
+}
+
+/**
+ * The site's transcript with each edit applied in order, every occurrence of its `find` replaced. An edit whose
+ * `find` is not in the text by then is refused by name, so a fix never silently does nothing.
+ */
+export function applyTranscriptEdits(
+  vtt: string,
+  edits: { find: string; replace: string }[],
+): { ok: true; transcript: string; replaced: number[] } | { ok: false; why: string } {
+  let text = vtt;
+  const replaced: number[] = [];
+  for (const { find, replace } of edits) {
+    if (!find) return { ok: false, why: "An edit has an empty find." };
+    const parts = text.split(find);
+    if (parts.length === 1)
+      return { ok: false, why: `"${find}" is not in the transcript (after the edits before it).` };
+    replaced.push(parts.length - 1);
+    text = parts.join(replace);
+  }
+  return { ok: true, transcript: text, replaced };
+}

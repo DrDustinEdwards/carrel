@@ -9,6 +9,9 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { action as aiDraftAction, loader as aiDraftLoader } from "~/routes/ai-draft";
 import { action as editorAction, loader as editorLoader } from "~/routes/editor";
 import { action as unpublishAction, loader as unpublishLoader } from "~/routes/unpublish";
+import { action as transcriptAction, loader as transcriptLoader } from "~/routes/transcript-draft";
+import { saveTranscriptDraft } from "~/lib/transcripts.server";
+import type { memoryAdapter } from "@dustinedwards/site-api/testing";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { connectedEnv, fakeSite, publishPostOne, viewerFor, routeContext, settle } from "./site";
@@ -186,5 +189,69 @@ describe("flags in the editor", () => {
       intent: "dismiss-flag",
       dismissed: flag.id,
     });
+  });
+});
+
+describe("the transcript draft page", () => {
+  const VTT = (words: string) => `WEBVTT\n\n00:01:05.000 --> 00:01:08.000\n${words}\n`;
+
+  it("shows the changed cues, publishes for the Owner, and the kept draft puts the old transcript back", async () => {
+    await published();
+    const transcripts = (site.adapter as ReturnType<typeof memoryAdapter>).transcripts;
+    transcripts.set("post-one", VTT("Leptospiroborge pedersenii"));
+    const { viewer, project } = await as("owner@test.invalid");
+    const draft = await saveTranscriptDraft(
+      env,
+      project,
+      { viewer, client: "Claude" },
+      "post-one",
+      {
+        edits: [{ find: "Leptospiroborge pedersenii", replace: "Leptospira interrogans" }],
+      },
+    );
+    const params = { project: SLUG, item: "post-one", id: String(draft.id) };
+    const url = `https://carrel.test/p/${SLUG}/e/post-one/transcript/${draft.id}`;
+    const page = await transcriptLoader({
+      request: new Request(url),
+      params,
+      context: await context("owner@test.invalid"),
+    } as never);
+    expect(page).toMatchObject({
+      canPublish: true,
+      compared: {
+        current: true,
+        changes: { changed: [{ at: 65, before: "Leptospiroborge pedersenii" }] },
+      },
+    });
+    // An editor sees it but cannot publish a live transcript.
+    const asEditor = await as("editor@test.invalid");
+    const theirs = await saveTranscriptDraft(
+      env,
+      asEditor.project,
+      { viewer: asEditor.viewer, client: "Claude" },
+      "post-one",
+      { transcript: VTT("Leptospira interrogans") },
+    );
+    await expect(
+      transcriptAction({
+        request: new Request(url, { method: "POST" }),
+        params: { ...params, id: String(theirs.id) },
+        context: await context("editor@test.invalid"),
+      } as never),
+    ).rejects.toMatchObject({ status: 403 });
+
+    const done = (await transcriptAction({
+      request: new Request(url, { method: "POST" }),
+      params,
+      context: await context("owner@test.invalid"),
+    } as never)) as Response;
+    expect(transcripts.get("post-one")).toBe(VTT("Leptospira interrogans"));
+    const keptId = /transcript\/(\d+)\?published=/.exec(done.headers.get("Location") ?? "")![1]!;
+    await transcriptAction({
+      request: new Request(url, { method: "POST" }),
+      params: { ...params, id: keptId },
+      context: await context("owner@test.invalid"),
+    } as never);
+    expect(transcripts.get("post-one")).toBe(VTT("Leptospiroborge pedersenii"));
   });
 });

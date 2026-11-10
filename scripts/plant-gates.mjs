@@ -38,6 +38,7 @@ const MCP_TESTS = [
   "test/agent-keys.test.ts",
   "test/mcp-ruling.test.ts",
   "test/mcp-ownership.test.ts",
+  "test/ai-routes.test.ts",
 ];
 
 /** Each plant: the gate that must catch it, the file, the exact text replaced, and what replaces it. */
@@ -84,6 +85,27 @@ const PLANTS = [
     find: 'if (session.viewer.isReviewer)\n    throw new AiRefusal("A reviewer flags; it does not write text. Use carrel_add_finding.");',
     replace: "",
     label: "a reviewer may write a draft",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/transcripts.server.ts",
+    find: "  if (draft.baseTranscriptVersion !== site.version) throw new TranscriptRefusal(stale);",
+    replace: "",
+    label: "a transcript draft from an older transcript may be published over a newer one",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/transcripts.server.ts",
+    find: "  if (!(await mayPublishItem(env.DB, project, viewer, itemId))) forbid();",
+    replace: "",
+    label: "anyone who may edit may put a transcript live",
+  },
+  {
+    gate: "tests",
+    file: "app/lib/transcripts.server.ts",
+    find: "if (author.viewer.isReviewer)\n    throw new TranscriptRefusal",
+    replace: "if (false)\n    throw new TranscriptRefusal",
+    label: "a reviewer may write a transcript draft",
   },
   {
     gate: "tests",
