@@ -453,16 +453,11 @@
 /* Beside the text on a wide screen; under it on a phone, and under both halves of a split. */
 @media (min-width: 1100px) {
   .app-editor:not([data-layout="split"]) .app-editor-grid {
-    grid-template-columns: minmax(0, 1fr) 22rem;
-    grid-template-areas:
-      "main side"
-      "more side";
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    grid-template-areas: "main side";
   }
   .app-editor:not([data-layout="split"]) .app-editor-main {
     grid-area: main;
-  }
-  .app-editor:not([data-layout="split"]) .app-editor-more {
-    grid-area: more;
   }
   .app-editor:not([data-layout="split"]) .app-editor-side {
     grid-area: side;
@@ -480,26 +475,27 @@
   align-content: start;
 }
 
-/* Under the text (a phone, a narrow window, the split view), saving and publishing come first and the
-   binder, which is for moving to another post, last. */
-@media (max-width: 1099px) {
-  .app-editor-side > .cap-panel:first-child {
-    order: 1;
-  }
+/* The inspector's tabs: the list stays in view while a long tab scrolls. On a phone they open as a
+   sheet from buttons under the saving panel (components/editor/inspector.tsx). */
+.app-inspector-tabs {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
 }
-.app-editor[data-layout="split"] .app-editor-side > .cap-panel:first-child {
-  order: 1;
+.app-inspector-panel {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.app-inspector-open {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 /* The binder's tree in a panel: the panel's body is a grid, and a grid item is as wide as its longest
    line unless told otherwise, which pushed each row's status out of the panel. */
 .app-binder {
-  min-width: 0;
-}
-
-.app-editor-more {
-  display: grid;
-  gap: var(--space-5);
   min-width: 0;
 }
 
