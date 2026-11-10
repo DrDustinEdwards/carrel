@@ -127,6 +127,12 @@ export const SCREENS = [
   { name: "media-editor", viewer: "editor", path: `/p/${SITE}/media` },
   { name: "media-reader", viewer: "reader", path: `/p/${SITE}/media` },
   { name: "media-detail-editor", viewer: "editor", path: `/p/${SITE}/media`, open: "media" },
+  {
+    name: "media-upload",
+    viewer: "owner",
+    path: `/p/${SITE}/media?upload=1`,
+    wait: ".cap-media-upload",
+  },
   { name: "media-trash", viewer: "owner", path: `/p/${SITE}/media?view=trash` },
   { name: "media-trash-editor", viewer: "editor", path: `/p/${SITE}/media?view=trash` },
   { name: "media-tag", viewer: "owner", path: `/p/${SITE}/media?tag=monitoring` },
