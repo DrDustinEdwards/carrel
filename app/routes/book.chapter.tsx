@@ -74,6 +74,43 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   );
 }
 
+type Header = NonNullable<Route.ComponentProps["loaderData"]["scenes"][number]["header"]>;
+
+/** A scene's header under its name: the short facts as one wrapping row, then goal, conflict and
+ * outcome each on a line. Only what the header has is shown. */
+function SceneFacts({ header }: { header: Header }) {
+  const short = [
+    ["Point of view", header.pov],
+    ["Date", header.date ? `${header.date}${header.flashback ? " (flashback)" : ""}` : ""],
+    ["Location", header.location],
+    ["Present", header.characters.join(", ")],
+  ].filter(([, v]) => v);
+  const long = [
+    ["Goal", header.goal],
+    ["Conflict", header.conflict],
+    ["Outcome", header.outcome],
+  ].filter(([, v]) => v);
+  if (short.length + long.length === 0) return <span className="cap-muted">No header yet.</span>;
+  return (
+    <span className="app-scene-header">
+      {short.length ? (
+        <span className="app-scene-facts">
+          {short.map(([k, v]) => (
+            <span key={k} className="app-scene-fact">
+              <b>{k}</b> {v}
+            </span>
+          ))}
+        </span>
+      ) : null}
+      {long.map(([k, v]) => (
+        <span key={k} className="app-scene-line">
+          <b>{k}</b> {v}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export default function Chapter({ loaderData, actionData }: Route.ComponentProps) {
   const { project, chapter, canEdit, scenes } = loaderData;
   const base = `/b/${project.slug}`;
@@ -91,7 +128,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
 
       {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
 
-      <div className="app-split" data-aside data-flip>
+      <div className="app-split app-chapter-split" data-aside data-flip>
         <Panel
           title="Scenes"
           count={scenes.length}
@@ -121,37 +158,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                 href={`${base}/f/${s.path}`}
                 renderLink={link}
                 status={s.flags ? <Status tone="warn">{s.flags} flagged</Status> : undefined}
-                detail={
-                  s.header ? (
-                    <span className="app-scene-header">
-                      <span>
-                        <b>Point of view</b> <span>{s.header.pov || "(none)"}</span>
-                      </span>
-                      <span>
-                        <b>Date</b>{" "}
-                        <span>
-                          {s.header.date || "(none)"}
-                          {s.header.flashback ? " (flashback)" : ""}
-                        </span>
-                      </span>
-                      <span>
-                        <b>Location</b> <span>{s.header.location || "(none)"}</span>
-                      </span>
-                      <span>
-                        <b>Present</b> <span>{s.header.characters.join(", ") || "(none)"}</span>
-                      </span>
-                      <span>
-                        <b>Goal</b> <span>{s.header.goal || "(none)"}</span>
-                      </span>
-                      <span>
-                        <b>Conflict</b> <span>{s.header.conflict || "(none)"}</span>
-                      </span>
-                      <span>
-                        <b>Outcome</b> <span>{s.header.outcome || "(none)"}</span>
-                      </span>
-                    </span>
-                  ) : undefined
-                }
+                detail={s.header ? <SceneFacts header={s.header} /> : undefined}
                 meta={<span className="cap-num">{s.words.toLocaleString()} words</span>}
               />
             ))}
