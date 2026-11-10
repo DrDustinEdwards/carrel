@@ -116,7 +116,7 @@ function focusedNeedRow(): HTMLElement | null {
  * Moves focus off a row that is about to leave: to the next row's title, else the previous one's, else the
  * current filter tab, so a keyboard user keeps their place.
  */
-function focusNeighbour(row: HTMLElement) {
+function focusNeighbor(row: HTMLElement) {
   const list = row.closest("[data-cap='row-list']");
   const rows = list ? Array.from(list.querySelectorAll<HTMLElement>(".app-need-row")) : [];
   const at = rows.indexOf(row);
@@ -168,7 +168,7 @@ function NeedRow({
             method="post"
             onSubmit={(e) => {
               const row = e.currentTarget.closest<HTMLElement>(".app-need-row");
-              if (row) focusNeighbour(row);
+              if (row) focusNeighbor(row);
               if (aside) say(`Back on Home: ${need.title}`);
               else
                 say(`Set for later, until tomorrow morning: ${need.title}`, {
