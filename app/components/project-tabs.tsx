@@ -1,31 +1,28 @@
-// The sections of a site project, as Capsomer's link tabs: each is a page of its own, so each is a link.
+// A site's own pages, as Capsomer's link tabs: its posts, then its settings (Legal, Voice, the 404
+// report, and Share and the connection). Media has its own place in the menu, and mentions and flags
+// are filters on Home, so neither is a tab here.
 
 import { Link } from "capsomer/react/link";
 import { TabsNav } from "capsomer/react/tabs";
 
 const SECTIONS = [
   { id: "posts", label: "Posts", path: "" },
-  { id: "media", label: "Media", path: "/media" },
   { id: "legal", label: "Legal", path: "/legal" },
-  { id: "mentions", label: "Mentions", path: "/mentions" },
-  { id: "flags", label: "Flags", path: "/flags" },
   { id: "voice", label: "Voice", path: "/voice" },
   { id: "not-found", label: "404s", path: "/not-found" },
+  { id: "settings", label: "Share and connection", path: "/settings" },
 ] as const;
 
-/** `mentions` says whether this person may see the Mentions tab: the queue is the Owner's alone (roles.ts). */
 export function ProjectTabs({
   slug,
   current,
-  mentions = false,
 }: {
   slug: string;
   current: (typeof SECTIONS)[number]["id"];
-  mentions?: boolean;
 }) {
   return (
-    <TabsNav aria-label={`Sections of this project`} variant="line">
-      {SECTIONS.filter((s) => s.id !== "mentions" || mentions).map((s) => (
+    <TabsNav aria-label="Pages of this site" variant="line">
+      {SECTIONS.map((s) => (
         <Link
           key={s.id}
           to={`/p/${slug}${s.path}`}

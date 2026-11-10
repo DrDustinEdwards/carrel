@@ -54,6 +54,8 @@
 @import "capsomer/sortable-list.css";
 @import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
+@import "capsomer/summary-list.css";
+@import "capsomer/detail-panel.css";
 @import "capsomer/chips.css";
 @import "capsomer/command-menu.css";
 @import "capsomer/shortcuts.css";
@@ -170,62 +172,38 @@
   }
 }
 
-/* People (routes/people.tsx): one card per person, their role on each project in a grid. */
-.app-people {
-  display: grid;
-  gap: var(--space-5);
-}
-
-.app-people-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.app-person {
-  display: grid;
-  gap: var(--space-3);
-  padding-block: var(--space-5);
-  border-block-start: 1px solid var(--line);
-
-  &:last-child {
-    padding-block-end: 0;
+/* People (routes/people.tsx): people as rows, projects as columns, a role select in each cell. The
+   person stays in view while the projects scroll sideways. */
+.app-roles {
+  & th[scope="row"] {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    min-inline-size: 12rem;
+    background: var(--surface);
+  }
+  & td {
+    white-space: nowrap;
+  }
+  /* A role select keeps its longest word whole; the table scrolls sideways instead. */
+  & td > * {
+    min-inline-size: 8.5rem;
   }
 }
-
-.app-person-head {
+.app-role-person {
+  display: block;
+}
+.app-role-actions {
+  margin-block-start: var(--space-2);
+}
+.app-role-pills {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-
-  & h3 {
-    margin: 0;
-    font-size: var(--fs-body);
-  }
-}
-
-.app-person-access {
-  margin-inline-start: auto;
-}
-
-.app-person-roles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
-  gap: var(--space-4) var(--space-5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.app-person-role {
-  display: grid;
   gap: var(--space-1);
+  margin-block-start: var(--space-1);
 
-  & > label {
-    font-size: var(--fs-detail);
-    font-weight: 600;
+  &:empty {
+    display: none;
   }
 }
 
@@ -398,18 +376,34 @@
 /* A scene's header, as a row's detail: each fact with its name, wrapping to the room there is. A row's
    detail is a paragraph, so these are spans. */
 .app-scene-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-5);
+  display: grid;
+  gap: var(--space-1);
   margin-block-start: var(--space-2);
 
-  & > span {
-    display: inline-flex;
-    gap: var(--space-2);
-  }
   & b {
     color: var(--dim);
     font-weight: 400;
+  }
+}
+/* The short facts wrap as whole items; a long value wraps inside its own item, after its label. */
+.app-scene-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+.app-scene-fact,
+.app-scene-line {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A chapter: the scene list stays beside the text while it is read, scrolling on its own if long. */
+@media (min-width: 1100px) {
+  .app-chapter-split > :first-child {
+    position: sticky;
+    inset-block-start: var(--space-5);
+    max-block-size: calc(100dvh - 2 * var(--space-5));
+    overflow: auto;
   }
 }
 
@@ -451,16 +445,11 @@
 /* Beside the text on a wide screen; under it on a phone, and under both halves of a split. */
 @media (min-width: 1100px) {
   .app-editor:not([data-layout="split"]) .app-editor-grid {
-    grid-template-columns: minmax(0, 1fr) 22rem;
-    grid-template-areas:
-      "main side"
-      "more side";
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    grid-template-areas: "main side";
   }
   .app-editor:not([data-layout="split"]) .app-editor-main {
     grid-area: main;
-  }
-  .app-editor:not([data-layout="split"]) .app-editor-more {
-    grid-area: more;
   }
   .app-editor:not([data-layout="split"]) .app-editor-side {
     grid-area: side;
@@ -478,26 +467,27 @@
   align-content: start;
 }
 
-/* Under the text (a phone, a narrow window, the split view), saving and publishing come first and the
-   binder, which is for moving to another post, last. */
-@media (max-width: 1099px) {
-  .app-editor-side > .cap-panel:first-child {
-    order: 1;
-  }
+/* The inspector's tabs: the list stays in view while a long tab scrolls. On a phone they open as a
+   sheet from buttons under the saving panel (components/editor/inspector.tsx). */
+.app-inspector-tabs {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
 }
-.app-editor[data-layout="split"] .app-editor-side > .cap-panel:first-child {
-  order: 1;
+.app-inspector-panel {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.app-inspector-open {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 /* The binder's tree in a panel: the panel's body is a grid, and a grid item is as wide as its longest
    line unless told otherwise, which pushed each row's status out of the panel. */
 .app-binder {
-  min-width: 0;
-}
-
-.app-editor-more {
-  display: grid;
-  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -1399,4 +1389,166 @@ img.ProseMirror-separator {
 .app-resolved > summary {
   cursor: pointer;
   color: var(--muted);
+}
+
+/* Desk's scope chip, status tabs with counts, and the list toolbar. */
+.app-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.app-tab-count {
+  margin-inline-start: var(--space-1);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.app-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.app-toolbar-search {
+  flex: 1 1 16rem;
+  max-width: 28rem;
+}
+.app-need-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--fs-sm, 0.875rem);
+}
+.app-need-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Capsomer PR 315 (status message clears the phone tab bar): the same rule here until a release has it. Remove then. */
+@media (max-width: 767.98px) {
+  :root:has(.cap-site-tabs) .cap-message {
+    inset-block-end: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Writing: the box column, the open row, and the peek's waiting list. */
+.app-check-col {
+  inline-size: 2.75rem;
+}
+.cap-table tr[data-current] > * {
+  background: var(--accent-soft, color-mix(in oklab, var(--accent) 10%, transparent));
+}
+.app-writing-bulk {
+  display: contents;
+}
+.app-peek-waiting {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  display: grid;
+  gap: var(--space-1, 0.25rem);
+}
+
+/* Writing on a phone: each post is a card, the box beside the title, its status and Open under it. */
+@container cap-table (max-width: 639px) {
+  .app-writing-wrap > .cap-table > tbody > tr {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+  .app-writing-wrap > .cap-table > tbody > tr > .app-check-col {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: start;
+  }
+  .app-writing-wrap > .cap-table > tbody > tr > .app-check-col + th {
+    grid-column: 2 / -1;
+  }
+  /* The date is in the peek; the status and Open share the line under the title. */
+  .app-writing-wrap > .cap-table > tbody > tr > td[data-drop] {
+    display: none;
+  }
+  .app-writing-wrap > .cap-table > tbody > tr > td:last-child {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+/* A book's Manuscript views (List, Outliner, Corkboard) sit under its section tabs. */
+.app-views {
+  justify-self: start;
+  max-inline-size: 100%;
+  margin-block-start: calc(-1 * var(--space-3));
+}
+
+/* Link chips filtering a server list, with an edit link at the end of the row. */
+.app-chip-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+.app-chip-edit {
+  margin-inline-start: auto;
+}
+
+/* Corkboard cards: the facts and the Move to menu share the last line. */
+.app-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+.app-card-menu > .cap-menu {
+  min-inline-size: 12rem;
+}
+
+/* Bible and notes: the three kinds of entry side by side where there is room. */
+.app-bible {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+}
+
+/* A tab whose one panel would stretch too wide to read. */
+.app-narrow {
+  max-inline-size: 48rem;
+}
+/* A panel whose cards open a form menu lets the menu out past its edge. */
+.cap-panel.app-panel-menus {
+  overflow: visible;
+}
+
+/* The AI engine's status line: each engine and whether it can work now. */
+.app-engine-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+
+  & > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  & dt {
+    color: var(--muted);
+  }
+  & dd {
+    margin: 0;
+  }
+}
+.app-engine-table td > * {
+  min-inline-size: 12rem;
+}
+
+/* History: the Compare button holds to the bottom of the window once two revisions are ticked. */
+.app-compare-bar[data-ready] {
+  position: sticky;
+  inset-block-end: var(--space-4);
+  z-index: 2;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay, 0 4px 16px rgb(0 0 0 / 0.12));
 }

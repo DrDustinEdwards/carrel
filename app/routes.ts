@@ -5,6 +5,10 @@ export default [
   // the exports, the Google redirects) render nothing of their own and stay outside it.
   layout("routes/frame.tsx", [
     index("routes/home.tsx"),
+    route("writing", "routes/writing.tsx"),
+    route("books", "routes/books.tsx"),
+    route("sites", "routes/sites.tsx"),
+    route("media", "routes/media.index.tsx"),
     route("p/:project", "routes/project.tsx"),
     route("p/:project/new", "routes/project.new.tsx"),
     route("p/:project/e/:item", "routes/editor.tsx"),
@@ -13,6 +17,7 @@ export default [
     route("p/:project/voice", "routes/project.voice.tsx"),
     route("p/:project/not-found", "routes/project.not-found.tsx"),
     route("p/:project/legal", "routes/legal.tsx"),
+    route("p/:project/settings", "routes/project.settings.tsx"),
     route("p/:project/mentions", "routes/mentions.tsx"),
     route("people", "routes/people.tsx"),
     route("books/new", "routes/book.new.tsx"),
@@ -20,6 +25,9 @@ export default [
     route("b/:project/c/:chapter", "routes/book.chapter.tsx"),
     route("b/:project/outliner", "routes/book.outliner.tsx"),
     route("b/:project/corkboard", "routes/book.corkboard.tsx"),
+    route("b/:project/progress", "routes/book.progress.tsx"),
+    route("b/:project/bible", "routes/book.bible.tsx"),
+    route("b/:project/settings", "routes/book.settings.tsx"),
     route("b/:project/h/*", "routes/book.history.tsx"),
     route("b/:project/f/*", "routes/book.file.tsx"),
     route("p/:project/e/:item/unpublish", "routes/unpublish.tsx"),
@@ -41,6 +49,7 @@ export default [
   route("b/:project/authorship", "routes/book.authorship.ts"),
   // The chart demo: sample data, no sign-in, noindex, answered before the door (workers/demo.ts).
   route("demos/progress", "routes/demos.progress.tsx"),
+  route("search", "routes/search.ts"),
   route("health", "routes/health.ts"),
   route("auth/google/:step", "routes/auth.google.ts"),
 ] satisfies RouteConfig;

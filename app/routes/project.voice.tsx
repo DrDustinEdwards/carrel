@@ -41,7 +41,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       slug: project.slug,
       name: project.name,
       site: siteEntry(project.site).name,
-      mentions: can(project.role, "read_mentions"),
     },
     canManage: can(project.role, "manage"),
     brief: briefOf(pack),
@@ -91,7 +90,7 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
         lead={`What an AI session reads before it drafts a post for ${project.site}, and what its drafts are scanned against. Drafts are written from your own writing, and you still edit every one.`}
       />
 
-      <ProjectTabs slug={project.slug} current="voice" mentions={project.mentions} />
+      <ProjectTabs slug={project.slug} current="voice" />
 
       {actionData?.done ? <Banner tone="ok">{actionData.done}</Banner> : null}
 

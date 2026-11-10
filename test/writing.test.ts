@@ -33,9 +33,11 @@ import {
   type Goal,
 } from "~/lib/writing/progress";
 import { cleanLabels, labelFor, STARTING_STATUSES } from "~/lib/writing/status";
-import { action as bookAction, loader as bookLoader } from "~/routes/book";
 import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
-import { action as outlinerAction, loader as outlinerLoader } from "~/routes/book.outliner";
+import { loader as bookLoader } from "~/routes/book";
+import { loader as outlinerLoader } from "~/routes/book.outliner";
+import { action as progressAction, loader as progressLoader } from "~/routes/book.progress";
+import { action as settingsAction } from "~/routes/book.settings";
 
 import { sharedBook, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
@@ -425,18 +427,18 @@ describe("goals", () => {
     expect(
       (
         (await post(
-          bookAction,
+          progressAction,
           "reader@test.invalid",
-          `/b/${SLUG}`,
+          `/b/${SLUG}/progress`,
           { intent: "goal", mode: "daily", dailyTarget: "500", writingDays: ["1"] },
           { project: SLUG },
         )) as Response
       ).status,
     ).toBe(403);
     const bad = await post(
-      bookAction,
+      progressAction,
       "editor@test.invalid",
-      `/b/${SLUG}`,
+      `/b/${SLUG}/progress`,
       { intent: "goal", mode: "daily", dailyTarget: "lots", writingDays: ["1"] },
       { project: SLUG },
     );
@@ -444,9 +446,9 @@ describe("goals", () => {
       goal: { saved: false, error: expect.stringMatching(/whole number/) },
     });
     const none = await post(
-      bookAction,
+      progressAction,
       "editor@test.invalid",
-      `/b/${SLUG}`,
+      `/b/${SLUG}/progress`,
       { intent: "goal", mode: "daily", dailyTarget: "500" },
       { project: SLUG },
     );
@@ -454,9 +456,9 @@ describe("goals", () => {
       goal: { saved: false, error: expect.stringMatching(/writing day/) },
     });
     const ok = await post(
-      bookAction,
+      progressAction,
       "editor@test.invalid",
-      `/b/${SLUG}`,
+      `/b/${SLUG}/progress`,
       {
         intent: "goal",
         mode: "deadline",
@@ -490,18 +492,23 @@ describe("goals", () => {
       writingDays: ["0", "6"],
       allowNegative: false,
     });
-    const data = (await bookLoader({
-      request: new Request(`https://carrel.test/b/${SLUG}`),
+    const data = (await progressLoader({
+      request: new Request(`https://carrel.test/b/${SLUG}/progress`),
       params: { project: SLUG },
       context: await contextFor("owner@test.invalid"),
-    } as never)) as Awaited<ReturnType<typeof bookLoader>>;
+    } as never)) as Awaited<ReturnType<typeof progressLoader>>;
     expect(data.progress).toMatchObject({
       projectTarget: 10000,
       deadline: "2027-01-01",
       goal: { dailyTarget: 300, writingDays: [0, 6] },
       entries: [],
     });
-    expect(data.chapters[0]!.scenes.map((s) => s.status)).toEqual(["Drafting", "first draft"]);
+    const book = (await bookLoader({
+      request: new Request(`https://carrel.test/b/${SLUG}`),
+      params: { project: SLUG },
+      context: await contextFor("owner@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof bookLoader>>;
+    expect(book.chapters[0]!.scenes.map((s) => s.status)).toEqual(["Drafting", "first draft"]);
   });
 });
 
@@ -535,9 +542,9 @@ describe("the outliner", () => {
 
   it("PLANT: a Reader cannot edit the status list; an Editor replaces it, and the outliner follows", async () => {
     await refresh();
-    const url = `/b/${SLUG}/outliner`;
+    const url = `/b/${SLUG}/settings`;
     const reader = await post(
-      outlinerAction,
+      settingsAction,
       "reader@test.invalid",
       url,
       { intent: "labels", label: ["Polished"], color: ["2"] },
@@ -545,7 +552,7 @@ describe("the outliner", () => {
     );
     expect((reader as Response).status).toBe(403);
     const saved = await post(
-      outlinerAction,
+      settingsAction,
       "editor@test.invalid",
       url,
       { intent: "labels", label: ["Drafting", "Polished", ""], color: ["3", "7", "1"] },

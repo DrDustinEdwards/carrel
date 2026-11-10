@@ -5,7 +5,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearSaTokenCache } from "~/lib/google/service-account.server";
 import { loader as authLoader } from "~/routes/auth.google";
-import { loader as homeLoader } from "~/routes/home";
 import { loader as manuscriptsLoader } from "~/routes/manuscripts";
 
 import { addPerson, resetDb, testEnv } from "./env";
@@ -62,15 +61,19 @@ describe("Google routes", () => {
         )) as Response
       ).status,
     ).toBe(404);
-    const home = (await homeLoader({
-      request: new Request("https://carrel.test/"),
-      params: {},
-      context: await context("editor@test.invalid"),
-    } as never)) as Awaited<ReturnType<typeof homeLoader>>;
-    expect(home.google).toBeNull();
+    // Manuscripts, where the connection shows, is the Owner's alone.
+    await expect(
+      settle(
+        manuscriptsLoader({
+          request: new Request("https://carrel.test/manuscripts"),
+          params: {},
+          context: await context("editor@test.invalid"),
+        } as never),
+      ),
+    ).resolves.toMatchObject({ status: 404 });
   });
 
-  it("connects Google through the real routes and says so on the home page", async () => {
+  it("connects Google through the real routes and says so on the manuscripts page", async () => {
     const owner = await context("owner@test.invalid");
     const start = (await authLoader({
       request: new Request("https://carrel.test/auth/google/start"),
@@ -91,12 +94,12 @@ describe("Google routes", () => {
       "google",
     );
     expect(message).toBe("Google is connected for Send to Docs and Import (drive.file only).");
-    const home = (await homeLoader({
-      request: new Request("https://carrel.test/"),
+    const page = (await manuscriptsLoader({
+      request: new Request("https://carrel.test/manuscripts"),
       params: {},
       context: await context("owner@test.invalid"),
-    } as never)) as Awaited<ReturnType<typeof homeLoader>>;
-    expect(home.google).toEqual({ configured: true, connected: true });
+    } as never)) as Awaited<ReturnType<typeof manuscriptsLoader>>;
+    expect(page.google).toEqual({ configured: true, connected: true });
   });
 
   it("shows the manuscripts page with the setup still missing, rather than failing", async () => {

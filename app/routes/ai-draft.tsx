@@ -13,6 +13,7 @@ import { Segmented } from "capsomer/react/segmented";
 
 import { DraftHead, draftIdParam } from "~/components/editor/draft-head";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { Inspector } from "~/components/editor/inspector";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 
 import { readAiDraft } from "~/lib/ai.server";
@@ -74,7 +75,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const [view, setView] = useState<"rendered" | "source">("rendered");
   return (
-    <div className="app-page">
+    <div className="app-page app-editor">
       <DraftHead
         project={project}
         itemId={itemId}
@@ -106,86 +107,112 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
         Using it replaces your working draft in Carrel with this text, which you then edit and save
         to the site as usual.
       </Banner>
-      <FrontmatterFields source={draft.source} readOnly />
-      <Panel
-        title="Writing checks"
-        count={checks.findings.length}
-        src="Against excerpts of your published posts"
-        flush
-      >
-        {checks.findings.length === 0 ? (
-          <Empty kind="all-clear" flush title="Nothing flagged">
-            Nothing reads unlike your own posts. Read it anyway: the scan catches habits, not
-            whether it says something.
-          </Empty>
-        ) : (
-          <RowList label="Writing checks on this draft">
-            {checks.findings.map((f, i) => (
-              <Row
-                key={i}
-                title={f.say}
-                detail={<q>{f.excerpt}</q>}
-                meta={f.line ? `Line ${f.line}` : undefined}
+      <div className="app-editor-grid">
+        <div className="app-editor-main">
+          <Panel
+            title="The draft"
+            src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}
+            actions={
+              <Segmented
+                legend="View"
+                hideLegend
+                size="sm"
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: "rendered", label: "As it reads" },
+                  { value: "source", label: "Source" },
+                ]}
               />
-            ))}
-          </RowList>
-        )}
-      </Panel>
-      {seo ? <SearchSharingPanel check={seo} /> : null}
-      {draft.sources ? (
-        <Panel
-          title="Sources"
-          count={draft.sources.length}
-          src="What the session says the draft drew on"
-          flush
-        >
-          {draft.sources.length === 0 ? (
-            <Empty kind="nothing-yet" flush title="No sources given">
-              The session listed none, so nothing in the draft can be checked against one.
-            </Empty>
-          ) : (
-            <RowList label="Sources of this draft">
-              {draft.sources.map((s, i) => (
-                <Row
-                  key={i}
-                  title={s.split("\n")[0]!.slice(0, 160)}
-                  detail={<pre className="app-ai-draft">{s}</pre>}
+            }
+          >
+            {view === "rendered" ? (
+              <div className="app-preview-pane">
+                {/* Sandboxed with no permissions, as the editor's preview is: the site's page runs no script. */}
+                <iframe
+                  title={`This AI draft as the site renders it`}
+                  src={`${editor}/ai/${draft.id}/preview`}
+                  sandbox=""
                 />
-              ))}
-            </RowList>
-          )}
-        </Panel>
-      ) : null}
-      <Panel
-        title="The draft"
-        src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}
-        actions={
-          <Segmented
-            legend="View"
-            hideLegend
-            size="sm"
-            value={view}
-            onChange={setView}
-            options={[
-              { value: "rendered", label: "As it reads" },
-              { value: "source", label: "Source" },
-            ]}
-          />
-        }
-      >
-        {view === "rendered" ? (
-          <div className="app-preview-pane">
-            {/* Sandboxed with no permissions, as the editor's preview is: the site's page runs no script. */}
-            <iframe
-              title={`This AI draft as the site renders it`}
-              src={`${editor}/ai/${draft.id}/preview`}
-              sandbox=""
-            />
-          </div>
-        ) : (
-          <pre className="app-ai-draft">{draft.source}</pre>
-        )}
-      </Panel>
+              </div>
+            ) : (
+              <pre className="app-ai-draft">{draft.source}</pre>
+            )}
+          </Panel>
+        </div>
+        <Inspector
+          label="About this AI draft"
+          tabs={[
+            {
+              value: "details",
+              label: "Details",
+              content: <FrontmatterFields source={draft.source} readOnly />,
+            },
+            {
+              value: "checks",
+              label: "Checks",
+              count: checks.findings.length,
+              content: (
+                <div className="app-stack">
+                  <Panel
+                    title="Writing checks"
+                    count={checks.findings.length}
+                    src="Against excerpts of your published posts"
+                    flush
+                  >
+                    {checks.findings.length === 0 ? (
+                      <Empty kind="all-clear" flush title="Nothing flagged">
+                        Nothing reads unlike your own posts. Read it anyway: the scan catches
+                        habits, not whether it says something.
+                      </Empty>
+                    ) : (
+                      <RowList label="Writing checks on this draft">
+                        {checks.findings.map((f, i) => (
+                          <Row
+                            key={i}
+                            title={f.say}
+                            detail={<q>{f.excerpt}</q>}
+                            meta={f.line ? `Line ${f.line}` : undefined}
+                          />
+                        ))}
+                      </RowList>
+                    )}
+                  </Panel>
+                  {draft.sources?.length === 0 ? (
+                    <p className="app-note">
+                      The session gave no sources, so nothing in the draft can be checked against
+                      one.
+                    </p>
+                  ) : null}
+                  {draft.sources?.length ? (
+                    <Panel
+                      title="Sources"
+                      count={draft.sources.length}
+                      src="What the session says the draft drew on"
+                      flush
+                    >
+                      <RowList label="Sources of this draft">
+                        {draft.sources.map((s, i) => (
+                          <Row
+                            key={i}
+                            title={s.split("\n")[0]!.slice(0, 160)}
+                            detail={<pre className="app-ai-draft">{s}</pre>}
+                          />
+                        ))}
+                      </RowList>
+                    </Panel>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              value: "search",
+              label: "Search",
+              content: seo ? <SearchSharingPanel check={seo} /> : null,
+            },
+          ]}
+        />
+      </div>
     </div>
   );
 }

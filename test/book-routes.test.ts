@@ -9,8 +9,9 @@ import { loader as chapterLoader } from "~/routes/book.chapter";
 import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
 import { loader as newBookLoader } from "~/routes/book.new";
 import { action as bookAction, loader as bookLoader } from "~/routes/book";
+import { loader as bibleLoader } from "~/routes/book.bible";
 import { loader as exportLoader } from "~/routes/book.export";
-import { loader as homeLoader } from "~/routes/home";
+import { loader as booksLoader } from "~/routes/books";
 
 import { sharedBook, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
@@ -107,7 +108,7 @@ describe("the book view", () => {
       } as never),
     )) as Awaited<ReturnType<typeof bookLoader>>;
     expect(before.chapters).toEqual([]);
-    expect(before.connected).toBe(true);
+    expect(before.head.connected).toBe(true);
 
     const refreshed = (await bookPost("reader@test.invalid", { intent: "refresh" })) as {
       refreshed: { files: number };
@@ -125,7 +126,12 @@ describe("the book view", () => {
         scenes: [{ path: SCENE, name: "The gate", pov: "Wade", date: "2024-04-12" }],
       },
     ]);
-    expect(after.bible.map((b) => b.name)).toEqual(["Wade", "Harlan place"]);
+    const bible = (await bibleLoader({
+      request: new Request("https://carrel.test/b/x/bible"),
+      params: { project: SLUG },
+      context: await contextFor("reader@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof bibleLoader>>;
+    expect(bible.bible.map((b) => b.name)).toEqual(["Wade", "Harlan place"]);
   });
 
   it("PLANT: a Reader cannot start a chapter; an Editor is sent to the editor on the next number", async () => {
@@ -155,7 +161,7 @@ describe("the book view", () => {
       params: { project: SLUG },
       context: await contextFor("owner@test.invalid", offline),
     } as never)) as Awaited<ReturnType<typeof bookLoader>>;
-    expect(data.connected).toBe(false);
+    expect(data.head.connected).toBe(false);
     expect(data.connectionDetail).toMatch(
       /GitHub App for the writing repository is not set up yet/,
     );
@@ -332,14 +338,14 @@ describe("export and the authorship record", () => {
 });
 
 describe("home and new books", () => {
-  it("lists a book as a book, and offers New book to the Owner only", async () => {
-    const home = (await homeLoader({
-      request: new Request("https://carrel.test/"),
+  it("lists a shared book on Books, and offers New book to the Owner only", async () => {
+    const books = (await booksLoader({
+      request: new Request("https://carrel.test/books"),
       params: {},
       context: await contextFor("reader@test.invalid"),
-    } as never)) as Awaited<ReturnType<typeof homeLoader>>;
-    expect(home.projects).toMatchObject([{ slug: SLUG, kind: "book", role: "reader" }]);
-    expect(home.isOwner).toBe(false);
+    } as never)) as Awaited<ReturnType<typeof booksLoader>>;
+    expect(books.books).toMatchObject([{ slug: SLUG, role: "Reader" }]);
+    expect(books.isOwner).toBe(false);
     expect(
       (
         (await settle(

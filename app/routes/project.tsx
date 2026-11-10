@@ -19,14 +19,11 @@ import { Pill } from "capsomer/react/status";
 
 import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
 import { ProjectTabs } from "~/components/project-tabs";
-import { SharePanel } from "~/components/share-panel";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { kindsIn, searchItems } from "~/lib/index.server";
-import { shareFromForm } from "~/lib/people-admin.server";
 import { postsSource, runIntent } from "~/lib/posts.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { can } from "~/lib/roles";
 import { siteConnection, siteEntry, siteUnreachable } from "~/lib/sites.server";
 import { onlyInCarrel, waitingWork } from "~/lib/waiting.server";
 import { readForm } from "~/lib/form.server";
@@ -45,8 +42,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     slug: project.slug,
     name: project.name,
     site: siteEntry(project.site).name,
-    mentions: can(project.role, "read_mentions"),
-    canShare: can(project.role, "manage"),
   };
   const connection = siteConnection(env, project.site);
   if (connection.state !== "connected")
@@ -114,15 +109,8 @@ export async function action({
   params,
   request,
   context,
-}: Route.ActionArgs): Promise<IntentResult | { share: Awaited<ReturnType<typeof shareFromForm>> }> {
-  const env = getEnv(context);
-  const viewer = getViewer(context);
-  const form = await readForm(request);
-  if (form.get("intent") === "share") {
-    const project = await requireSiteProject(env.DB, viewer, params.project, "read");
-    return { share: await shareFromForm(env, viewer, project.id, form) };
-  }
-  return runIntent(env, viewer, params.project, form);
+}: Route.ActionArgs): Promise<IntentResult> {
+  return runIntent(getEnv(context), getViewer(context), params.project, await readForm(request));
 }
 
 export default function Project({ loaderData, actionData }: Route.ComponentProps) {
@@ -136,7 +124,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
         title={project.name}
         lead={`Everything on ${project.site}, as the site lists it.`}
       />
-      <ProjectTabs slug={project.slug} current="posts" mentions={project.mentions} />
+      <ProjectTabs slug={project.slug} current="posts" />
 
       {fresh.length > 0 ? (
         <Panel
@@ -171,8 +159,6 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
       ) : (
         <PostsList data={data} action={base} Form={KitForm} submit={submit} result={result} />
       )}
-
-      {project.canShare ? <SharePanel site /> : null}
     </div>
   );
 }

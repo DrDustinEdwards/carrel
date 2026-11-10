@@ -60,6 +60,16 @@ async function endOfText(/** @type {import("playwright").Page} */ page) {
   await page.waitForTimeout(100);
 }
 
+/** Opens the header search and types a query, for the screen of the palette with results. */
+async function searchFor(
+  /** @type {import("playwright").Page} */ page,
+  /** @type {string} */ query,
+) {
+  await page.keyboard.press("Control+k");
+  await page.getByRole("combobox").fill(query);
+  await page.getByRole("option").first().waitFor();
+}
+
 /**
  * Every screen, as who sees it. `after` runs once the page is up (open a dialog, type), and `wait` is a
  * selector that must exist before the page counts as ready.
@@ -71,6 +81,22 @@ async function endOfText(/** @type {import("playwright").Page} */ page) {
 export const SCREENS = [
   { name: "home", viewer: "owner", path: "/" },
   { name: "home-editor", viewer: "editor", path: "/" },
+  { name: "writing", viewer: "owner", path: "/writing" },
+  { name: "writing-ai", viewer: "owner", path: "/writing?waiting=ai" },
+  { name: "writing-editor", viewer: "editor", path: "/writing" },
+  { name: "writing-peek", viewer: "owner", path: `/writing?inspect=${SITE}/alerts-wait` },
+  {
+    name: "writing-bulk-result",
+    viewer: "owner",
+    path: "/writing",
+    after: async (page) => {
+      await tagPosts(page, ["Counting what the build skips", "Getting started"]);
+    },
+  },
+  { name: "books", viewer: "owner", path: "/books" },
+  { name: "sites", viewer: "owner", path: "/sites" },
+  { name: "site-settings", viewer: "owner", path: `/p/${SITE}/settings` },
+  { name: "search", viewer: "owner", path: "/", after: (page) => searchFor(page, "alerts") },
   { name: "home-reader", viewer: "reader", path: "/" },
   { name: "site", viewer: "owner", path: `/p/${SITE}` },
   { name: "site-filtered", viewer: "owner", path: `/p/${SITE}?status=draft` },
@@ -146,8 +172,12 @@ export const SCREENS = [
   { name: "manuscripts", viewer: "owner", path: "/manuscripts" },
   { name: "manuscripts-search", viewer: "owner", path: "/manuscripts?q=paluxy" },
   { name: "social", viewer: "owner", path: "/social" },
+  { name: "social-accounts", viewer: "owner", path: "/social?tab=accounts" },
+  { name: "social-posts", viewer: "owner", path: "/social?tab=posts" },
+  { name: "ai-engine", viewer: "owner", path: "/ai" },
+  { name: "people-add", viewer: "owner", path: "/people?add=person", wait: "dialog[open]" },
   { name: "book-new", viewer: "owner", path: "/books/new" },
-  { name: "book", viewer: "owner", path: `/b/${BOOK}`, wait: ".cap-meter" },
+  { name: "book", viewer: "owner", path: `/b/${BOOK}` },
   { name: "book-editor", viewer: "editor", path: `/b/${BOOK}` },
   {
     name: "book-reader",
@@ -160,18 +190,28 @@ export const SCREENS = [
   { name: "book-outliner", viewer: "owner", path: `/b/${BOOK}/outliner` },
   { name: "book-outliner-filtered", viewer: "owner", path: `/b/${BOOK}/outliner?status=revised` },
   { name: "book-outliner-none", viewer: "owner", path: `/b/${BOOK}/outliner?status=final` },
+  { name: "book-progress", viewer: "owner", path: `/b/${BOOK}/progress`, wait: ".cap-meter" },
+  { name: "book-bible-notes", viewer: "owner", path: `/b/${BOOK}/bible` },
+  { name: "book-settings", viewer: "owner", path: `/b/${BOOK}/settings` },
   {
-    name: "book-outliner-labels",
+    name: "book-settings-labels",
     viewer: "editor",
-    path: `/b/${BOOK}/outliner`,
+    path: `/b/${BOOK}/settings`,
     after: (page) => page.getByText("Edit the list").click(),
   },
   {
     name: "book-target",
     viewer: "owner",
-    path: `/b/${BOOK}`,
+    path: `/b/${BOOK}/progress`,
     wait: ".cap-meter",
     after: (page) => page.getByText("Your target").click(),
+  },
+  {
+    name: "book-corkboard-menu",
+    viewer: "owner",
+    path: `/b/${BOOK}/corkboard`,
+    wait: ".cap-sortable",
+    after: (page) => page.getByText("Move to").first().click(),
   },
   { name: "book-corkboard", viewer: "owner", path: `/b/${BOOK}/corkboard`, wait: ".cap-sortable" },
   {
@@ -210,7 +250,7 @@ export const SCREENS = [
   {
     name: "book-scene-flagged",
     viewer: "owner",
-    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`,
+    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md?tab=checks`,
     wait: ".app-rich-surface",
   },
   {
@@ -273,6 +313,12 @@ export const SCREENS = [
     name: "post-reader",
     viewer: "reader",
     path: `/p/${SITE}/e/alerts-wait`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "post-checks",
+    viewer: "owner",
+    path: `/p/${SITE}/e/alerts-wait?tab=checks`,
     wait: ".app-rich-surface",
   },
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
@@ -357,18 +403,11 @@ export const SCREENS = [
     viewer: "editor",
     path: `/p/${SITE}`,
     after: async (page) => {
-      await selectPosts(page, [
+      await tagPosts(page, [
         "Counting what the build skips",
         "Why the monitor waits before it pages you",
         "Getting started",
       ]);
-      await page
-        .getByRole("region", { name: /^Bulk actions/ })
-        .getByLabel("Tag")
-        .fill("colophon");
-      await page.getByRole("button", { name: /^Add tag$/ }).click();
-      await page.locator(".cap-bulk-results").waitFor();
-      await page.waitForTimeout(600);
     },
   },
   { name: "unpublish", viewer: "owner", path: `/p/${SITE}/e/alerts-wait/unpublish` },
@@ -437,7 +476,7 @@ export const SCREENS = [
   {
     name: "post-first-publish",
     viewer: "owner",
-    path: `/p/${SITE}/e/counting-what-the-build-skips`,
+    path: `/p/${SITE}/e/counting-what-the-build-skips?tab=checks`,
     wait: ".app-rich-surface",
     after: (page) => press(page, "button", /^Publish$/, "alertdialog"),
   },
@@ -518,7 +557,7 @@ export const SCREENS = [
   {
     name: "book-dismiss",
     viewer: "owner",
-    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`,
+    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md?tab=checks`,
     wait: ".app-rich-surface",
     after: (page) => press(page, "button", /^Dismiss/, "alertdialog"),
   },
@@ -540,6 +579,22 @@ export const SCREENS = [
     },
   },
 ];
+
+/**
+ * Ticks the posts and adds the tag "colophon" from the bulk bar, then waits for each post's outcome.
+ * @param {Page} page
+ * @param {string[]} titles
+ */
+async function tagPosts(page, titles) {
+  await selectPosts(page, titles);
+  await page
+    .getByRole("region", { name: /^Bulk actions/ })
+    .getByLabel("Tag")
+    .fill("colophon");
+  await page.getByRole("button", { name: /^Add tag$/ }).click();
+  await page.locator(".cap-bulk-results").waitFor();
+  await page.waitForTimeout(600);
+}
 
 /**
  * Ticks the rows of the posts list whose titles are named, and waits for the bulk bar to say so.

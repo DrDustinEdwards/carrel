@@ -24,6 +24,7 @@ export function loader({ context }: Route.LoaderArgs) {
 const FRAME: FrameData = {
   name: "Sample",
   isOwner: false,
+  needs: 0,
   projects: [{ slug: "sample-book", name: "Sample book", kind: "book" }],
 };
 

@@ -19,6 +19,7 @@ import { Time } from "capsomer/react/time";
 import { exact, parse } from "capsomer/behavior/time";
 
 import { FlagsPanel } from "~/components/editor/flags-panel";
+import { commentsTab, Inspector } from "~/components/editor/inspector";
 import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
@@ -820,26 +821,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             {layout !== "preview" ? (
               <section className="app-editor-pane" id="write" aria-label="Write">
                 {data.room ? editing.bar : null}
-                {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
-                <FrontmatterFields
-                  source={source}
-                  onChange={setSource}
-                  readOnly={readOnly || !mayEdit}
-                  sections={data.sections}
-                  kind={data.kind}
-                  searchFields={seo ? data.searchFields : []}
-                />
-                {seo && data.searchFields.length > 0 ? (
-                  <SearchFields
-                    source={source}
-                    onChange={setSource}
-                    readOnly={readOnly || !mayEdit}
-                    listed={data.searchFields}
-                    site={data.project.siteId}
-                    origin={data.origin}
-                    media={data.media}
-                  />
-                ) : null}
                 <WritingSurface
                   label={kindWord(data.kind)}
                   value={splitSource(source).body}
@@ -886,187 +867,249 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </div>
         </div>
 
-        <aside className="app-editor-side" aria-label="Binder, saving and publishing">
-          <Panel title="Binder" src="This site's writing">
-            <SiteBinder nodes={data.binder} current={data.itemId} />
-          </Panel>
-          {data.canEdit ? (
-            <Panel
-              title="This draft"
-              src={
-                data.version
-                  ? data.status === "draft"
-                    ? "Draft on the site"
-                    : "On the site"
-                  : "Only in Carrel so far"
-              }
-            >
-              <div className="app-stack" data-tight>
-                <p role="status" className="app-savestate">
-                  {saveState}
-                </p>
-                {data.pendingUpdate && data.status === "published" ? (
-                  <p className="app-note">
-                    An update waits to go live{" "}
-                    <Time at={data.pendingUpdate.publishAt} format="exact" />.
-                  </p>
-                ) : null}
-                {failure ? <Alert tone="crit">{failure.message}</Alert> : null}
-                {google ? (
-                  google.ok ? (
-                    <Banner tone="ok">
-                      {google.message}{" "}
-                      {google.url ? (
-                        <a href={google.url} target="_blank" rel="noreferrer">
-                          Open the Doc<span className="cap-sr-only"> (opens in a new tab)</span>
-                        </a>
+        <Inspector
+          label={`About this ${kindNoun(data.kind)}`}
+          head={
+            <>
+              {data.canEdit ? (
+                <Panel
+                  title="This draft"
+                  src={
+                    data.version
+                      ? data.status === "draft"
+                        ? "Draft on the site"
+                        : "On the site"
+                      : "Only in Carrel so far"
+                  }
+                >
+                  <div className="app-stack" data-tight>
+                    <p role="status" className="app-savestate">
+                      {saveState}
+                    </p>
+                    {data.pendingUpdate && data.status === "published" ? (
+                      <p className="app-note">
+                        An update waits to go live{" "}
+                        <Time at={data.pendingUpdate.publishAt} format="exact" />.
+                      </p>
+                    ) : null}
+                    {failure ? <Alert tone="crit">{failure.message}</Alert> : null}
+                    {google ? (
+                      google.ok ? (
+                        <Banner tone="ok">
+                          {google.message}{" "}
+                          {google.url ? (
+                            <a href={google.url} target="_blank" rel="noreferrer">
+                              Open the Doc<span className="cap-sr-only"> (opens in a new tab)</span>
+                            </a>
+                          ) : null}
+                        </Banner>
+                      ) : (
+                        <Alert tone="crit">{google.message}</Alert>
+                      )
+                    ) : null}
+                    <div className="app-actions">
+                      {!onSite && maySave ? (
+                        <Button
+                          variant="primary"
+                          pending={busy}
+                          onClick={(event) => saveToSite(event.currentTarget)}
+                        >
+                          Save draft to the site
+                        </Button>
                       ) : null}
-                    </Banner>
-                  ) : (
-                    <Alert tone="crit">{google.message}</Alert>
-                  )
-                ) : null}
-                <div className="app-actions">
-                  {!onSite && maySave ? (
-                    <Button
-                      variant="primary"
-                      pending={busy}
-                      onClick={(event) => saveToSite(event.currentTarget)}
-                    >
-                      Save draft to the site
-                    </Button>
-                  ) : null}
-                  {onSite && maySave && saveTransition ? (
-                    <Button
-                      variant={data.status === "draft" ? "default" : "primary"}
-                      pending={busy}
-                      onClick={(event) => saveToSite(event.currentTarget)}
-                    >
-                      {/* Beside a scheduled update, plain "Update" could mean either; this one changes the live post now. */}
-                      {data.status === "published" && data.scheduledUpdates && data.canPublish
-                        ? "Update the live post now"
-                        : saveTransition.label}
-                    </Button>
-                  ) : null}
-                  {onSite && data.canPublish && data.status === "scheduled" ? (
-                    <Button pending={busy} onClick={() => void send("unpublish")}>
-                      Revert to draft
-                    </Button>
-                  ) : null}
-                  {onSite && data.canPublish && data.status !== "published" ? (
-                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>
-                      Schedule
-                    </Button>
-                  ) : null}
-                  {onSite &&
-                  data.canPublish &&
-                  data.status === "published" &&
-                  data.scheduledUpdates ? (
-                    <Button onClick={(event) => ask("schedule", event.currentTarget)}>
-                      {data.pendingUpdate
-                        ? "Replace the scheduled update"
-                        : "Schedule as an update"}
-                    </Button>
-                  ) : null}
-                  {room.unsaved && onSite ? (
-                    <Button
-                      variant="quiet"
-                      pending={busy}
-                      onClick={(event) => ask("discard", event.currentTarget)}
-                    >
-                      Discard unsaved changes
-                    </Button>
-                  ) : null}
-                </div>
-                {data.canSend && data.googleConnected ? (
-                  <div className="app-actions">
-                    <Button
-                      variant="quiet"
-                      pending={busy}
-                      onClick={() => void send("send-to-docs")}
-                    >
-                      Send to Google Docs
-                    </Button>
-                    {data.sentDoc ? (
-                      <Button
-                        variant="quiet"
-                        pending={busy}
-                        onClick={(event) => ask("import", event.currentTarget)}
-                      >
-                        Import from Docs
-                      </Button>
+                      {onSite && maySave && saveTransition ? (
+                        <Button
+                          variant={data.status === "draft" ? "default" : "primary"}
+                          pending={busy}
+                          onClick={(event) => saveToSite(event.currentTarget)}
+                        >
+                          {/* Beside a scheduled update, plain "Update" could mean either; this one changes the live post now. */}
+                          {data.status === "published" && data.scheduledUpdates && data.canPublish
+                            ? "Update the live post now"
+                            : saveTransition.label}
+                        </Button>
+                      ) : null}
+                      {onSite && data.canPublish && data.status === "scheduled" ? (
+                        <Button pending={busy} onClick={() => void send("unpublish")}>
+                          Revert to draft
+                        </Button>
+                      ) : null}
+                      {onSite && data.canPublish && data.status !== "published" ? (
+                        <Button onClick={(event) => ask("schedule", event.currentTarget)}>
+                          Schedule
+                        </Button>
+                      ) : null}
+                      {onSite &&
+                      data.canPublish &&
+                      data.status === "published" &&
+                      data.scheduledUpdates ? (
+                        <Button onClick={(event) => ask("schedule", event.currentTarget)}>
+                          {data.pendingUpdate
+                            ? "Replace the scheduled update"
+                            : "Schedule as an update"}
+                        </Button>
+                      ) : null}
+                      {room.unsaved && onSite ? (
+                        <Button
+                          variant="quiet"
+                          pending={busy}
+                          onClick={(event) => ask("discard", event.currentTarget)}
+                        >
+                          Discard unsaved changes
+                        </Button>
+                      ) : null}
+                    </div>
+                    {data.canSend && data.googleConnected ? (
+                      <div className="app-actions">
+                        <Button
+                          variant="quiet"
+                          pending={busy}
+                          onClick={() => void send("send-to-docs")}
+                        >
+                          Send to Google Docs
+                        </Button>
+                        {data.sentDoc ? (
+                          <Button
+                            variant="quiet"
+                            pending={busy}
+                            onClick={(event) => ask("import", event.currentTarget)}
+                          >
+                            Import from Docs
+                          </Button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
-                ) : null}
-              </div>
-            </Panel>
-          ) : null}
-
-          {data.room ? editing.panels : null}
-
-          {/* Drawn once the page is live: Capsomer 0.36's gate shows the live time with <Time format="exact">,
-              whose first render in a zone other than UTC differs from the server's and fails hydration. */}
-          {onSite && data.canPublish && hydrated ? (
-            <PublishGate
-              label="Publish checks"
-              sites={[gateSite]}
-              checks={gateChecks}
-              publish={() => writeThrough("publish", { confirm: "first-publish" })}
-              unpublish={() => writeThrough("unpublish")}
-              say={say}
-              fail={(text) => say(text)}
-            />
-          ) : null}
-
-          {data.search ? (
-            <Panel title="Search" src={`${data.search.start} to ${data.search.end}`} size="sm">
-              <dl className="app-facts">
-                <dt>Clicks</dt>
-                <dd className="cap-num">{data.search.clicks}</dd>
-                <dt>Impressions</dt>
-                <dd className="cap-num">{data.search.impressions}</dd>
-                <dt>Position</dt>
-                <dd className="cap-num">{data.search.position}</dd>
-              </dl>
-            </Panel>
-          ) : null}
-        </aside>
-
-        {/* Flags, search and history: after the side column in the page's order, so on a phone saving and
-            publishing come right after the text; on a wide screen they sit under the text (app.css). */}
-        <div className="app-editor-more">
-          {data.flags.length > 0 || data.aiDrafts.length > 0 || data.transcriptDrafts.length > 0 ? (
-            <FlagsPanel
-              flags={data.flags}
-              aiDrafts={data.aiDrafts}
-              transcriptDrafts={data.transcriptDrafts}
-              canPublish={data.canDismiss}
-              onDismiss={(button, flag) => ask("dismiss", button, flag)}
-            />
-          ) : null}
-          {seo ? <SearchSharingPanel check={seo} /> : null}
-          {mayEdit ? (
-            <AiWriteButtons
-              action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
-              buttons={[
-                { job: "continue", label: "Continue my draft" },
-                { job: "edit", label: "Suggest edits" },
-                ...(seo ? [{ job: "seo", label: "Write the search description" }] : []),
-              ]}
-            />
-          ) : null}
-          {data.revisions || data.historyError ? (
-            <HistoryPanel
-              revisions={data.revisions}
-              revisionCount={data.revisionCount}
-              historyError={data.historyError}
-              historyPath={historyPath}
-              noun={kindNoun(data.kind)}
-              againstSite={room.unsaved && onSite}
-              aiDrafts={data.aiDrafts}
-            />
-          ) : null}
-        </div>
+                </Panel>
+              ) : null}
+            </>
+          }
+          tabs={[
+            {
+              value: "details",
+              label: "Details",
+              content: (
+                <div className="app-stack">
+                  {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
+                  <FrontmatterFields
+                    source={source}
+                    onChange={setSource}
+                    readOnly={readOnly || !mayEdit}
+                    sections={data.sections}
+                    kind={data.kind}
+                    searchFields={seo ? data.searchFields : []}
+                  />
+                  {mayEdit ? (
+                    <AiWriteButtons
+                      action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
+                      buttons={[
+                        { job: "continue", label: "Continue my draft" },
+                        { job: "edit", label: "Suggest edits" },
+                        ...(seo ? [{ job: "seo", label: "Write the search description" }] : []),
+                      ]}
+                    />
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              value: "checks",
+              label: "Checks",
+              count: gateChecks.filter((c) => !c.ok).length,
+              content: (
+                <div className="app-stack">
+                  {onSite && data.canPublish && hydrated ? (
+                    <PublishGate
+                      label="Publish checks"
+                      sites={[gateSite]}
+                      checks={gateChecks}
+                      publish={() => writeThrough("publish", { confirm: "first-publish" })}
+                      unpublish={() => writeThrough("unpublish")}
+                      say={say}
+                      fail={(text) => say(text)}
+                    />
+                  ) : null}
+                  {data.flags.length > 0 ||
+                  data.aiDrafts.length > 0 ||
+                  data.transcriptDrafts.length > 0 ? (
+                    <FlagsPanel
+                      flags={data.flags}
+                      aiDrafts={data.aiDrafts}
+                      transcriptDrafts={data.transcriptDrafts}
+                      canPublish={data.canDismiss}
+                      onDismiss={(button, flag) => ask("dismiss", button, flag)}
+                    />
+                  ) : null}
+                  {!(onSite && data.canPublish) &&
+                  data.flags.length === 0 &&
+                  data.aiDrafts.length === 0 &&
+                  data.transcriptDrafts.length === 0 ? (
+                    <p className="app-note">Nothing is flagged on this {kindNoun(data.kind)}.</p>
+                  ) : null}
+                </div>
+              ),
+            },
+            commentsTab(data.room ? editing.panels : null),
+            {
+              value: "search",
+              label: "Search",
+              content: seo ? (
+                <div className="app-stack">
+                  {data.searchFields.length > 0 ? (
+                    <SearchFields
+                      source={source}
+                      onChange={setSource}
+                      readOnly={readOnly || !mayEdit}
+                      listed={data.searchFields}
+                      site={data.project.siteId}
+                      origin={data.origin}
+                      media={data.media}
+                    />
+                  ) : null}
+                  <SearchSharingPanel check={seo} />
+                  {data.search ? (
+                    <Panel
+                      title="Search"
+                      src={`${data.search.start} to ${data.search.end}`}
+                      size="sm"
+                    >
+                      <dl className="app-facts">
+                        <dt>Clicks</dt>
+                        <dd className="cap-num">{data.search.clicks}</dd>
+                        <dt>Impressions</dt>
+                        <dd className="cap-num">{data.search.impressions}</dd>
+                        <dt>Position</dt>
+                        <dd className="cap-num">{data.search.position}</dd>
+                      </dl>
+                    </Panel>
+                  ) : null}
+                </div>
+              ) : null,
+            },
+            {
+              value: "history",
+              label: "History",
+              content: (
+                <div className="app-stack">
+                  {data.revisions || data.historyError ? (
+                    <HistoryPanel
+                      revisions={data.revisions}
+                      revisionCount={data.revisionCount}
+                      historyError={data.historyError}
+                      historyPath={historyPath}
+                      noun={kindNoun(data.kind)}
+                      againstSite={room.unsaved && onSite}
+                      aiDrafts={data.aiDrafts}
+                    />
+                  ) : null}
+                  <Panel title="Binder" src="This site's writing">
+                    <SiteBinder nodes={data.binder} current={data.itemId} />
+                  </Panel>
+                </div>
+              ),
+            },
+          ]}
+        />
       </div>
 
       <ConfirmDialog

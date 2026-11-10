@@ -15,7 +15,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const viewer = getViewer(context);
   if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
   const url = new URL(request.url);
-  const done = (message: string) => redirect(`/?google=${encodeURIComponent(message)}`);
+  const done = (message: string) => redirect(`/manuscripts?google=${encodeURIComponent(message)}`);
   try {
     if (params.step === "start") return redirect(await startAuth(env, viewer, url.origin));
     if (params.step === "callback") {
