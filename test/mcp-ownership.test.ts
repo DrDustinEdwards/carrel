@@ -26,6 +26,11 @@ const CALLS: Record<string, Record<string, unknown>> = {
     item: "post-one",
     source: "---\ntitle: Post one\n---\nNot yours.\n",
   },
+  carrel_save_transcript: {
+    project: SITE,
+    item: "post-one",
+    edits: [{ find: "Wheel's", replace: "Weil's" }],
+  },
   carrel_voice_brief: { project: SITE },
   carrel_check_post_text: { project: SITE, source: "# x" },
   carrel_preview_item: { project: SITE, item: "post-one", source: "# x" },
@@ -97,6 +102,7 @@ async function written() {
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings"),
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM social_posts"),
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM ai_publications"),
+    testEnv.DB.prepare("SELECT COUNT(*) AS n FROM transcript_drafts"),
   ]);
   return counts.map((c) => (c.results[0] as { n: number }).n);
 }
@@ -115,7 +121,7 @@ describe("every id-taking tool proves the caller may reach the id", () => {
         const result = await (await connect(email)).call(tool, args);
         expect(result.isError, `${tool} as ${email}: ${result.content[0]?.text}`).toBe(true);
       }
-      expect(await written()).toEqual([0, 0, 0, 0]);
+      expect(await written()).toEqual([0, 0, 0, 0, 0]);
       expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
     });
   }
@@ -127,6 +133,6 @@ describe("every id-taking tool proves the caller may reach the id", () => {
       ).call("carrel_draft_social_post", { event_id: eventId, text: "x" });
       expect(result.isError, email).toBe(true);
     }
-    expect(await written()).toEqual([0, 0, 0, 0]);
+    expect(await written()).toEqual([0, 0, 0, 0, 0]);
   });
 });

@@ -107,7 +107,7 @@ describe("the protocol", () => {
       deps: { fetcher: site.fetch, carrelOrigin: CARREL },
       era: "legacy",
     });
-    expect((await legacy.list()).length).toBe(22);
+    expect((await legacy.list()).length).toBe(23);
     expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({
       projects: [{ slug: SLUG, role: "reader" }],
     });
@@ -559,5 +559,91 @@ describe("publish by instruction (decision 2)", () => {
       ok: false,
       detail: "1 AI publish was not emailed: post-one by Claude (send failed).",
     });
+  });
+});
+
+describe("transcripts (site-api v0.36.0)", () => {
+  const VTT = (words: string) =>
+    `WEBVTT\n\n00:00:01.000 --> 00:00:04.000\nThis is ${words}.\n\n00:00:04.000 --> 00:00:08.000\nCaught from rats.\n`;
+  const transcripts = () => (site.adapter as ReturnType<typeof memoryAdapter>).transcripts;
+
+  it("saves a fix beside the site's transcript, and the Owner's session publishes it on instruction, keeping the old one", async () => {
+    const version = await seedPost("published");
+    transcripts().set("post-one", VTT("Wheel's disease"));
+    const editor = await connect("editor@test.invalid");
+    const saved = await editor.call("carrel_save_transcript", {
+      project: SLUG,
+      item: "post-one",
+      edits: [{ find: "Wheel's", replace: "Weil's" }],
+      note: "Weil's disease, as the CDC spells it.",
+    });
+    expect(saved.structuredContent).toMatchObject({
+      saved: true,
+      replaced: [1],
+      changes: {
+        textChanged: 1,
+        retimed: 0,
+        changed: [
+          { cue: 1, at: 1, before: "This is Wheel's disease.", after: "This is Weil's disease." },
+        ],
+      },
+    });
+    // Saving changes nothing on the site, and an editor's session never publishes.
+    expect(transcripts().get("post-one")).toBe(VTT("Wheel's disease"));
+    const draftId = String(saved.structuredContent?.transcriptDraftId);
+    expect(
+      (
+        await editor.call("carrel_publish_item", {
+          project: SLUG,
+          item: "post-one",
+          expected_version: version,
+          transcript_draft_id: draftId,
+        })
+      ).content[0]!.text,
+    ).toBe("Only the Owner's own sessions may publish.");
+    expect(
+      (
+        await (
+          await connect("reviewer@test.invalid")
+        ).call("carrel_save_transcript", {
+          project: SLUG,
+          item: "post-one",
+          edits: [{ find: "rats", replace: "mice" }],
+        })
+      ).content[0]!.text,
+    ).toBe("A reviewer flags; it does not write text. Use carrel_add_finding.");
+
+    const owner = await connect("owner@test.invalid", "Claude");
+    const mine = await owner.call("carrel_save_transcript", {
+      project: SLUG,
+      item: "post-one",
+      edits: [{ find: "Wheel's", replace: "Weil's" }],
+    });
+    const done = await owner.call("carrel_publish_item", {
+      project: SLUG,
+      item: "post-one",
+      expected_version: version,
+      transcript_draft_id: String(mine.structuredContent?.transcriptDraftId),
+    });
+    expect(done.structuredContent).toMatchObject({ published: true, version, dustinEmailed: true });
+    expect(transcripts().get("post-one")).toBe(VTT("Weil's disease"));
+    expect((await site.adapter.content.get("post-one"))?.version).toBe(version);
+    expect(
+      await testEnv.DB.prepare(
+        "SELECT client FROM transcript_changes WHERE item_id = 'post-one'",
+      ).first(),
+    ).toEqual({ client: "Claude" });
+    const kept = done.structuredContent?.putBackWithTranscriptDraftId;
+    expect(box.sent[0]!.text).toContain(`${CARREL}/p/${SLUG}/e/post-one/transcript/${kept}`);
+
+    // A draft written from the transcript before is refused now, and the site keeps the fix.
+    const again = await owner.call("carrel_publish_item", {
+      project: SLUG,
+      item: "post-one",
+      expected_version: version,
+      transcript_draft_id: String(mine.structuredContent?.transcriptDraftId),
+    });
+    expect(again.content[0]!.text).toContain("written from another transcript");
+    expect(transcripts().get("post-one")).toBe(VTT("Weil's disease"));
   });
 });

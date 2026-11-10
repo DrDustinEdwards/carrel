@@ -50,6 +50,7 @@ describe("names and hints", () => {
     const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations]));
     const writes = [
       "carrel_save_draft",
+      "carrel_save_transcript",
       "carrel_add_finding",
       "carrel_publish_item",
       "carrel_delete_media",

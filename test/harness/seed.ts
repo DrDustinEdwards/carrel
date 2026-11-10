@@ -8,6 +8,7 @@ import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { nearestPassages, profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
+import { saveTranscriptDraft } from "~/lib/transcripts.server";
 import { createBook, refreshBook, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
 import { autosave, writeToSite } from "~/lib/content.server";
 import { refreshIndex } from "~/lib/index.server";
@@ -952,6 +953,38 @@ async function build(base: Env): Promise<World> {
       )
       .run();
   }
+  // A transcript fix beside an episode's machine-made transcript (site-api v0.36.0): the transcript draft page.
+  site.adapter.transcripts.set(
+    "alerts-wait",
+    [
+      "WEBVTT",
+      "",
+      "00:00:01.000 --> 00:00:05.000",
+      "Welcome back. Today the watcher waits for a pattern.",
+      "",
+      "00:00:05.000 --> 00:00:09.000",
+      "Three failed checks in a roe is the pattern it waits for.",
+      "",
+      "00:01:12.000 --> 00:01:16.000",
+      "Pager duty is the cost of a watcher that does not.",
+      "",
+    ].join("\n"),
+  );
+  await saveTranscriptDraft(
+    env,
+    sitePr,
+    claude,
+    "alerts-wait",
+    {
+      edits: [
+        { find: "in a roe", replace: "in a row" },
+        { find: "Pager duty", replace: "Paging" },
+      ],
+      note: "Two misheard words.",
+    },
+    site.fetch,
+  );
+
   return { env };
 }
 

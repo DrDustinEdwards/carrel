@@ -39,6 +39,7 @@ import {
   publishedByLine,
 } from "~/lib/ai.server";
 import { roomNames } from "~/lib/comments.server";
+import { listTranscriptDrafts } from "~/lib/transcripts.server";
 import {
   discardDraft,
   mayPublishItem,
@@ -109,6 +110,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   }
   // An item that exists only as an AI draft is still the person's to open: the list shows it.
   const aiDrafts = await listAiDrafts(env.DB, project, viewer, itemId);
+  const transcriptDrafts = await listTranscriptDrafts(env.DB, project, viewer, itemId);
   if (
     !doc &&
     !siteError &&
@@ -260,6 +262,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     sections: sections.map((s) => ({ key: s.key, title: s.title })),
     flags,
     aiDrafts,
+    transcriptDrafts,
     aiPublished: aiPublished
       ? { line: publishedByLine(aiPublished.client), at: aiPublished.publishedAt }
       : null,
@@ -1032,10 +1035,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         {/* Flags, search and history: after the side column in the page's order, so on a phone saving and
             publishing come right after the text; on a wide screen they sit under the text (app.css). */}
         <div className="app-editor-more">
-          {data.flags.length > 0 || data.aiDrafts.length > 0 ? (
+          {data.flags.length > 0 || data.aiDrafts.length > 0 || data.transcriptDrafts.length > 0 ? (
             <FlagsPanel
               flags={data.flags}
               aiDrafts={data.aiDrafts}
+              transcriptDrafts={data.transcriptDrafts}
               canPublish={data.canDismiss}
               onDismiss={(button, flag) => ask("dismiss", button, flag)}
             />
