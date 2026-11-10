@@ -169,6 +169,30 @@ describe("reading, drafting, flagging", () => {
       aiDrafts: [],
       flags: [],
     });
+
+    // The MCP App: the read tool names a view, the view is served with the spec's MIME type, and it draws what the
+    // tool answers as text (post-app.ts).
+    const tool = (await ai.list()).find((t) => t.name === "carrel_read_item") as unknown as {
+      _meta?: { ui?: { resourceUri?: string } };
+    };
+    expect(tool._meta?.ui?.resourceUri).toBe("ui://carrel/post-versions");
+    const view = await readMessage(
+      await ai.send(
+        modernRequest(
+          9,
+          "resources/read",
+          { uri: "ui://carrel/post-versions" },
+          { "Mcp-Name": "ui://carrel/post-versions" },
+        ),
+      ),
+    );
+    expect(view.error).toBeUndefined();
+    expect(view.result).toMatchObject({
+      contents: [
+        { mimeType: "text/html;profile=mcp-app", text: expect.stringContaining("ui/initialize") },
+      ],
+    });
+    expect(JSON.stringify(view.result)).not.toContain("innerHTML");
   });
 
   it("PLANT: a stranger's session reads nothing", async () => {
