@@ -7,6 +7,7 @@ import { Empty } from "capsomer/react/empty";
 
 import { Frame, type FrameData } from "~/components/frame";
 import { getEnv, getViewer } from "~/lib/context";
+import { needsYou } from "~/lib/desk.server";
 import { visibleProjects } from "~/lib/people.server";
 
 import type { Route } from "./+types/frame";
@@ -18,6 +19,7 @@ export async function loader({ context }: Route.LoaderArgs): Promise<FrameData> 
     name: viewer.name || viewer.email,
     isOwner: viewer.isOwner,
     projects: projects.map((p) => ({ slug: p.slug, name: p.name, kind: p.kind })),
+    needs: (await needsYou(getEnv(context).DB, viewer, projects)).length,
   };
 }
 

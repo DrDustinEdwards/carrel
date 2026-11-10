@@ -9,6 +9,8 @@ import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
+import { Row, RowList } from "capsomer/react/row-list";
+import { Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
@@ -19,6 +21,7 @@ import {
   refreshManuscripts,
   searchManuscripts,
 } from "~/lib/google/drive.server";
+import { isConnected, oauthConnection } from "~/lib/google/oauth.server";
 import { GoogleNotConnected, saConnection } from "~/lib/google/service-account.server";
 
 import type { Route } from "./+types/manuscripts";
@@ -31,7 +34,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
-  const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim() ?? "";
   const sa = saConnection(env);
   const setup =
     sa.state !== "connected"
@@ -54,7 +58,12 @@ export async function loader({ request, context }: Route.LoaderArgs) {
           : `Drive did not answer the search: ${e instanceof Error ? e.message : String(e)}`;
     }
   }
-  return { q, files, setup, error, titlesOnly };
+  // Google is the Owner's: the manuscripts and his drive.file grant (Send to Docs and Import).
+  const google = {
+    configured: (await oauthConnection(env)).state === "configured",
+    connected: await isConnected(env.DB, viewer),
+  };
+  return { q, files, setup, error, titlesOnly, google, message: url.searchParams.get("google") };
 }
 
 export async function action({ context }: Route.ActionArgs) {
@@ -79,7 +88,7 @@ const KIND: Record<string, string> = {
 };
 
 export default function Manuscripts({ loaderData, actionData }: Route.ComponentProps) {
-  const { q, files, setup, error, titlesOnly } = loaderData;
+  const { q, files, setup, error, titlesOnly, google, message } = loaderData;
   const refreshing = useNavigation().state === "submitting";
   return (
     <div className="app-page">
@@ -97,6 +106,37 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
         }
       />
 
+      {message ? <Banner tone="info">{message}</Banner> : null}
+      <Panel title="Google" flush>
+        <RowList label="Google">
+          <Row
+            title="Send to Docs and Import"
+            meta={
+              !google.configured ? (
+                <Status tone="nodata">Not set up</Status>
+              ) : google.connected ? (
+                <Status tone="ok">Connected</Status>
+              ) : (
+                <Status tone="nodata">Not connected</Status>
+              )
+            }
+            detail={
+              !google.configured
+                ? "Send to Docs is not set up yet."
+                : google.connected
+                  ? "Connected with drive.file only."
+                  : "Connect Google to send a post to Docs."
+            }
+            actions={
+              google.configured ? (
+                <a href="/auth/google/start" className="cap-btn">
+                  {google.connected ? "Connect again" : "Connect Google"}
+                </a>
+              ) : undefined
+            }
+          />
+        </RowList>
+      </Panel>
       {setup ? (
         <Banner tone="warn" title="Not set up yet">
           {setup}

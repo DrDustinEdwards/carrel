@@ -5,6 +5,10 @@ export default [
   // the exports, the Google redirects) render nothing of their own and stay outside it.
   layout("routes/frame.tsx", [
     index("routes/home.tsx"),
+    route("writing", "routes/writing.tsx"),
+    route("books", "routes/books.tsx"),
+    route("sites", "routes/sites.tsx"),
+    route("media", "routes/media.index.tsx"),
     route("p/:project", "routes/project.tsx"),
     route("p/:project/new", "routes/project.new.tsx"),
     route("p/:project/e/:item", "routes/editor.tsx"),
@@ -40,6 +44,7 @@ export default [
   route("b/:project/authorship", "routes/book.authorship.ts"),
   // The chart demo: sample data, no sign-in, noindex, answered before the door (workers/demo.ts).
   route("demos/progress", "routes/demos.progress.tsx"),
+  route("search", "routes/search.ts"),
   route("health", "routes/health.ts"),
   route("auth/google/:step", "routes/auth.google.ts"),
 ] satisfies RouteConfig;

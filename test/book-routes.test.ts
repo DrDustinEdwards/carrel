@@ -10,7 +10,7 @@ import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
 import { loader as newBookLoader } from "~/routes/book.new";
 import { action as bookAction, loader as bookLoader } from "~/routes/book";
 import { loader as exportLoader } from "~/routes/book.export";
-import { loader as homeLoader } from "~/routes/home";
+import { loader as booksLoader } from "~/routes/books";
 
 import { sharedBook, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
@@ -332,14 +332,14 @@ describe("export and the authorship record", () => {
 });
 
 describe("home and new books", () => {
-  it("lists a book as a book, and offers New book to the Owner only", async () => {
-    const home = (await homeLoader({
-      request: new Request("https://carrel.test/"),
+  it("lists a shared book on Books, and offers New book to the Owner only", async () => {
+    const books = (await booksLoader({
+      request: new Request("https://carrel.test/books"),
       params: {},
       context: await contextFor("reader@test.invalid"),
-    } as never)) as Awaited<ReturnType<typeof homeLoader>>;
-    expect(home.projects).toMatchObject([{ slug: SLUG, kind: "book", role: "reader" }]);
-    expect(home.isOwner).toBe(false);
+    } as never)) as Awaited<ReturnType<typeof booksLoader>>;
+    expect(books.books).toMatchObject([{ slug: SLUG, role: "Reader" }]);
+    expect(books.isOwner).toBe(false);
     expect(
       (
         (await settle(

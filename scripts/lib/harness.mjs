@@ -60,6 +60,16 @@ async function endOfText(/** @type {import("playwright").Page} */ page) {
   await page.waitForTimeout(100);
 }
 
+/** Opens the header search and types a query, for the screen of the palette with results. */
+async function searchFor(
+  /** @type {import("playwright").Page} */ page,
+  /** @type {string} */ query,
+) {
+  await page.keyboard.press("Control+k");
+  await page.getByRole("combobox").fill(query);
+  await page.getByRole("option").first().waitFor();
+}
+
 /**
  * Every screen, as who sees it. `after` runs once the page is up (open a dialog, type), and `wait` is a
  * selector that must exist before the page counts as ready.
@@ -71,6 +81,12 @@ async function endOfText(/** @type {import("playwright").Page} */ page) {
 export const SCREENS = [
   { name: "home", viewer: "owner", path: "/" },
   { name: "home-editor", viewer: "editor", path: "/" },
+  { name: "writing", viewer: "owner", path: "/writing" },
+  { name: "writing-ai", viewer: "owner", path: "/writing?waiting=ai" },
+  { name: "writing-editor", viewer: "editor", path: "/writing" },
+  { name: "books", viewer: "owner", path: "/books" },
+  { name: "sites", viewer: "owner", path: "/sites" },
+  { name: "search", viewer: "owner", path: "/", after: (page) => searchFor(page, "alerts") },
   { name: "home-reader", viewer: "reader", path: "/" },
   { name: "site", viewer: "owner", path: `/p/${SITE}` },
   { name: "site-filtered", viewer: "owner", path: `/p/${SITE}?status=draft` },

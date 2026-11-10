@@ -1400,3 +1400,43 @@ img.ProseMirror-separator {
   cursor: pointer;
   color: var(--muted);
 }
+
+/* Desk's scope chip, status tabs with counts, and the list toolbar. */
+.app-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.app-tab-count {
+  margin-inline-start: var(--space-1);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.app-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.app-toolbar-search {
+  flex: 1 1 16rem;
+  max-width: 28rem;
+}
+.app-need-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--fs-sm, 0.875rem);
+}
+.app-need-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Capsomer PR 315 (status message clears the phone tab bar): the same rule here until a release has it. Remove then. */
+@media (max-width: 767.98px) {
+  :root:has(.cap-site-tabs) .cap-message {
+    inset-block-end: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
