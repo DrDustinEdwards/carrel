@@ -8,22 +8,25 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 
 import type { AiDraftSummary, ItemFinding } from "~/lib/ai.server";
+import type { TranscriptDraftSummary } from "~/lib/transcripts.server";
 
 type Props = {
   flags: ItemFinding[];
   aiDrafts: AiDraftSummary[];
+  transcriptDrafts: TranscriptDraftSummary[];
   canPublish: boolean;
   onDismiss: (button: HTMLElement, flag: number) => void;
 };
 
-export function FlagsPanel({ flags, aiDrafts, canPublish, onDismiss }: Props) {
+export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDismiss }: Props) {
   const openFlags = flags.filter((f) => f.status === "open").length;
+  const drafts = aiDrafts.length + transcriptDrafts.length;
   return (
     <Panel
       title="Flags and AI drafts"
       id="flags"
       count={openFlags}
-      src={`${aiDrafts.length} AI draft${aiDrafts.length === 1 ? "" : "s"} beside yours`}
+      src={`${drafts} draft${drafts === 1 ? "" : "s"} beside yours`}
     >
       <div className="app-stack" data-tight>
         {flags.length > 0 ? (
@@ -61,6 +64,21 @@ export function FlagsPanel({ flags, aiDrafts, canPublish, onDismiss }: Props) {
                   <Link to={`ai/${d.id}`}>AI draft from {d.client}</Link>{" "}
                   <span className="cap-muted">
                     <Time at={d.createdAt} /> · {d.words} words
+                  </span>
+                  {d.note ? <span> · {d.note}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {transcriptDrafts.length > 0 ? (
+          <ul className="app-flags" aria-label="Transcript drafts">
+            {transcriptDrafts.map((d) => (
+              <li key={d.id}>
+                <span>
+                  <Link to={`transcript/${d.id}`}>Transcript draft from {d.client}</Link>{" "}
+                  <span className="cap-muted">
+                    <Time at={d.createdAt} />
                   </span>
                   {d.note ? <span> · {d.note}</span> : null}
                 </span>

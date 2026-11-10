@@ -24,6 +24,7 @@ import {
   aiDraftSocialPost,
   AiRefusal,
   aiPublish,
+  aiPublishTranscript,
   itemFindings,
   listAiDrafts,
   saveAiDraft,
@@ -64,6 +65,11 @@ import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
 import { seoOf } from "~/lib/seo.server";
 import type { Action } from "~/lib/roles";
 import { siteClient, SiteNotConnected } from "~/lib/sites.server";
+import {
+  listTranscriptDrafts,
+  saveTranscriptDraft,
+  TranscriptRefusal,
+} from "~/lib/transcripts.server";
 
 export type ToolDeps = { fetcher?: typeof fetch; carrelOrigin: string };
 
@@ -127,6 +133,8 @@ const PAGE_MAX = 100;
 /** Longest accepted inputs, in characters: a whole file or post, a finding's message and excerpt, a draft's note, a path or id. */
 const MAX = {
   source: 500_000,
+  transcript: 500_000,
+  edits: 200,
   message: 2000,
   excerpt: 1000,
   note: 500,
@@ -360,7 +368,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_read_item",
     title: "Read a post",
     scope: "read",
-    description: `Reads a post as the site holds it (its Markdown source and version), with Dustin's own working draft if he has one, the AI drafts saved beside it, and its flags. ${RULE}`,
+    description: `Reads a post as the site holds it (its Markdown source and version, and an episode's transcript with its transcriptVersion), with Dustin's own working draft if he has one, the AI drafts and transcript drafts saved beside it, and its flags. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: { project: PROJECT, item: ITEM },
@@ -368,20 +376,24 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     annotations: READ,
-    outputSchema: shape({ aiDrafts: LIST, flags: LIST }, { site: ANY, dustinsDraft: ANY }),
+    outputSchema: shape(
+      { aiDrafts: LIST, transcriptDrafts: LIST, flags: LIST },
+      { site: ANY, dustinsDraft: ANY },
+    ),
     outside: true,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
       const item = str(args, "item");
-      const [doc, draft, aiDrafts, flags] = await Promise.all([
+      const [doc, draft, aiDrafts, transcriptDrafts, flags] = await Promise.all([
         readDoc(ctx.env, p, item, ctx.deps.fetcher),
         readDraft(ctx.env.DB, p, ctx.session.viewer, item),
         listAiDrafts(ctx.env.DB, p, ctx.session.viewer, item),
+        listTranscriptDrafts(ctx.env.DB, p, ctx.session.viewer, item),
         itemFindings(ctx.env.DB, p, item),
       ]);
       if (!doc && !draft)
         throw new AiRefusal(`There is no post ${item} on the site and no draft of it in Carrel.`);
-      return { site: doc, dustinsDraft: draft, aiDrafts, flags };
+      return { site: doc, dustinsDraft: draft, aiDrafts, transcriptDrafts, flags };
     },
   },
   {
@@ -442,6 +454,105 @@ export const TOOLS: Tool[] = [
         checks,
         seo,
         ...(timing.length ? { timing } : {}),
+      };
+    },
+  },
+  {
+    name: "carrel_save_transcript",
+    title: "Save a transcript draft",
+    scope: "write",
+    description: `Saves a corrected transcript of an episode as a draft beside the site's, for a machine-made transcript that misheard names and terms ("Wheel's disease" for Weil's disease). Send either edits, each find replaced everywhere it occurs in the site's transcript (a find that is not there is refused), or the whole WebVTT. Fix the words only: keep every cue and its timing, since chapters and key moments point at them. It never changes the site by being saved. It goes live only through carrel_publish_item with its transcript_draft_id, when Dustin asked for the change to be live. The answer lists each cue whose words changed, and how many cues were added, removed or retimed. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: PROJECT,
+        item: ITEM,
+        edits: {
+          type: "array",
+          maxItems: MAX.edits,
+          items: {
+            type: "object",
+            properties: {
+              find: {
+                type: "string",
+                minLength: 1,
+                description: "Text exactly as the site's transcript has it.",
+              },
+              replace: { type: "string", description: "What it becomes." },
+            },
+            required: ["find", "replace"],
+            additionalProperties: false,
+          },
+          description:
+            "Changes to the site's transcript as it stands, applied in order. Use these for word fixes. Leave out when sending transcript.",
+        },
+        transcript: {
+          type: "string",
+          description:
+            "The whole transcript in WebVTT, starting WEBVTT. Leave out when sending edits.",
+        },
+        note: {
+          type: "string",
+          description:
+            "One line for Dustin on what this draft fixes and how each spelling was checked.",
+        },
+      },
+      required: ["project", "item"],
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
+    outputSchema: shape(
+      { saved: YES, transcriptDraftId: ID, where: TEXT, changes: { type: "object" } },
+      { basedOnTranscriptVersion: ANY, replaced: LIST },
+    ),
+    outside: true,
+    run: async (args, ctx) => {
+      const p = await project(ctx, args, "read");
+      const raw = args.edits;
+      let edits: { find: string; replace: string }[] | undefined;
+      if (raw !== undefined) {
+        if (
+          !Array.isArray(raw) ||
+          raw.length === 0 ||
+          raw.length > MAX.edits ||
+          raw.some(
+            (e) =>
+              !e ||
+              typeof e !== "object" ||
+              typeof (e as { find?: unknown }).find !== "string" ||
+              typeof (e as { replace?: unknown }).replace !== "string" ||
+              Object.keys(e).some((k) => k !== "find" && k !== "replace"),
+          )
+        )
+          throw new AiRefusal(
+            `edits is a list of 1 to ${MAX.edits} { find, replace } pairs of text.`,
+          );
+        edits = raw as { find: string; replace: string }[];
+        if (edits.reduce((n, e) => n + e.find.length + e.replace.length, 0) > MAX.transcript)
+          throw new AiRefusal(`edits are longer than ${MAX.transcript} characters in all.`);
+      }
+      const transcript =
+        str(args, "transcript", { optional: true, max: MAX.transcript }) || undefined;
+      const saved = await saveTranscriptDraft(
+        ctx.env,
+        p,
+        ctx.session,
+        str(args, "item"),
+        { transcript, edits, note: str(args, "note", { optional: true, max: MAX.note }) },
+        ctx.deps.fetcher,
+      );
+      return {
+        saved: true,
+        transcriptDraftId: saved.id,
+        basedOnTranscriptVersion: saved.baseTranscriptVersion,
+        ...(saved.replaced ? { replaced: saved.replaced } : {}),
+        changes: saved.changes,
+        where: "Beside the site's transcript in Carrel's editor, under Transcript drafts.",
       };
     },
   },
@@ -630,7 +741,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_publish_item",
     title: "Publish a post (Owner only)",
     scope: "write",
-    description: `Publishes a post on Dustin's instruction in this conversation: asking for a change on the live site is that instruction. Without ai_draft_id it publishes the post as it stands on the site at expected_version. With ai_draft_id it publishes that AI draft's text, which must be one your own sessions saved with carrel_save_draft from expected_version; Dustin's own working draft in Carrel is left as it is. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. The site keeps every earlier version. Carrel records "published by <this client> on Dustin's instruction" and emails him links to unpublish and to restore an earlier version. ${RULE}`,
+    description: `Publishes a post on Dustin's instruction in this conversation: asking for a change on the live site is that instruction. Without ai_draft_id it publishes the post as it stands on the site at expected_version. With ai_draft_id it publishes that AI draft's text, which must be one your own sessions saved with carrel_save_draft from expected_version; Dustin's own working draft in Carrel is left as it is. With transcript_draft_id instead it puts that transcript draft live as the episode's transcript, which must be one your own sessions saved with carrel_save_transcript from the transcript the site holds now, while the post is at expected_version; the post's text and version stay, and the transcript it replaced is kept as a transcript draft that puts it back. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. The site keeps every earlier version. Carrel records "published by <this client> on Dustin's instruction" and emails him links to unpublish and to restore an earlier version. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: {
@@ -648,6 +759,12 @@ export const TOOLS: Tool[] = [
           description:
             "The aiDraftId carrel_save_draft returned, as digits, to publish that draft's text. Leave out to publish the site's text as it stands.",
         },
+        transcript_draft_id: {
+          type: "string",
+          pattern: "^[1-9][0-9]*$",
+          description:
+            "The transcriptDraftId carrel_save_transcript returned, as digits, to put that transcript live. Never with ai_draft_id.",
+        },
       },
       required: ["project", "item", "expected_version"],
       additionalProperties: false,
@@ -660,11 +777,44 @@ export const TOOLS: Tool[] = [
       idempotentHint: true,
       openWorldHint: true,
     },
-    outputSchema: shape({ published: YES }, { version: ANY, changeId: ANY, dustinEmailed: ANY }),
+    outputSchema: shape(
+      { published: YES },
+      {
+        version: ANY,
+        changeId: ANY,
+        dustinEmailed: ANY,
+        transcriptVersion: ANY,
+        putBackWithTranscriptDraftId: ANY,
+      },
+    ),
     outside: false,
     run: async (args, ctx) => {
       // Refused on the role before anything else is read, as the button is.
       const p = await project(ctx, args, "read");
+      if (args.transcript_draft_id !== undefined) {
+        const raw = String(args.transcript_draft_id);
+        if (args.ai_draft_id !== undefined)
+          throw new AiRefusal("Send ai_draft_id or transcript_draft_id, not both.");
+        if (!/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(Number(raw)))
+          throw new AiRefusal("transcript_draft_id is the number carrel_save_transcript returned.");
+        const done = await aiPublishTranscript(
+          ctx.env,
+          p,
+          ctx.session,
+          str(args, "item"),
+          str(args, "expected_version", { max: MAX.path }),
+          Number(raw),
+          { fetcher: ctx.deps.fetcher, carrelOrigin: ctx.deps.carrelOrigin },
+        );
+        return {
+          published: true,
+          version: done.version,
+          changeId: done.changeId,
+          transcriptVersion: done.transcriptVersion,
+          putBackWithTranscriptDraftId: done.keptDraftId,
+          dustinEmailed: done.emailed,
+        };
+      }
       const raw = args.ai_draft_id;
       const draftId = raw === undefined ? undefined : Number(raw);
       if (
@@ -1314,7 +1464,7 @@ export async function runTool(
     };
   } catch (error) {
     let message: string;
-    if (error instanceof AiRefusal) message = error.message;
+    if (error instanceof AiRefusal || error instanceof TranscriptRefusal) message = error.message;
     else if (error instanceof Response)
       message =
         error.status === 404

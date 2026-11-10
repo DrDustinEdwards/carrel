@@ -22,6 +22,7 @@ import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
 import { draftForEvent, draftSocialPost } from "~/lib/social/queue.server";
+import { publishTranscriptDraft, TranscriptRefusal } from "~/lib/transcripts.server";
 
 /**
  * An AI client acting for a person, known by the door it came through: the person the OAuth grant
@@ -287,6 +288,27 @@ export function publishedByLine(client: string): string {
   return `Published by ${client} on Dustin's instruction.`;
 }
 
+/** What refuses any AI publish, a post's or a transcript's, before the site is asked anything. */
+async function refuseAiPublish(
+  env: Env,
+  project: SiteProject,
+  session: AiSession,
+  itemId: string,
+): Promise<void> {
+  if (session.viewer.isReviewer) throw new AiRefusal("A reviewer never publishes.");
+  // Owner only, whatever a shared person's role: decision 2a gives publish to Dustin's sessions alone.
+  if (!session.viewer.isOwner || project.role !== "owner")
+    throw new AiRefusal("Only the Owner's own sessions may publish.");
+  const open = (await itemFindings(env.DB, project, itemId)).filter((f) => f.status === "open");
+  if (open.length > 0) {
+    throw new AiRefusal(
+      `Publish is refused while ${open.length} flag${open.length === 1 ? " is" : "s are"} open on this post: ${open
+        .map((f) => f.message)
+        .join(" | ")} Dustin fixes the text or dismisses each flag in Carrel first.`,
+    );
+  }
+}
+
 /**
  * Publishes the item at `expectedVersion`: as it stands on the site, or with the text of one of this
  * person's own AI drafts when `aiDraftId` names one. A draft must have been written from that same
@@ -301,18 +323,7 @@ export async function aiPublish(
   expectedVersion: string,
   opts: { fetcher?: typeof fetch; carrelOrigin: string; aiDraftId?: number },
 ): Promise<AiPublishResult> {
-  if (session.viewer.isReviewer) throw new AiRefusal("A reviewer never publishes.");
-  // Owner only, whatever a shared person's role: decision 2a gives publish to Dustin's sessions alone.
-  if (!session.viewer.isOwner || project.role !== "owner")
-    throw new AiRefusal("Only the Owner's own sessions may publish.");
-  const open = (await itemFindings(env.DB, project, itemId)).filter((f) => f.status === "open");
-  if (open.length > 0) {
-    throw new AiRefusal(
-      `Publish is refused while ${open.length} flag${open.length === 1 ? " is" : "s are"} open on this post: ${open
-        .map((f) => f.message)
-        .join(" | ")} Dustin fixes the text or dismisses each flag in Carrel first.`,
-    );
-  }
+  await refuseAiPublish(env, project, session, itemId);
   let source: string | undefined;
   if (opts.aiDraftId !== undefined) {
     const draft = await readAiDraft(env.DB, project, session.viewer, itemId, opts.aiDraftId).catch(
@@ -345,6 +356,41 @@ export async function aiPublish(
   );
   if (!outcome.ok) return { ok: false, message: outcome.message };
 
+  // The email goes out now; if it cannot, the record keeps the error and the health check reports it.
+  const doc = await readDoc(env, project, itemId, opts.fetcher).catch(() => null);
+  const title = doc?.title || itemId;
+  const base = `${opts.carrelOrigin}/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(itemId)}`;
+  const emailed = await recordAiPublication(env, project, session, itemId, outcome, {
+    subject: `Carrel: ${session.client} published "${title}"`,
+    text: [
+      publishedByLine(session.client),
+      "",
+      `${title} on ${siteEntry(project.site).name}${doc?.path ? `: ${doc.path}` : ""}`,
+      `Version ${outcome.version}, change ${outcome.changeId}.`,
+      ...(source !== undefined
+        ? [`It published the AI draft ${opts.aiDraftId}, replacing version ${expectedVersion}.`]
+        : []),
+      "",
+      `Unpublish it: ${base}/unpublish`,
+      `Earlier versions, to restore one: ${base}/history`,
+      "",
+    ].join("\n"),
+  });
+  return { ok: true, version: outcome.version, changeId: outcome.changeId, emailed };
+}
+
+/**
+ * Records an AI publish and emails Dustin about it now; if the email cannot go, the record keeps the error and the
+ * health check reports it. Answers whether it was sent.
+ */
+async function recordAiPublication(
+  env: Env,
+  project: SiteProject,
+  session: AiSession,
+  itemId: string,
+  outcome: { changeId: string; version: string },
+  mail: { subject: string; text: string },
+): Promise<boolean> {
   const d = drizzle(env.DB);
   await d.insert(aiPublications).values({
     changeId: outcome.changeId,
@@ -354,37 +400,14 @@ export async function aiPublish(
     client: session.client,
     version: outcome.version,
   });
-
-  // The email goes out now; if it cannot, the record keeps the error and the health check reports it.
-  let emailed = false;
   try {
-    const doc = await readDoc(env, project, itemId, opts.fetcher).catch(() => null);
-    const title = doc?.title || itemId;
-    const base = `${opts.carrelOrigin}/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(itemId)}`;
-    const sent = await sendEmail(env.EMAIL, {
-      from: env.ALERT_FROM,
-      to: env.ALERT_EMAIL,
-      subject: `Carrel: ${session.client} published "${title}"`,
-      text: [
-        publishedByLine(session.client),
-        "",
-        `${title} on ${siteEntry(project.site).name}${doc?.path ? `: ${doc.path}` : ""}`,
-        `Version ${outcome.version}, change ${outcome.changeId}.`,
-        ...(source !== undefined
-          ? [`It published the AI draft ${opts.aiDraftId}, replacing version ${expectedVersion}.`]
-          : []),
-        "",
-        `Unpublish it: ${base}/unpublish`,
-        `Earlier versions, to restore one: ${base}/history`,
-        "",
-      ].join("\n"),
-    });
+    const sent = await sendEmail(env.EMAIL, { from: env.ALERT_FROM, to: env.ALERT_EMAIL, ...mail });
     if (!sent.sent) throw new Error(sent.error);
-    emailed = true;
     await d
       .update(aiPublications)
       .set({ emailedAt: new Date().toISOString() })
       .where(eq(aiPublications.changeId, outcome.changeId));
+    return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(
@@ -394,8 +417,51 @@ export async function aiPublish(
       .update(aiPublications)
       .set({ emailError: message })
       .where(eq(aiPublications.changeId, outcome.changeId));
+    return false;
   }
-  return { ok: true, version: outcome.version, changeId: outcome.changeId, emailed };
+}
+
+/**
+ * Puts one of this person's transcript drafts live on Dustin's instruction (site-api v0.36.0), under the same rules as
+ * an AI publish of a post: the Owner's own sessions only, refused while any flag on the episode is open, recorded as
+ * "published by <client> on Dustin's instruction", and emailed to him with the link to the draft that puts the old
+ * transcript back.
+ */
+export async function aiPublishTranscript(
+  env: Env,
+  project: SiteProject,
+  session: AiSession,
+  itemId: string,
+  expectedVersion: string,
+  draftId: number,
+  opts: { fetcher?: typeof fetch; carrelOrigin: string },
+) {
+  await refuseAiPublish(env, project, session, itemId);
+  let published;
+  try {
+    published = await publishTranscriptDraft(env, project, session.viewer, itemId, draftId, {
+      expectedVersion,
+      client: session.client,
+      fetcher: opts.fetcher,
+    });
+  } catch (error) {
+    if (error instanceof TranscriptRefusal) throw new AiRefusal(error.message);
+    throw error;
+  }
+  const base = `${opts.carrelOrigin}/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(itemId)}`;
+  const emailed = await recordAiPublication(env, project, session, itemId, published, {
+    subject: `Carrel: ${session.client} published the transcript of "${itemId}"`,
+    text: [
+      publishedByLine(session.client),
+      "",
+      `The transcript of ${itemId} on ${siteEntry(project.site).name}, from transcript draft ${draftId}.`,
+      `Change ${published.changeId}.`,
+      "",
+      `The transcript it replaced, to put it back: ${base}/transcript/${published.keptDraftId}`,
+      "",
+    ].join("\n"),
+  });
+  return { ...published, emailed };
 }
 
 /** The last AI publish of an item, for the editor to show who published it. */
