@@ -105,8 +105,8 @@ export default function Sites({ loaderData }: Route.ComponentProps) {
                   </td>
                   <td data-num>{s.flags > 0 ? <Pill tone="warn">{s.flags}</Pill> : 0}</td>
                   <td>
-                    <Link to={`/p/${s.slug}/legal`} className="cap-btn">
-                      Settings
+                    <Link to={`/p/${s.slug}/settings`} className="cap-btn" data-size="sm">
+                      Settings<span className="cap-sr-only"> for {s.name}</span>
                     </Link>
                   </td>
                 </tr>

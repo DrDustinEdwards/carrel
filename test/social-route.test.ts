@@ -54,6 +54,6 @@ describe("the social page", () => {
     expect(data.accounts).toMatchObject([
       { key: "example-bluesky", handle: "example.bsky.social", enabled: false, mode: "approval" },
     ]);
-    expect(data.routine).toBe("SOCIAL_ROUTINE_URL and SOCIAL_ROUTINE_TOKEN are not both set.");
+    expect(data.routineMissing).toBe(true);
   });
 });

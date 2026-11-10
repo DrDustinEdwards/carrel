@@ -17,6 +17,7 @@ export default [
     route("p/:project/voice", "routes/project.voice.tsx"),
     route("p/:project/not-found", "routes/project.not-found.tsx"),
     route("p/:project/legal", "routes/legal.tsx"),
+    route("p/:project/settings", "routes/project.settings.tsx"),
     route("p/:project/mentions", "routes/mentions.tsx"),
     route("people", "routes/people.tsx"),
     route("books/new", "routes/book.new.tsx"),

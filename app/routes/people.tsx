@@ -1,5 +1,5 @@
-// The people page (Owner only): who is in Carrel, their role on each project, and adding, sharing and
-// disabling. Every change goes through app/lib/people-admin.server.ts, which checks the Owner.
+// The people page (Owner only): who is in Carrel, their role on each project as one grid of selects
+// that save on change, and adding (in dialogs), sharing and disabling. Every change goes through app/lib/people-admin.server.ts, which checks the Owner.
 //
 // Carrel decides what a person may do once they are in; Cloudflare Access decides whether they get
 // in at all. With CAPSID_AGENT_KEY set, every change to a role or to disabled is synced to Desk's
@@ -11,8 +11,10 @@
 // policy-management/ (Zero Trust > Access controls > Policies), and .../cloudflare-one/integrations/
 // identity-providers/one-time-pin/ (Zero Trust > Integrations > Identity providers).
 
-import { useEffect, useRef } from "react";
-import { Form, useFetcher, useNavigation } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Form, useFetcher, useNavigate, useNavigation, useSearchParams } from "react-router";
+import { Link } from "capsomer/react/link";
+import { Dialog, DialogBody, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
@@ -38,6 +40,7 @@ import {
   setDisabled,
   setProjectRole,
 } from "~/lib/people-admin.server";
+import { useHydrated } from "~/lib/hydrated";
 import { isMemberRole } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
@@ -94,6 +97,23 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
           isMemberRole(role) ? role : null,
         );
         return { ok: true, intent, access: await syncAccess(env, change) };
+      }
+      // A row's Save with no script: every project's role for one person, set one by one.
+      case "roles": {
+        const removed: string[] = [];
+        for (const [key, value] of form) {
+          if (!key.startsWith("role-")) continue;
+          const role = String(value);
+          const change = await setProjectRole(
+            db,
+            viewer,
+            personId,
+            Number(key.slice("role-".length)),
+            isMemberRole(role) ? role : null,
+          );
+          removed.push(...change.removed);
+        }
+        return { ok: true, intent: "role", access: await syncAccess(env, { removed }) };
       }
       case "disable":
       case "enable": {
@@ -187,15 +207,244 @@ function AccessButton({ person }: { person: Person }) {
   );
 }
 
+type Project = Route.ComponentProps["loaderData"]["projects"][number];
+
+const ROLE_LABEL: Record<string, string> = {
+  "": "No access",
+  reader: "Reader",
+  editor: "Editor",
+  author: "Author",
+};
+
+/** One person's row: a role select per project that saves on change. With no script, the row's
+ * Save button posts every project's role at once. */
+function PersonRow({
+  person,
+  projects,
+  onSaved,
+}: {
+  person: Person;
+  projects: Project[];
+  onSaved: (text: string) => void;
+}) {
+  const fetcher = useFetcher<ActionResult>();
+  const hydrated = useHydrated();
+  const name = person.name || person.email;
+  const kind = person.isOwner
+    ? "Owner"
+    : person.email.startsWith("agent:")
+      ? "Agent (AI)"
+      : person.isReviewer
+        ? "Reviewer (AI)"
+        : null;
+  const formId = `roles-${person.id}`;
+  return (
+    <tr>
+      <th scope="row">
+        <span className="app-role-person">{name}</span>
+        {person.name ? (
+          <span className="cap-muted app-outliner-chapter">{person.email}</span>
+        ) : null}
+        <span className="app-role-pills">
+          {kind ? <Pill variant="outline">{kind}</Pill> : null}
+          {person.disabledAt ? (
+            <Pill variant="secondary">Disabled {person.disabledAt.slice(0, 10)}</Pill>
+          ) : null}
+        </span>
+        {person.isOwner ? null : (
+          <form id={formId} method="post" hidden>
+            <input type="hidden" name="intent" value="roles" />
+            <input type="hidden" name="person" value={person.id} />
+          </form>
+        )}
+      </th>
+      {person.isOwner ? (
+        <td colSpan={projects.length} className="cap-muted">
+          Owner of every project.
+        </td>
+      ) : (
+        projects.map((project) => {
+          const role = person.roles.find((r) => r.projectId === project.id)?.role ?? "";
+          return (
+            <td key={project.id}>
+              <Select
+                form={formId}
+                name={`role-${project.id}`}
+                size="sm"
+                aria-label={`${name} on ${project.name}`}
+                defaultValue={role}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  void fetcher
+                    .submit(
+                      {
+                        intent: "role",
+                        person: String(person.id),
+                        project: String(project.id),
+                        role: value,
+                      },
+                      { method: "post" },
+                    )
+                    .then(() =>
+                      onSaved(`Saved: ${name} on ${project.name}, ${ROLE_LABEL[value]}.`),
+                    );
+                }}
+                options={[
+                  { value: "", label: "No access" },
+                  { value: "reader", label: "Reader" },
+                  // Reviewers read and flag only: Editor and Author are not offered, and the server refuses them anyway.
+                  ...(person.isReviewer ? [] : [{ value: "editor", label: "Editor" }]),
+                  // An Author publishes their own posts: a person on a site's project, never an agent.
+                  ...(person.isReviewer ||
+                  person.email.startsWith("agent:") ||
+                  project.kind !== "site"
+                    ? []
+                    : [{ value: "author", label: "Author" }]),
+                ]}
+              />
+            </td>
+          );
+        })
+      )}
+      <td>
+        {person.isOwner ? null : (
+          <span className="app-actions">
+            {hydrated ? null : (
+              <Button type="submit" form={formId} size="sm">
+                Save<span className="cap-sr-only"> roles for {name}</span>
+              </Button>
+            )}
+            <AccessButton person={person} />
+          </span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+/** Adding a person or an AI agent: dialogs opened from the head (?add=person, ?add=agent), so a link
+ * opens one; before the page's script runs, the same forms show as panels. */
+function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) {
+  const hydrated = useHydrated();
+  const navigate = useNavigate();
+  const person = (
+    <Form method="post" action="/people" className="app-form">
+      <div className="app-fields">
+        <Field label="Email" required>
+          <input className="cap-input" type="email" name="email" required autoComplete="off" />
+        </Field>
+        <Field label="Name">
+          <input className="cap-input" type="text" name="name" autoComplete="off" />
+        </Field>
+      </div>
+      <fieldset className="cap-field">
+        <legend className="cap-field-label">Kind</legend>
+        <div className="cap-field-options">
+          <Check
+            type="radio"
+            name="reviewer"
+            value="no"
+            defaultChecked
+            label="A person, given a role on each project under Access"
+          />
+          <Check
+            type="radio"
+            name="reviewer"
+            value="yes"
+            label="A reviewer: another company's AI agent, which reads and flags only, through the AI door"
+          />
+        </div>
+      </fieldset>
+      <div className="app-actions">
+        <Button type="submit" name="intent" value="add" variant="primary" pending={busy}>
+          Add
+        </Button>
+      </div>
+    </Form>
+  );
+  const agent = (
+    <Form method="post" action="/people" className="app-form">
+      <p className="cap-muted app-note">
+        For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never
+        as you.
+      </p>
+      <div className="app-fields">
+        <Field label="Agent name" required help="Lower case, such as grok.">
+          <input
+            className="cap-input"
+            type="text"
+            name="agent"
+            required
+            autoComplete="off"
+            pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,31}"
+          />
+        </Field>
+        <Field label="Label">
+          <input className="cap-input" type="text" name="label" autoComplete="off" />
+        </Field>
+      </div>
+      <div className="app-actions">
+        <Button type="submit" name="intent" value="add-agent" variant="primary" pending={busy}>
+          Add agent
+        </Button>
+      </div>
+    </Form>
+  );
+  if (!hydrated)
+    return (
+      <>
+        <Panel title="Add a person">{person}</Panel>
+        <Panel title="Add an AI agent">{agent}</Panel>
+      </>
+    );
+  const close = (open: boolean) => {
+    if (!open) void navigate("/people", { replace: true, preventScrollReset: true });
+  };
+  return (
+    <>
+      <Dialog open={adding === "person"} onOpenChange={close} aria-labelledby="add-person-title">
+        <DialogHeader>
+          <DialogTitle id="add-person-title">Add a person</DialogTitle>
+        </DialogHeader>
+        <DialogBody>{person}</DialogBody>
+      </Dialog>
+      <Dialog open={adding === "agent"} onOpenChange={close} aria-labelledby="add-agent-title">
+        <DialogHeader>
+          <DialogTitle id="add-agent-title">Add an AI agent</DialogTitle>
+        </DialogHeader>
+        <DialogBody>{agent}</DialogBody>
+      </Dialog>
+    </>
+  );
+}
+
 export default function People({ loaderData, actionData }: Route.ComponentProps) {
   const { people, projects, access } = loaderData;
   const busy = useNavigation().state !== "idle";
+  const [params] = useSearchParams();
+  const adding = params.get("add");
+  const [saved, setSaved] = useState("");
 
   return (
     <div className="app-page">
       <PageHead
         title="People"
         lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page."
+        actions={
+          <>
+            <Link to="/people?add=agent" className="cap-btn" preventScrollReset>
+              Add an AI agent
+            </Link>
+            <Link
+              to="/people?add=person"
+              className="cap-btn"
+              data-variant="primary"
+              preventScrollReset
+            >
+              Add a person
+            </Link>
+          </>
+        }
       />
 
       {actionData && !actionData.ok ? (
@@ -283,175 +532,54 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         <Banner tone="ok">Saved.</Banner>
       ) : null}
 
-      {/* One card per person, each project's role in a grid inside it: the page grows down with more
-          projects, never sideways (a table of people by projects was wider than the window). */}
       <Panel
         title="Access"
         count={people.length}
         src="A disabled person is refused at both doors on their next request, whatever Access says. Their roles are kept."
         flush
       >
-        <div className="cap-panel-pad app-people">
-          <p className="cap-muted app-note">
-            A Reader reads and comments. An Editor also writes and saves drafts. An Author on a
-            site's project also publishes, schedules and unpublishes the posts they wrote in Carrel.
-            Only the Owner publishes anyone else's post, sends anything else outside Carrel and
-            manages people.
-          </p>
-          <ul className="app-people-list" aria-label="People and their role on each project">
-            {people.map((person) => {
-              const kind = person.isOwner
-                ? "Owner"
-                : person.email.startsWith("agent:")
-                  ? "Agent (AI)"
-                  : person.isReviewer
-                    ? "Reviewer (AI)"
-                    : "Person";
-              return (
-                <li key={person.id} className="app-person">
-                  <div className="app-person-head">
-                    <h3>{person.name || person.email}</h3>
-                    {person.name ? <span className="cap-muted">{person.email}</span> : null}
-                    <Pill variant="outline">{kind}</Pill>
-                    {person.disabledAt ? (
-                      <Pill variant="secondary">Disabled {person.disabledAt.slice(0, 10)}</Pill>
-                    ) : null}
-                    {person.isOwner ? null : (
-                      <span className="app-person-access">
-                        <AccessButton person={person} />
-                      </span>
-                    )}
-                  </div>
-                  {person.isOwner ? (
-                    <p className="cap-muted app-note">Owner of every project.</p>
-                  ) : (
-                    <ul
-                      className="app-person-roles"
-                      aria-label={`${person.name || person.email} on each project`}
-                    >
-                      {projects.map((project) => {
-                        const role =
-                          person.roles.find((r) => r.projectId === project.id)?.role ?? "";
-                        const id = `role-${person.id}-${project.id}`;
-                        return (
-                          <li key={project.id}>
-                            <Form method="post" className="app-person-role">
-                              <input type="hidden" name="intent" value="role" />
-                              <input type="hidden" name="person" value={person.id} />
-                              <input type="hidden" name="project" value={project.id} />
-                              <label htmlFor={id}>
-                                {project.name}
-                                <span className="cap-sr-only">, role for {person.email}</span>
-                              </label>
-                              <span className="app-inline">
-                                <Select
-                                  id={id}
-                                  name="role"
-                                  size="sm"
-                                  defaultValue={role}
-                                  options={[
-                                    { value: "", label: "No access" },
-                                    { value: "reader", label: "Reader" },
-                                    // Reviewers read and flag only: Editor and Author are not offered, and the server refuses them anyway.
-                                    ...(person.isReviewer
-                                      ? []
-                                      : [{ value: "editor", label: "Editor" }]),
-                                    // An Author publishes their own posts: a person on a site's project, never an agent.
-                                    ...(person.isReviewer ||
-                                    person.email.startsWith("agent:") ||
-                                    project.kind !== "site"
-                                      ? []
-                                      : [{ value: "author", label: "Author" }]),
-                                  ]}
-                                />
-                                <Button type="submit" size="sm" pending={busy}>
-                                  Set
-                                  <span className="cap-sr-only">
-                                    {" "}
-                                    role for {person.email} on {project.name}
-                                  </span>
-                                </Button>
-                              </span>
-                            </Form>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+        <p className="cap-muted app-note cap-panel-pad">
+          A Reader reads and comments. An Editor also writes and saves drafts. An Author on a site's
+          project also publishes, schedules and unpublishes the posts they wrote in Carrel. Only the
+          Owner publishes anyone else's post, sends anything else outside Carrel and manages people.
+          A role saves as soon as you change it.
+        </p>
+        <p className="cap-sr-only" role="status">
+          {saved}
+        </p>
+        <div
+          className="cap-table-wrap app-roles-wrap"
+          role="region"
+          aria-labelledby="roles-caption"
+          tabIndex={0}
+        >
+          <table className="cap-table app-roles">
+            <caption id="roles-caption" className="cap-sr-only">
+              People, and their role on each project
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Person</th>
+                {projects.map((project) => (
+                  <th scope="col" key={project.id}>
+                    {project.name}
+                  </th>
+                ))}
+                <th scope="col">
+                  <span className="cap-sr-only">Access</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {people.map((person) => (
+                <PersonRow key={person.id} person={person} projects={projects} onSaved={setSaved} />
+              ))}
+            </tbody>
+          </table>
         </div>
       </Panel>
 
-      <Panel title="Add a person">
-        <Form method="post" className="app-form">
-          <div className="app-fields">
-            <Field label="Email" required>
-              <input className="cap-input" type="email" name="email" required autoComplete="off" />
-            </Field>
-            <Field label="Name">
-              <input className="cap-input" type="text" name="name" autoComplete="off" />
-            </Field>
-          </div>
-          <fieldset className="cap-field">
-            <legend className="cap-field-label">Kind</legend>
-            <div className="cap-field-options">
-              <Check
-                type="radio"
-                name="reviewer"
-                value="no"
-                defaultChecked
-                label="A person, given a role on each project under Access"
-              />
-              <Check
-                type="radio"
-                name="reviewer"
-                value="yes"
-                label="A reviewer: another company's AI agent, which reads and flags only, through the AI door"
-              />
-            </div>
-          </fieldset>
-          <div className="app-actions">
-            <Button type="submit" name="intent" value="add" variant="primary" pending={busy}>
-              Add
-            </Button>
-          </div>
-        </Form>
-      </Panel>
-
-      <Panel
-        title="Add an AI agent"
-        src="For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never as you."
-      >
-        <Form method="post" className="app-form">
-          <div className="app-fields">
-            <Field
-              label="Agent name"
-              required
-              help="Lower case, such as grok. Its key is the Worker secret AGENT_KEY_ and this name in capitals."
-            >
-              <input
-                className="cap-input"
-                type="text"
-                name="agent"
-                required
-                autoComplete="off"
-                pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,31}"
-              />
-            </Field>
-            <Field label="Label">
-              <input className="cap-input" type="text" name="label" autoComplete="off" />
-            </Field>
-          </div>
-          <div className="app-actions">
-            <Button type="submit" name="intent" value="add-agent" variant="primary" pending={busy}>
-              Add agent
-            </Button>
-          </div>
-        </Form>
-      </Panel>
+      <AddDialogs adding={adding} busy={busy} />
     </div>
   );
 }
