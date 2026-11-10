@@ -17,7 +17,6 @@ import { ProjectTabs } from "~/components/project-tabs";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
-import { can } from "~/lib/roles";
 import { siteClient, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/project.not-found";
@@ -47,7 +46,6 @@ export async function loader({ params, context, request }: Route.LoaderArgs) {
     slug: project.slug,
     name: project.name,
     site: siteEntry(project.site).name,
-    mentions: can(project.role, "read_mentions"),
   };
   try {
     const { rows } = await siteClient(env, project.site).insight.notFound({ days });
@@ -84,7 +82,7 @@ export default function ProjectNotFound({ loaderData }: Route.ComponentProps) {
         lead={`Paths on ${project.site} that answered 404 in the last ${days} days, and who linked to them.`}
       />
 
-      <ProjectTabs slug={project.slug} current="not-found" mentions={project.mentions} />
+      <ProjectTabs slug={project.slug} current="not-found" />
 
       {reason ? (
         <Banner tone="warn" title="The 404 report is not available">

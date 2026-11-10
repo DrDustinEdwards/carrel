@@ -17,7 +17,6 @@ import { PageHead } from "capsomer/react/page-head";
 import { loadMedia, readMediaQuery, type IntentResult } from "@dustinedwards/site-api/admin";
 
 import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
-import { ProjectTabs } from "~/components/project-tabs";
 import { ScopeChip } from "~/components/scope-chip";
 import { visibleProjects } from "~/lib/people.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -47,7 +46,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     slug: project.slug,
     name: project.name,
     site: siteEntry(project.site).name,
-    mentions: can(project.role, "read_mentions"),
   };
   try {
     const kit = await loadMedia(mediaSource(env, project, viewer), readMediaQuery(search));
@@ -113,7 +111,6 @@ export default function MediaPage({ loaderData, actionData }: Route.ComponentPro
           <ScopeChip sites={project.sites} value={project.slug} all={null} action="/media" />
         }
       />
-      <ProjectTabs slug={project.slug} current="media" mentions={project.mentions} />
       {unavailable || !data ? (
         <Banner tone="warn">{unavailable}</Banner>
       ) : (

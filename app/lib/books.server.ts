@@ -838,3 +838,17 @@ export async function saveBookAiDraft(
     .returning({ id: aiDrafts.id });
   return { id: row!.id, baseVersion: base?.sha ?? null };
 }
+
+/** What every tab of a book's page shows in its head: the name, Git's state and whether export is open. */
+export async function bookHead(env: Env, project: BookProject) {
+  const canPublish = can(project.role, "publish");
+  return {
+    slug: project.slug,
+    name: project.name,
+    book: project.book,
+    connected: bookRepo(env).repo !== null,
+    canPublish,
+    exportReady: canPublish ? (await exportGate(env.DB, project)).ok : false,
+  };
+}
+export type BookHeadData = Awaited<ReturnType<typeof bookHead>>;

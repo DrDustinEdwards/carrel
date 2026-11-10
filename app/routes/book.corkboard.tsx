@@ -1,25 +1,24 @@
-// The corkboard (design 4.2): the book's chapters in order, then each chapter's scenes as cards with
-// the summary, point of view, status and words. Chapters and cards move by dragging a grip, by the
-// keyboard, or by Move up and Move down; a card also moves to another chapter. Every move is renames
-// of numbered files in one commit (lib/binder.server.ts). It works with no script: the lists sit in
-// forms whose buttons post the move.
+// The corkboard (design 4.2), a view of a book's Manuscript tab: the book's chapters in order, then
+// each chapter's scenes as compact cards with the summary, point of view, status and words. Chapters
+// and cards move by dragging a grip, by the keyboard, or by Move up and Move down; a card's menu also
+// moves it to another chapter. Every move is renames of numbered files in one commit
+// (lib/binder.server.ts). It works with no script: the lists sit in forms whose buttons post the move,
+// and the card menu is a native disclosure of submit buttons (Capsomer's form menu look).
 
+import { useEffect, useRef } from "react";
 import { Form, useFetcher } from "react-router";
+import { enhance } from "capsomer/behavior/menu";
 import { Alert, Banner } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
-import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
-import { Select } from "capsomer/react/select";
 import { SortableList, moveId } from "capsomer/react/sortable-list";
-import { PageHead } from "capsomer/react/page-head";
 import { Link } from "capsomer/react/link";
 
-import { RouterLink } from "~/components/frame";
+import { BookHead } from "~/components/book-head";
 import { StatusLabelPill } from "~/components/writing/status-label";
 
 import { reorderBook, chapterSources, type ReorderResult } from "~/lib/binder.server";
-import { bookRepo, listFiles, requireBookProject } from "~/lib/books.server";
+import { bookHead, bookRepo, listFiles, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { parseFile } from "~/lib/novels/frontmatter";
 import { titleFromSegment } from "~/lib/novels/layout";
@@ -36,15 +35,16 @@ import { readForm } from "~/lib/form.server";
 import type { Route } from "./+types/book.corkboard";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
-  return [{ title: data ? `Corkboard · ${data.project.name} · Carrel` : "Carrel" }];
+  return [{ title: data ? `Corkboard · ${data.head.name} · Carrel` : "Carrel" }];
 }
 
 export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "read");
-  const [files, status] = await Promise.all([
+  const [files, status, head] = await Promise.all([
     listFiles(env.DB, project),
     statusList(env.DB, project),
+    bookHead(env, project),
   ]);
   const byPath = new Map(files.map((f) => [f.path, f]));
   const order = currentOrder(files.map((f) => f.path));
@@ -54,7 +54,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     order.flatMap((c) => c.scenes),
   );
   return {
-    project: { slug: project.slug, name: project.name },
+    head,
     canMove: can(project.role, "edit") && bookRepo(env).repo !== null,
     labels: status.labels,
     chapters: order.map((c) => ({
@@ -129,10 +129,52 @@ export async function action({
 
 type Card = Route.ComponentProps["loaderData"]["chapters"][number]["cards"][number];
 
+/** A card's menu: Move to each other chapter. Its buttons submit the card's own form (the form
+ * attribute), since the card sits inside its chapter's list form and forms do not nest. */
+function CardMenu({
+  title,
+  form,
+  chapters,
+}: {
+  title: string;
+  form: string;
+  chapters: { slug: string; title: string }[];
+}) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => (ref.current?.parentNode ? enhance(ref.current.parentNode) : undefined), []);
+  return (
+    <details className="cap-menu-form app-card-menu" data-cap="menu-form" ref={ref}>
+      <summary className="cap-btn cap-menu-trigger" data-size="sm">
+        Move to<span className="cap-sr-only"> another chapter: {title}</span>
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      </summary>
+      <div className="cap-popover cap-menu">
+        {chapters.map((c) => (
+          <button
+            key={c.slug}
+            type="submit"
+            form={form}
+            name="target"
+            value={c.slug}
+            className="cap-option cap-menu-item"
+            onClick={() => {
+              if (ref.current) ref.current.open = false;
+            }}
+          >
+            <span className="cap-option-label">{c.title}</span>
+          </button>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 export default function Corkboard({ loaderData, actionData }: Route.ComponentProps) {
-  const { project, canMove, labels, chapters } = loaderData;
+  const { head, canMove, labels, chapters } = loaderData;
   const mover = useFetcher<typeof action>();
-  const base = `/b/${project.slug}`;
+  const base = `/b/${head.slug}`;
   const result = mover.data?.result ?? actionData?.result ?? null;
   const moving = mover.state !== "idle";
   const send = (fields: Record<string, string | string[]>) => {
@@ -141,7 +183,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
     void mover.submit(body, { method: "post" });
   };
 
-  // A card's "Move to" sits inside the list's form, so its controls belong to a form of their own
+  // A card's "Move to" sits inside the list's form, so its buttons belong to a form of their own
   // placed after the list (the form attribute), never a form nested in another.
   const moveForm = (c: Card) => `move-${c.path.replace(/[^a-z0-9]+/g, "-")}`;
   const card = (c: Card, chapter: string) => (
@@ -158,58 +200,41 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
           <span className="cap-sr-only"> (the scene's first sentence; it has no summary)</span>
         ) : null}
       </p>
-      <p className="app-card-facts cap-muted">
-        {c.pov ? <>{c.pov}, </> : null}
-        {c.words.toLocaleString("en-US")} words
-      </p>
-      {canMove && chapters.length > 1 ? (
-        <div className="app-card-move">
-          <Field label={<span>Move {c.title} to</span>}>
-            <Select
-              form={moveForm(c)}
-              name="target"
-              size="sm"
-              required
-              defaultValue=""
-              options={[
-                { value: "", label: "Another chapter", disabled: true },
-                ...chapters
-                  .filter((x) => x.slug !== chapter)
-                  .map((x) => ({ value: x.slug, label: x.title })),
-              ]}
-            />
-          </Field>
-          <Button type="submit" form={moveForm(c)} size="sm" pending={moving}>
-            Move
-          </Button>
-        </div>
-      ) : null}
+      <div className="app-card-foot">
+        <p className="app-card-facts cap-muted">
+          {c.pov ? <>{c.pov}, </> : null}
+          {c.words.toLocaleString("en-US")} words
+        </p>
+        {canMove && chapters.length > 1 ? (
+          <CardMenu
+            title={c.title}
+            form={moveForm(c)}
+            chapters={chapters.filter((x) => x.slug !== chapter)}
+          />
+        ) : null}
+      </div>
     </div>
   );
 
   return (
     <div className="app-page">
-      <PageHead
-        renderLink={RouterLink}
-        crumbs={[{ label: project.name, href: base }, { label: "Corkboard" }]}
-        title="Corkboard"
-        lead="Each chapter's scenes as cards, in reading order. Moving a card or a chapter renumbers the files after it, in one commit."
-        actions={
-          <Link to={`${base}/outliner`} className="cap-btn">
-            Outliner
-          </Link>
-        }
-      />
+      <BookHead book={head} section="manuscript" view="corkboard" />
+      <div className="app-stack" data-tight>
+        <p className="cap-muted app-note">
+          Each chapter's scenes as cards, in reading order. Moving a card or a chapter renumbers the
+          files after it, in one commit.
+        </p>
 
-      <p role="status" className="app-note">
-        {moving
-          ? "Saving the new order to Git."
-          : result?.ok
-            ? result.renames.length === 0
-              ? "Nothing to move."
-              : `Moved. ${result.renames.length} file${result.renames.length === 1 ? "" : "s"} renumbered in one commit.`
-            : ""}
-      </p>
+        <p role="status" className="app-note">
+          {moving
+            ? "Saving the new order to Git."
+            : result?.ok
+              ? result.renames.length === 0
+                ? "Nothing to move."
+                : `Moved. ${result.renames.length} file${result.renames.length === 1 ? "" : "s"} renumbered in one commit.`
+              : ""}
+        </p>
+      </div>
       {result && !result.ok ? <Alert tone="crit">{result.message}</Alert> : null}
       {!canMove ? (
         <Banner tone="info">
@@ -219,7 +244,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
 
       {chapters.length === 0 ? (
         <Empty kind="nothing-yet" title="No scenes yet">
-          Start a chapter on the book page, or refresh from Git.
+          Start a chapter in the List view, or refresh from Git.
         </Empty>
       ) : (
         <>
@@ -256,6 +281,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
           {chapters.map((chapter) => (
             <Panel
               key={chapter.slug}
+              className="app-panel-menus"
               title={chapter.title}
               count={chapter.cards.length}
               headingId={`cork-${chapter.slug}`}
@@ -285,8 +311,10 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
                       hidden
                       onSubmit={(e) => {
                         e.preventDefault();
+                        // The chosen chapter is the pressed button's value, so the submitter goes in.
+                        const submitter = (e.nativeEvent as SubmitEvent).submitter;
                         send(
-                          Object.fromEntries(new FormData(e.currentTarget)) as Record<
+                          Object.fromEntries(new FormData(e.currentTarget, submitter)) as Record<
                             string,
                             string
                           >,

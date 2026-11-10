@@ -12,7 +12,6 @@ import { MentionsList } from "capsomer/react/mentions-list";
 import { PageHead } from "capsomer/react/page-head";
 
 import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
-import { ProjectTabs } from "~/components/project-tabs";
 import { getEnv, getViewer } from "~/lib/context";
 import { mentionsSource, runIntent, unreachable } from "~/lib/mentions.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -70,7 +69,6 @@ export default function Mentions({ loaderData, actionData }: Route.ComponentProp
         title={project.name}
         lead={`Webmentions about posts on ${project.site}. Approving one shows it on the post within seconds.`}
       />
-      <ProjectTabs slug={project.slug} current="mentions" mentions />
       {unavailable || !data ? (
         <Banner tone="warn" title="Mentions are not available for this site yet">
           {unavailable}

@@ -1,14 +1,18 @@
 // The AI switch (site-runtime ./ai-engine): which engine does Carrel's AI work, Dustin's Claude subscription or the
-// Claude API. One setting for everything, an optional setting per job, and a monthly cap on API spend. The Owner's alone.
+// Claude API. One table: everything, then a row per job with its engine and model, saved together; the monthly cap
+// on API spend beside this month's spend. The quick actions (the API for a few days, draft now) sit in the head's
+// menu. The Owner's alone.
 
 import { Form, useNavigation } from "react-router";
 import { PRICES } from "@dustinedwards/site-runtime/ai-engine";
 import { MODEL_IDS } from "@dustinedwards/site-runtime/anthropic";
-import { Alert, Banner } from "capsomer/react/banner";
+import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
+import { FormMenu } from "capsomer/react/menu";
 import { PageHead } from "capsomer/react/page-head";
+import { Status } from "capsomer/react/status";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Select } from "capsomer/react/select";
@@ -80,7 +84,7 @@ export async function loader({ context }: Route.LoaderArgs) {
     usage,
     features: FEATURES.map((f) => ({ ...f })),
     // What each engine can do right now, so a setting that cannot work says so.
-    routineMissing: "missing" in routine ? routine.missing : null,
+    routineMissing: "missing" in routine,
     apiKeyMissing: !env.ANTHROPIC_API_KEY,
   };
 }
@@ -91,6 +95,11 @@ export async function action({ request, context }: Route.ActionArgs) {
   const form = await readForm(request);
   if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
   const current = await readAiSettings(env.DB);
+  // The head's menu posts one "quick" value: draft now, the API for some days, or back to the settings.
+  const quick = String(form.get("quick") ?? "");
+  if (quick === "draft") form.set("draft-now", "1");
+  else if (quick === "back") form.set("override", "0");
+  else if (/^api-\d+$/.test(quick)) form.set("override", quick.slice(4));
   if (form.get("draft-now") !== null) {
     // The cron's two drafting passes, run on the spot instead of waiting for the next tick.
     const [episodes, social] = await Promise.all([
@@ -153,143 +162,215 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
   const { sites, settings, models, spent, usage, features, routineMissing, apiKeyMissing } =
     loaderData;
   const busy = useNavigation().state !== "idle";
+  const engineLabel = (v: string) => ENGINES.find((e) => e.value === v)?.label ?? v;
   return (
     <div className="app-page">
       <PageHead
         title="AI engine"
         lead="Choose whether Carrel's AI work runs on your Claude subscription or on the Claude API."
+        actions={
+          <FormMenu
+            label="Run now"
+            action="/ai"
+            name="quick"
+            items={[
+              { label: "Draft what is waiting", value: "draft" },
+              { label: "Use the API for 1 day", value: "api-1" },
+              { label: "Use the API for 3 days", value: "api-3" },
+              { label: "Use the API for 7 days", value: "api-7" },
+              ...(settings.override ? [{ label: "Back to my settings", value: "back" }] : []),
+            ]}
+          />
+        }
       />
       {actionData && "done" in actionData ? <Alert tone="ok">{actionData.done}</Alert> : null}
       {actionData && "problem" in actionData ? (
         <Alert tone="crit">{actionData.problem}</Alert>
       ) : null}
-      {routineMissing ? (
-        <Banner tone="warn" title="The subscription has no routine to start">
-          {routineMissing} Until it is set up, Subscription drafts nothing (posts get the template),
-          and Automatic uses the API.
-        </Banner>
-      ) : null}
-      {apiKeyMissing ? (
-        <Banner tone="warn" title="The API has no key">
-          Carrel has no ANTHROPIC_API_KEY secret, so the API engine cannot draft anything.
-        </Banner>
-      ) : null}
-      <Panel
-        title="Subscription running low?"
-        src={
-          settings.override
-            ? `On the API until ${settings.override.until.slice(0, 10)}, with no cap`
-            : "Using your settings below"
-        }
-      >
-        <Form method="post" className="app-actions">
-          {[1, 3, 7].map((d) => (
-            <Button key={d} type="submit" name="override" value={d} size="sm">
-              Use the API for {d} {d === 1 ? "day" : "days"}
-            </Button>
-          ))}
-          {settings.override ? (
-            <Button type="submit" name="override" value={0} size="sm">
-              Back to my settings
-            </Button>
-          ) : null}
-        </Form>
-      </Panel>
-      <Panel title="Draft now" src="Episodes and social posts">
-        <Form method="post" className="app-actions">
-          <Button type="submit" name="draft-now" value="1" size="sm" pending={busy}>
-            Draft what is waiting
-          </Button>
-        </Form>
+
+      <dl className="app-engine-status" aria-label="What each engine can do now">
+        <div>
+          <dt>Subscription</dt>
+          <dd>
+            {routineMissing ? (
+              <Status tone="warn">Not connected</Status>
+            ) : (
+              <Status tone="ok">Connected</Status>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>API</dt>
+          <dd>
+            {apiKeyMissing ? <Status tone="warn">No key</Status> : <Status tone="ok">Ready</Status>}
+          </dd>
+        </div>
+        <div>
+          <dt>Running on</dt>
+          <dd>
+            {settings.override
+              ? `The API for everything until ${settings.override.until.slice(0, 10)}, with no cap`
+              : "The settings below"}
+          </dd>
+        </div>
+      </dl>
+      {routineMissing || apiKeyMissing ? (
         <p className="cap-muted app-note">
-          Runs the same pass the schedule runs, now, on the engines set below.
+          {routineMissing
+            ? "Until the subscription's drafting routine is connected, Subscription drafts nothing (posts get the template) and Automatic uses the API. "
+            : ""}
+          {apiKeyMissing ? "Without an API key the API engine cannot draft anything. " : ""}
+          Both are Carrel secrets, set where Carrel is deployed.
         </p>
-      </Panel>
-      <Panel title="Alt text" src="Pictures without it">
-        <Form method="post" className="app-actions">
-          <Select name="site" aria-label="Site" options={sites} />
-          <Select
-            name="engine"
-            aria-label="Engine for this run"
-            options={[
-              { value: "", label: "Use the setting" },
-              { value: "api", label: "Run it on the API" },
-              { value: "subscription", label: "Run it on the subscription" },
-            ]}
-          />
-          <Button type="submit" name="alt-text" value="1" size="sm" pending={busy}>
-            Write the missing alt text
-          </Button>
-        </Form>
-        <p className="cap-muted app-note">
-          Runs on the engine set below. It sets alt only on files that have none.
-        </p>
-      </Panel>
-      <Form method="post" className="app-form">
-        <Panel title="Engine">
-          <div className="app-stack">
-            <Field label="Everything">
-              <Select name="master" defaultValue={settings.master} options={ENGINES} />
-            </Field>
-            {features.map((f) => (
-              <Field key={f.key} label={f.label} help={f.note}>
-                <div className="app-stack" data-tight>
-                  <Select
-                    name={`feature-${f.key}`}
-                    defaultValue={settings.features[f.key] ?? ""}
-                    options={[{ value: "", label: "Follow everything" }, ...ENGINES]}
-                  />
-                  <Select
-                    name={`model-${f.key}`}
-                    aria-label={`${f.label}: model when the API does it`}
-                    defaultValue={models[f.key] ?? ""}
-                    options={MODELS}
-                  />
-                </div>
-              </Field>
-            ))}
+      ) : null}
+
+      <Form method="post" id="engine-form">
+        <Panel
+          title="Engine for each job"
+          flush
+          footer={
+            <div className="app-actions">
+              <Button type="submit" variant="primary" pending={busy}>
+                Save
+              </Button>
+            </div>
+          }
+        >
+          <div
+            className="cap-table-wrap"
+            role="region"
+            aria-labelledby="engine-caption"
+            tabIndex={0}
+          >
+            <table className="cap-table app-engine-table">
+              <caption id="engine-caption" className="cap-sr-only">
+                The engine and model for each job
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Job</th>
+                  <th scope="col">Engine</th>
+                  <th scope="col">Model when the API does it</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">
+                    Everything
+                    <span className="cap-muted app-outliner-chapter">
+                      Each job follows this unless it says otherwise.
+                    </span>
+                  </th>
+                  <td>
+                    <Select
+                      name="master"
+                      aria-label="Engine for everything"
+                      defaultValue={settings.master}
+                      options={ENGINES}
+                    />
+                  </td>
+                  <td className="cap-muted">Each job's own</td>
+                </tr>
+                {features.map((f) => (
+                  <tr key={f.key}>
+                    <th scope="row">
+                      {f.label}
+                      {f.note ? (
+                        <span className="cap-muted app-outliner-chapter">{f.note}</span>
+                      ) : null}
+                    </th>
+                    <td>
+                      <Select
+                        name={`feature-${f.key}`}
+                        aria-label={`${f.label}: engine`}
+                        defaultValue={settings.features[f.key] ?? ""}
+                        options={[
+                          {
+                            value: "",
+                            label: `Follow everything (${engineLabel(settings.master).split(":")[0]})`,
+                          },
+                          ...ENGINES,
+                        ]}
+                      />
+                    </td>
+                    <td>
+                      <Select
+                        name={`model-${f.key}`}
+                        aria-label={`${f.label}: model when the API does it`}
+                        defaultValue={models[f.key] ?? ""}
+                        options={MODELS}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      </Form>
+
+      <div className="app-split" data-aside data-even>
+        <Panel title="API spend this month" src={`${dollars(spent)} so far`}>
+          <div className="app-stack" data-tight>
             <Field
-              label="API cap a month, $"
-              help="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then."
+              label="Cap a month, $"
+              help="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then. Saved with the table."
             >
               <input
                 className="cap-input"
                 name="cap"
+                form="engine-form"
                 type="number"
                 min={0}
                 step="0.01"
                 defaultValue={(settings.apiCapMicros / 1_000_000).toFixed(2)}
               />
             </Field>
-            <div className="app-actions">
-              <Button type="submit" variant="primary" pending={busy}>
-                Save
-              </Button>
-            </div>
+            {usage.length === 0 ? (
+              <Empty kind="all-clear" flush title="Nothing spent">
+                No API calls this month.
+              </Empty>
+            ) : (
+              <RowList label="API spend by job">
+                {usage.map((u) => (
+                  <Row
+                    key={u.feature}
+                    title={features.find((f) => f.key === u.feature)?.label ?? u.feature}
+                    detail={`${u.calls} calls · ${dollars(u.micros)}`}
+                  />
+                ))}
+              </RowList>
+            )}
+            <p className="cap-muted app-note">
+              Costs are Anthropic's list prices times the tokens each call used. The subscription
+              has no meter Carrel can read; claude.ai/settings/usage shows it.
+            </p>
           </div>
         </Panel>
-      </Form>
-      <Panel title="API spend this month" src={`${dollars(spent)} so far`}>
-        {usage.length === 0 ? (
-          <Empty kind="all-clear" flush title="Nothing spent">
-            No API calls this month.
-          </Empty>
-        ) : (
-          <RowList label="API spend by job">
-            {usage.map((u) => (
-              <Row
-                key={u.feature}
-                title={features.find((f) => f.key === u.feature)?.label ?? u.feature}
-                detail={`${u.calls} calls · ${dollars(u.micros)}`}
+        <Panel title="Alt text" src="Pictures without it">
+          <Form method="post" className="app-stack" data-tight>
+            <Field label="Site">
+              <Select name="site" options={sites} />
+            </Field>
+            <Field label="Engine for this run">
+              <Select
+                name="engine"
+                options={[
+                  { value: "", label: "Use the setting" },
+                  { value: "api", label: "Run it on the API" },
+                  { value: "subscription", label: "Run it on the subscription" },
+                ]}
               />
-            ))}
-          </RowList>
-        )}
-        <p className="cap-muted app-note">
-          Costs are Anthropic's list prices times the tokens each call used. The subscription has no
-          meter Carrel can read; claude.ai/settings/usage shows it.
-        </p>
-      </Panel>
+            </Field>
+            <div className="app-actions">
+              <Button type="submit" name="alt-text" value="1" pending={busy}>
+                Write the missing alt text
+              </Button>
+            </div>
+            <p className="cap-muted app-note">It sets alt only on files that have none.</p>
+          </Form>
+        </Panel>
+      </div>
     </div>
   );
 }

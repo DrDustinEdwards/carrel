@@ -172,62 +172,38 @@
   }
 }
 
-/* People (routes/people.tsx): one card per person, their role on each project in a grid. */
-.app-people {
-  display: grid;
-  gap: var(--space-5);
-}
-
-.app-people-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.app-person {
-  display: grid;
-  gap: var(--space-3);
-  padding-block: var(--space-5);
-  border-block-start: 1px solid var(--line);
-
-  &:last-child {
-    padding-block-end: 0;
+/* People (routes/people.tsx): people as rows, projects as columns, a role select in each cell. The
+   person stays in view while the projects scroll sideways. */
+.app-roles {
+  & th[scope="row"] {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    min-inline-size: 12rem;
+    background: var(--surface);
+  }
+  & td {
+    white-space: nowrap;
+  }
+  /* A role select keeps its longest word whole; the table scrolls sideways instead. */
+  & td > * {
+    min-inline-size: 8.5rem;
   }
 }
-
-.app-person-head {
+.app-role-person {
+  display: block;
+}
+.app-role-actions {
+  margin-block-start: var(--space-2);
+}
+.app-role-pills {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-
-  & h3 {
-    margin: 0;
-    font-size: var(--fs-body);
-  }
-}
-
-.app-person-access {
-  margin-inline-start: auto;
-}
-
-.app-person-roles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
-  gap: var(--space-4) var(--space-5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.app-person-role {
-  display: grid;
   gap: var(--space-1);
+  margin-block-start: var(--space-1);
 
-  & > label {
-    font-size: var(--fs-detail);
-    font-weight: 600;
+  &:empty {
+    display: none;
   }
 }
 
@@ -400,18 +376,34 @@
 /* A scene's header, as a row's detail: each fact with its name, wrapping to the room there is. A row's
    detail is a paragraph, so these are spans. */
 .app-scene-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-5);
+  display: grid;
+  gap: var(--space-1);
   margin-block-start: var(--space-2);
 
-  & > span {
-    display: inline-flex;
-    gap: var(--space-2);
-  }
   & b {
     color: var(--dim);
     font-weight: 400;
+  }
+}
+/* The short facts wrap as whole items; a long value wraps inside its own item, after its label. */
+.app-scene-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+.app-scene-fact,
+.app-scene-line {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A chapter: the scene list stays beside the text while it is read, scrolling on its own if long. */
+@media (min-width: 1100px) {
+  .app-chapter-split > :first-child {
+    position: sticky;
+    inset-block-start: var(--space-5);
+    max-block-size: calc(100dvh - 2 * var(--space-5));
+    overflow: auto;
   }
 }
 
@@ -1478,4 +1470,85 @@ img.ProseMirror-separator {
     grid-column: 3;
     grid-row: 2;
   }
+}
+
+/* A book's Manuscript views (List, Outliner, Corkboard) sit under its section tabs. */
+.app-views {
+  justify-self: start;
+  max-inline-size: 100%;
+  margin-block-start: calc(-1 * var(--space-3));
+}
+
+/* Link chips filtering a server list, with an edit link at the end of the row. */
+.app-chip-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+.app-chip-edit {
+  margin-inline-start: auto;
+}
+
+/* Corkboard cards: the facts and the Move to menu share the last line. */
+.app-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+.app-card-menu > .cap-menu {
+  min-inline-size: 12rem;
+}
+
+/* Bible and notes: the three kinds of entry side by side where there is room. */
+.app-bible {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+}
+
+/* A tab whose one panel would stretch too wide to read. */
+.app-narrow {
+  max-inline-size: 48rem;
+}
+/* A panel whose cards open a form menu lets the menu out past its edge. */
+.cap-panel.app-panel-menus {
+  overflow: visible;
+}
+
+/* The AI engine's status line: each engine and whether it can work now. */
+.app-engine-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+
+  & > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  & dt {
+    color: var(--muted);
+  }
+  & dd {
+    margin: 0;
+  }
+}
+.app-engine-table td > * {
+  min-inline-size: 12rem;
+}
+
+/* History: the Compare button holds to the bottom of the window once two revisions are ticked. */
+.app-compare-bar[data-ready] {
+  position: sticky;
+  inset-block-end: var(--space-4);
+  z-index: 2;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay, 0 4px 16px rgb(0 0 0 / 0.12));
 }

@@ -16,8 +16,6 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
-import { ProjectTabs } from "~/components/project-tabs";
-
 import { dismissItemFinding, projectFlags } from "~/lib/ai.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -85,8 +83,6 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
         title={project.name}
         lead={`${open} open of ${flags.length} flags on ${project.site}. An open flag holds publish until the text is fixed or the Owner dismisses it.`}
       />
-
-      <ProjectTabs slug={project.slug} current="flags" mentions={project.mentions} />
 
       {dismissed ? <Banner tone="ok">Dismissed flag {dismissed}.</Banner> : null}
 

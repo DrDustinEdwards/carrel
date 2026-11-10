@@ -1,63 +1,57 @@
-// The book view: its chapters and scenes in reading order with each scene's header, the bible and
-// the outline, the flags the checks have open, and export for the Owner. The list is Carrel's index
-// of the book's folder in Git; Refresh reads Git again.
+// A book's Manuscript tab, List view: its chapters and scenes in reading order with each scene's
+// header and the flags the checks have open. The list is Carrel's index of the book's folder in Git;
+// Refresh (in the head of every tab) posts here and reads Git again. Progress, the bible and notes and
+// the settings are tabs of their own (book.progress.tsx, book.bible.tsx, book.settings.tsx).
 
 import type { ReactNode } from "react";
-import { Form, redirect, useNavigation } from "react-router";
+import { Form, redirect } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
-import { Button, ButtonGroup } from "capsomer/react/button";
+import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
-import { Select } from "capsomer/react/select";
 import { StatTile, StatTiles } from "capsomer/react/stat-tile";
 import { Status } from "capsomer/react/status";
-import { PageHead } from "capsomer/react/page-head";
 
-import { SharePanel } from "~/components/share-panel";
-import { ProgressPanel } from "~/components/writing/progress-panel";
+import { BookHead } from "~/components/book-head";
 import { StatusLabelPill } from "~/components/writing/status-label";
 
 import {
+  bookHead,
   bookRepo,
   draftPaths,
-  exportGate,
   listFiles,
   listFindings,
   refreshBook,
   requireBookProject,
 } from "~/lib/books.server";
-import { getEnv, getViewer, getZone } from "~/lib/context";
+import { getEnv, getViewer } from "~/lib/context";
 import { slugify } from "@drdustinedwards/site-helpers/slug";
 import { chapterOf, nextNumbered, readingOrder, titleFromSegment } from "~/lib/novels/layout";
-import { shareFromForm } from "~/lib/people-admin.server";
 import { can } from "~/lib/roles";
 import { reorderBook } from "~/lib/binder.server";
 import { parseOrder } from "~/lib/writing/binder";
-import { progressEntries, readGoal, saveGoal, statusList } from "~/lib/writing.server";
+import { statusList } from "~/lib/writing.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
-  return [{ title: data ? `${data.project.name} · Carrel` : "Carrel" }];
+  return [{ title: data ? `${data.head.name} · Carrel` : "Carrel" }];
 }
-
-const BIBLE_FOLDERS = { character: "characters", place: "places", rule: "rules" } as const;
 
 export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
   const project = await requireBookProject(env.DB, viewer, params.project, "read");
-  const [files, open, drafts, status, goal, entries] = await Promise.all([
+  const [files, open, drafts, status, head] = await Promise.all([
     listFiles(env.DB, project),
     listFindings(env.DB, project, { status: "open" }),
     draftPaths(env.DB, project, viewer),
     statusList(env.DB, project),
-    readGoal(env.DB, project, viewer),
-    progressEntries(env.DB, project, viewer),
+    bookHead(env, project),
   ]);
   const flags = new Map<string, number>();
   for (const f of open) flags.set(f.path, (flags.get(f.path) ?? 0) + 1);
@@ -102,44 +96,19 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     });
   }
 
-  const bible = files.flatMap(({ path, meta }) =>
-    meta.kind === "character" || meta.kind === "place" || meta.kind === "rule"
-      ? [{ path, kind: meta.kind, name: meta.entry.name, flags: flags.get(path) ?? 0 }]
-      : [],
-  );
-  const others = files
-    .filter((f) => f.kind === "outline" || f.kind === "note" || f.kind === "book")
-    .map((f) => ({ path: f.path, kind: f.kind }));
   const known = new Set(files.map((f) => f.path));
-  const bookMeta = files.find((f) => f.path === "book.md")?.meta;
-  const bookEntry = bookMeta?.kind === "book" ? bookMeta.entry : null;
   const connection = bookRepo(env);
-  const canPublish = can(project.role, "publish");
 
   return {
-    project: { slug: project.slug, name: project.name, book: project.book },
+    head,
     canEdit: can(project.role, "edit"),
-    canPublish,
-    canShare: can(project.role, "manage"),
-    connected: connection.repo !== null,
     connectionDetail: connection.detail,
     chapters,
-    bible,
-    others,
-    hasBookFile: known.has("book.md"),
     words: files.filter((f) => f.kind === "scene").reduce((n, f) => n + f.words, 0),
     open: open.length,
-    exportReady: canPublish ? (await exportGate(env.DB, project)).ok : false,
     // Drafts of files Git does not have yet, so a started scene is not lost from view.
     unsaved: drafts.filter((p) => !known.has(p)),
     labels: status.labels,
-    progress: {
-      entries,
-      goal,
-      projectTarget: bookEntry?.target ?? null,
-      deadline: bookEntry?.deadline ?? "",
-      zone: getZone(context),
-    },
   };
 }
 
@@ -148,27 +117,6 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "read");
   const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
-
-  if (intent === "goal") {
-    const saved = await saveGoal(env.DB, project, getViewer(context), {
-      mode: String(form.get("mode") ?? ""),
-      dailyTarget: String(form.get("dailyTarget") ?? ""),
-      writingDays: form.getAll("writingDays").map(String),
-      allowNegative: form.get("allowNegative") === "1",
-    });
-    return {
-      refreshed: null,
-      error: null,
-      goal: saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error },
-    };
-  }
-
-  if (intent === "share")
-    return {
-      refreshed: null,
-      error: null,
-      share: await shareFromForm(env, getViewer(context), project.id, form),
-    };
 
   // A move in the binder: the whole new order, which the server turns into one commit of renames.
   if (intent === "reorder") {
@@ -217,41 +165,12 @@ export async function action({ params, request, context }: Route.ActionArgs) {
       `/b/${project.slug}/f/chapters/${nextNumbered(chapters, slug)}/01-${slugify(String(form.get("scene") ?? ""), { max: 60 }) || "opening"}.md`,
     );
   }
-  if (intent === "new-bible") {
-    const kind = String(form.get("kind") ?? "") as keyof typeof BIBLE_FOLDERS;
-    if (!Object.hasOwn(BIBLE_FOLDERS, kind)) throw new Response("Bad request", { status: 400 });
-    return redirect(
-      `/b/${project.slug}/f/bible/${BIBLE_FOLDERS[kind]}/${slug}.md?name=${encodeURIComponent(name)}`,
-    );
-  }
-  if (intent === "new-outline") return redirect(`/b/${project.slug}/f/outline/${slug}.md`);
   throw new Response("Bad request", { status: 400 });
 }
 
 export default function Book({ loaderData, actionData }: Route.ComponentProps) {
-  const {
-    project,
-    canEdit,
-    canPublish,
-    canShare,
-    connected,
-    connectionDetail,
-    chapters,
-    bible,
-    others,
-    words,
-    open,
-    exportReady,
-    unsaved,
-    hasBookFile,
-    labels,
-    progress,
-  } = loaderData;
-  const goalResult = actionData && "goal" in actionData ? actionData.goal : null;
-  const navigation = useNavigation();
-  const refreshing =
-    navigation.state !== "idle" && navigation.formData?.get("intent") === "refresh";
-  const base = `/b/${project.slug}`;
+  const { head, canEdit, connectionDetail, chapters, words, open, unsaved, labels } = loaderData;
+  const base = `/b/${head.slug}`;
   const file = (path: string) => `${base}/f/${path}`;
   const link = ({ href, children }: { href: string; children: ReactNode }) => (
     <Link to={href}>{children}</Link>
@@ -259,58 +178,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
 
   return (
     <div className="app-page">
-      <PageHead
-        title={project.name}
-        lead={
-          <>
-            <span className="cap-mono">{project.book}/</span> in the writing repository.
-          </>
-        }
-        actions={
-          <>
-            {connected ? (
-              <Form method="post">
-                <Button type="submit" name="intent" value="refresh" pending={refreshing}>
-                  {refreshing ? "Refreshing" : "Refresh from Git"}
-                </Button>
-              </Form>
-            ) : null}
-            <Link to={`${base}/outliner`} className="cap-btn">
-              Outliner
-            </Link>
-            <Link to={`${base}/corkboard`} className="cap-btn">
-              Corkboard
-            </Link>
-            <Link to={`${base}/authorship`} className="cap-btn" reloadDocument>
-              Authorship record
-            </Link>
-            {canPublish ? (
-              exportReady ? (
-                <ButtonGroup label="Export">
-                  <a className="cap-btn" href={`${base}/export/epub`}>
-                    ePub
-                  </a>
-                  <a className="cap-btn" href={`${base}/export/docx`}>
-                    Word
-                  </a>
-                  <a
-                    className="cap-btn"
-                    href={`${base}/export/print`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Print or PDF<span className="cap-sr-only"> (opens in a new tab)</span>
-                  </a>
-                </ButtonGroup>
-              ) : (
-                <Button disabledReason="Export waits until every flag is fixed or dismissed.">
-                  Export
-                </Button>
-              )
-            ) : null}
-          </>
-        }
-      />
+      <BookHead book={head} section="manuscript" view="list" />
 
       <StatTiles label="The book at a glance">
         <StatTile
@@ -337,14 +205,14 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         )}
       </StatTiles>
 
-      {!connected ? (
+      {!head.connected ? (
         <Banner tone="warn" title="Git is not connected yet">
           {connectionDetail} The book shows Carrel's last index of it, and saving waits for the
           connection.
         </Banner>
       ) : null}
 
-      {actionData?.error && !goalResult ? (
+      {actionData?.error ? (
         <Alert tone="crit">{actionData.error}</Alert>
       ) : actionData?.refreshed ? (
         <Banner tone="ok">
@@ -370,217 +238,107 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         </Panel>
       ) : null}
 
-      <div className="app-split" data-aside>
-        <Panel
-          title="Chapters"
-          count={chapters.length}
-          flush
-          footer={
-            canEdit ? (
-              <Form method="post" className="app-inline-form">
-                <input type="hidden" name="intent" value="new-chapter" />
-                <Field label="New chapter">
-                  <input
-                    className="cap-input"
-                    name="name"
-                    required
-                    placeholder="Chapter name"
-                    autoComplete="off"
-                  />
-                </Field>
-                <Field label="First scene">
-                  <input
-                    className="cap-input"
-                    name="scene"
-                    placeholder="Scene name"
-                    autoComplete="off"
-                  />
-                </Field>
-                <Button type="submit">Start it</Button>
-              </Form>
-            ) : undefined
-          }
-        >
-          {chapters.length === 0 ? (
-            <Empty kind="nothing-yet" flush title="No chapters in the index yet">
-              {canEdit
-                ? "Start the first chapter below, or refresh from Git."
-                : "Refresh from Git to read the book's folder."}
-            </Empty>
-          ) : (
-            chapters.map((chapter) => (
-              <section
-                key={chapter.slug}
-                className="app-chapter"
-                aria-labelledby={`chapter-${chapter.slug}`}
+      <Panel
+        title="Chapters"
+        count={chapters.length}
+        flush
+        footer={
+          canEdit ? (
+            <Form method="post" className="app-inline-form">
+              <input type="hidden" name="intent" value="new-chapter" />
+              <Field label="New chapter">
+                <input
+                  className="cap-input"
+                  name="name"
+                  required
+                  placeholder="Chapter name"
+                  autoComplete="off"
+                />
+              </Field>
+              <Field label="First scene">
+                <input
+                  className="cap-input"
+                  name="scene"
+                  placeholder="Scene name"
+                  autoComplete="off"
+                />
+              </Field>
+              <Button type="submit">Start it</Button>
+            </Form>
+          ) : undefined
+        }
+      >
+        {chapters.length === 0 ? (
+          <Empty kind="nothing-yet" flush title="No chapters in the index yet">
+            {canEdit
+              ? "Start the first chapter below, or refresh from Git."
+              : "Refresh from Git to read the book's folder."}
+          </Empty>
+        ) : (
+          chapters.map((chapter) => (
+            <section
+              key={chapter.slug}
+              className="app-chapter"
+              aria-labelledby={`chapter-${chapter.slug}`}
+            >
+              <h3 id={`chapter-${chapter.slug}`}>
+                <Link to={`${base}/c/${chapter.slug}`}>{chapter.title}</Link>
+                <span className="cap-muted">{chapter.words.toLocaleString()} words</span>
+                {chapter.flags ? <Status tone="warn">{chapter.flags} flagged</Status> : null}
+              </h3>
+              <div
+                className="cap-table-wrap"
+                role="region"
+                aria-labelledby={`scenes-${chapter.slug}`}
+                tabIndex={0}
               >
-                <h3 id={`chapter-${chapter.slug}`}>
-                  <Link to={`${base}/c/${chapter.slug}`}>{chapter.title}</Link>
-                  <span className="cap-muted">{chapter.words.toLocaleString()} words</span>
-                  {chapter.flags ? <Status tone="warn">{chapter.flags} flagged</Status> : null}
-                </h3>
-                <div
-                  className="cap-table-wrap"
-                  role="region"
-                  aria-labelledby={`scenes-${chapter.slug}`}
-                  tabIndex={0}
-                >
-                  <table className="cap-table">
-                    <caption id={`scenes-${chapter.slug}`} className="cap-sr-only">
-                      Scenes in {chapter.title}
-                    </caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Scene</th>
-                        <th scope="col">Status</th>
-                        <th scope="col" data-drop="1">
-                          Point of view
+                <table className="cap-table">
+                  <caption id={`scenes-${chapter.slug}`} className="cap-sr-only">
+                    Scenes in {chapter.title}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Scene</th>
+                      <th scope="col">Status</th>
+                      <th scope="col" data-drop="1">
+                        Point of view
+                      </th>
+                      <th scope="col" data-drop="1">
+                        Date
+                      </th>
+                      <th scope="col" data-drop="2">
+                        Location
+                      </th>
+                      <th scope="col" data-num>
+                        Words
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chapter.scenes.map((s) => (
+                      <tr key={s.path}>
+                        <th scope="row">
+                          <Link className="cap-table-open" to={file(s.path)}>
+                            {s.name}
+                          </Link>
+                          {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
                         </th>
-                        <th scope="col" data-drop="1">
-                          Date
-                        </th>
-                        <th scope="col" data-drop="2">
-                          Location
-                        </th>
-                        <th scope="col" data-num>
-                          Words
-                        </th>
+                        <td>
+                          <StatusLabelPill labels={labels} status={s.status} />
+                        </td>
+                        <td data-drop="1">{s.pov}</td>
+                        <td data-drop="1">{s.date}</td>
+                        <td data-drop="2">{s.location}</td>
+                        <td data-num>{s.words.toLocaleString()}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {chapter.scenes.map((s) => (
-                        <tr key={s.path}>
-                          <th scope="row">
-                            <Link className="cap-table-open" to={file(s.path)}>
-                              {s.name}
-                            </Link>
-                            {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
-                          </th>
-                          <td>
-                            <StatusLabelPill labels={labels} status={s.status} />
-                          </td>
-                          <td data-drop="1">{s.pov}</td>
-                          <td data-drop="1">{s.date}</td>
-                          <td data-drop="2">{s.location}</td>
-                          <td data-num>{s.words.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ))
-          )}
-        </Panel>
-
-        <div className="app-stack">
-          <ProgressPanel
-            {...progress}
-            wordsNow={words}
-            canEdit={canEdit}
-            titlePage={file("book.md")}
-            error={goalResult?.error ?? null}
-            saved={goalResult?.saved ?? false}
-          />
-          <Panel
-            title="Bible"
-            count={bible.length}
-            footer={
-              canEdit ? (
-                <Form method="post" className="app-inline-form">
-                  <input type="hidden" name="intent" value="new-bible" />
-                  <Field label="New entry">
-                    <Select
-                      name="kind"
-                      defaultValue="character"
-                      options={[
-                        { value: "character", label: "Character" },
-                        { value: "place", label: "Place" },
-                        { value: "rule", label: "World rule" },
-                      ]}
-                    />
-                  </Field>
-                  <Field label="Name">
-                    <input
-                      className="cap-input"
-                      name="name"
-                      required
-                      placeholder="Name"
-                      autoComplete="off"
-                    />
-                  </Field>
-                  <Button type="submit">Start it</Button>
-                </Form>
-              ) : undefined
-            }
-          >
-            {(["character", "place", "rule"] as const).map((kind) => {
-              const entries = bible.filter((b) => b.kind === kind);
-              const heading =
-                kind === "character" ? "Characters" : kind === "place" ? "Places" : "World rules";
-              return (
-                <section key={kind} className="app-section" aria-labelledby={`bible-${kind}`}>
-                  <h3 id={`bible-${kind}`}>{heading}</h3>
-                  {entries.length === 0 ? (
-                    <p className="cap-muted">None yet.</p>
-                  ) : (
-                    <ul className="app-links">
-                      {entries.map((b) => (
-                        <li key={b.path}>
-                          <Link to={file(b.path)}>{b.name}</Link>
-                          {b.flags ? <Status tone="warn">{b.flags} flagged</Status> : null}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
-          </Panel>
-
-          <Panel
-            title="Outline and notes"
-            footer={
-              canEdit ? (
-                <Form method="post" className="app-inline-form">
-                  <input type="hidden" name="intent" value="new-outline" />
-                  <Field label="New outline file">
-                    <input
-                      className="cap-input"
-                      name="name"
-                      required
-                      placeholder="Name"
-                      autoComplete="off"
-                    />
-                  </Field>
-                  <Button type="submit">Start it</Button>
-                </Form>
-              ) : undefined
-            }
-          >
-            {others.length === 0 && (hasBookFile || !canEdit) ? (
-              <p className="cap-muted">None yet.</p>
-            ) : (
-              <ul className="app-links">
-                {others.map((o) => (
-                  <li key={o.path}>
-                    <Link to={file(o.path)}>
-                      {o.kind === "book" ? "Title page (book.md)" : o.path}
-                    </Link>
-                  </li>
-                ))}
-                {!hasBookFile && canEdit ? (
-                  <li>
-                    <Link to={file("book.md")}>Add a title page (book.md)</Link>
-                  </li>
-                ) : null}
-              </ul>
-            )}
-          </Panel>
-        </div>
-      </div>
-
-      {canShare ? <SharePanel site={false} /> : null}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))
+        )}
+      </Panel>
     </div>
   );
 }
