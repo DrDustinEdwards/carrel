@@ -72,13 +72,13 @@ new ResizeObserver(() => send({ method: "ui/notifications/size-changed", params:
 `;
 
 const VIEW_STYLE = `
-:root { color-scheme: light dark; --bg: #fff; --fg: #1a1a1a; --muted: #5c5c66; --line: #d9d9e0; }
-@media (prefers-color-scheme: dark) { :root { --bg: #17171c; --fg: #ececf1; --muted: #a0a0ad; --line: #34343e; } }
-body { margin: 0; padding: 12px; background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, sans-serif; }
+:root { color-scheme: light dark; --v-bg: #fff; --v-fg: #1a1a1a; --v-muted: #5c5c66; --v-line: #d9d9e0; }
+@media (prefers-color-scheme: dark) { :root { --v-bg: #17171c; --v-fg: #ececf1; --v-muted: #a0a0ad; --v-line: #34343e; } }
+body { margin: 0; padding: 12px; background: var(--v-bg); color: var(--v-fg); font: 14px/1.5 system-ui, sans-serif; }
 .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.col { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.col { border: 1px solid var(--v-line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
 h2 { font-size: 14px; margin: 0; }
-.meta { color: var(--muted); font-size: 12px; margin: 2px 0 8px; }
+.meta { color: var(--v-muted); font-size: 12px; margin: 2px 0 8px; }
 pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 ui-monospace, monospace; max-height: 420px; overflow: auto; }
 `;
 
