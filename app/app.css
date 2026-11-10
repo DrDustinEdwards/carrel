@@ -1423,6 +1423,32 @@ img.ProseMirror-separator {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+/* Home's one list of needs: the urgency headings span the row grid between the rows. */
+.app-need-group {
+  grid-column: 1 / -1;
+  list-style: none;
+}
+.app-need-group:first-child .app-need-head {
+  margin-top: var(--space-2);
+}
+.app-need-row .cap-row-actions form {
+  display: contents;
+}
+/* The keys under the list, and what Later does. */
+.app-need-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-detail, 0.8125rem);
+}
+/* No keyboard on a touch screen: only what Later does stays. */
+@media (pointer: coarse) {
+  .app-need-key {
+    display: none;
+  }
+}
 
 /* Writing: the box column, the open row, and the peek's waiting list. */
 .app-check-col {

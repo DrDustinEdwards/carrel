@@ -230,6 +230,24 @@ export const transcriptDrafts = sqliteTable("transcript_drafts", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
+// A row of Home's "Needs you" a person set aside (migration 0033): hidden until `until`, or until the need's
+// title reads differently from the one kept here.
+export const needLater = sqliteTable(
+  "need_later",
+  {
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    needId: text("need_id").notNull(),
+    title: text("title").notNull(),
+    until: text("until").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.needId] })],
+);
+
 // The authorship record of each transcript put live (migration 0032), apart from changes: the versions are the
 // transcript's own, and the item's version does not move.
 export const transcriptChanges = sqliteTable("transcript_changes", {
