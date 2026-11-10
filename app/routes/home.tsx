@@ -8,11 +8,10 @@
 // offers Undo; the Later tab lists what is set aside, with Bring back. On a row, j and k move (row-list's own
 // keys) and l sets it aside: single keys that act only while focus is on a row (WCAG 2.1.4).
 
-import { Suspense, useId } from "react";
+import { Suspense, useEffect, useId, useSyncExternalStore } from "react";
 import { Await, useFetcher, useSubmit } from "react-router";
 import { Link } from "capsomer/react/link";
 import { useMessage } from "capsomer/react/message";
-import { Keys, useShortcut } from "capsomer/react/shortcuts";
 import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
@@ -201,21 +200,36 @@ function NeedRow({
   );
 }
 
+const noSubscribe = () => () => {};
+
+/** The key that opens search: ⌘ on a Mac once hydrated, Ctrl until then and elsewhere. */
+function useSearchKey(): string {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => (/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl"),
+    () => "Ctrl",
+  );
+}
+
 function Needs({ needs, show, zone }: { needs: Need[]; show: Show; zone: string }) {
   const noteId = useId();
   const submit = useSubmit();
+  const searchKey = useSearchKey();
   // l on a row sets it aside (Bring back in the Later tab); only while focus is on a row, so the key is the
-  // row's own and typing elsewhere never fires it (WCAG 2.1.4).
-  useShortcut(
-    "l",
-    () => focusedNeedRow()?.querySelector<HTMLButtonElement>("[data-later]")?.click(),
-    {
-      label: "Set the row for later",
-      about: "On a row of Needs you. In the Later tab, brings it back.",
-      group: "Home",
-      when: () => focusedNeedRow() !== null,
-    },
-  );
+  // row's own and typing elsewhere never fires it (WCAG 2.1.4). It also obeys the network's switch for single
+  // keys (data-cap-single-keys on <html>), as row-list's j and k do.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "l" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+      if (document.documentElement.dataset.capSingleKeys === "off") return;
+      const button = focusedNeedRow()?.querySelector<HTMLButtonElement>("[data-later]");
+      if (!button) return;
+      e.preventDefault();
+      button.click();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const onBack = (need: Need) => {
     void submit({ intent: "back", need: need.id }, { method: "post", navigate: false });
   };
@@ -258,16 +272,16 @@ function Needs({ needs, show, zone }: { needs: Need[]; show: Show; zone: string 
       </RowList>
       <p className="app-need-keys">
         <span className="app-need-key">
-          <Keys spec="j" /> <Keys spec="k" /> move
+          <kbd>j</kbd> <kbd>k</kbd> move
         </span>
         <span className="app-need-key">
-          <Keys spec="Enter" /> open
+          <kbd>Enter</kbd> open
         </span>
         <span className="app-need-key">
-          <Keys spec="l" /> {show === "later" ? "bring back" : "later"}
+          <kbd>l</kbd> {show === "later" ? "bring back" : "later"}
         </span>
         <span className="app-need-key">
-          <Keys spec="Mod+k" /> search
+          <kbd>{searchKey}</kbd> <kbd>K</kbd> search
         </span>
         <span id={noteId}>
           {show === "later"
