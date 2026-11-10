@@ -71,6 +71,26 @@ async function searchFor(
 }
 
 /**
+ * Sets Home's first row aside with its l key, as a keyboard user would, and waits for the message that offers Undo.
+ */
+async function laterFirstRow(/** @type {import("playwright").Page} */ page) {
+  await page.locator(".app-need-row .cap-row-title a").first().focus();
+  await page.keyboard.press("l");
+  await page.getByText("Set for later, until tomorrow morning").waitFor();
+  // The header's count follows once Home's loaders have run again.
+  await page.waitForTimeout(1500);
+}
+
+/** Brings back every row set aside, so the next size or theme opens Home as seeded. */
+async function bringAllBack(/** @type {import("playwright").Page} */ page) {
+  await page.goto(new URL("/?show=later", page.url()).href);
+  for (const button of await page.getByRole("button", { name: "Bring back" }).all()) {
+    await button.click();
+    await page.waitForLoadState("networkidle");
+  }
+}
+
+/**
  * Every screen, as who sees it. `after` runs once the page is up (open a dialog, type), and `wait` is a
  * selector that must exist before the page counts as ready.
  */
@@ -81,6 +101,18 @@ async function searchFor(
 export const SCREENS = [
   { name: "home", viewer: "owner", path: "/" },
   { name: "home-editor", viewer: "editor", path: "/" },
+  { name: "home-later", viewer: "owner", path: "/", after: laterFirstRow, restore: bringAllBack },
+  {
+    name: "home-later-tab",
+    viewer: "owner",
+    path: "/",
+    after: async (page) => {
+      await laterFirstRow(page);
+      await page.getByRole("link", { name: "Later", exact: true }).click();
+      await page.getByRole("button", { name: "Bring back" }).first().waitFor();
+    },
+    restore: bringAllBack,
+  },
   { name: "writing", viewer: "owner", path: "/writing" },
   { name: "writing-ai", viewer: "owner", path: "/writing?waiting=ai" },
   { name: "writing-editor", viewer: "editor", path: "/writing" },

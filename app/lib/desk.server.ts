@@ -3,7 +3,7 @@
 // (the index of each site's posts, the drafts, the flags, the social queue); only the mention counts ask
 // the sites, and they are separate so a slow site never holds the page.
 
-import { and, count, desc, eq, inArray, isNotNull, lte, min, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import {
@@ -11,6 +11,7 @@ import {
   authorship,
   drafts,
   findings,
+  needLater,
   projects,
   siteItems,
   socialPosts,
@@ -20,6 +21,7 @@ import type { Viewer, VisibleProject } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 import { loadMentions } from "@dustinedwards/site-api/admin";
 import { isSiteId, siteConnection } from "~/lib/sites.server";
+import { knownZone } from "~/lib/writing/progress";
 
 export type NeedGroup = "ai" | "due" | "flags" | "mentions" | "approvals";
 type Urgency = "blocking" | "waiting";
@@ -34,6 +36,8 @@ export type Need = {
   /** The one main action, as a link. */
   action: { label: string; href: string };
   at: string | null;
+  /** Set aside with Later: when it comes back. Such a need is off Home's list and out of the header's count. */
+  later?: string;
 };
 
 const postHref = (slug: string, itemId: string) =>
@@ -60,7 +64,7 @@ export async function needsYou(
   const d = drizzle(db);
   const soon = new Date(now.getTime() + 24 * 3_600_000).toISOString();
 
-  const [ai, due, flags, awaiting] = await Promise.all([
+  const [ai, due, flags, awaiting, later] = await Promise.all([
     d
       .select({
         projectId: aiDrafts.projectId,
@@ -104,6 +108,7 @@ export async function needsYou(
           .where(inArray(socialPosts.status, ["awaiting", "held"]))
           .all()
       : Promise.resolve([] as { n: number; since: string | null }[]),
+    laterMarks(db, viewer, now),
   ]);
 
   const out: Need[] = [];
@@ -161,7 +166,7 @@ export async function needsYou(
       action: { label: "Approve", href: "/social" },
       at: queue.since,
     });
-  return out;
+  return markLater(out, later);
 }
 
 /** Pending webmentions per site, asked of each site in turn and never thrown: a site that does not answer is left out. */
@@ -177,6 +182,7 @@ export async function mentionNeeds(
     .where(isNotNull(projects.site))
     .all();
   const known = byId(visible);
+  const later = await laterMarks(env.DB, viewer);
   const found = await Promise.all(
     sites.map(async (s): Promise<Need | null> => {
       const p = known.get(s.id);
@@ -207,7 +213,101 @@ export async function mentionNeeds(
       }
     }),
   );
-  return found.filter((n): n is Need => n !== null);
+  return markLater(
+    found.filter((n): n is Need => n !== null),
+    later,
+  );
+}
+
+type LaterMark = { title: string; until: string };
+
+/** The rows this person set aside that have not come back yet, by need id. */
+async function laterMarks(
+  db: D1Database,
+  viewer: Viewer,
+  now = new Date(),
+): Promise<Map<string, LaterMark>> {
+  const rows = await drizzle(db)
+    .select({ needId: needLater.needId, title: needLater.title, until: needLater.until })
+    .from(needLater)
+    .where(and(eq(needLater.personId, viewer.id), gt(needLater.until, now.toISOString())))
+    .all();
+  return new Map(rows.map((r) => [r.needId, { title: r.title, until: r.until }]));
+}
+
+/** A need set aside stays aside only while it reads as it did then: another draft or a post now overdue brings it back. */
+function markLater(needs: Need[], marks: Map<string, LaterMark>): Need[] {
+  return needs.map((n) => {
+    const mark = marks.get(n.id);
+    return mark && mark.title === n.title ? { ...n, later: mark.until } : n;
+  });
+}
+
+/** The hour of the morning a row set aside comes back. */
+const LATER_HOUR = 8;
+
+/**
+ * When Later brings a row back: 8 am on the next calendar day in the person's time zone (UTC if the zone is
+ * unknown). The wall-clock time is found by correcting a first guess by the zone's offset, twice, so a change
+ * to or from daylight time overnight lands on 8 am too.
+ */
+export function laterUntil(now: Date, zone: string | undefined): string {
+  const timeZone = knownZone(zone);
+  const format = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+  });
+  const wall = (at: number) => {
+    const p = new Map(format.formatToParts(at).map((x) => [x.type, Number(x.value)]));
+    const part = (type: Intl.DateTimeFormatPartTypes) => p.get(type) ?? 0;
+    const [y, m, d] = [part("year"), part("month"), part("day")];
+    return { y, m, d, ms: Date.UTC(y, m - 1, d, part("hour"), part("minute")) };
+  };
+  const today = wall(now.getTime());
+  const want = Date.UTC(today.y, today.m - 1, today.d + 1, LATER_HOUR);
+  let at = want;
+  for (let i = 0; i < 2; i++) at += want - wall(at).ms;
+  return new Date(at).toISOString();
+}
+
+const MAX_NEED_ID = 200;
+const MAX_TITLE = 500;
+
+/** Sets one of this person's needs aside until `until`, keeping the title it had, and clears their marks that have come back. */
+export async function setLater(
+  db: D1Database,
+  viewer: Viewer,
+  need: { id: string; title: string },
+  until: string,
+  now = new Date(),
+): Promise<void> {
+  if (!need.id || need.id.length > MAX_NEED_ID || need.title.length > MAX_TITLE)
+    throw new Response("That row cannot be set aside.", { status: 400 });
+  const d = drizzle(db);
+  await d.batch([
+    d
+      .delete(needLater)
+      .where(and(eq(needLater.personId, viewer.id), lte(needLater.until, now.toISOString()))),
+    d
+      .insert(needLater)
+      .values({ personId: viewer.id, needId: need.id, title: need.title, until })
+      .onConflictDoUpdate({
+        target: [needLater.personId, needLater.needId],
+        set: { title: need.title, until, createdAt: now.toISOString() },
+      }),
+  ]);
+}
+
+/** Brings a row this person set aside back to Home at once. */
+export async function bringBack(db: D1Database, viewer: Viewer, needId: string): Promise<void> {
+  await drizzle(db)
+    .delete(needLater)
+    .where(and(eq(needLater.personId, viewer.id), eq(needLater.needId, needId)));
 }
 
 export type Continue = { projectName: string; title: string; href: string; at: string };

@@ -4,7 +4,14 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { needsYou, searchEverything, writingRows } from "~/lib/desk.server";
+import {
+  bringBack,
+  laterUntil,
+  needsYou,
+  searchEverything,
+  setLater,
+  writingRows,
+} from "~/lib/desk.server";
 import { visibleProjects } from "~/lib/people.server";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
@@ -76,5 +83,40 @@ describe("what Desk lists across projects", () => {
       "rabies",
     );
     expect(found).toMatchObject([{ label: "Rabies", group: "Posts", hint: "germs" }]);
+  });
+
+  it("keeps a row set for later off the queue until it changes or is brought back", async () => {
+    const editor = await viewerFor("editor@test.invalid");
+    const visible = await visibleProjects(testEnv.DB, editor);
+    const ai = (await needsYou(testEnv.DB, editor, visible)).find((n) => n.group === "ai")!;
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+    await setLater(testEnv.DB, editor, ai, tomorrow);
+    expect((await needsYou(testEnv.DB, editor, visible)).filter((n) => !n.later)).toHaveLength(1);
+    // A second draft changes the row ("2 AI drafts"), so it is back before tomorrow.
+    await testEnv.DB.prepare(
+      "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source) VALUES (?, 'due-now', ?, 'Claude', 'x')",
+    )
+      .bind(mine, editor.id)
+      .run();
+    expect((await needsYou(testEnv.DB, editor, visible)).filter((n) => !n.later)).toHaveLength(2);
+    const two = (await needsYou(testEnv.DB, editor, visible)).find((n) => n.group === "ai")!;
+    await setLater(testEnv.DB, editor, two, tomorrow);
+    await bringBack(testEnv.DB, editor, two.id);
+    expect((await needsYou(testEnv.DB, editor, visible)).every((n) => !n.later)).toBe(true);
+  });
+});
+
+describe("when Later brings a row back", () => {
+  it("is 8 am the next morning in the person's zone, across a daylight-time change", () => {
+    // 11 pm in Chicago on 31 October 2026, the night daylight time ends: 8 am CST is 14:00 UTC.
+    expect(laterUntil(new Date("2026-11-01T04:00:00Z"), "America/Chicago")).toBe(
+      "2026-11-01T14:00:00.000Z",
+    );
+    expect(laterUntil(new Date("2026-07-10T20:00:00Z"), "America/Chicago")).toBe(
+      "2026-07-11T13:00:00.000Z",
+    );
+    expect(laterUntil(new Date("2026-07-10T20:00:00Z"), "Not/AZone")).toBe(
+      "2026-07-11T08:00:00.000Z",
+    );
   });
 });

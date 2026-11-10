@@ -19,7 +19,8 @@ export async function loader({ context }: Route.LoaderArgs): Promise<FrameData> 
     name: viewer.name || viewer.email,
     isOwner: viewer.isOwner,
     projects: projects.map((p) => ({ slug: p.slug, name: p.name, kind: p.kind })),
-    needs: (await needsYou(getEnv(context).DB, viewer, projects)).length,
+    // A row set aside with Later is not counted until it comes back.
+    needs: (await needsYou(getEnv(context).DB, viewer, projects)).filter((n) => !n.later).length,
   };
 }
 
