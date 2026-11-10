@@ -25,9 +25,26 @@ const el = (tag, text, className) => {
   if (className) node.className = className;
   return node;
 };
+const NL = String.fromCharCode(10);
+// A post's source opens with a front matter block between two --- lines. It is metadata, so it sits folded above the text.
+const splitFront = (source) => {
+  const fence = "---" + NL;
+  if (!source.startsWith(fence)) return { front: "", body: source };
+  const end = source.indexOf(NL + "---", fence.length);
+  if (end === -1) return { front: "", body: source };
+  const rest = source.indexOf(NL, end + 1);
+  return { front: source.slice(fence.length, end), body: rest === -1 ? "" : source.slice(rest + 1) };
+};
 const column = (heading, meta, source) => {
   const box = el("section", undefined, "col");
-  box.append(el("h2", heading), el("p", meta, "meta"), el("pre", source || "(empty)"));
+  box.append(el("h2", heading), el("p", meta, "meta"));
+  const { front, body } = splitFront(source || "");
+  if (front) {
+    const fold = el("details");
+    fold.append(el("summary", "Front matter (" + front.split(NL).length + " lines)"), el("pre", front));
+    box.append(fold);
+  }
+  box.append(el("pre", body || (front ? "" : "(empty)")));
   return box;
 };
 const render = (data) => {
@@ -35,7 +52,7 @@ const render = (data) => {
   root.replaceChildren();
   const columns = [];
   const site = data.site;
-  columns.push(column("On the site", site ? "Version " + (site.version ?? "?") : "Not on the site yet", site ? site.source : ""));
+  columns.push(column("On the site", site ? "Version " + String(site.version ?? "?").slice(0, 8) : "Not on the site yet", site ? site.source : ""));
   const mine = data.dustinsDraft;
   columns.push(column("Dustin's draft", mine ? "Saved " + (mine.updatedAt ?? "") : "None", mine ? mine.source : ""));
   for (const draft of Array.isArray(data.aiDrafts) ? data.aiDrafts : []) {
@@ -79,6 +96,8 @@ body { margin: 0; padding: 12px; background: var(--v-bg); color: var(--v-fg); fo
 .col { border: 1px solid var(--v-line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
 h2 { font-size: 14px; margin: 0; }
 .meta { color: var(--v-muted); font-size: 12px; margin: 2px 0 8px; }
+summary { cursor: pointer; color: var(--v-muted); font-size: 12px; margin-bottom: 6px; }
+details { margin-bottom: 8px; }
 pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 ui-monospace, monospace; max-height: 420px; overflow: auto; }
 `;
 
