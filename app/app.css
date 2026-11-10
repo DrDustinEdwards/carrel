@@ -54,6 +54,8 @@
 @import "capsomer/sortable-list.css";
 @import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
+@import "capsomer/summary-list.css";
+@import "capsomer/detail-panel.css";
 @import "capsomer/chips.css";
 @import "capsomer/command-menu.css";
 @import "capsomer/shortcuts.css";
@@ -1438,5 +1440,46 @@ img.ProseMirror-separator {
 @media (max-width: 767.98px) {
   :root:has(.cap-site-tabs) .cap-message {
     inset-block-end: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Writing: the box column, the open row, and the peek's waiting list. */
+.app-check-col {
+  inline-size: 2.75rem;
+}
+.cap-table tr[data-current] > * {
+  background: var(--accent-soft, color-mix(in oklab, var(--accent) 10%, transparent));
+}
+.app-writing-bulk {
+  display: contents;
+}
+.app-peek-waiting {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  display: grid;
+  gap: var(--space-1, 0.25rem);
+}
+
+/* Writing on a phone: each post is a card, the box beside the title, its status and Open under it. */
+@container cap-table (max-width: 639px) {
+  .app-writing-wrap > .cap-table > tbody > tr {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+  .app-writing-wrap > .cap-table > tbody > tr > .app-check-col {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: start;
+  }
+  .app-writing-wrap > .cap-table > tbody > tr > .app-check-col + th {
+    grid-column: 2 / -1;
+  }
+  /* The date is in the peek; the status and Open share the line under the title. */
+  .app-writing-wrap > .cap-table > tbody > tr > td[data-drop] {
+    display: none;
+  }
+  .app-writing-wrap > .cap-table > tbody > tr > td:last-child {
+    grid-column: 3;
+    grid-row: 2;
   }
 }

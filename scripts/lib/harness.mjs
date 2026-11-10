@@ -84,6 +84,15 @@ export const SCREENS = [
   { name: "writing", viewer: "owner", path: "/writing" },
   { name: "writing-ai", viewer: "owner", path: "/writing?waiting=ai" },
   { name: "writing-editor", viewer: "editor", path: "/writing" },
+  { name: "writing-peek", viewer: "owner", path: `/writing?inspect=${SITE}/alerts-wait` },
+  {
+    name: "writing-bulk-result",
+    viewer: "owner",
+    path: "/writing",
+    after: async (page) => {
+      await tagPosts(page, ["Counting what the build skips", "Getting started"]);
+    },
+  },
   { name: "books", viewer: "owner", path: "/books" },
   { name: "sites", viewer: "owner", path: "/sites" },
   { name: "search", viewer: "owner", path: "/", after: (page) => searchFor(page, "alerts") },
@@ -372,18 +381,11 @@ export const SCREENS = [
     viewer: "editor",
     path: `/p/${SITE}`,
     after: async (page) => {
-      await selectPosts(page, [
+      await tagPosts(page, [
         "Counting what the build skips",
         "Why the monitor waits before it pages you",
         "Getting started",
       ]);
-      await page
-        .getByRole("region", { name: /^Bulk actions/ })
-        .getByLabel("Tag")
-        .fill("colophon");
-      await page.getByRole("button", { name: /^Add tag$/ }).click();
-      await page.locator(".cap-bulk-results").waitFor();
-      await page.waitForTimeout(600);
     },
   },
   { name: "unpublish", viewer: "owner", path: `/p/${SITE}/e/alerts-wait/unpublish` },
@@ -555,6 +557,22 @@ export const SCREENS = [
     },
   },
 ];
+
+/**
+ * Ticks the posts and adds the tag "colophon" from the bulk bar, then waits for each post's outcome.
+ * @param {Page} page
+ * @param {string[]} titles
+ */
+async function tagPosts(page, titles) {
+  await selectPosts(page, titles);
+  await page
+    .getByRole("region", { name: /^Bulk actions/ })
+    .getByLabel("Tag")
+    .fill("colophon");
+  await page.getByRole("button", { name: /^Add tag$/ }).click();
+  await page.locator(".cap-bulk-results").waitFor();
+  await page.waitForTimeout(600);
+}
 
 /**
  * Ticks the rows of the posts list whose titles are named, and waits for the bulk bar to say so.

@@ -10,6 +10,7 @@ import { mayPublishItem, writeToSite } from "~/lib/content.server";
 import { searchItems } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as projectAction } from "~/routes/project";
+import { action as writingAction } from "~/routes/writing";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { connectedEnv, fakeSite, routeContext, viewerFor } from "./site";
@@ -140,5 +141,40 @@ describe("the posts list's writes", () => {
     }
     expect(writes().length).toBe(before);
     expect(await record()).toHaveLength(1);
+  });
+});
+
+describe("Writing's bulk bar across sites", () => {
+  /** Posts Writing's form with no script, as `email`. */
+  async function bulk(email: string, fields: Record<string, string | string[]>) {
+    const body = new URLSearchParams(
+      Object.entries(fields).flatMap(([k, v]) => [v].flat().map((one) => [k, one])),
+    );
+    return writingAction({
+      request: new Request("https://carrel.test/writing", { method: "POST", body }),
+      params: {},
+      context: await routeContext(env, email),
+    } as never);
+  }
+
+  it("runs each site's share through that site, says what each post did, and undoes it in one step", async () => {
+    await draft("old-notes");
+    await addProject("germs", "germomics");
+    const done = await bulk("author@test.invalid", {
+      intent: "trash",
+      ids: ["de-info/old-notes", "germs/rabies"],
+    });
+    // The Author has no role on germs: that post is refused by its site's own check, the other goes.
+    expect(done.outcomes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "de-info/old-notes", ok: true }),
+        expect.objectContaining({ id: "germs/rabies", ok: false }),
+      ]),
+    );
+    expect(await searchItems(env.DB, projectId, {})).toEqual([]);
+    expect(
+      await bulk("author@test.invalid", { intent: "undo", plan: done.undo!.plan }),
+    ).toMatchObject({ ok: true, outcomes: [{ id: "de-info/old-notes", ok: true }] });
+    expect((await searchItems(env.DB, projectId, {})).map((i) => i.itemId)).toEqual(["old-notes"]);
   });
 });
