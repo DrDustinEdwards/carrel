@@ -235,7 +235,7 @@ export const SCREENS = [
   {
     name: "book-scene-flagged",
     viewer: "owner",
-    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`,
+    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md?tab=checks`,
     wait: ".app-rich-surface",
   },
   {
@@ -298,6 +298,12 @@ export const SCREENS = [
     name: "post-reader",
     viewer: "reader",
     path: `/p/${SITE}/e/alerts-wait`,
+    wait: ".app-rich-surface",
+  },
+  {
+    name: "post-checks",
+    viewer: "owner",
+    path: `/p/${SITE}/e/alerts-wait?tab=checks`,
     wait: ".app-rich-surface",
   },
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
@@ -454,7 +460,7 @@ export const SCREENS = [
   {
     name: "post-first-publish",
     viewer: "owner",
-    path: `/p/${SITE}/e/counting-what-the-build-skips`,
+    path: `/p/${SITE}/e/counting-what-the-build-skips?tab=checks`,
     wait: ".app-rich-surface",
     after: (page) => press(page, "button", /^Publish$/, "alertdialog"),
   },
@@ -535,7 +541,7 @@ export const SCREENS = [
   {
     name: "book-dismiss",
     viewer: "owner",
-    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md`,
+    path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md?tab=checks`,
     wait: ".app-rich-surface",
     after: (page) => press(page, "button", /^Dismiss/, "alertdialog"),
   },

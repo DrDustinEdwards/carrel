@@ -19,6 +19,9 @@ import { PageHead } from "capsomer/react/page-head";
 import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { WritingSurface } from "~/components/editor/writing-surface";
+import { HeaderFields } from "~/components/editor/header-fields";
+import { commentsTab, Inspector } from "~/components/editor/inspector";
+import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { useSaveShortcut } from "~/components/editor/save-keys";
 import { useTypingRecede } from "~/components/editor/typing";
 import { RouterLink } from "~/components/frame";
@@ -322,7 +325,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     unsaved: data.unsaved,
     viewer: data.room?.viewer ?? { id: 0, name: "", role: "reader", access: "suggest" },
     names: data.room?.names ?? {},
-    hideFrontMatter: false,
+    hideFrontMatter: true,
   });
   const { room } = editing;
   const source = data.room ? room.source : data.source;
@@ -478,8 +481,8 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
             {data.room ? editing.bar : null}
             <WritingSurface
               label={data.kind === "scene" ? "Scene" : "File"}
-              value={source}
-              onChange={setSource}
+              value={splitSource(source).body}
+              onChange={(body) => setSource(joinSource({ ...splitSource(source), body }))}
               readOnly={readOnly}
               linkTargets={[]}
               dialect="plain"
@@ -493,197 +496,236 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </section>
         </div>
 
-        <aside className="app-editor-side" aria-label="Binder, saving, checks and the bible">
-          <Panel title="Binder" src="The book in reading order">
-            <Binder
-              nodes={data.binder}
-              book={data.project.slug}
-              current={data.path}
-              canEdit={data.canEdit && data.connected}
-            />
-          </Panel>
-
-          {data.canEdit ? (
-            <Panel title="This file" src={data.version ? "In Git" : "Only in Carrel so far"}>
-              <div className="app-stack" data-tight>
-                <p role="status" className="app-savestate">
-                  {saveState}
-                </p>
-                {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
-                {data.version ? (
-                  <AiWriteButtons
-                    action={`${base}/ai-write`}
-                    fields={{ path: data.path }}
-                    buttons={[
-                      { job: "continue", label: "Continue this file" },
-                      { job: "edit", label: "Suggest edits" },
-                    ]}
-                  />
-                ) : null}
-                <div className="app-actions">
-                  <Button
-                    variant="primary"
-                    pending={busy}
-                    disabledReason={
-                      !data.connected
-                        ? "Git is not connected, so saving waits. The text is kept here in Carrel."
-                        : undefined
-                    }
-                    onClick={() => void send("save")}
-                  >
-                    Save to Git
-                  </Button>
-                  <Button
-                    pending={checker.state !== "idle"}
-                    onClick={() =>
-                      void checker.submit({ intent: "check", source }, { method: "post" })
-                    }
-                  >
-                    Check this text
-                  </Button>
-                  {room.unsaved && data.version ? (
-                    <Button
-                      variant="quiet"
-                      pending={busy}
-                      onClick={(event) => ask("discard", event.currentTarget)}
-                    >
-                      Discard unsaved changes
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            </Panel>
-          ) : null}
-
-          {data.room ? editing.panels : null}
-
-          <Panel title="Flags" count={openFlags} src="From the last save" id="flags">
-            <div className="app-stack" data-tight>
-              <p className="cap-muted app-note">
-                A flag never stops a save; it holds export until it is fixed or the Owner dismisses
-                it.
-              </p>
-              {data.findings.length === 0 ? (
-                <p>None.</p>
-              ) : (
-                <ul className="app-flags" aria-label="Flags on this file">
-                  {data.findings.map((f) => (
-                    <li key={f.id}>
-                      {f.status === "open" ? (
-                        <Status tone="warn">Open</Status>
-                      ) : (
-                        <Pill variant="secondary">Dismissed</Pill>
-                      )}
-                      <span>
-                        <strong>{f.check}</strong>{" "}
-                        {f.line ? <span className="cap-muted">line {f.line}</span> : null}{" "}
-                        {f.message}
-                      </span>
-                      {f.status === "open" && data.canPublish ? (
-                        <Button
-                          size="sm"
-                          onClick={(event) => ask("dismiss", event.currentTarget, f.id)}
-                        >
-                          Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {checked ? (
-                <div role="status" className="app-stack" data-tight>
-                  <h3 className="app-subhead">This text, checked now</h3>
-                  {checked.length === 0 ? (
-                    <p>Nothing flagged.</p>
-                  ) : (
-                    <ul className="app-flags">
-                      {checked.map((f, i) => (
-                        <li key={i}>
-                          <Status tone="warn">Found</Status>
-                          <span>
-                            <strong>{f.check}</strong>{" "}
-                            {f.line ? <span className="cap-muted">line {f.line}</span> : null}{" "}
-                            {f.message}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          </Panel>
-
-          {data.aiDrafts.length > 0 ? (
-            <Panel
-              title="AI drafts beside yours"
-              count={data.aiDrafts.length}
-              src="None has touched the text or Git"
-            >
-              <div className="app-stack" data-tight>
-                {data.aiDrafts.map((d) => (
-                  <Disclosure
-                    key={d.id}
-                    summary={
-                      <>
-                        {d.client}{" "}
-                        <span className="cap-muted">
-                          <Time at={d.createdAt} /> · {d.words} words
-                        </span>
-                      </>
-                    }
-                  >
-                    {d.note ? <p>{d.note}</p> : null}
-                    <p className="app-bible-body">{d.source}</p>
+        <Inspector
+          label={data.kind === "scene" ? "About this scene" : "About this file"}
+          head={
+            <>
+              {data.canEdit ? (
+                <Panel title="This file" src={data.version ? "In Git" : "Only in Carrel so far"}>
+                  <div className="app-stack" data-tight>
+                    <p role="status" className="app-savestate">
+                      {saveState}
+                    </p>
+                    {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
+                    {data.version ? (
+                      <AiWriteButtons
+                        action={`${base}/ai-write`}
+                        fields={{ path: data.path }}
+                        buttons={[
+                          { job: "continue", label: "Continue this file" },
+                          { job: "edit", label: "Suggest edits" },
+                        ]}
+                      />
+                    ) : null}
                     <div className="app-actions">
-                      <Link
-                        className="cap-btn"
-                        data-size="sm"
-                        to={`${base}/h/${data.path}?compare=ai&ai=${d.id}`}
+                      <Button
+                        variant="primary"
+                        pending={busy}
+                        disabledReason={
+                          !data.connected
+                            ? "Git is not connected, so saving waits. The text is kept here in Carrel."
+                            : undefined
+                        }
+                        onClick={() => void send("save")}
                       >
-                        Compare with yours
-                      </Link>
-                      {data.canEdit ? (
+                        Save to Git
+                      </Button>
+                      <Button
+                        pending={checker.state !== "idle"}
+                        onClick={() =>
+                          void checker.submit({ intent: "check", source }, { method: "post" })
+                        }
+                      >
+                        Check this text
+                      </Button>
+                      {room.unsaved && data.version ? (
                         <Button
-                          size="sm"
+                          variant="quiet"
                           pending={busy}
-                          onClick={(event) => ask("use-ai", event.currentTarget, d.id)}
+                          onClick={(event) => ask("discard", event.currentTarget)}
                         >
-                          Use as the working copy
+                          Discard unsaved changes
                         </Button>
                       ) : null}
                     </div>
-                  </Disclosure>
-                ))}
-              </div>
-            </Panel>
-          ) : null}
-
-          {data.kind === "scene" ? (
-            <Panel title="From the bible" count={data.bible.length}>
-              {data.bible.length === 0 ? (
-                <p className="cap-muted">No entries match this scene's header.</p>
-              ) : (
-                <div className="app-stack" data-tight>
-                  {data.bible.map((b) => (
-                    <Disclosure
-                      key={b.path}
-                      summary={
-                        <>
-                          {b.name} <span className="cap-muted">{b.kind}</span>
-                        </>
-                      }
+                  </div>
+                </Panel>
+              ) : null}
+            </>
+          }
+          tabs={[
+            {
+              value: "details",
+              label: "Details",
+              content: (
+                <HeaderFields
+                  source={source}
+                  onChange={setSource}
+                  readOnly={readOnly || !data.canEdit}
+                />
+              ),
+            },
+            {
+              value: "checks",
+              label: "Checks",
+              count: openFlags,
+              content: (
+                <div className="app-stack">
+                  <Panel title="Flags" count={openFlags} src="From the last save" id="flags">
+                    <div className="app-stack" data-tight>
+                      <p className="cap-muted app-note">
+                        A flag never stops a save; it holds export until it is fixed or the Owner
+                        dismisses it.
+                      </p>
+                      {data.findings.length === 0 ? (
+                        <p>None.</p>
+                      ) : (
+                        <ul className="app-flags" aria-label="Flags on this file">
+                          {data.findings.map((f) => (
+                            <li key={f.id}>
+                              {f.status === "open" ? (
+                                <Status tone="warn">Open</Status>
+                              ) : (
+                                <Pill variant="secondary">Dismissed</Pill>
+                              )}
+                              <span>
+                                <strong>{f.check}</strong>{" "}
+                                {f.line ? <span className="cap-muted">line {f.line}</span> : null}{" "}
+                                {f.message}
+                              </span>
+                              {f.status === "open" && data.canPublish ? (
+                                <Button
+                                  size="sm"
+                                  onClick={(event) => ask("dismiss", event.currentTarget, f.id)}
+                                >
+                                  Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
+                                </Button>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {checked ? (
+                        <div role="status" className="app-stack" data-tight>
+                          <h3 className="app-subhead">This text, checked now</h3>
+                          {checked.length === 0 ? (
+                            <p>Nothing flagged.</p>
+                          ) : (
+                            <ul className="app-flags">
+                              {checked.map((f, i) => (
+                                <li key={i}>
+                                  <Status tone="warn">Found</Status>
+                                  <span>
+                                    <strong>{f.check}</strong>{" "}
+                                    {f.line ? (
+                                      <span className="cap-muted">line {f.line}</span>
+                                    ) : null}{" "}
+                                    {f.message}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </Panel>
+                  {data.aiDrafts.length > 0 ? (
+                    <Panel
+                      title="AI drafts beside yours"
+                      count={data.aiDrafts.length}
+                      src="None has touched the text or Git"
                     >
-                      <p className="app-bible-body">{b.body || "(no notes)"}</p>
-                      <Link to={`${base}/f/${b.path}`}>Open</Link>
-                    </Disclosure>
-                  ))}
+                      <div className="app-stack" data-tight>
+                        {data.aiDrafts.map((d) => (
+                          <Disclosure
+                            key={d.id}
+                            summary={
+                              <>
+                                {d.client}{" "}
+                                <span className="cap-muted">
+                                  <Time at={d.createdAt} /> · {d.words} words
+                                </span>
+                              </>
+                            }
+                          >
+                            {d.note ? <p>{d.note}</p> : null}
+                            <p className="app-bible-body">{d.source}</p>
+                            <div className="app-actions">
+                              <Link
+                                className="cap-btn"
+                                data-size="sm"
+                                to={`${base}/h/${data.path}?compare=ai&ai=${d.id}`}
+                              >
+                                Compare with yours
+                              </Link>
+                              {data.canEdit ? (
+                                <Button
+                                  size="sm"
+                                  pending={busy}
+                                  onClick={(event) => ask("use-ai", event.currentTarget, d.id)}
+                                >
+                                  Use as the working copy
+                                </Button>
+                              ) : null}
+                            </div>
+                          </Disclosure>
+                        ))}
+                      </div>
+                    </Panel>
+                  ) : null}
                 </div>
-              )}
-            </Panel>
-          ) : null}
-        </aside>
+              ),
+            },
+            commentsTab(data.room ? editing.panels : null),
+            {
+              value: "bible",
+              label: "Bible",
+              content:
+                data.kind !== "scene" ? null : (
+                  <div className="app-stack">
+                    {data.kind === "scene" ? (
+                      <Panel title="From the bible" count={data.bible.length}>
+                        {data.bible.length === 0 ? (
+                          <p className="cap-muted">No entries match this scene's header.</p>
+                        ) : (
+                          <div className="app-stack" data-tight>
+                            {data.bible.map((b) => (
+                              <Disclosure
+                                key={b.path}
+                                summary={
+                                  <>
+                                    {b.name} <span className="cap-muted">{b.kind}</span>
+                                  </>
+                                }
+                              >
+                                <p className="app-bible-body">{b.body || "(no notes)"}</p>
+                                <Link to={`${base}/f/${b.path}`}>Open</Link>
+                              </Disclosure>
+                            ))}
+                          </div>
+                        )}
+                      </Panel>
+                    ) : null}
+                  </div>
+                ),
+            },
+            {
+              value: "binder",
+              label: "Binder",
+              content: (
+                <Panel title="Binder" src="The book in reading order">
+                  <Binder
+                    nodes={data.binder}
+                    book={data.project.slug}
+                    current={data.path}
+                    canEdit={data.canEdit && data.connected}
+                  />
+                </Panel>
+              ),
+            },
+          ]}
+        />
       </div>
 
       <ConfirmDialog
