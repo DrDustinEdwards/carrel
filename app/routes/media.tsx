@@ -18,6 +18,8 @@ import { loadMedia, readMediaQuery, type IntentResult } from "@dustinedwards/sit
 
 import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
 import { ProjectTabs } from "~/components/project-tabs";
+import { ScopeChip } from "~/components/scope-chip";
+import { visibleProjects } from "~/lib/people.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -36,7 +38,12 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
   const search = new URL(request.url).searchParams;
+  const visible = await visibleProjects(env.DB, viewer);
+  const sites = visible
+    .filter((p) => p.kind === "site" && can(p.role, "read"))
+    .map((p) => ({ slug: p.slug, name: p.name }));
   const head = {
+    sites,
     slug: project.slug,
     name: project.name,
     site: siteEntry(project.site).name,
@@ -100,8 +107,11 @@ export default function MediaPage({ loaderData, actionData }: Route.ComponentPro
   return (
     <div className="app-page">
       <PageHead
-        title={project.name}
+        title="Media"
         lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`}
+        actions={
+          <ScopeChip sites={project.sites} value={project.slug} all={null} action="/media" />
+        }
       />
       <ProjectTabs slug={project.slug} current="media" mentions={project.mentions} />
       {unavailable || !data ? (
