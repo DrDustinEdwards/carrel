@@ -1424,13 +1424,6 @@ img.ProseMirror-separator {
   font-variant-numeric: tabular-nums;
 }
 
-/* Capsomer PR 315 (status message clears the phone tab bar): the same rule here until a release has it. Remove then. */
-@media (max-width: 767.98px) {
-  :root:has(.cap-site-tabs) .cap-message {
-    inset-block-end: calc(5.5rem + env(safe-area-inset-bottom, 0px));
-  }
-}
-
 /* Writing: the box column, the open row, and the peek's waiting list. */
 .app-check-col {
   inline-size: 2.75rem;
