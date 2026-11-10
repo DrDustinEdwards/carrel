@@ -252,6 +252,16 @@ function PersonRow({
           ) : null}
         </span>
         {person.isOwner ? null : (
+          <span className="app-actions app-role-actions">
+            {hydrated ? null : (
+              <Button type="submit" form={formId} size="sm">
+                Save<span className="cap-sr-only"> roles for {name}</span>
+              </Button>
+            )}
+            <AccessButton person={person} />
+          </span>
+        )}
+        {person.isOwner ? null : (
           <form id={formId} method="post" hidden>
             <input type="hidden" name="intent" value="roles" />
             <input type="hidden" name="person" value={person.id} />
@@ -306,18 +316,6 @@ function PersonRow({
           );
         })
       )}
-      <td>
-        {person.isOwner ? null : (
-          <span className="app-actions">
-            {hydrated ? null : (
-              <Button type="submit" form={formId} size="sm">
-                Save<span className="cap-sr-only"> roles for {name}</span>
-              </Button>
-            )}
-            <AccessButton person={person} />
-          </span>
-        )}
-      </td>
     </tr>
   );
 }
@@ -565,9 +563,6 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                     {project.name}
                   </th>
                 ))}
-                <th scope="col">
-                  <span className="cap-sr-only">Access</span>
-                </th>
               </tr>
             </thead>
             <tbody>

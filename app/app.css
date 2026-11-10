@@ -189,12 +189,12 @@
   & td > * {
     min-inline-size: 8.5rem;
   }
-  & td:last-child > * {
-    min-inline-size: 0;
-  }
 }
 .app-role-person {
   display: block;
+}
+.app-role-actions {
+  margin-block-start: var(--space-2);
 }
 .app-role-pills {
   display: flex;
@@ -1539,4 +1539,16 @@ img.ProseMirror-separator {
 }
 .app-engine-table td > * {
   min-inline-size: 12rem;
+}
+
+/* History: the Compare button holds to the bottom of the window once two revisions are ticked. */
+.app-compare-bar[data-ready] {
+  position: sticky;
+  inset-block-end: var(--space-4);
+  z-index: 2;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay, 0 4px 16px rgb(0 0 0 / 0.12));
 }

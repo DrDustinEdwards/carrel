@@ -19,7 +19,7 @@ import {
   utc,
   type View,
 } from "~/components/history/history-view";
-import { RevisionPicker } from "~/components/history/revision-picker";
+import { RevisionPicker, revisionLabel } from "~/components/history/revision-picker";
 import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { bookVersions, readVersion } from "~/lib/book-history.server";
@@ -183,7 +183,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   }
 
   return {
-    project: { slug: project.slug, name: project.name },
+    project: { slug: project.slug, name: project.name, book: project.book },
     path,
     label: labelFor(path),
     by,
@@ -283,7 +283,10 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
           <RevisionPicker
             revisions={versions.map((v) => ({
               ...v,
-              message: v.kind === "outside" ? `${v.message} (outside Carrel)` : v.message,
+              message:
+                v.kind === "outside"
+                  ? `${revisionLabel(v.message, `${project.book}/${v.path}`)} outside Carrel`
+                  : v.message,
             }))}
             historyPath={historyPath}
             picked={picked}
