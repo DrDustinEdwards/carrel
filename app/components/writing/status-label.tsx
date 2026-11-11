@@ -1,8 +1,8 @@
 // A file's status as the project's list names it: the label's word with its color as a dot beside
-// it, so the word carries the meaning and the color only repeats it. A value the list does not carry
+// it (Capsomer's series badge), so the word carries the meaning and the color only repeats it. A value the list does not carry
 // is shown as written, in a neutral outline pill; an empty one shows nothing.
 
-import { Pill } from "capsomer/react/status";
+import { Pill, type PillProps } from "capsomer/react/status";
 
 import { labelFor, type StatusLabel } from "~/lib/writing/status";
 
@@ -18,9 +18,8 @@ export function StatusLabelPill({ labels, status }: { labels: StatusLabel[]; sta
     );
   }
   return (
-    <span className="app-label" data-color={label.color}>
-      <span className="app-label-dot" aria-hidden="true" />
+    <Pill variant="outline" series={label.color as PillProps["series"]}>
       {label.label}
-    </span>
+    </Pill>
   );
 }
