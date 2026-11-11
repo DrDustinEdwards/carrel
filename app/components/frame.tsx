@@ -9,10 +9,12 @@ import type { Command } from "capsomer/react/command-menu";
 import { Icon } from "capsomer/react/icons";
 import { routerRenderLink } from "capsomer/react/link";
 import { MessageProvider } from "capsomer/react/message";
-import { AdminShell, type AdminEntry } from "capsomer/react/admin-shell";
+import { AdminShell, currentEntryId, type AdminEntry } from "capsomer/react/admin-shell";
 
 // The search palette loads once the page is idle, or at once when the search button is pressed first, so
 // its code is not on every page's first load (devkit-route-weight). It binds Ctrl or Cmd K and / itself.
+// Not Capsomer's useCommandHost (0.100.0): it is exported from the same module as CommandMenu, so a
+// static import of the hook puts the whole menu on every page's first load (about 6.4 KB gzip).
 const CommandMenu = lazy(() =>
   import("capsomer/react/command-menu").then((m) => ({ default: m.CommandMenu })),
 );
@@ -75,23 +77,13 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
   // A fixed list, in the verbs of the work: it does not grow with each site or book (a site's or a
   // book's own pages are reached from Writing, Books and Sites, and from the header's search).
   const { nav, tabs } = useMemo(() => {
-    const at = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
     const entry = (
       id: string,
       label: string,
       href: string,
       group: string,
-      match: (string | RegExp)[] = [href],
-    ): AdminEntry => ({
-      id,
-      label,
-      href,
-      icon: ICONS[id as keyof typeof ICONS],
-      group,
-      current: match.some((m) =>
-        typeof m === "string" ? (m === "/" ? pathname === "/" : at(m)) : m.test(pathname),
-      ),
-    });
+      match?: (string | RegExp)[],
+    ): AdminEntry => ({ id, label, href, icon: ICONS[id as keyof typeof ICONS], group, match });
     const home = {
       ...entry("home", "Home", "/", "Now"),
       count: needs || undefined,
@@ -117,13 +109,17 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
         ]
       : [];
     const order = ["Now", "Write", "Library", "Publish", "Owner"];
-    const list = [home, writing, books, media, ...ownerEntries].sort(
-      (a, b) => order.indexOf(a.group ?? "") - order.indexOf(b.group ?? ""),
-    );
+    // The page you are on: Capsomer's longest match over each entry's href or match. Marked here
+    // rather than through the shell's `pathname`, which would also set the tab title.
+    const current = currentEntryId(pathname, [home, writing, books, media, ...ownerEntries]);
+    const list = [home, writing, books, media, ...ownerEntries]
+      .map((e) => ({ ...e, current: e.id === current }))
+      .sort((a, b) => order.indexOf(a.group ?? "") - order.indexOf(b.group ?? ""));
+    const tab = (e: AdminEntry) => ({ ...list.find((x) => x.id === e.id)!, group: undefined });
     // The phone's bar: the four places everyone reaches first. The header's menu holds the whole list.
     return {
       nav: list,
-      tabs: [home, writing, books, media].map((e) => ({ ...e, group: undefined })),
+      tabs: [home, writing, books, media].map(tab),
     };
   }, [needs, owner, pathname]);
 
@@ -209,7 +205,7 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
         name: data?.name ?? "Signed out",
         initials: initialsOf(data?.name ?? ""),
         role: owner ? "Owner" : undefined,
-        onSignOut: data ? () => location.assign("/cdn-cgi/access/logout") : undefined,
+        accessLogout: Boolean(data),
       }}
       prefKey="carrel-rail"
     >

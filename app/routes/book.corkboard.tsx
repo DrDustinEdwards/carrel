@@ -3,17 +3,15 @@
 // and cards move by dragging a grip, by the keyboard, or by Move up and Move down; a card's menu also
 // moves it to another chapter. Every move is renames of numbered files in one commit
 // (lib/binder.server.ts). It works with no script: the lists sit in forms whose buttons post the move,
-// and the card menu is a native disclosure of submit buttons (Capsomer's form menu look).
+// and the card menu is Capsomer's form menu, a native disclosure of submit buttons.
 
-import { useEffect, useRef } from "react";
 import { Form, useFetcher } from "react-router";
-import { enhance } from "capsomer/behavior/menu";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { SortableList, moveId } from "capsomer/react/sortable-list";
-import { Icon } from "capsomer/react/icons";
 import { Link } from "capsomer/react/link";
+import { FormMenu } from "capsomer/react/menu";
 
 import { BookHead } from "~/components/book-head";
 import { StatusLabelPill } from "~/components/writing/status-label";
@@ -130,46 +128,6 @@ export async function action({
 
 type Card = Route.ComponentProps["loaderData"]["chapters"][number]["cards"][number];
 
-/** A card's menu: Move to each other chapter. Its buttons submit the card's own form (the form
- * attribute), since the card sits inside its chapter's list form and forms do not nest. */
-function CardMenu({
-  title,
-  form,
-  chapters,
-}: {
-  title: string;
-  form: string;
-  chapters: { slug: string; title: string }[];
-}) {
-  const ref = useRef<HTMLDetailsElement>(null);
-  useEffect(() => (ref.current?.parentNode ? enhance(ref.current.parentNode) : undefined), []);
-  return (
-    <details className="cap-menu-form app-card-menu" data-cap="menu-form" ref={ref}>
-      <summary className="cap-btn cap-menu-trigger" data-size="sm">
-        Move to<span className="cap-sr-only"> another chapter: {title}</span>
-        <Icon name="chevron-down" />
-      </summary>
-      <div className="cap-popover cap-menu">
-        {chapters.map((c) => (
-          <button
-            key={c.slug}
-            type="submit"
-            form={form}
-            name="target"
-            value={c.slug}
-            className="cap-option cap-menu-item"
-            onClick={() => {
-              if (ref.current) ref.current.open = false;
-            }}
-          >
-            <span className="cap-option-label">{c.title}</span>
-          </button>
-        ))}
-      </div>
-    </details>
-  );
-}
-
 export default function Corkboard({ loaderData, actionData }: Route.ComponentProps) {
   const { head, canMove, labels, chapters } = loaderData;
   const mover = useFetcher<typeof action>();
@@ -205,10 +163,20 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
           {c.words.toLocaleString("en-US")} words
         </p>
         {canMove && chapters.length > 1 ? (
-          <CardMenu
-            title={c.title}
+          // Move to each other chapter. Its buttons submit the card's own form (`form`), since the
+          // card sits inside its chapter's list form and forms do not nest.
+          <FormMenu
+            label={
+              <>
+                Move to<span className="cap-sr-only"> another chapter: {c.title}</span>
+              </>
+            }
             form={moveForm(c)}
-            chapters={chapters.filter((x) => x.slug !== chapter)}
+            size="sm"
+            name="target"
+            items={chapters
+              .filter((x) => x.slug !== chapter)
+              .map((x) => ({ label: x.title, value: x.slug }))}
           />
         ) : null}
       </div>
