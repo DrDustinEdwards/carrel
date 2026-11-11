@@ -16,6 +16,7 @@ import { buildDocx, buildEpub, printHtml, slugFor } from "~/lib/novels/export";
 
 import type { Route } from "./+types/book.export";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 const FORMATS = ["epub", "docx", "print"] as const;
 
 function held(message: string, slug: string): Response {
@@ -38,7 +39,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       await refreshBook(env.DB, repo, project);
     } catch (error) {
       return new Response(
-        `Git could not be read, so there is nothing current to export: ${error instanceof Error ? error.message : String(error)}\n`,
+        `Git could not be read, so there is nothing current to export: ${errorMessage(error)}\n`,
         {
           status: 502,
           headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },

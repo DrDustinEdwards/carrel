@@ -12,6 +12,7 @@ import { manuscriptsFolder, refreshManuscripts } from "./drive.server";
 import { refreshSearchConsole } from "./search-console.server";
 import { saConnection } from "./service-account.server";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export async function refreshGoogle(
   env: Env,
   fetcher?: typeof fetch,
@@ -19,7 +20,7 @@ export async function refreshGoogle(
   if (saConnection(env).state !== "connected") return { skipped: "service account not connected" };
   const out: Record<string, unknown> = {};
   const note = (key: string, error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     console.error(JSON.stringify({ google: "refresh-failed", key, error: message }));
     out[key] = `failed: ${message}`;
   };

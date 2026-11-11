@@ -8,6 +8,7 @@ import { projects } from "~/db/schema";
 import { refreshIndex, type RefreshResult } from "~/lib/index.server";
 import { isSiteId, siteConnection } from "~/lib/sites.server";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export async function refreshAllSites(
   env: Env,
   fetcher?: typeof fetch,
@@ -27,7 +28,7 @@ export async function refreshAllSites(
     try {
       out[row.slug] = await refreshIndex(env, { id: row.id, site: row.site }, fetcher);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       console.error(JSON.stringify({ refresh: "failed", project: row.slug, error: message }));
       out[row.slug] = `failed: ${message}`;
     }

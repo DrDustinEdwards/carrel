@@ -38,6 +38,7 @@ import { readForm } from "~/lib/form.server";
 import type { Route } from "./+types/book";
 import { plural } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.head.name} · Carrel` : "Carrel" }];
 }
@@ -146,7 +147,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     try {
       return { refreshed: await refreshBook(env.DB, repo, project), error: null };
     } catch (error) {
-      return { refreshed: null, error: error instanceof Error ? error.message : String(error) };
+      return { refreshed: null, error: errorMessage(error) };
     }
   }
 
