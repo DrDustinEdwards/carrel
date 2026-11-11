@@ -6,7 +6,7 @@
 
 import { fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
 import { SignJWT } from "jose";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 export const NOVELS_REPO = "DrDustinEdwards/writing";
 const NOVELS_BRANCH = "main";
