@@ -89,7 +89,7 @@ export function Binder({
   ];
 
   return (
-    <div className="app-stack" data-tight>
+    <div className="cap-stack" data-gap="4">
       <Tree
         nodes={tree}
         aria-label="Binder"

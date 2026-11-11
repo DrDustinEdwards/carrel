@@ -88,7 +88,7 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
           count={labels.length}
           src={edited ? "This book's own" : "The starting list for books"}
         >
-          <div className="app-stack" data-tight>
+          <div className="cap-stack" data-gap="4">
             <ul className="app-label-list" aria-label="Statuses, in order">
               {labels.map((l) => (
                 <li key={l.label}>
@@ -107,7 +107,7 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
             ) : null}
             {canEdit ? (
               <Disclosure summary="Edit the list" defaultOpen={Boolean(result?.error)}>
-                <Form method="post" className="app-stack" data-tight>
+                <Form method="post" className="cap-stack" data-gap="4">
                   <input type="hidden" name="intent" value="labels" />
                   <p className="cap-muted app-note">
                     In order. Clear a label to remove it; renaming one does not change the scenes
@@ -138,7 +138,7 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
                       </li>
                     ))}
                   </ol>
-                  <div className="app-actions">
+                  <div className="cap-cluster" data-gap="3">
                     <Button type="submit" pending={saving}>
                       Save the list
                     </Button>

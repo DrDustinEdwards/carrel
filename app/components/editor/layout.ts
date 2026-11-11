@@ -1,6 +1,6 @@
 // The editor's layout (Write, Split, Preview), remembered in this browser.
 
-import { useRemembered } from "~/lib/remembered";
+import { useRemembered } from "capsomer/react/hooks";
 
 export type Layout = "write" | "split" | "preview";
 

@@ -3,9 +3,9 @@
 // item, a post since deleted). Anyone who can read the project sees them; only the Owner dismisses,
 // through the same function as the editor's Dismiss, so a dismissal is recorded the same way.
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Form, useFetcher } from "react-router";
-import { Link } from "capsomer/react/link";
+import { routerRenderLink } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -75,9 +75,6 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
   const [target, setTarget] = useState<{ flag: Flag; opener: HTMLElement | null } | null>(null);
   const open = flags.filter((f) => f.status === "open").length;
   const dismissed = fetcher.data?.dismissed ?? actionData?.dismissed;
-  const link = ({ href, children }: { href: string; children: ReactNode }) => (
-    <Link to={href}>{children}</Link>
-  );
 
   return (
     <div className="app-page">
@@ -118,7 +115,7 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
                       ? `/p/${project.slug}/e/${encodeURIComponent(flag.itemId)}`
                       : undefined
                   }
-                  renderLink={link}
+                  renderLink={routerRenderLink}
                   detail={
                     <>
                       {source(flag.check)} on{" "}

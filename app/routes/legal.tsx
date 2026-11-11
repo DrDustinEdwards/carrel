@@ -263,7 +263,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
               />
             </Field>
             {canManage ? (
-              <div className="app-actions">
+              <div className="cap-cluster" data-gap="3">
                 <Button
                   type="submit"
                   name="intent"
@@ -290,7 +290,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
             <Field label="Text">
               <textarea className="cap-input" name="body" rows={5} />
             </Field>
-            <div className="app-actions">
+            <div className="cap-cluster" data-gap="3">
               <Button type="submit" name="intent" value="save-section" variant="primary">
                 Add section
               </Button>

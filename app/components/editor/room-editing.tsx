@@ -6,7 +6,7 @@ import type { Editor } from "@tiptap/core";
 import { useEffect, useMemo, useState } from "react";
 
 import { listSuggestions } from "~/lib/editor/suggest";
-import { useRemembered } from "~/lib/remembered";
+import { useRemembered } from "capsomer/react/hooks";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 
 import { CommentsPanel } from "./comments-panel";

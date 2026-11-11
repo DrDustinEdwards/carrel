@@ -8,7 +8,7 @@ import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runHealth } from "~/lib/health.server";
-import { figureMarkup } from "~/lib/site-markdown";
+import { siteFigureMarkup } from "~/lib/site-markdown";
 import { loader as editorLoader } from "~/routes/editor";
 import { action as mediaAction, loader as mediaLoader } from "~/routes/media";
 import { action as apiAction, loader as apiLoader } from "~/routes/media.api";
@@ -328,10 +328,10 @@ describe("the editor's image tools and the picker", () => {
   });
 
   it("inserts the site's own figure, with the alt text escaped", () => {
-    expect(figureMarkup("dustinedwards", "/media/a.png", ' The "river" ')).toBe(
+    expect(siteFigureMarkup("dustinedwards", "/media/a.png", ' The "river" ')).toBe(
       ':::figure{src="/media/a.png" alt="The &quot;river&quot;"}\n:::',
     );
-    expect(figureMarkup("some-other-site", "/media/a.png", "A [river]")).toBe(
+    expect(siteFigureMarkup("some-other-site", "/media/a.png", "A [river]")).toBe(
       "![A river](/media/a.png)",
     );
   });

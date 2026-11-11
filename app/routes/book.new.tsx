@@ -1,13 +1,12 @@
 // A new book is a project whose folder in the writing repository is named here. Nothing is written to
 // Git until the first file is saved; the folder appears then.
 
+import { routerRenderLink } from "capsomer/react/link";
 import { Form, redirect, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
-
-import { RouterLink } from "~/components/frame";
 
 import { createBook } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -38,13 +37,13 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
   return (
     <div className="app-page" data-narrow>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]}
         title="New book"
         lead="A book is a folder in the writing repository. Nothing is written to Git until its first file is saved."
       />
       <Panel title="The book">
-        <Form method="post" className="app-form">
+        <Form method="post" className="cap-stack">
           <Field label="Name" required>
             <input className="cap-input" name="name" required maxLength={120} autoComplete="off" />
           </Field>
@@ -65,7 +64,7 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
               data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as paluxy-portal."
             />
           </Field>
-          <div className="app-actions">
+          <div className="cap-cluster" data-gap="3">
             <Button type="submit" variant="primary" pending={busy}>
               Create the book
             </Button>
