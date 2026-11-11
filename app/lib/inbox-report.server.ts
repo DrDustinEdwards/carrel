@@ -28,10 +28,7 @@ function draftItems(waiting: number, since: string | null, origin: string): Inbo
 }
 
 /** Counts the waiting AI drafts and reports them. Never throws; a failure is logged and returned. */
-export async function reportAiDrafts(
-  env: Env,
-  fetcher?: typeof fetch,
-): Promise<ReportResult> {
+export async function reportAiDrafts(env: Env, fetcher?: typeof fetch): Promise<ReportResult> {
   try {
     const row = await drizzle(env.DB)
       .select({ waiting: count(), since: min(aiDrafts.createdAt) })
