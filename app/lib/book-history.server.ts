@@ -4,7 +4,8 @@
 // through the file's old names, since GitHub's history of a path stops where it was renamed. Any
 // version's text is read from Git at its commit. Read-only, and a Reader may read all of it.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { inList } from "@dustinedwards/site-runtime/d1";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { authorship, people } from "~/db/schema";
@@ -53,7 +54,7 @@ export async function bookVersions(
     })
     .from(authorship)
     .innerJoin(people, eq(people.id, authorship.personId))
-    .where(and(eq(authorship.projectId, project.id), inArray(authorship.path, paths)))
+    .where(and(eq(authorship.projectId, project.id), inList(authorship.path, paths)))
     .all();
   const moves = await movesOf(db, project.id, paths);
   const movers = moves.length
@@ -62,7 +63,7 @@ export async function bookVersions(
           await d
             .select({ id: people.id, name: people.name, email: people.email })
             .from(people)
-            .where(inArray(people.id, [...new Set(moves.map((m) => m.personId))]))
+            .where(inList(people.id, [...new Set(moves.map((m) => m.personId))]))
             .all()
         ).map((p) => [p.id, p.name || p.email]),
       )
