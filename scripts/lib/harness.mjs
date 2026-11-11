@@ -74,7 +74,7 @@ async function searchFor(
  * Sets Home's first row aside with its l key, as a keyboard user would, and waits for the message that offers Undo.
  */
 async function laterFirstRow(/** @type {import("playwright").Page} */ page) {
-  await page.locator(".app-need-row .cap-row-title a").first().focus();
+  await page.locator(".cap-need-row .cap-row-title a").first().focus();
   await page.keyboard.press("l");
   await page.getByText("Set for later, until tomorrow morning").waitFor();
   // The header's count follows once Home's loaders have run again.
@@ -268,11 +268,7 @@ export const SCREENS = [
     name: "book-history-compare",
     viewer: "owner",
     path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md`,
-    after: async (page) => {
-      for (const box of await page.getByRole("checkbox").all()) await box.check();
-      await page.getByRole("button", { name: "Compare the two picked" }).click();
-      await page.locator(".cap-compare, .cap-patch").first().waitFor();
-    },
+    after: (page) => compareOutermost(page, ".cap-compare, .cap-patch"),
   },
   {
     name: "book-history-ai",
@@ -706,10 +702,7 @@ async function pressUntilOpen(page, name, opens) {
  * @param {Page} page
  */
 async function openOldestSource(page) {
-  await page
-    .getByRole("link", { name: /open its source/ })
-    .last()
-    .click();
+  await page.locator(".cap-hist .cap-row-title a").last().click();
   await page.getByLabel("Source of this revision").waitFor();
 }
 
@@ -739,10 +732,10 @@ async function chooseByWord(page) {
  * @param {string} ready
  */
 async function compareOutermost(page, ready) {
-  const boxes = page.getByRole("checkbox", { name: /^Compare the revision/ });
+  const boxes = page.getByRole("checkbox", { name: /^Compare this version/ });
   await boxes.first().check();
   await boxes.last().check();
-  await page.getByRole("button", { name: /^Compare the two picked/ }).click();
+  await page.getByRole("link", { name: "Compare 2 versions" }).click();
   await page.waitForSelector(ready, { timeout: 30_000 });
   await page.waitForTimeout(400);
 }

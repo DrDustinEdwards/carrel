@@ -3,7 +3,7 @@
 // the site. Nothing here writes to the site.
 
 import { useState } from "react";
-import { redirect } from "react-router";
+import { redirect, useSearchParams } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
@@ -13,7 +13,7 @@ import { Segmented } from "capsomer/react/segmented";
 
 import { DraftHead, draftIdParam } from "~/components/editor/draft-head";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
-import { Inspector } from "~/components/editor/inspector";
+import { Inspector } from "capsomer/react/inspector";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 
 import { readAiDraft } from "~/lib/ai.server";
@@ -71,6 +71,8 @@ export async function action({ params, context }: Route.ActionArgs) {
 }
 
 export default function AiDraft({ loaderData }: Route.ComponentProps) {
+  // `?tab=checks` opens the inspector on that tab (a link from Home's flags lands on the checks).
+  const [params] = useSearchParams();
   const { project, itemId, draft, canEdit, checks, seo } = loaderData;
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const [view, setView] = useState<"rendered" | "source">("rendered");
@@ -141,6 +143,8 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
           </Panel>
         </div>
         <Inspector
+          className="app-editor-side"
+          initialTab={params.get("tab")}
           label="About this AI draft"
           tabs={[
             {

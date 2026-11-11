@@ -100,7 +100,7 @@ export function SourcePanel({
           {view.previous ? (
             <Link
               className="cap-btn"
-              to={`${historyPath}?v=${encodeURIComponent(view.previous)}&v=${encodeURIComponent(view.version)}`}
+              to={`${historyPath}?from=${encodeURIComponent(view.previous)}&to=${encodeURIComponent(view.version)}`}
             >
               Changes in this {noun}
             </Link>
@@ -108,7 +108,7 @@ export function SourcePanel({
           {view.newest ? (
             <Link
               className="cap-btn"
-              to={`${historyPath}?v=${encodeURIComponent(view.version)}&v=${encodeURIComponent(view.newest)}`}
+              to={`${historyPath}?from=${encodeURIComponent(view.version)}&to=${encodeURIComponent(view.newest)}`}
             >
               Compare with the current version
             </Link>

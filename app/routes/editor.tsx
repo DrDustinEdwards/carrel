@@ -5,7 +5,7 @@
 
 import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useFetcher } from "react-router";
+import { useFetcher, useSearchParams } from "react-router";
 import { useHydrated } from "~/lib/hydrated";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -19,7 +19,8 @@ import { Time } from "capsomer/react/time";
 import { exact, parse } from "capsomer/behavior/time";
 
 import { FlagsPanel } from "~/components/editor/flags-panel";
-import { commentsTab, Inspector } from "~/components/editor/inspector";
+import { Inspector } from "capsomer/react/inspector";
+import { commentsTab } from "~/components/editor/comments-tab";
 import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
@@ -545,6 +546,8 @@ export default function EditorRoute({ loaderData }: Route.ComponentProps) {
 }
 
 function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
+  // `?tab=checks` opens the inspector on that tab (a link from Home's flags lands on the checks).
+  const [params] = useSearchParams();
   // A time in a string prop is in UTC until hydrated, as Capsomer's Time draws one.
   const hydrated = useHydrated();
   const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
@@ -1010,6 +1013,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         </div>
 
         <Inspector
+          className="app-editor-side"
+          initialTab={params.get("tab")}
           label={`About this ${kindNoun(data.kind)}`}
           head={
             <>

@@ -24,6 +24,7 @@ import {
   type View,
 } from "~/components/history/history-view";
 import { RevisionPicker } from "~/components/history/revision-picker";
+import { comparePicks } from "capsomer/behavior/history-list";
 import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, readDraft, writeToSite } from "~/lib/content.server";
@@ -71,7 +72,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 
   const noun = kindNoun(doc?.kind);
   const list = revisions ?? [];
-  const picks = query.getAll("v");
+  // Two picks, older first: `?from=&to=` from the Compare link, or `?compare=` twice from the form.
+  const atOf = (version: string) =>
+    Date.parse(list.find((r) => r.version === version)?.at ?? "") || 0;
+  const picks = comparePicks(query, atOf) ?? query.getAll("compare");
   let view: View = { kind: "none" };
   let picked: string[] = [];
 
