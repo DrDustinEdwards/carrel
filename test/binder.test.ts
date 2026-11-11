@@ -598,13 +598,21 @@ describe("a file's history", () => {
     // Any two versions side by side, the oldest under its old path.
     const oldest = data.versions[3]!.version;
     const newest = data.versions[0]!.version;
-    const compared = await history("reader@test.invalid", moved, `?v=${newest}&v=${oldest}`);
+    const compared = await history(
+      "reader@test.invalid",
+      moved,
+      `?compare=${newest}&compare=${oldest}`,
+    );
     expect(compared.view).toMatchObject({
       kind: "compare",
       before: { title: "Earlier version", text: expect.stringContaining("Nell came to the gate.") },
       after: { text: expect.stringContaining("at dusk") },
     });
-    const patch = await history("reader@test.invalid", moved, `?v=${newest}&v=${oldest}&by=line`);
+    const patch = await history(
+      "reader@test.invalid",
+      moved,
+      `?compare=${newest}&compare=${oldest}&by=line`,
+    );
     expect(patch.view).toMatchObject({
       kind: "compare",
       patch: expect.stringContaining("+Nell came to the old gate at dusk."),

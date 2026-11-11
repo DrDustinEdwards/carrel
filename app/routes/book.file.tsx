@@ -4,7 +4,7 @@
 // from. Beside a scene: its flags and the bible entries it names.
 
 import { useEffect, useRef, useState } from "react";
-import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
+import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -21,7 +21,8 @@ import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { HeaderFields } from "~/components/editor/header-fields";
-import { commentsTab, Inspector } from "~/components/editor/inspector";
+import { Inspector } from "capsomer/react/inspector";
+import { commentsTab } from "~/components/editor/comments-tab";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { useSaveShortcut } from "~/components/editor/save-keys";
 import { useTypingRecede } from "~/components/editor/typing";
@@ -322,6 +323,8 @@ type Ask = {
 };
 
 function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
+  // `?tab=checks` opens the inspector on that tab (a link from Home's flags lands on the checks).
+  const [params] = useSearchParams();
   const [asking, setAsking] = useState<Ask | null>(null);
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
@@ -512,6 +515,8 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         </div>
 
         <Inspector
+          className="app-editor-side"
+          initialTab={params.get("tab")}
           label={data.kind === "scene" ? "About this scene" : "About this file"}
           head={
             <>

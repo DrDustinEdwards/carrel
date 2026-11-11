@@ -19,8 +19,9 @@ import {
   utc,
   type View,
 } from "~/components/history/history-view";
-import { RevisionPicker, revisionLabel } from "~/components/history/revision-picker";
+import { RevisionPicker } from "~/components/history/revision-picker";
 import { RouterLink } from "~/components/frame";
+import { comparePicks, messageSummary } from "capsomer/behavior/history-list";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { bookVersions, readVersion } from "~/lib/book-history.server";
 import { bookRepo, indexedFile, requireBookProject } from "~/lib/books.server";
@@ -74,7 +75,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     ? null
     : `${detail} Without Git, only the versions Carrel recorded are listed, and their text cannot be opened.`;
 
-  const picks = query.getAll("v");
+  // Two picks, older first: `?from=&to=` from the Compare link, or `?compare=` twice from the form.
+  const atOf = (version: string) =>
+    Date.parse(versions.find((r) => r.version === version)?.at ?? "") || 0;
+  const picks = comparePicks(query, atOf) ?? query.getAll("compare");
   let view: View = { kind: "none" };
   let picked: string[] = [];
   const read = async (v: (typeof versions)[number]) =>
@@ -285,7 +289,7 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
               ...v,
               message:
                 v.kind === "outside"
-                  ? `${revisionLabel(v.message, `${project.book}/${v.path}`)} outside Carrel`
+                  ? `${messageSummary(v.message, `${project.book}/${v.path}`)} outside Carrel`
                   : v.message,
             }))}
             historyPath={historyPath}

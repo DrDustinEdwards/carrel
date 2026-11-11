@@ -65,6 +65,10 @@
 @import "capsomer/menu.css";
 @import "capsomer/moderation-queue.css";
 @import "capsomer/mentions-list.css";
+@import "capsomer/inspector.css";
+@import "capsomer/attention-list.css";
+@import "capsomer/people-roles.css";
+@import "capsomer/history-list.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */
@@ -170,41 +174,6 @@
   }
   & > .cap-btn {
     flex: none;
-  }
-}
-
-/* People (routes/people.tsx): people as rows, projects as columns, a role select in each cell. The
-   person stays in view while the projects scroll sideways. */
-.app-roles {
-  & th[scope="row"] {
-    position: sticky;
-    inset-inline-start: 0;
-    z-index: 1;
-    min-inline-size: 12rem;
-    background: var(--surface);
-  }
-  & td {
-    white-space: nowrap;
-  }
-  /* A role select keeps its longest word whole; the table scrolls sideways instead. */
-  & td > * {
-    min-inline-size: 8.5rem;
-  }
-}
-.app-role-person {
-  display: block;
-}
-.app-role-actions {
-  margin-block-start: var(--space-2);
-}
-.app-role-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-block-start: var(--space-1);
-
-  &:empty {
-    display: none;
   }
 }
 
@@ -461,31 +430,6 @@
   }
 }
 
-.app-editor-side {
-  display: grid;
-  gap: var(--space-5);
-  min-width: 0;
-  align-content: start;
-}
-
-/* The inspector's tabs: the list stays in view while a long tab scrolls. On a phone they open as a
-   sheet from buttons under the saving panel (components/editor/inspector.tsx). */
-.app-inspector-tabs {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-.app-inspector-panel {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-.app-inspector-open {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 /* The binder's tree in a panel: the panel's body is a grid, and a grid item is as wide as its longest
    line unless told otherwise, which pushed each row's status out of the panel. */
 .app-binder {
@@ -661,35 +605,22 @@
 }
 
 /* While someone types, the rest of the screen falls quiet; a mouse move or focus brings it back. */
-html[data-typing]
-  :is(
-    .cap-site-header,
-    .cap-admin-strip,
-    .cap-admin-menu,
-    .cap-site-tabs,
-    .cap-admin-bar,
-    .app-editor .cap-page-head,
-    .app-editor .app-notices,
-    .app-editor-side,
-    .app-writing-tools,
-    .cap-md-toolbar
-  ):not(:focus-within) {
-  opacity: 0.08;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  :is(
-    .cap-site-header,
-    .cap-admin-strip,
-    .cap-admin-menu,
-    .cap-site-tabs,
-    .cap-admin-bar,
-    .app-editor .cap-page-head,
-    .app-editor .app-notices,
-    .app-editor-side,
-    .app-writing-tools,
-    .cap-md-toolbar
-  ) {
+:is(
+  .cap-site-header,
+  .cap-admin-strip,
+  .cap-admin-menu,
+  .cap-site-tabs,
+  .cap-admin-bar,
+  .app-editor .cap-page-head,
+  .app-editor .app-notices,
+  .app-editor-side,
+  .app-writing-tools,
+  .cap-md-toolbar
+) {
+  html[data-typing] &:not(:focus-within) {
+    opacity: 0.08;
+  }
+  @media (prefers-reduced-motion: no-preference) {
     transition: opacity var(--dur-base) var(--ease-out);
   }
 }
@@ -1426,43 +1357,6 @@ img.ProseMirror-separator {
   flex: 1 1 16rem;
   max-width: 28rem;
 }
-.app-need-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-4) 0 var(--space-2);
-  font-size: var(--fs-sm, 0.875rem);
-}
-.app-need-count {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-/* Home's one list of needs: the urgency headings span the row grid between the rows. */
-.app-need-group {
-  grid-column: 1 / -1;
-  list-style: none;
-}
-.app-need-group:first-child .app-need-head {
-  margin-top: var(--space-2);
-}
-.app-need-row .cap-row-actions form {
-  display: contents;
-}
-/* The keys under the list, and what Later does. */
-.app-need-keys {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-  margin: var(--space-3) 0 0;
-  color: var(--muted);
-  font-size: var(--fs-detail, 0.8125rem);
-}
-/* No keyboard on a touch screen: only what Later does stays. */
-@media (pointer: coarse) {
-  .app-need-key {
-    display: none;
-  }
-}
 
 /* Writing: the box column, the open row, and the peek's waiting list. */
 .app-check-col {
@@ -1569,16 +1463,4 @@ img.ProseMirror-separator {
 }
 .app-engine-table td > * {
   min-inline-size: 12rem;
-}
-
-/* History: the Compare button holds to the bottom of the window once two revisions are ticked. */
-.app-compare-bar[data-ready] {
-  position: sticky;
-  inset-block-end: var(--space-4);
-  z-index: 2;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-l);
-  background: var(--surface);
-  box-shadow: var(--shadow-overlay, 0 4px 16px rgb(0 0 0 / 0.12));
 }
