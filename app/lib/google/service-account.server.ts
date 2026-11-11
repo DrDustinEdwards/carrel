@@ -4,7 +4,7 @@
 // before anything is sent, whatever the scopes would allow.
 
 import { SignJWT } from "jose";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 /** Read-only, and no drive.readonly: the index takes metadata, and search asks Drive each time. */
 export const SA_SCOPES = [

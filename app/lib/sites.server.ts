@@ -3,7 +3,7 @@
 
 import { createSiteClient, SiteApiError, type SiteClient } from "@dustinedwards/site-api/client";
 import { MIN_KEY_LENGTH } from "@dustinedwards/site-api";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 export type SiteId =
   | "dustinedwards"

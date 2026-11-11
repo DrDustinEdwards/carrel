@@ -9,7 +9,7 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { aiDrafts } from "~/db/schema";
 import { carrelOrigin } from "~/lib/mcp/server";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 /** Capsid's origin, from the var CAPSID_ORIGIN; read loosely, as carrelOrigin does, for an older wrangler.jsonc without it. */
 export function capsidOrigin(env: Env): string {

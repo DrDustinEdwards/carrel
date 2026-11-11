@@ -13,6 +13,7 @@
 // loop over accounts, the daily cap, the gap between posts and the record of every post are carried
 // over from legacy Recova's social-poster cron.
 
+import { inList } from "@dustinedwards/site-runtime/d1";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -25,7 +26,7 @@ import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
 import { d1FireStore, fireOnce, routineConfig, routinePrompt } from "./routine.server";
 import { draftPostViaApi, monthSpendMicros, readAiSettings } from "~/lib/ai-engine.server";
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 type Fetch = typeof fetch;
@@ -458,7 +459,7 @@ export async function processSocial(
       and(
         eq(socialPosts.status, "drafted"),
         isNotNull(socialEvents.publishedAt),
-        inArray(socialPosts.accountId, ids),
+        inList(socialPosts.accountId, ids),
       ),
     )
     .all();
@@ -475,7 +476,7 @@ export async function processSocial(
     .where(
       and(
         eq(socialEvents.state, "routine"),
-        inArray(socialEvents.accountId, ids),
+        inList(socialEvents.accountId, ids),
         lte(socialRoutineRuns.requestedAt, new Date(now.getTime() - ROUTINE_WAIT_MS).toISOString()),
       ),
     )
@@ -496,7 +497,7 @@ export async function processSocial(
         and(
           eq(socialEvents.state, "waiting"),
           isNotNull(socialEvents.publishedAt),
-          inArray(socialEvents.accountId, ids),
+          inList(socialEvents.accountId, ids),
         ),
       )
       .all()
@@ -539,7 +540,7 @@ export async function processSocial(
             .set({ state: "routine", routineRunId: run!.id })
             .where(
               and(
-                inArray(
+                inList(
                   socialEvents.id,
                   waiting.map((e) => e.id),
                 ),
