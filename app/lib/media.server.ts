@@ -20,6 +20,7 @@ import {
 } from "@dustinedwards/site-api/admin";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { bareType, CROPPABLE } from "capsomer/behavior/media";
+import { chunked, rowsPerInsert } from "@dustinedwards/site-runtime/d1";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changes } from "~/db/schema";
@@ -73,17 +74,21 @@ export function mediaSource(
     async record({ kind, ids, changeId }) {
       const action = ACTIONS[kind];
       if (!action) return;
-      await drizzle(env.DB)
-        .insert(changes)
-        .values(
-          ids.map((itemId) => ({
+      // A bulk action names any number of items; D1 binds at most 100 values a statement, five a row here,
+      // so the rows go in slices, all in one batch (one transaction).
+      const db = drizzle(env.DB);
+      const inserts = chunked(ids, rowsPerInsert(5)).map((part) =>
+        db.insert(changes).values(
+          part.map((itemId) => ({
             id: ids.length === 1 ? changeId : `${changeId}:${itemId}`,
             projectId: project.id,
             itemId,
             personId: viewer.id,
             action,
           })),
-        );
+        ),
+      );
+      if (inserts.length) await db.batch(inserts as [(typeof inserts)[0], ...typeof inserts]);
     },
   };
 }
