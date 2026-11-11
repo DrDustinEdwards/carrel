@@ -265,7 +265,7 @@ export function meteredOptions(env: Env, feature: FeatureKey): CallOptions {
           feature,
           model: r.model,
           micros: costMicros(r.model, r) ?? 0,
-          promptSize: r.input + r.cacheRead + r.cacheWrite,
+          promptSize: r.input + r.cacheRead + r.cacheWrite + r.cacheWrite1h,
           answerSize: r.output,
           ok: r.ok,
         });
