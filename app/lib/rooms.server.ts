@@ -13,7 +13,8 @@
 
 import { viewerRequest } from "@dustinedwards/site-runtime/doc-room";
 import { getServerByName } from "partyserver";
-import { and, eq, inArray } from "drizzle-orm";
+import { chunked, inList, rowsPerInsert } from "@dustinedwards/site-runtime/d1";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changeContributors, changes, drafts, people, rooms } from "~/db/schema";
@@ -247,10 +248,15 @@ export async function saveRoom<T extends Written>(
     snapshotAt: snap.at,
   });
   const ids = [...new Set([viewer.id, ...credited])];
-  await drizzle(env.DB)
-    .insert(changeContributors)
-    .values(ids.map((personId) => ({ changeId: result.changeId, personId })))
-    .onConflictDoNothing();
+  // D1 binds at most 100 values a statement: two columns a row, so rowsPerInsert(2) rows an insert.
+  const db = drizzle(env.DB);
+  const inserts = chunked(ids, rowsPerInsert(2)).map((part) =>
+    db
+      .insert(changeContributors)
+      .values(part.map((personId) => ({ changeId: result.changeId, personId })))
+      .onConflictDoNothing(),
+  );
+  if (inserts.length) await db.batch(inserts as [(typeof inserts)[0], ...typeof inserts]);
   return result;
 }
 
@@ -265,28 +271,25 @@ export async function coauthorsOf(
   const out = new Map<string, string[]>();
   if (saves.length === 0) return out;
   const saver = new Map(saves.map((s) => [s.changeId, s.saver]));
-  // D1 binds at most 100 values a statement.
-  for (let i = 0; i < saves.length; i += 90) {
-    const rows = await drizzle(db)
-      .select({
-        changeId: changeContributors.changeId,
-        id: people.id,
-        name: people.name,
-        email: people.email,
-      })
-      .from(changeContributors)
-      .innerJoin(people, eq(people.id, changeContributors.personId))
-      .where(
-        inArray(
-          changeContributors.changeId,
-          saves.slice(i, i + 90).map((s) => s.changeId),
-        ),
-      )
-      .all();
-    for (const r of rows)
-      if (r.id !== saver.get(r.changeId))
-        out.set(r.changeId, [...(out.get(r.changeId) ?? []), r.name || r.email]);
-  }
+  const rows = await drizzle(db)
+    .select({
+      changeId: changeContributors.changeId,
+      id: people.id,
+      name: people.name,
+      email: people.email,
+    })
+    .from(changeContributors)
+    .innerJoin(people, eq(people.id, changeContributors.personId))
+    .where(
+      inList(
+        changeContributors.changeId,
+        saves.map((s) => s.changeId),
+      ),
+    )
+    .all();
+  for (const r of rows)
+    if (r.id !== saver.get(r.changeId))
+      out.set(r.changeId, [...(out.get(r.changeId) ?? []), r.name || r.email]);
   return out;
 }
 

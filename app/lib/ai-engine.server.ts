@@ -37,6 +37,11 @@ import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { socialFieldsOf } from "~/lib/seo-checks";
 
+/** Whether the API engine has no key yet. The route reads this, never the secret, so the secret stays on the server. */
+export function apiKeyMissing(env: Pick<Env, "ANTHROPIC_API_KEY">): boolean {
+  return !env.ANTHROPIC_API_KEY;
+}
+
 /**
  * The jobs that can run on either engine. `subscription` says whether a routine can do it; `engine` is the setting the job
  * starts with until Dustin changes it. Background jobs nobody waits on start on the API (it answers at once and is
@@ -265,7 +270,7 @@ export function meteredOptions(env: Env, feature: FeatureKey): CallOptions {
           feature,
           model: r.model,
           micros: costMicros(r.model, r) ?? 0,
-          promptSize: r.input + r.cacheRead + r.cacheWrite,
+          promptSize: r.input + r.cacheRead + r.cacheWrite + r.cacheWrite1h,
           answerSize: r.output,
           ok: r.ok,
         });

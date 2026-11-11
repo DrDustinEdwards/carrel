@@ -5,7 +5,8 @@
 // it and the untyped-word count. The authorship record keeps the paths it was written with; a move is
 // recorded in book_moves, which a file's history follows back.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { inList } from "@dustinedwards/site-runtime/d1";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { bookFiles, bookMoves, drafts } from "~/db/schema";
@@ -49,7 +50,7 @@ export async function reorderBook(
   const held = await drizzle(db)
     .select({ path: drafts.itemId })
     .from(drafts)
-    .where(and(eq(drafts.projectId, project.id), inArray(drafts.itemId, froms)))
+    .where(and(eq(drafts.projectId, project.id), inList(drafts.itemId, froms)))
     .all();
   if (held.length > 0) {
     const paths = [...new Set(held.map((h) => h.path))].sort();
@@ -164,7 +165,7 @@ export async function movesOf(db: D1Database, projectId: number, paths: string[]
       at: bookMoves.createdAt,
     })
     .from(bookMoves)
-    .where(and(eq(bookMoves.projectId, projectId), inArray(bookMoves.toPath, paths)))
+    .where(and(eq(bookMoves.projectId, projectId), inList(bookMoves.toPath, paths)))
     .all();
 }
 
@@ -174,7 +175,7 @@ export async function chapterSources(db: D1Database, projectId: number, paths: s
   const rows = await drizzle(db)
     .select({ path: bookFiles.path, source: bookFiles.source })
     .from(bookFiles)
-    .where(and(eq(bookFiles.projectId, projectId), inArray(bookFiles.path, paths)))
+    .where(and(eq(bookFiles.projectId, projectId), inList(bookFiles.path, paths)))
     .all();
   return new Map(rows.map((r) => [r.path, r.source]));
 }

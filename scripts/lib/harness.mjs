@@ -340,7 +340,7 @@ export const SCREENS = [
     name: "post-merge",
     viewer: "owner",
     path: `/p/${SITE}/e/a-post-that-moved`,
-    wait: ".app-merge",
+    wait: ".cap-merge",
   },
   {
     name: "post-scheduled",

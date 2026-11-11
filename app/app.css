@@ -19,6 +19,7 @@
 @import "capsomer/button.css";
 @import "capsomer/field.css";
 @import "capsomer/select.css";
+@import "capsomer/scope-chip.css";
 @import "capsomer/segmented.css";
 @import "capsomer/switch.css";
 @import "capsomer/status.css";
@@ -809,79 +810,6 @@ html[data-typing]
   margin-block-start: var(--space-3);
 }
 
-/* The merge view: each difference as two columns, Carrel's and the site's, with the pick under them.
-   The side left out is dimmed, so the merged text reads down the kept sides. */
-.app-merge {
-  display: grid;
-  gap: var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.app-merge-same {
-  font-size: var(--fs-detail);
-  text-align: center;
-}
-.app-merge-choice {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
-}
-.app-merge-sides {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-
-  & > section {
-    min-width: 0;
-  }
-  & > section {
-    padding: var(--space-2);
-    border: 1px solid transparent;
-    border-radius: var(--radius-s);
-  }
-  /* The side left out: set back on the sunken ground, its heading says so. */
-  & > section:not([data-kept]) {
-    border-style: dashed;
-    border-color: var(--line-strong);
-    background: var(--sunken);
-  }
-}
-.app-merge-side {
-  margin: 0 0 var(--space-2);
-  font-size: var(--fs-detail);
-  font-weight: 600;
-}
-.app-merge-text {
-  margin: 0;
-  font-size: var(--fs-detail);
-
-  & pre,
-  &:is(pre) {
-    margin: 0 0 var(--space-2);
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    font-family: var(--mono);
-  }
-}
-.app-merge-empty {
-  font-style: italic;
-}
-.app-merge-mark {
-  padding-inline: 0.1em;
-  border-radius: var(--radius-s);
-  background: var(--warn-soft);
-  color: var(--text);
-  box-decoration-break: clone;
-}
-@media (max-width: 40rem) {
-  .app-merge-sides {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* An AI draft is read like prose, in the reading face, with its own line breaks. */
 .app-ai-draft {
   margin: 0;
@@ -1482,12 +1410,7 @@ img.ProseMirror-separator {
   color: var(--muted);
 }
 
-/* Desk's scope chip, status tabs with counts, and the list toolbar. */
-.app-scope {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
+/* Desk's status tabs with counts, and the list toolbar. */
 .app-tab-count {
   margin-inline-start: var(--space-1);
   color: var(--muted);
