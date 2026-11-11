@@ -32,12 +32,13 @@ import {
   type SaveEntry,
 } from "~/lib/writing/progress";
 import { useBrowserZone } from "capsomer/react/hooks";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 const n = (value: number) => value.toLocaleString("en-US");
 
 function paceLine(paced: Pace, deadline: string) {
   if (paced.ok)
-    return `${n(paced.remaining)} words to go by ${deadline}: ${n(paced.perDay)} a day over ${paced.days} writing day${paced.days === 1 ? "" : "s"}.`;
+    return `${n(paced.remaining)} words to go by ${deadline}: ${n(paced.perDay)} a day over ${plural(paced.days, "writing day")}.`;
   switch (paced.reason) {
     case "no-target":
       return `No project target yet. Add target: to the title page (book.md) to work out a pace.`;

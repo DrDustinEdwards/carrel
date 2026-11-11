@@ -34,6 +34,7 @@ import {
 } from "@dustinedwards/site-api/frontmatter";
 
 import { legalTypeOf } from "~/lib/legal";
+import { normalizeNewlines, plural } from "@drdustinedwards/site-helpers/text";
 
 /** Under this many characters a description says too little for a result to show it; a search engine writes its own. */
 const DESCRIPTION_MIN = 50;
@@ -147,8 +148,6 @@ export const socialFieldsOf = (site: string): SocialFields => SOCIAL_FIELDS[site
 
 export const titleSuffixOf = (site: string): string => SOCIAL_FIELDS[site]?.titleSuffix ?? "";
 
-const plural = (n: number) => `${n} character${n === 1 ? "" : "s"}`;
-
 type SearchFault = { field: "imageAlt" | "canonical"; message: string };
 
 /** The search fields' faults that block a publish, for the fields the site lists. */
@@ -182,7 +181,7 @@ export function featureImageFault(
 
 /** Why a publish is refused for the post fields, or null when they are sound. */
 export function postFieldRefusal(source: string, listed: readonly PostField[]): string | null {
-  const fault = featureImageFault(splitSource(source.replace(/\r\n/g, "\n")).front, listed);
+  const fault = featureImageFault(splitSource(normalizeNewlines(source)).front, listed);
   return fault
     ? `${fault}. Describe it, mark it decorative, or remove it before the post goes out.`
     : null;
@@ -190,7 +189,7 @@ export function postFieldRefusal(source: string, listed: readonly PostField[]): 
 
 /** Why a publish is refused for the search fields, or null when they are sound. */
 export function searchFieldRefusal(source: string, listed: readonly SearchField[]): string | null {
-  const faults = searchFieldFaults(splitSource(source.replace(/\r\n/g, "\n")).front, listed);
+  const faults = searchFieldFaults(splitSource(normalizeNewlines(source)).front, listed);
   return faults.length
     ? `Fix the search and sharing fields before the post goes out. ${faults.map((f) => `${f.message}.`).join(" ")}`
     : null;
@@ -224,7 +223,7 @@ export function seoCheck(
 ): SeoCheck | null {
   const listed = page.searchFields ?? [];
   const fields = withSearchFields(SOCIAL_FIELDS[site] ?? DEFAULT_FIELDS, listed);
-  const { front } = splitSource(source.replace(/\r\n/g, "\n"));
+  const { front } = splitSource(normalizeNewlines(source));
   if (front === null || (page.kind ?? "post") !== "post" || legalTypeOf(source) !== null)
     return null;
   const findings: SeoFinding[] = [];
@@ -267,7 +266,7 @@ export function seoCheck(
   } else if (description.length < DESCRIPTION_MIN) {
     findings.push({
       check: "description",
-      message: `The description is ${plural(description.length)}, under ${DESCRIPTION_MIN}: too short to say what the post is.`,
+      message: `The description is ${plural(description.length, "character")}, under ${DESCRIPTION_MIN}: too short to say what the post is.`,
       excerpt: description,
       line: null,
     });

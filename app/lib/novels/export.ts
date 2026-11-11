@@ -8,6 +8,7 @@ import { AlignmentType, Document, HeadingLevel, Packer, PageBreak, Paragraph, Te
 import { strToU8, zipSync, type Zippable } from "fflate";
 
 import type { Assembled } from "~/lib/books.server";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 export type Inline = { text: string; em: boolean; strong: boolean };
 export type Block =
@@ -58,7 +59,7 @@ export function parseInline(text: string): Inline[] {
 
 export function parseProse(body: string): Block[] {
   const blocks: Block[] = [];
-  for (const chunk of body.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
+  for (const chunk of normalizeNewlines(body).split(/\n\s*\n/)) {
     const raw = chunk.trim();
     if (!raw) continue;
     if (/^(?:\*\s*){3,}$|^(?:-\s*){3,}$|^(?:_\s*){3,}$|^#$/.test(raw)) {

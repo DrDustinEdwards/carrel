@@ -61,6 +61,7 @@ import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.file";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel" }];
@@ -380,7 +381,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (!outcome?.ok || writer.state !== "idle" || said.current === outcome) return;
     said.current = outcome;
     say(
-      `Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${outcome.findings.length} flag${outcome.findings.length === 1 ? "" : "s"}; see the list.`}`,
+      `Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${plural(outcome.findings.length, "flag")}; see the list.`}`,
     );
   }, [outcome, writer.state, say]);
 
