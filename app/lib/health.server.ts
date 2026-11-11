@@ -43,7 +43,7 @@ import { saAccessToken, saConnection } from "~/lib/google/service-account.server
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 import { unseenTemplates } from "~/lib/social/queue.server";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 /** A site's line in the conformance report, in the scoreboard's format (devkit live/README). */
 type SiteConformance = {

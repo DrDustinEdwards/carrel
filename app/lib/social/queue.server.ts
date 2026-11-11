@@ -25,7 +25,7 @@ import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
 import { d1FireStore, fireOnce, routineConfig, routinePrompt } from "./routine.server";
 import { draftPostViaApi, monthSpendMicros, readAiSettings } from "~/lib/ai-engine.server";
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 type Fetch = typeof fetch;

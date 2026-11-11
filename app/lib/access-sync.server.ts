@@ -14,7 +14,7 @@ import { accessSync, people, projectMembers } from "~/db/schema";
 import { agentEmail } from "~/lib/agent-keys.server";
 import { postAccessSync, type AccessSyncResult } from "@dustinedwards/site-runtime/access-sync";
 import { capsidOrigin } from "~/lib/inbox-report.server";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 /**
  * Who Access should let into Desk: every active person with a role on at least one project. Left out

@@ -18,7 +18,7 @@ import {
   type McpCaller,
 } from "@dustinedwards/site-runtime/mcp-server";
 
-import { fetchUntil } from "~/lib/timed-fetch.server";
+import { fetchUntil } from "@dustinedwards/site-runtime/http";
 import {
   fromJsonSchema,
   isLegacyRequest,

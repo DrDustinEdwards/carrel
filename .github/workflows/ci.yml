@@ -177,10 +177,7 @@ jobs:
     with:
       worker-name: carrel
       health-url: https://carrel.dustinedwards.info/health
-      verify-command: >-
-        code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://carrel.dustinedwards.info/ || true);
-        echo "home page answered $code";
-        if [ "$code" = 200 ]; then exit 0; elif [ "$code" = 000 ]; then exit 3; else exit 1; fi
+      verify-command: node "$DEVKIT_DIR/bin/verify-deploy.mjs" https://carrel.dustinedwards.info
       node-version-file: package.json
       working-directory: www
       install: cd .. && npm ci

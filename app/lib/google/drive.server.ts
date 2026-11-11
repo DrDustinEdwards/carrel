@@ -18,7 +18,7 @@ import { can } from "~/lib/roles";
 
 import { userAccessToken } from "./oauth.server";
 import { GoogleNotConnected, saClient } from "./service-account.server";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 type Fetch = typeof fetch;
