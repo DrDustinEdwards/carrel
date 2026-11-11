@@ -420,6 +420,9 @@ async function bundle(file, format) {
       write: false,
       minify: true,
       lib: { entry: join(HERE, "browser", file), formats: [format], name: "carrel" },
+      // One file per script: site-runtime's startPage() loads INP reporting with a dynamic
+      // import on `load`, which would otherwise split into a second chunk.
+      rollupOptions: { output: { inlineDynamicImports: true } },
     },
   });
   const [{ output }] = /** @type {import("vite").Rolldown.RolldownOutput[]} */ (
