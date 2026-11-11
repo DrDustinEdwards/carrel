@@ -10,7 +10,7 @@ import { googleOauthStates, googleTokens } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 
 import { GOOGLE_TOKEN_URL, GoogleNotConnected } from "./service-account.server";
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";

@@ -8,7 +8,7 @@
 // kept per account. X: OAuth 1.0a user context for POST /2/tweets, signed here with Web Crypto
 // instead of Recova's twitter-api-v2 package.
 
-import { timedFetch } from "~/lib/timed-fetch.server";
+import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { toBase64, toHex } from "@dustinedwards/site-runtime/encoding";
 
 type Fetch = typeof fetch;
