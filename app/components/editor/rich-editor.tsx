@@ -26,6 +26,7 @@ import type * as Y from "yjs";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   countWords,
+  defaultImageMarkdown,
   filterLinkTargets,
   looksLikeUrl,
   minutesForWords,
@@ -107,10 +108,6 @@ export type RichEditorProps = {
   onReady?: (handle: RichEditorHandle) => void;
   room?: RichRoom;
 };
-
-// An empty alt is a decorative pick; Prelum reads ![""](x) as decorative and refuses ![](x).
-const defaultImage = ({ url, alt }: { url: string; alt: string }) =>
-  `![${alt.replace(/[[\]]/g, "").trim() || '""'}](${url})`;
 
 type Palette = { from: number; to: number; query: string; active: number };
 // An image is described before it is sent (ATAG 2.0 B.2.3; site-api 0.19+ refuses an undescribed
@@ -537,7 +534,7 @@ export function RichEditor(props: RichEditorProps) {
     try {
       const { url } = await send(current.file, { alt: text, decorative }, sending.signal);
       if (uploadRef.current !== busy) return;
-      const md = (propsRef.current.imageMarkdown ?? defaultImage)({
+      const md = (propsRef.current.imageMarkdown ?? defaultImageMarkdown)({
         url,
         alt: text,
         decorative,
