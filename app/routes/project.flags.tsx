@@ -21,7 +21,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
-import { confirmationRequired, confirmationSatisfied } from "~/lib/confirm.server";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.flags";

@@ -57,7 +57,7 @@ import { can } from "~/lib/roles";
 import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
-import { confirmationRequired, confirmationSatisfied } from "~/lib/confirm.server";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.file";

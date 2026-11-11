@@ -17,7 +17,7 @@ import { action as flagsAction, loader as flagsLoader } from "~/routes/project.f
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { viewerFor, routeContext, refusal } from "./site";
-import { confirmationRequired, confirmationSatisfied } from "~/lib/confirm.server";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 
 const SLUG = "de-info";
 let projectId: number;

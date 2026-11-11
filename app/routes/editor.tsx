@@ -94,7 +94,7 @@ import { featureImageFault, imagesWithoutAlt, searchFieldFaults, seoCheck } from
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
-import { confirmationRequired, confirmationSatisfied } from "~/lib/confirm.server";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/editor";

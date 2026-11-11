@@ -24,7 +24,7 @@ import { deleteSection, listSections, saveSection, sectionsCurrent } from "~/lib
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry, SiteNotConnected } from "~/lib/sites.server";
-import { confirmationSatisfied } from "~/lib/confirm.server";
+import { confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/legal";
