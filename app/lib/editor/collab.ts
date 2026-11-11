@@ -25,7 +25,8 @@ import { editorSchema } from "./schema.mjs";
 import { settle, type JsonDoc } from "./suggest";
 
 export const FRAGMENT = "default";
-const META = "carrel";
+/** The Y.Map holding the room's own state (version, saved text, prints), which a suggester never changes. */
+export const META = "carrel";
 const PRINTS = "prints";
 
 export type RoomMeta = {

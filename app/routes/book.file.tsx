@@ -116,8 +116,8 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const roomViewer: RoomViewer = {
     id: viewer.id,
     name: viewer.name || viewer.email,
-    role: project.role,
     access: canEdit ? "edit" : "suggest",
+    ...(project.role === "owner" ? { deletesAny: true } : {}),
   };
 
   const kind = fileKindOf(path);
@@ -323,7 +323,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     path: data.room?.path ?? "",
     initial: data.source,
     unsaved: data.unsaved,
-    viewer: data.room?.viewer ?? { id: 0, name: "", role: "reader", access: "suggest" },
+    viewer: data.room?.viewer ?? { id: 0, name: "", access: "suggest" },
     names: data.room?.names ?? {},
     hideFrontMatter: true,
   });

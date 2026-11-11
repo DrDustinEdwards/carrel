@@ -1,5 +1,5 @@
 // Live co-editing (ruling point 3, build step 10): several people in one file through its room
-// (workers/doc-room.ts). Each person here is a real Yjs client on a real WebSocket into the room, as a
+// (workers/doc-room.ts, on site-runtime ./doc-room). Each person here is a real Yjs client on a real WebSocket into the room, as a
 // browser is. What is checked is what would cost work if it broke: the shared copy saves byte for
 // byte, one person's change reaches the other, a save writes the room's text with everyone credited,
 // a coauthor who suggests cannot change the text itself, and comments go to everyone.
@@ -59,9 +59,9 @@ const project = (role: "owner" | "editor" | "reader") => ({ id: projectId, role 
 const as = (
   id: number,
   name: string,
-  role: RoomViewer["role"],
+  role: "owner" | "editor" | "reader",
   access: RoomViewer["access"],
-): RoomViewer => ({ id, name, role, access });
+): RoomViewer => ({ id, name, access, ...(role === "owner" ? { deletesAny: true } : {}) });
 
 /** An edit made the way an editor makes it: a ProseMirror change written into the shared fragment. */
 function edit(doc: Y.Doc, change: (state: EditorState) => EditorState) {

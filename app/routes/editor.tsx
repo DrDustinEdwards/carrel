@@ -170,8 +170,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const roomViewer: RoomViewer = {
     id: viewer.id,
     name: viewer.name || viewer.email,
-    role: project.role,
     access: can(project.role, "edit") ? "edit" : "suggest",
+    ...(project.role === "owner" ? { deletesAny: true } : {}),
   };
 
   // The site's revisions of this item, for the History panel. A site that does not answer leaves the
@@ -548,7 +548,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     path: data.room?.path ?? "",
     initial: data.source,
     unsaved: data.unsaved,
-    viewer: data.room?.viewer ?? { id: 0, name: "", role: "reader", access: "suggest" },
+    viewer: data.room?.viewer ?? { id: 0, name: "", access: "suggest" },
     names: data.room?.names ?? {},
     hideFrontMatter: true,
   });
