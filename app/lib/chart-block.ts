@@ -13,16 +13,4 @@ export const CHART_KINDS = [
 
 export type ChartKind = (typeof CHART_KINDS)[number]["value"];
 
-export type ChartFields = {
-  type: ChartKind;
-  x: string;
-  /** One or more value columns; more than one draws a series each. */
-  y: readonly string[];
-  title: string;
-  /** The finding: Enarratio shows it under the title and it is the chart's text alternative. */
-  alt: string;
-  caption: string;
-  csv: string;
-};
-
 export { chartBlock, chartBlocks, csvColumns };
