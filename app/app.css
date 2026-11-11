@@ -64,6 +64,17 @@
 @import "capsomer/menu.css";
 @import "capsomer/moderation-queue.css";
 @import "capsomer/mentions-list.css";
+@import "capsomer/label-color-list.css";
+@import "capsomer/writing-progress.css";
+@import "capsomer/inline-add-form.css";
+@import "capsomer/approval-queue.css";
+@import "capsomer/not-found-report.css";
+@import "capsomer/ai-job-buttons.css";
+@import "capsomer/ai-engine-settings.css";
+@import "capsomer/frontmatter-fields.css";
+@import "capsomer/chart-builder.css";
+@import "capsomer/editor-workspace.css";
+@import "capsomer/schedule-dialog.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */
@@ -253,7 +264,6 @@
 }
 
 /* Social: the posts waiting on the Owner, and the account forms. */
-.app-posts,
 .app-accounts {
   display: grid;
   gap: var(--space-5);
@@ -262,7 +272,6 @@
   list-style: none;
 }
 
-.app-post,
 .app-account {
   display: grid;
   gap: var(--space-3);
@@ -277,22 +286,6 @@
     margin: 0;
     font-size: var(--fs-lead);
   }
-}
-
-.app-post-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0;
-}
-
-.app-lint {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .app-post-text {
@@ -359,18 +352,6 @@
   display: grid;
   gap: var(--space-6);
   min-width: 0;
-}
-
-.app-inline-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-4);
-  width: 100%;
-
-  & .cap-field {
-    flex: 1 1 11rem;
-  }
 }
 
 /* A scene's header, as a row's detail: each fact with its name, wrapping to the room there is. A row's
@@ -491,42 +472,6 @@
   min-width: 0;
 }
 
-.app-editor-body {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: minmax(0, 1fr);
-  min-width: 0;
-}
-
-@media (min-width: 48rem) {
-  .app-editor-body[data-layout="split"] {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
-.app-editor-pane,
-.app-preview-pane {
-  min-width: 0;
-}
-
-/* The preview is the site's own page in a sandboxed frame, so it is white whatever the theme. */
-.app-preview-pane {
-  display: flex;
-  overflow: hidden;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-m);
-  background: #fff;
-
-  & iframe {
-    flex: 1;
-    width: 100%;
-    min-height: 28rem;
-    height: calc(100dvh - 14rem);
-    border: 0;
-    background: #fff;
-  }
-}
-
 /* Capsomer's editor, set for long writing: the page scrolls rather than the editor, the tool strip stays
    in reach, and the text is the serif reading face in one column. CodeMirror writes its own unlayered
    styles, so these are specific enough to win. */
@@ -566,42 +511,6 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-}
-
-/* The insert-chart dialog (components/editor/chart-insert.tsx). */
-.app-chart-csv {
-  font-family: var(--mono);
-}
-
-.app-chart-y {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.app-chart-y legend {
-  font-weight: 600;
-  margin-bottom: var(--space-2);
-}
-
-.app-chart-suggestion {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.app-chart-findings {
-  margin: var(--space-1) 0 0;
-}
-
-.app-chart-preview {
-  width: 100%;
-  height: 28rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
 }
 
 .app-stack[data-tight] {
@@ -659,40 +568,6 @@
   }
 }
 
-/* While someone types, the rest of the screen falls quiet; a mouse move or focus brings it back. */
-html[data-typing]
-  :is(
-    .cap-site-header,
-    .cap-admin-strip,
-    .cap-admin-menu,
-    .cap-site-tabs,
-    .cap-admin-bar,
-    .app-editor .cap-page-head,
-    .app-editor .app-notices,
-    .app-editor-side,
-    .app-writing-tools,
-    .cap-md-toolbar
-  ):not(:focus-within) {
-  opacity: 0.08;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  :is(
-    .cap-site-header,
-    .cap-admin-strip,
-    .cap-admin-menu,
-    .cap-site-tabs,
-    .cap-admin-bar,
-    .app-editor .cap-page-head,
-    .app-editor .app-notices,
-    .app-editor-side,
-    .app-writing-tools,
-    .cap-md-toolbar
-  ) {
-    transition: opacity var(--dur-base) var(--ease-out);
-  }
-}
-
 .app-subhead {
   margin: 0;
   font-size: var(--fs-body);
@@ -711,7 +586,7 @@ html[data-typing]
   min-width: 0;
 }
 
-/* A post's frontmatter as fields above the text. */
+/* A boxed form whose fields share a row where they fit: a legal page's shared section, the voice guide. */
 .app-fm {
   display: grid;
   gap: var(--space-4);
@@ -722,29 +597,13 @@ html[data-typing]
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
 
-  & legend {
-    padding: 0 var(--space-2);
-    font-weight: 600;
-  }
-  & input[type="checkbox"] {
-    justify-self: start;
-    align-self: start;
-    margin: 0;
-  }
-  & .app-fm-field[data-wide] {
-    grid-column: 1 / -1;
-  }
   & textarea {
     resize: vertical;
-  }
-  & .app-fm-raw {
-    font-family: var(--mono);
-    font-size: var(--fs-detail);
   }
 }
 
 /* Search and sharing: each box with its width meter under it, and the share image beside its alt text. */
-.app-fm-field:has(.cap-meter) {
+.cap-fm-field:has(.cap-meter) {
   display: grid;
   gap: var(--space-2);
 }
@@ -918,75 +777,6 @@ html[data-typing]
   }
 }
 
-/* Status labels (ruling 8): the word, with the label's series color as a dot beside it. The word
-   carries the meaning; the dot repeats it, so color is never alone. */
-.app-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 1px var(--space-4) 1px var(--space-3);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
-}
-
-.app-label-dot {
-  inline-size: 0.7em;
-  block-size: 0.7em;
-  border-radius: 50%;
-  background: var(--series-1);
-  flex: none;
-}
-
-.app-label[data-color="2"] .app-label-dot {
-  background: var(--series-2);
-}
-.app-label[data-color="3"] .app-label-dot {
-  background: var(--series-3);
-}
-.app-label[data-color="4"] .app-label-dot {
-  background: var(--series-4);
-}
-.app-label[data-color="5"] .app-label-dot {
-  background: var(--series-5);
-}
-.app-label[data-color="6"] .app-label-dot {
-  background: var(--series-6);
-}
-.app-label[data-color="7"] .app-label-dot {
-  background: var(--series-7);
-}
-.app-label[data-color="8"] .app-label-dot {
-  background: var(--series-8);
-}
-
-@media (forced-colors: active) {
-  .app-label-dot {
-    background: CanvasText;
-  }
-}
-
-.app-label-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.app-label-edit {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .app-outliner-chapter {
   display: block;
   font-size: 12px;
@@ -995,28 +785,6 @@ html[data-typing]
 
 .app-filter {
   max-width: 32rem;
-}
-
-/* The goal form's groups: a legend, then the choices in a wrapping row. */
-.app-fieldset {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3) var(--space-6);
-  margin: 0;
-  padding: 0;
-  border: 0;
-
-  & > legend {
-    margin-block-end: var(--space-2);
-    padding: 0;
-    font-weight: 600;
-  }
-}
-
-.app-days {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3) var(--space-5);
 }
 
 /* The corkboard's card (design 4.2): the scene's title and status, its summary, then its point of
@@ -1626,29 +1394,6 @@ img.ProseMirror-separator {
 /* A panel whose cards open a form menu lets the menu out past its edge. */
 .cap-panel.app-panel-menus {
   overflow: visible;
-}
-
-/* The AI engine's status line: each engine and whether it can work now. */
-.app-engine-status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-6);
-  margin: 0;
-
-  & > div {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  & dt {
-    color: var(--muted);
-  }
-  & dd {
-    margin: 0;
-  }
-}
-.app-engine-table td > * {
-  min-inline-size: 12rem;
 }
 
 /* History: the Compare button holds to the bottom of the window once two revisions are ticked. */

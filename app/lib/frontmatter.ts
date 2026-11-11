@@ -1,14 +1,17 @@
-// The frontmatter fields the editor shows, read and written through site-api's block reader and
-// writer, so only a block whose field was changed is written again and every other block, comment
-// and unknown key comes back byte for byte. Shared by the server and the browser.
+// The frontmatter fields a post and a legal page carry: their boxes in the editor (Capsomer's
+// FrontmatterFields, from fieldSpecs), and readFields and setField for the legal pages' shared text,
+// written through Prelum's block reader and writer, so only a block whose field was changed is written
+// again and every other block, comment and unknown key comes back byte for byte. Shared by the server
+// and the browser.
 
 import { readKey, readList, setBlock } from "@drdustinedwards/site-helpers/frontmatter";
+import type { FieldSpec } from "capsomer/behavior/frontmatter-fields";
 
 /**
  * The fields the editor shows. A list field is a list of strings, a flag is one fixed word or nothing,
  * the rest are one line of text. `on` says which items show it: a post, a legal page, or both.
  */
-export const FIELDS = [
+const FIELDS = [
   { key: "title", label: "Title", kind: "line", on: "all" },
   { key: "description", label: "Description", kind: "text", on: "all" },
   { key: "date", label: "Date", kind: "line", on: "post" },
@@ -70,4 +73,35 @@ export function setField(front: string, key: FieldKey, value: string): string {
   const field = FIELDS.find((f) => f.key === key)!;
   if (readFields(front)[key] === value) return front;
   return setBlock(front, key, value.trim() === "" ? [] : writeBlock(key, field.kind, value));
+}
+
+const HINTS: Partial<Record<FieldKey, string>> = {
+  date: "Year, month, day: 2026-10-04.",
+  site_name: "Filled into shared text as {{site_name}}.",
+  operator_name: "Filled into shared text as {{operator_name}}.",
+  contact: "An email address or a path. Shared text: {{contact}}.",
+  jurisdiction: "Shared text: {{jurisdiction}}.",
+  data_held: "What this site collects, separated by commas. Shared text: {{data_held}}.",
+  last_updated: "Set when the Owner publishes a changed text. Edit it only to correct it.",
+  banner: `Shows the word "${BANNER_WORD}" on the page until you are satisfied with it.`,
+};
+
+const BOX = { line: "line", text: "text", tags: "list", lines: "lines", flag: "flag" } as const;
+
+/**
+ * The boxes Capsomer's FrontmatterFields shows for a post or a legal page. A search field the site
+ * lists (the description) is one box in Search and sharing, so it is left out here.
+ */
+export function fieldSpecs(legal: boolean, searchFields: readonly string[] = []): FieldSpec[] {
+  return FIELDS.filter(
+    (f) =>
+      (f.on === "all" || f.on === (legal ? "legal" : "post")) &&
+      (legal || !searchFields.includes(f.key)),
+  ).map((f) => ({
+    key: f.key,
+    label: f.label,
+    box: BOX[f.kind],
+    help: HINTS[f.key],
+    ...(f.kind === "flag" ? { wide: true, flag: { on: BANNER_WORD, off: null } } : {}),
+  }));
 }

@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { chartBlock } from "~/lib/chart-block";
+import { chartDirective } from "capsomer/behavior/chart-builder";
 import { checkCharts, suggestFinding } from "~/lib/chart-check.client";
 import {
   checkContinuity,
@@ -287,19 +287,19 @@ describe("the chart check", () => {
       ":::chart{type=bar}",
       "```",
       "",
-      chartBlock({ ...fields, title: "" }),
+      chartDirective({ ...fields, title: "" }),
     ].join("\n");
     const findings = checkCharts(body);
     expect(findings.filter((f) => f.strict)).toEqual([
       { line: 7, message: expect.stringMatching(/no title/), strict: true },
     ]);
     expect(
-      checkCharts(chartBlock({ ...fields, title: "Visits per year" })).filter((f) => f.strict),
+      checkCharts(chartDirective({ ...fields, title: "Visits per year" })).filter((f) => f.strict),
     ).toEqual([]);
   });
 
   it("drafts a finding from the data for Dustin to take or leave", () => {
-    const block = chartBlock({
+    const block = chartDirective({
       type: "line",
       x: "year",
       y: ["Visits", "Readers"],

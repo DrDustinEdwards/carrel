@@ -1,13 +1,13 @@
-// /demos/progress: the book page's "Today's writing" panel (components/writing/progress-panel.tsx) in Desk's
+// /demos/progress: the book page's "Today's writing" panel (Capsomer's writing progress) in Desk's
 // frame, drawn with sample words, so its chart can be seen and checked live without a sign-in (devkit
 // live/areas.json, area 10). The only page Desk serves before its door (workers/demo.ts): it reads no viewer,
 // nothing from D1 and takes no write, and the panel's target form is left out (canEdit false).
 import { Banner } from "capsomer/react/banner";
 import { PageHead } from "capsomer/react/page-head";
+import { WritingProgress } from "capsomer/react/writing-progress";
 
 import { Frame, type FrameData } from "~/components/frame";
 import { getZone } from "~/lib/context";
-import { ProgressPanel } from "~/components/writing/progress-panel";
 import { sampleProgress } from "~/lib/demo/writing-sample";
 
 import type { Route } from "./+types/demos.progress";
@@ -38,7 +38,11 @@ export default function ProgressDemo({ loaderData }: Route.ComponentProps) {
             This is how the page looks for a signed-in writer. The numbers are made up, and nothing
             here belongs to a real account.
           </Banner>
-          <ProgressPanel {...loaderData} canEdit={false} titlePage="#" error={null} saved={false} />
+          <WritingProgress
+            {...loaderData}
+            canEdit={false}
+            source="Typed words in Carrel's authorship record"
+          />
         </div>
       </div>
     </Frame>

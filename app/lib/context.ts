@@ -15,7 +15,7 @@ export const viewerContext = createContext<Viewer>();
 /**
  * The visitor's likely time zone, from Cloudflare's reading of the request (request.cf.timezone), or UTC. The
  * writing progress panel counts its first render in it, so the browser's recount in the device's own zone, after
- * hydration, matches the server's HTML and moves nothing (app/components/writing/progress-panel.tsx).
+ * hydration, matches the server's HTML and moves nothing (Capsomer's WritingProgress).
  */
 export const zoneContext = createContext<string>("UTC");
 

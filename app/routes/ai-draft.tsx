@@ -6,13 +6,14 @@ import { useState } from "react";
 import { redirect } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
+import { PreviewPane } from "capsomer/react/editor-workspace";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Segmented } from "capsomer/react/segmented";
 
 import { DraftHead, draftIdParam } from "~/components/editor/draft-head";
-import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { ItemDetails } from "~/components/editor/item-details";
 import { Inspector } from "~/components/editor/inspector";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 
@@ -127,14 +128,10 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
             }
           >
             {view === "rendered" ? (
-              <div className="app-preview-pane">
-                {/* Sandboxed with no permissions, as the editor's preview is: the site's page runs no script. */}
-                <iframe
-                  title={`This AI draft as the site renders it`}
-                  src={`${editor}/ai/${draft.id}/preview`}
-                  sandbox=""
-                />
-              </div>
+              <PreviewPane
+                src={`${editor}/ai/${draft.id}/preview`}
+                title="This AI draft as the site renders it"
+              />
             ) : (
               <pre className="app-ai-draft">{draft.source}</pre>
             )}
@@ -146,7 +143,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
             {
               value: "details",
               label: "Details",
-              content: <FrontmatterFields source={draft.source} readOnly />,
+              content: <ItemDetails source={draft.source} readOnly />,
             },
             {
               value: "checks",

@@ -13,8 +13,8 @@ import { Segmented } from "capsomer/react/segmented";
 
 import type { Editor } from "@tiptap/core";
 import { Alert } from "capsomer/react/banner";
+import { ChartBuilder } from "capsomer/react/chart-builder";
 
-import { ChartInsert, type ChartPreview } from "~/components/editor/chart-insert";
 import { RichEditor, type RichEditorHandle, type RichRoom } from "~/components/editor/rich-editor";
 import { LibraryInsert } from "~/components/media/library-insert";
 import { uploadImage, type EditorMedia } from "~/components/media/upload";
@@ -43,6 +43,13 @@ function insertIntoMarkdown(root: HTMLElement | null, text: string) {
   view.focus();
 }
 
+// The chart check (E4) and the finding drafted from the data (E5), on Prelum's code, loaded only once
+// the chart dialog has a chart.
+async function checkChart(block: string, drawable: string) {
+  const m = await import("~/lib/chart-check.client");
+  return { findings: m.checkCharts(block), suggestion: m.suggestFinding(drawable) };
+}
+
 export function WritingSurface({
   label,
   value,
@@ -69,8 +76,12 @@ export function WritingSurface({
   room?: { rich: (RichRoom & { key: string }) | null; markdownLocked: string | null };
   /** The formatted editor, once made, for the room's panels. */
   onEditor?: (editor: Editor | null) => void;
-  /** A site post's chart preview; absent, no "Insert chart" (a book, a reader). */
-  chart?: ChartPreview | null;
+  /**
+   * A site post's chart preview: the preview route that renders posted text through the site, and
+   * the text to post (the post's frontmatter with the chart as its body). Absent, no "Insert chart"
+   * (a book, a reader).
+   */
+  chart?: { action: string; source: (block: string) => string } | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const rich = useRef<RichEditorHandle | null>(null);
@@ -104,7 +115,7 @@ export function WritingSurface({
 
   return (
     <div className="app-writing" ref={root} data-mode={mode}>
-      <div className="app-writing-tools">
+      <div className="app-writing-tools" data-cap-recede="">
         <Segmented
           legend={`Edit ${label.toLowerCase()} as`}
           hideLegend
@@ -117,8 +128,9 @@ export function WritingSurface({
           ]}
         />
         {chart && !readOnly ? (
-          <ChartInsert
+          <ChartBuilder
             preview={chart}
+            check={checkChart}
             onInsert={(block) => {
               if (mode === "formatted") rich.current?.insertMarkdown(block);
               else insertIntoMarkdown(root.current, block);

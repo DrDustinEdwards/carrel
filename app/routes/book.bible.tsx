@@ -2,16 +2,17 @@
 // outline files, notes and the title page. Starting an entry only opens the editor on it; nothing
 // reaches Git until the first Save.
 
-import { Form, redirect } from "react-router";
+import { redirect } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 import { Status } from "capsomer/react/status";
+import { InlineAddForm } from "capsomer/react/inline-add-form";
 
 import { BookHead } from "~/components/book-head";
+import { RouterForm } from "~/components/router-form";
 
 import { bookHead, listFiles, listFindings, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -91,10 +92,13 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
           count={bible.length}
           footer={
             canEdit ? (
-              <Form method="post" className="app-inline-form">
-                <input type="hidden" name="intent" value="new-bible" />
-                <Field label="New entry">
+              <InlineAddForm Form={RouterForm} hidden={{ intent: "new-bible" }} submit="Start it">
+                <div className="cap-field" data-size="short">
+                  <label className="cap-field-label" htmlFor="new-bible-kind">
+                    New entry
+                  </label>
                   <Select
+                    id="new-bible-kind"
                     name="kind"
                     defaultValue="character"
                     options={[
@@ -103,7 +107,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
                       { value: "rule", label: "World rule" },
                     ]}
                   />
-                </Field>
+                </div>
                 <Field label="Name">
                   <input
                     className="cap-input"
@@ -113,8 +117,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
                     autoComplete="off"
                   />
                 </Field>
-                <Button type="submit">Start it</Button>
-              </Form>
+              </InlineAddForm>
             ) : undefined
           }
         >
@@ -149,8 +152,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
           count={others.length}
           footer={
             canEdit ? (
-              <Form method="post" className="app-inline-form">
-                <input type="hidden" name="intent" value="new-outline" />
+              <InlineAddForm Form={RouterForm} hidden={{ intent: "new-outline" }} submit="Start it">
                 <Field label="New outline file">
                   <input
                     className="cap-input"
@@ -160,8 +162,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
                     autoComplete="off"
                   />
                 </Field>
-                <Button type="submit">Start it</Button>
-              </Form>
+              </InlineAddForm>
             ) : undefined
           }
         >

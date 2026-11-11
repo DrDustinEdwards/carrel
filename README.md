@@ -229,7 +229,7 @@ The editor's History panel (and the page behind it, `/p/<project>/e/<item>/histo
 
 - **Revisions** come from the site, newest first, each with who and when. Each opens its source (site-api v0.3.0's `GET /content/:id/revisions/:version`; on an older site the page says it cannot open one).
 - **Any two revisions** can be picked and compared. The patch is the site's own (`GET /content/:id/diff`), drawn with Capsomer's `DraftPatch`. "By word" sets the same two texts against each other with Capsomer's `DraftCompare`.
-- **Your working draft** can be compared against the site's current text, and against each AI draft saved beside it (also linked from the AI draft page). Both sides are in Carrel, so the patch is built here by `unifiedPatch` in `app/lib/patch.ts`, with the `diff` package the site API already uses, and drawn the same way. "On the site" means the site's current version, published or not.
+- **Your working draft** can be compared against the site's current text, and against each AI draft saved beside it (also linked from the AI draft page). Both sides are in Carrel, so the patch is built here by Capsomer's `unifiedPatch` (`capsomer/behavior/draft-compare`), in the shape the site API's patches have, and drawn the same way. "On the site" means the site's current version, published or not.
 - **Not here:** restoring a revision. Opening a revision is read-only; putting one back is a wider job.
 
 `test/history.test.ts` drives the route's loader: a Reader's reads, that only GETs reach the site, the order of a picked pair, and each comparison.

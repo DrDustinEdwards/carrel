@@ -7,16 +7,16 @@ import { Link } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Status } from "capsomer/react/status";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
+import { labelFor } from "capsomer/behavior/label-color-list";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
 
 import { bookHead, listFiles, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { chapterOf, readingOrder, titleFromSegment } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 import { statusList } from "~/lib/writing.server";
-import { labelFor } from "~/lib/writing/status";
 
 import type { Route } from "./+types/book.outliner";
 
@@ -200,7 +200,11 @@ export default function Outliner({ loaderData }: Route.ComponentProps) {
                     </th>
                     <td>
                       {r.status ? (
-                        <StatusLabelPill labels={labels} status={r.status} />
+                        <ColorLabelPill
+                          labels={labels}
+                          value={r.status}
+                          unknownNote=" (not on the status list)"
+                        />
                       ) : (
                         <span className="cap-muted">None</span>
                       )}

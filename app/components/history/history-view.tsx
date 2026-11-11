@@ -9,8 +9,7 @@ import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
-
-import { unifiedPatch } from "~/lib/patch";
+import { unifiedPatch } from "capsomer/behavior/draft-compare";
 
 export type Side = { title: string; who?: string; time?: string; text: string };
 type By = "line" | "word";

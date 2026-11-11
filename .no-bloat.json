@@ -4,16 +4,16 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "9c99a66",
+    "measured_at": "e89aaee",
     "knip": {},
     "jscpd": {
-      "clones": 75,
-      "lines": 709,
+      "clones": 72,
+      "lines": 680,
       "percentage": 1.28
     },
     "tests": {
       "files": 50,
-      "cases": 488
+      "cases": 477
     },
     "comments": {
       "lines": 4325,

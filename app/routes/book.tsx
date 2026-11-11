@@ -4,19 +4,20 @@
 // the settings are tabs of their own (book.progress.tsx, book.bible.tsx, book.settings.tsx).
 
 import type { ReactNode } from "react";
-import { Form, redirect } from "react-router";
+import { redirect } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
 import { StatTile, StatTiles } from "capsomer/react/stat-tile";
 import { Status } from "capsomer/react/status";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
+import { InlineAddForm } from "capsomer/react/inline-add-form";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
+import { RouterForm } from "~/components/router-form";
 
 import {
   bookHead,
@@ -244,8 +245,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         flush
         footer={
           canEdit ? (
-            <Form method="post" className="app-inline-form">
-              <input type="hidden" name="intent" value="new-chapter" />
+            <InlineAddForm Form={RouterForm} hidden={{ intent: "new-chapter" }} submit="Start it">
               <Field label="New chapter">
                 <input
                   className="cap-input"
@@ -263,8 +263,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                   autoComplete="off"
                 />
               </Field>
-              <Button type="submit">Start it</Button>
-            </Form>
+            </InlineAddForm>
           ) : undefined
         }
       >
@@ -324,7 +323,11 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                           {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
                         </th>
                         <td>
-                          <StatusLabelPill labels={labels} status={s.status} />
+                          <ColorLabelPill
+                            labels={labels}
+                            value={s.status}
+                            unknownNote=" (not on the status list)"
+                          />
                         </td>
                         <td data-drop="1">{s.pov}</td>
                         <td data-drop="1">{s.date}</td>

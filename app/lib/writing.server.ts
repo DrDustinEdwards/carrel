@@ -11,12 +11,14 @@ import type { Viewer } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 import {
   DEFAULT_GOAL,
+  goalFromForm,
   parseWritingDays,
   STREAK_HORIZON_DAYS,
   type Goal,
   type SaveEntry,
-} from "~/lib/writing/progress";
-import { cleanLabels, STARTING_STATUSES, type StatusLabel } from "~/lib/writing/status";
+} from "capsomer/behavior/writing-progress";
+import { cleanLabels, type ColorLabel } from "capsomer/behavior/label-color-list";
+import { STARTING_STATUSES } from "~/lib/writing/status";
 
 function forbid(): never {
   throw new Response("Forbidden", { status: 403 });
@@ -28,7 +30,7 @@ function forbid(): never {
 export async function statusList(
   db: D1Database,
   project: BookProject,
-): Promise<{ labels: StatusLabel[]; edited: boolean }> {
+): Promise<{ labels: ColorLabel[]; edited: boolean }> {
   if (!can(project.role, "read")) forbid();
   const rows = await drizzle(db)
     .select({ label: statusLabels.label, color: statusLabels.color })
@@ -84,8 +86,6 @@ export async function readGoal(
   };
 }
 
-const MAX_DAILY_TARGET = 100_000;
-
 /** A person's own goal: anyone who may write in the project sets theirs, and no one else's. */
 export async function saveGoal(
   db: D1Database,
@@ -94,26 +94,15 @@ export async function saveGoal(
   input: { mode: string; dailyTarget: string; writingDays: string[]; allowNegative: boolean },
 ) {
   if (!can(project.role, "edit")) forbid();
-  const mode = input.mode === "deadline" ? "deadline" : "daily";
-  const raw = input.dailyTarget.replace(/[,_\s]/g, "");
-  const dailyTarget = raw === "" ? null : Number(raw);
-  if (
-    dailyTarget !== null &&
-    (!Number.isInteger(dailyTarget) || dailyTarget < 1 || dailyTarget > MAX_DAILY_TARGET)
-  ) {
-    return {
-      ok: false as const,
-      error: `Give the daily target as a whole number of words from 1 to ${MAX_DAILY_TARGET.toLocaleString("en-US")}, or leave it empty.`,
-    };
-  }
-  const days = parseWritingDays(input.writingDays.join(""));
-  if (days.length === 0) return { ok: false as const, error: "Choose at least one writing day." };
+  const checked = goalFromForm(input);
+  if (!checked.ok) return checked;
+  const { goal } = checked;
   const values = {
-    mode,
-    dailyTarget,
-    writingDays: days.join(""),
-    allowNegative: input.allowNegative,
-  } as const;
+    mode: goal.mode,
+    dailyTarget: goal.dailyTarget,
+    writingDays: goal.writingDays.join(""),
+    allowNegative: goal.allowNegative,
+  };
   await drizzle(db)
     .insert(writingGoals)
     .values({ projectId: project.id, personId: viewer.id, ...values })
@@ -168,12 +157,6 @@ export async function clearUntyped(
   path: string,
 ) {
   await takeUntyped(db, projectId, personId, path);
-}
-
-/** The words a field posted as not typed: a whole number from 0, anything else read as 0. */
-export function untypedField(value: FormDataEntryValue | null): number {
-  const n = Number(value ?? 0);
-  return Number.isInteger(n) && n > 0 && n < 10_000_000 ? n : 0;
 }
 
 // ---------- the saves a day is counted from

@@ -6,16 +6,15 @@
 import { Form, useNavigation } from "react-router";
 import { PRICES } from "@dustinedwards/site-runtime/ai-engine";
 import { MODEL_IDS } from "@dustinedwards/site-runtime/anthropic";
+import { AiEngineSettings } from "capsomer/react/ai-engine-settings";
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { FormMenu } from "capsomer/react/menu";
 import { PageHead } from "capsomer/react/page-head";
-import { Status } from "capsomer/react/status";
 import { Panel } from "capsomer/react/panel";
-import { Row, RowList } from "capsomer/react/row-list";
 import { Select } from "capsomer/react/select";
+import { settingsFromForm } from "capsomer/behavior/ai-engine-settings";
 
 import {
   FEATURES,
@@ -26,6 +25,8 @@ import {
   usageThisMonth,
 } from "~/lib/ai-engine.server";
 import { drizzle } from "drizzle-orm/d1";
+
+import { RouterForm } from "~/components/router-form";
 
 import { projects } from "~/db/schema";
 import { writeAltText } from "~/lib/alt-text.server";
@@ -41,12 +42,6 @@ export function meta() {
   return [{ title: "AI engine · Carrel" }];
 }
 
-const ENGINES = [
-  { value: "auto", label: "Automatic: subscription, the API when it is refused" },
-  { value: "subscription", label: "Subscription" },
-  { value: "api", label: "API" },
-];
-
 const price = (tier: keyof typeof MODEL_IDS) => {
   const p = PRICES[MODEL_IDS[tier]];
   return p ? `$${p.input} in / $${p.output} out per million tokens` : "no listed price";
@@ -57,8 +52,6 @@ const MODELS = [
   { value: "standard", label: `Standard, ${MODEL_IDS.standard} (${price("standard")})` },
   { value: "deep", label: `Deep, ${MODEL_IDS.deep} (${price("deep")})` },
 ];
-
-const dollars = (micros: number) => `$${(micros / 1_000_000).toFixed(micros < 10_000 ? 4 : 2)}`;
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = getEnv(context);
@@ -79,7 +72,10 @@ export async function loader({ context }: Route.LoaderArgs) {
   return {
     sites: sites.map((p) => ({ value: p.slug, label: p.name })),
     settings,
-    models,
+    // The jobs that name a model, as the settings table reads them.
+    models: Object.fromEntries(
+      Object.entries(models).flatMap(([job, tier]) => (tier ? [[job, tier]] : [])),
+    ) as Record<string, string>,
     spent,
     usage,
     features: FEATURES.map((f) => ({ ...f })),
@@ -139,20 +135,8 @@ export async function action({ request, context }: Route.ActionArgs) {
         : "Back to your settings.",
     };
   }
-  const features: Record<string, string> = {};
-  const models: Record<string, string> = {};
-  for (const f of FEATURES) {
-    const v = String(form.get(`feature-${f.key}`) ?? "");
-    if (v) features[f.key] = v;
-    const m = String(form.get(`model-${f.key}`) ?? "");
-    if (m) models[f.key] = m;
-  }
-  const cap = Number(form.get("cap") || 0);
   await saveAiSettings(env.DB, viewer, {
-    master: String(form.get("master") ?? "auto"),
-    features,
-    models,
-    apiCapMicros: Number.isFinite(cap) ? Math.round(cap * 1_000_000) : 0,
+    ...settingsFromForm((name) => form.get(name), FEATURES),
     override: current.override,
   });
   return { done: "Saved." };
@@ -162,7 +146,6 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
   const { sites, settings, models, spent, usage, features, routineMissing, apiKeyMissing } =
     loaderData;
   const busy = useNavigation().state !== "idle";
-  const engineLabel = (v: string) => ENGINES.find((e) => e.value === v)?.label ?? v;
   return (
     <div className="app-page">
       <PageHead
@@ -188,165 +171,30 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
         <Alert tone="crit">{actionData.problem}</Alert>
       ) : null}
 
-      <dl className="app-engine-status" aria-label="What each engine can do now">
-        <div>
-          <dt>Subscription</dt>
-          <dd>
-            {routineMissing ? (
-              <Status tone="warn">Not connected</Status>
-            ) : (
-              <Status tone="ok">Connected</Status>
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt>API</dt>
-          <dd>
-            {apiKeyMissing ? <Status tone="warn">No key</Status> : <Status tone="ok">Ready</Status>}
-          </dd>
-        </div>
-        <div>
-          <dt>Running on</dt>
-          <dd>
-            {settings.override
-              ? `The API for everything until ${settings.override.until.slice(0, 10)}, with no cap`
-              : "The settings below"}
-          </dd>
-        </div>
-      </dl>
-      {routineMissing || apiKeyMissing ? (
-        <p className="cap-muted app-note">
-          {routineMissing
-            ? "Until the subscription's drafting routine is connected, Subscription drafts nothing (posts get the template) and Automatic uses the API. "
-            : ""}
-          {apiKeyMissing ? "Without an API key the API engine cannot draft anything. " : ""}
-          Both are Carrel secrets, set where Carrel is deployed.
-        </p>
-      ) : null}
+      <AiEngineSettings
+        settings={settings}
+        models={models}
+        jobs={features}
+        modelOptions={MODELS}
+        ready={{ subscription: !routineMissing, api: !apiKeyMissing }}
+        readyNote={
+          <>
+            {routineMissing
+              ? "Until the subscription's drafting routine is connected, Subscription drafts nothing (posts get the template) and Automatic uses the API. "
+              : ""}
+            {apiKeyMissing ? "Without an API key the API engine cannot draft anything. " : ""}
+            Both are Carrel secrets, set where Carrel is deployed.
+          </>
+        }
+        spentMicros={spent}
+        usage={usage.map((u) => ({ job: u.feature, calls: u.calls, micros: u.micros }))}
+        capHelp="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then. Saved with the table."
+        costNote="Costs are Anthropic's list prices times the tokens each call used. The subscription has no meter Carrel can read; claude.ai/settings/usage shows it."
+        Form={RouterForm}
+        pending={busy}
+      />
 
-      <Form method="post" id="engine-form">
-        <Panel
-          title="Engine for each job"
-          flush
-          footer={
-            <div className="app-actions">
-              <Button type="submit" variant="primary" pending={busy}>
-                Save
-              </Button>
-            </div>
-          }
-        >
-          <div
-            className="cap-table-wrap"
-            role="region"
-            aria-labelledby="engine-caption"
-            tabIndex={0}
-          >
-            <table className="cap-table app-engine-table">
-              <caption id="engine-caption" className="cap-sr-only">
-                The engine and model for each job
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Job</th>
-                  <th scope="col">Engine</th>
-                  <th scope="col">Model when the API does it</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row">
-                    Everything
-                    <span className="cap-muted app-outliner-chapter">
-                      Each job follows this unless it says otherwise.
-                    </span>
-                  </th>
-                  <td>
-                    <Select
-                      name="master"
-                      aria-label="Engine for everything"
-                      defaultValue={settings.master}
-                      options={ENGINES}
-                    />
-                  </td>
-                  <td className="cap-muted">Each job's own</td>
-                </tr>
-                {features.map((f) => (
-                  <tr key={f.key}>
-                    <th scope="row">
-                      {f.label}
-                      {f.note ? (
-                        <span className="cap-muted app-outliner-chapter">{f.note}</span>
-                      ) : null}
-                    </th>
-                    <td>
-                      <Select
-                        name={`feature-${f.key}`}
-                        aria-label={`${f.label}: engine`}
-                        defaultValue={settings.features[f.key] ?? ""}
-                        options={[
-                          {
-                            value: "",
-                            label: `Follow everything (${engineLabel(settings.master).split(":")[0]})`,
-                          },
-                          ...ENGINES,
-                        ]}
-                      />
-                    </td>
-                    <td>
-                      <Select
-                        name={`model-${f.key}`}
-                        aria-label={`${f.label}: model when the API does it`}
-                        defaultValue={models[f.key] ?? ""}
-                        options={MODELS}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-      </Form>
-
-      <div className="app-split" data-aside data-even>
-        <Panel title="API spend this month" src={`${dollars(spent)} so far`}>
-          <div className="app-stack" data-tight>
-            <Field
-              label="Cap a month, $"
-              help="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then. Saved with the table."
-            >
-              <input
-                className="cap-input"
-                name="cap"
-                form="engine-form"
-                type="number"
-                min={0}
-                step="0.01"
-                defaultValue={(settings.apiCapMicros / 1_000_000).toFixed(2)}
-              />
-            </Field>
-            {usage.length === 0 ? (
-              <Empty kind="all-clear" flush title="Nothing spent">
-                No API calls this month.
-              </Empty>
-            ) : (
-              <RowList label="API spend by job">
-                {usage.map((u) => (
-                  <Row
-                    key={u.feature}
-                    title={features.find((f) => f.key === u.feature)?.label ?? u.feature}
-                    detail={`${u.calls} calls · ${dollars(u.micros)}`}
-                  />
-                ))}
-              </RowList>
-            )}
-            <p className="cap-muted app-note">
-              Costs are Anthropic's list prices times the tokens each call used. The subscription
-              has no meter Carrel can read; claude.ai/settings/usage shows it.
-            </p>
-          </div>
-        </Panel>
+      <div className="app-narrow">
         <Panel title="Alt text" src="Pictures without it">
           <Form method="post" className="app-stack" data-tight>
             <Field label="Site">

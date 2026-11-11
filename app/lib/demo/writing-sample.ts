@@ -1,7 +1,7 @@
 // Sample writing for the Desk's chart demo (/demos/progress): a week of typed words, a daily target and
 // a project deadline, all made up, so a live check sees the book page's progress chart without a sign-in.
 // Nothing here is read from D1 or the writing repository, and it belongs to no one.
-import type { Goal, SaveEntry } from "~/lib/writing/progress";
+import type { Goal, SaveEntry } from "capsomer/behavior/writing-progress";
 
 const DAY_MS = 86_400_000;
 // Words typed on each of the last seven days, today last.

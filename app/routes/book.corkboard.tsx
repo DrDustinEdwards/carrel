@@ -13,9 +13,9 @@ import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { SortableList, moveId } from "capsomer/react/sortable-list";
 import { Link } from "capsomer/react/link";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
 
 import { reorderBook, chapterSources, type ReorderResult } from "~/lib/binder.server";
 import { bookHead, bookRepo, listFiles, requireBookProject } from "~/lib/books.server";
@@ -192,7 +192,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
         <Link to={`${base}/f/${c.path}`} className="app-card-title">
           {c.title}
         </Link>
-        <StatusLabelPill labels={labels} status={c.status} />
+        <ColorLabelPill labels={labels} value={c.status} unknownNote=" (not on the status list)" />
       </div>
       <p className={c.fromText ? "app-card-summary cap-muted" : "app-card-summary"}>
         {c.summary || "No summary yet."}
@@ -260,7 +260,9 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
                   aria-label="Chapters in order"
                   renderItem={(c) => (
                     <>
-                      <span className="cap-sortable-label">{c.title}</span>
+                      <span className="cap-sortable-label">
+                        <span>{c.title}</span>
+                      </span>
                       <span className="cap-sortable-detail">
                         {c.cards.length} scene{c.cards.length === 1 ? "" : "s"}
                       </span>

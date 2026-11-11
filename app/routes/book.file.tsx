@@ -15,17 +15,18 @@ import { Panel } from "capsomer/react/panel";
 import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
+import { untypedCount, untypedTally } from "capsomer/behavior/writing-progress";
+import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
+import { FrontmatterFields } from "capsomer/react/frontmatter-fields";
+import { EditorWorkspace, useSaveShortcut, useTypingRecede } from "capsomer/react/editor-workspace";
 
-import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { WritingSurface } from "~/components/editor/writing-surface";
-import { HeaderFields } from "~/components/editor/header-fields";
 import { commentsTab, Inspector } from "~/components/editor/inspector";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { useSaveShortcut } from "~/components/editor/save-keys";
-import { useTypingRecede } from "~/components/editor/typing";
 import { RouterLink } from "~/components/frame";
 import { Binder } from "~/components/writing/binder";
+import { fetcherForm } from "~/components/router-form";
 
 import {
   bookRepo,
@@ -54,7 +55,7 @@ import {
 } from "~/lib/novels/layout";
 import { can } from "~/lib/roles";
 import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
-import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
+import { addUntyped, clearUntyped } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
 import { readForm } from "~/lib/form.server";
 
@@ -276,7 +277,7 @@ export async function action({
             message: `${detail} The text is kept here in Carrel.`,
           },
         };
-      const untyped = untypedField(form.get("untyped"));
+      const untyped = untypedCount(form.get("untyped"));
       return {
         intent,
         outcome: await saveRoom(env, project, viewer, path, (text, expectedVersion, others) =>
@@ -314,8 +315,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [asking, setAsking] = useState<Ask | null>(null);
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
+  const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
-  useTypingRecede();
+  useTypingRecede(".cm-editor, .app-rich-surface");
   const base = `/b/${data.project.slug}`;
 
   // The file's room: one copy for everyone on the book, as they type.
@@ -340,17 +342,14 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   // Words this person pasted or dropped into the text and not yet reported: they reach the file but
   // were not typed, so the day's count leaves them out (ruling 6). A save carries the count, and the
   // part it carried comes off once the server has it.
-  const untyped = useRef(0);
-  const untypedSent = useRef(0);
+  const tally = useRef(untypedTally());
   const countUntyped = (text: string | undefined) => {
-    if (data.canEdit && text) untyped.current += countProseWords(text);
+    if (data.canEdit && text) tally.current.add(countProseWords(text));
   };
 
   const outcome = writer.data?.intent === "save" ? writer.data.outcome : null;
   useEffect(() => {
-    if (outcome?.ok && writer.state === "idle")
-      untyped.current = Math.max(0, untyped.current - untypedSent.current);
-    if (writer.state === "idle") untypedSent.current = 0;
+    if (writer.state === "idle") tally.current.settled(Boolean(outcome?.ok));
   }, [outcome, writer.state]);
   // A discard or an AI draft taken replaces the text, and what was pasted into it goes with it.
   useEffect(() => {
@@ -358,7 +357,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       writer.state === "idle" &&
       (writer.data?.intent === "discard" || writer.data?.intent === "use-ai-draft")
     )
-      untyped.current = 0;
+      tally.current.reset();
   }, [writer.state, writer.data]);
 
   // Said once in the message region, as each save finishes.
@@ -374,9 +373,8 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   // Before a save the room is asked to confirm it has every change made here, so the save holds them.
   const send = async (intent: string, extra: Record<string, string> = {}) => {
     await room.flush();
-    if (intent === "save") untypedSent.current = untyped.current;
     return writer.submit(
-      { intent, untyped: String(intent === "save" ? untyped.current : 0), ...extra },
+      { intent, untyped: String(intent === "save" ? tally.current.send() : 0), ...extra },
       { method: "post" },
     );
   };
@@ -430,7 +428,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         }
       />
 
-      <div className="app-notices">
+      <div className="app-notices" data-cap-recede="">
         {data.connectionDetail ? <Banner tone="warn">{data.connectionDetail}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="Git moved on">
@@ -472,28 +470,32 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
       <div className="app-editor-grid">
         <div className="app-editor-main">
-          <section
-            className="app-editor-pane"
-            aria-label="Write"
-            onPasteCapture={(event) => countUntyped(event.clipboardData?.getData("text/plain"))}
-            onDropCapture={(event) => countUntyped(event.dataTransfer?.getData("text/plain"))}
-          >
-            {data.room ? editing.bar : null}
-            <WritingSurface
-              label={data.kind === "scene" ? "Scene" : "File"}
-              value={splitSource(source).body}
-              onChange={(body) => setSource(joinSource({ ...splitSource(source), body }))}
-              readOnly={readOnly}
-              linkTargets={[]}
-              dialect="plain"
-              room={
-                data.room
-                  ? { rich: editing.rich, markdownLocked: editing.markdownLocked }
-                  : undefined
-              }
-              onEditor={editing.setEditor}
-            />
-          </section>
+          <EditorWorkspace
+            layout="write"
+            preview={null}
+            write={
+              <div
+                onPasteCapture={(event) => countUntyped(event.clipboardData?.getData("text/plain"))}
+                onDropCapture={(event) => countUntyped(event.dataTransfer?.getData("text/plain"))}
+              >
+                {data.room ? editing.bar : null}
+                <WritingSurface
+                  label={data.kind === "scene" ? "Scene" : "File"}
+                  value={splitSource(source).body}
+                  onChange={(body) => setSource(joinSource({ ...splitSource(source), body }))}
+                  readOnly={readOnly}
+                  linkTargets={[]}
+                  dialect="plain"
+                  room={
+                    data.room
+                      ? { rich: editing.rich, markdownLocked: editing.markdownLocked }
+                      : undefined
+                  }
+                  onEditor={editing.setEditor}
+                />
+              </div>
+            }
+          />
         </div>
 
         <Inspector
@@ -508,8 +510,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     </p>
                     {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
                     {data.version ? (
-                      <AiWriteButtons
+                      <AiJobButtons
                         action={`${base}/ai-write`}
+                        Form={fetcherForm(aiJob.Form)}
+                        answer={aiJob.data}
+                        pending={aiJob.state !== "idle"}
                         fields={{ path: data.path }}
                         buttons={[
                           { job: "continue", label: "Continue this file" },
@@ -558,10 +563,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               value: "details",
               label: "Details",
               content: (
-                <HeaderFields
+                <FrontmatterFields
                   source={source}
                   onChange={setSource}
                   readOnly={readOnly || !data.canEdit}
+                  legend="Header"
+                  empty={
+                    <p className="app-note">
+                      This file has no header, so it has no details to set.
+                    </p>
+                  }
                 />
               ),
             },

@@ -21,7 +21,7 @@ import type { Viewer, VisibleProject } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 import { loadMentions } from "@dustinedwards/site-api/admin";
 import { isSiteId, siteConnection } from "~/lib/sites.server";
-import { knownZone } from "~/lib/writing/progress";
+import { knownZone } from "capsomer/behavior/writing-progress";
 
 export type NeedGroup = "ai" | "due" | "flags" | "mentions" | "approvals";
 type Urgency = "blocking" | "waiting";

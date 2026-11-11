@@ -88,7 +88,7 @@ export function Inspector({
   );
 
   return (
-    <aside className="app-editor-side app-inspector" aria-label={label}>
+    <aside className="app-editor-side app-inspector" aria-label={label} data-cap-recede="">
       {head}
       {wide ? (
         body
