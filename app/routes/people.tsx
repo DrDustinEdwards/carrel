@@ -17,7 +17,7 @@ import { Link } from "capsomer/react/link";
 import { Dialog, DialogBody, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { Check, Field } from "capsomer/react/field";
+import { Check, EmailInput, Field } from "capsomer/react/field";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
@@ -328,9 +328,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
   const person = (
     <Form method="post" action="/people" className="app-form">
       <div className="app-fields">
-        <Field label="Email" required>
-          <input className="cap-input" type="email" name="email" required autoComplete="off" />
-        </Field>
+        <EmailInput label="Email" name="email" required />
         <Field label="Name">
           <input className="cap-input" type="text" name="name" autoComplete="off" />
         </Field>

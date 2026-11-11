@@ -5,7 +5,7 @@
 import { useFetcher } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { Field } from "capsomer/react/field";
+import { EmailInput, Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 
@@ -38,9 +38,7 @@ export function SharePanel({ site }: { site: boolean }) {
       <fetcher.Form method="post" className="app-form">
         <input type="hidden" name="intent" value="share" />
         <div className="app-fields">
-          <Field label="Email" required>
-            <input className="cap-input" type="email" name="email" required autoComplete="off" />
-          </Field>
+          <EmailInput label="Email" name="email" required />
           <Field
             label="Name"
             help="For someone new to Carrel. An existing person keeps their name."
