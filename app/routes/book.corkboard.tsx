@@ -186,7 +186,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
   return (
     <div className="app-page">
       <BookHead book={head} section="manuscript" view="corkboard" />
-      <div className="app-stack" data-tight>
+      <div className="cap-stack" data-gap="4">
         <p className="cap-muted app-note">
           Each chapter's scenes as cards, in reading order. Moving a card or a chapter renumbers the
           files after it, in one commit.

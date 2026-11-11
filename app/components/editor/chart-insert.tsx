@@ -161,7 +161,7 @@ export function ChartInsert({
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <div className="app-stack">
+          <div className="cap-stack" data-gap="6">
             <Segmented
               legend="Chart type"
               size="sm"

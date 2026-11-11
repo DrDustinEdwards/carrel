@@ -6,7 +6,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import type { Command } from "capsomer/react/command-menu";
-import { Link } from "capsomer/react/link";
+import { Icon } from "capsomer/react/icons";
+import { routerRenderLink } from "capsomer/react/link";
 import { MessageProvider } from "capsomer/react/message";
 import {
   AdminShell,
@@ -33,45 +34,24 @@ export type FrameData = {
   needs: number;
 };
 
-function Icon({ d, stroke }: { d: string; stroke?: boolean }) {
-  return (
-    <svg className="cap-admin-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <path
-        d={d}
-        fill={stroke ? "none" : "currentColor"}
-        stroke={stroke ? "currentColor" : "none"}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+// Carrel's own 16-unit drawings, in the shared Icon (sized by the admin shell's .cap-admin-icon).
+const glyph = (d: string) => <Icon d={d} box={16} className="cap-admin-icon" />;
 
 const ICONS = {
-  home: <Icon d="M2.5 7.5 8 3l5.5 4.5V13h-3.5V9.5H6V13H2.5z" stroke />,
-  writing: <Icon d="M3 13h2l7-7-2-2-7 7zM9.5 4.5l2 2" stroke />,
-  book: (
-    <Icon
-      d="M2.5 3.5c2-.8 4-.6 5.5.6 1.5-1.2 3.5-1.4 5.5-.6v9c-2-.8-4-.6-5.5.6-1.5-1.2-3.5-1.4-5.5-.6z M8 4.1v9"
-      stroke
-    />
+  home: glyph("M2.5 7.5 8 3l5.5 4.5V13h-3.5V9.5H6V13H2.5z"),
+  writing: glyph("M3 13h2l7-7-2-2-7 7zM9.5 4.5l2 2"),
+  book: glyph(
+    "M2.5 3.5c2-.8 4-.6 5.5.6 1.5-1.2 3.5-1.4 5.5-.6v9c-2-.8-4-.6-5.5.6-1.5-1.2-3.5-1.4-5.5-.6z M8 4.1v9",
   ),
-  media: <Icon d="M2.5 3.5h11v9h-11zM2.5 11l3.5-3.5 3 3 2-2 2.5 2.5M10.5 6.2h.01" stroke />,
-  manuscripts: <Icon d="M4 2.5h5l3 3v8H4zM9 2.5v3h3M6 8.5h4M6 11h4" stroke />,
-  social: <Icon d="M2.5 9.5V6.5l8-3.5v10l-8-3.5zM5 10.5l.8 3h2" stroke />,
-  sites: (
-    <Icon
-      d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM2 8h12M8 2c2 1.8 2 10.2 0 12M8 2c-2 1.8-2 10.2 0 12"
-      stroke
-    />
+  media: glyph("M2.5 3.5h11v9h-11zM2.5 11l3.5-3.5 3 3 2-2 2.5 2.5M10.5 6.2h.01"),
+  manuscripts: glyph("M4 2.5h5l3 3v8H4zM9 2.5v3h3M6 8.5h4M6 11h4"),
+  social: glyph("M2.5 9.5V6.5l8-3.5v10l-8-3.5zM5 10.5l.8 3h2"),
+  sites: glyph(
+    "M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM2 8h12M8 2c2 1.8 2 10.2 0 12M8 2c-2 1.8-2 10.2 0 12",
   ),
-  ai: <Icon d="M8 2l1.4 3.6L13 7l-3.6 1.4L8 12l-1.4-3.6L3 7l3.6-1.4z" stroke />,
-  people: (
-    <Icon
-      d="M6 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13c.4-2.3 2.2-3.5 4.5-3.5s4.1 1.2 4.5 3.5M11 7a2 2 0 1 0 0-4M12 9.6c1.2.3 2.1 1.3 2.5 3.4"
-      stroke
-    />
+  ai: glyph("M8 2l1.4 3.6L13 7l-3.6 1.4L8 12l-1.4-3.6L3 7l3.6-1.4z"),
+  people: glyph(
+    "M6 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13c.4-2.3 2.2-3.5 4.5-3.5s4.1 1.2 4.5 3.5M11 7a2 2 0 1 0 0-4M12 9.6c1.2.3 2.1 1.3 2.5 3.4",
   ),
 };
 
@@ -82,14 +62,6 @@ const initialsOf = (name: string) =>
     .slice(0, 2)
     .map((w) => w[0]!.toUpperCase())
     .join("") || "?";
-
-export function RouterLink({ href, children, ...rest }: LinkProps) {
-  return (
-    <Link to={href} {...rest}>
-      {children}
-    </Link>
-  );
-}
 
 export function Frame({ data, children }: { data: FrameData | null; children: ReactNode }) {
   const { pathname } = useLocation();
@@ -224,7 +196,7 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
       viewSite="https://carrel.dustinedwards.info"
       nav={nav}
       tabs={tabs}
-      renderLink={RouterLink}
+      renderLink={routerRenderLink}
       onSearch={
         data
           ? () => {

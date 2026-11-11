@@ -1,14 +1,13 @@
 // The head of a page that shows one draft kept beside the person's own (routes/ai-draft.tsx, routes/transcript-draft.tsx):
 // where it sits, who saved it and when, and the one step that uses it, asked once in a confirm before the form posts.
 
+import { routerRenderLink } from "capsomer/react/link";
 import { useRef, useState, type ReactNode } from "react";
 import { Form, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
 import { PageHead } from "capsomer/react/page-head";
 import { Time } from "capsomer/react/time";
-
-import { RouterLink } from "~/components/frame";
 
 /** A draft's id from the route, or a 404: ids are positive whole numbers. */
 export function draftIdParam(value: string | undefined): number {
@@ -42,7 +41,7 @@ export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
   return (
     <>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: project.name, href: `/p/${project.slug}` },
           { label: itemId, href: editor },

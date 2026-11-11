@@ -37,7 +37,7 @@ import {
   setDisabled,
   setProjectRole,
 } from "~/lib/people-admin.server";
-import { useHydrated } from "~/lib/hydrated";
+import { useHydrated } from "capsomer/react/hooks";
 import { isMemberRole } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 

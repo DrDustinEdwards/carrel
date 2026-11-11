@@ -34,7 +34,7 @@ import {
   type NeedGroup,
 } from "~/lib/desk.server";
 import { readForm } from "~/lib/form.server";
-import { useBrowserZone } from "~/lib/hydrated";
+import { useBrowserZone } from "capsomer/react/hooks";
 import { visibleProjects } from "~/lib/people.server";
 
 import type { Route } from "./+types/home";

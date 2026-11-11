@@ -2,13 +2,12 @@
 // site until the first Save, which sends it with expectedVersion null: the site refuses it if the
 // slug was taken in the meantime.
 
+import { routerRenderLink } from "capsomer/react/link";
 import { Form, redirect, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
-
-import { RouterLink } from "~/components/frame";
 
 import { autosave, readDoc } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -67,7 +66,7 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
   return (
     <div className="app-page" data-narrow>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: loaderData.project.name, href: `/p/${loaderData.project.slug}` },
           { label: "New post" },
@@ -76,7 +75,7 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
         lead="A new post starts as a draft in Carrel, under the address you give it."
       />
       <Panel title="Address">
-        <Form method="post" className="app-form">
+        <Form method="post" className="cap-stack">
           <Field
             label="Slug, the post's address on the site"
             required
@@ -94,7 +93,7 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
               data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as my-new-post."
             />
           </Field>
-          <div className="app-actions">
+          <div className="cap-cluster" data-gap="3">
             <Button type="submit" variant="primary" pending={busy}>
               Start writing
             </Button>

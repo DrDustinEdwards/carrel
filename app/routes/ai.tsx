@@ -230,7 +230,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
           title="Engine for each job"
           flush
           footer={
-            <div className="app-actions">
+            <div className="cap-cluster" data-gap="3">
               <Button type="submit" variant="primary" pending={busy}>
                 Save
               </Button>
@@ -312,7 +312,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
 
       <div className="app-split" data-aside data-even>
         <Panel title="API spend this month" src={`${dollars(spent)} so far`}>
-          <div className="app-stack" data-tight>
+          <div className="cap-stack" data-gap="4">
             <Field
               label="Cap a month, $"
               help="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then. Saved with the table."
@@ -349,7 +349,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
           </div>
         </Panel>
         <Panel title="Alt text" src="Pictures without it">
-          <Form method="post" className="app-stack" data-tight>
+          <Form method="post" className="cap-stack" data-gap="4">
             <Field label="Site">
               <Select name="site" options={sites} />
             </Field>
@@ -363,7 +363,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
                 ]}
               />
             </Field>
-            <div className="app-actions">
+            <div className="cap-cluster" data-gap="3">
               <Button type="submit" name="alt-text" value="1" pending={busy}>
                 Write the missing alt text
               </Button>

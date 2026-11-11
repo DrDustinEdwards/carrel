@@ -20,7 +20,7 @@ import { LibraryInsert } from "~/components/media/library-insert";
 import { typedProps, useTyped } from "~/components/editor/typed-box";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { SERP_WIDTH, textWidth } from "~/lib/serp-width";
-import { useHydrated } from "~/lib/hydrated";
+import { useHydrated } from "capsomer/react/hooks";
 
 const PICK_WORDS = {
   label: "Choose from library",
@@ -148,7 +148,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
                 <span className="cap-muted">No share image: the site's default is used</span>
               )}
             </div>
-            <div className="app-stack" data-tight="">
+            <div className="cap-stack" data-gap="4">
               {media ? (
                 values.image ? (
                   <p className="app-share-image-url cap-mono">{values.image}</p>
@@ -159,7 +159,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
                 </Field>
               )}
               {!locked ? (
-                <div className="app-actions">
+                <div className="cap-cluster" data-gap="3">
                   {media ? (
                     <LibraryInsert
                       media={media}

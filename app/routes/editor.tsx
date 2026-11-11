@@ -6,7 +6,7 @@
 import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useSearchParams } from "react-router";
-import { useHydrated } from "~/lib/hydrated";
+import { useHydrated } from "capsomer/react/hooks";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -33,7 +33,7 @@ import { useSaveShortcut } from "~/components/editor/save-keys";
 import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
-import { RouterLink } from "~/components/frame";
+import { routerRenderLink } from "capsomer/react/link";
 import { SiteBinder } from "~/components/writing/binder";
 import {
   dismissItemFinding,
@@ -92,7 +92,7 @@ import {
 } from "~/lib/rooms.server";
 import type { ChartFinding } from "~/lib/chart-check.client";
 import { featureImageFault, imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
-import { figureMarkup } from "~/lib/site-markdown";
+import { siteFigureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
 import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
@@ -847,7 +847,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor" data-layout={layout}>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: data.project.name, href: `/p/${data.project.slug}` },
           { label: kindWord(data.kind) },
@@ -1017,7 +1017,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       ? {
                           ...data.media,
                           figure: (url: string, alt: string, caption?: string) =>
-                            figureMarkup(data.project.siteId, url, alt, caption),
+                            siteFigureMarkup(data.project.siteId, url, alt, caption),
                         }
                       : null
                   }
