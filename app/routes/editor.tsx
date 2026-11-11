@@ -6,7 +6,7 @@
 import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useSearchParams } from "react-router";
-import { useHydrated } from "~/lib/hydrated";
+import { useHydrated } from "capsomer/react/hooks";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
