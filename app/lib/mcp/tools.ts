@@ -200,11 +200,11 @@ const BOOK_PATH = {
 };
 
 /** An opaque cursor: the offset of the next page, so a client never builds one itself. */
-function encodeCursor(offset: number): string {
+function encodeOffsetCursor(offset: number): string {
   return btoa(`o:${offset}`).replace(/=+$/, "");
 }
 
-function decodeCursor(cursor: string): number {
+function decodeOffsetCursor(cursor: string): number {
   let decoded = "";
   try {
     decoded = atob(cursor);
@@ -346,7 +346,7 @@ export const TOOLS: Tool[] = [
       if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > PAGE_MAX)
         throw new AiRefusal(`limit is a whole number from 1 to ${PAGE_MAX}.`);
       const cursor = str(args, "cursor", { optional: true, max: 40 });
-      const offset = cursor ? decodeCursor(cursor) : 0;
+      const offset = cursor ? decodeOffsetCursor(cursor) : 0;
       const page = await searchItemsPage(
         ctx.env.DB,
         p.id,
@@ -360,7 +360,7 @@ export const TOOLS: Tool[] = [
       return {
         items: page.items,
         has_more: page.hasMore,
-        next_cursor: page.hasMore ? encodeCursor(offset + page.items.length) : null,
+        next_cursor: page.hasMore ? encodeOffsetCursor(offset + page.items.length) : null,
       };
     },
   },
