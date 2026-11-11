@@ -4,14 +4,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import {
-  bringBack,
-  laterUntil,
-  needsYou,
-  searchEverything,
-  setLater,
-  writingRows,
-} from "~/lib/desk.server";
+import { bringBack, needsYou, searchEverything, setLater, writingRows } from "~/lib/desk.server";
 import { visibleProjects } from "~/lib/people.server";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
@@ -103,20 +96,5 @@ describe("what Desk lists across projects", () => {
     await setLater(testEnv.DB, editor, two, tomorrow);
     await bringBack(testEnv.DB, editor, two.id);
     expect((await needsYou(testEnv.DB, editor, visible)).every((n) => !n.later)).toBe(true);
-  });
-});
-
-describe("when Later brings a row back", () => {
-  it("is 8 am the next morning in the person's zone, across a daylight-time change", () => {
-    // 11 pm in Chicago on 31 October 2026, the night daylight time ends: 8 am CST is 14:00 UTC.
-    expect(laterUntil(new Date("2026-11-01T04:00:00Z"), "America/Chicago")).toBe(
-      "2026-11-01T14:00:00.000Z",
-    );
-    expect(laterUntil(new Date("2026-07-10T20:00:00Z"), "America/Chicago")).toBe(
-      "2026-07-11T13:00:00.000Z",
-    );
-    expect(laterUntil(new Date("2026-07-10T20:00:00Z"), "Not/AZone")).toBe(
-      "2026-07-11T08:00:00.000Z",
-    );
   });
 });

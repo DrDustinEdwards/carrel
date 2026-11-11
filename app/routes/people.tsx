@@ -11,17 +11,14 @@
 // policy-management/ (Zero Trust > Access controls > Policies), and .../cloudflare-one/integrations/
 // identity-providers/one-time-pin/ (Zero Trust > Integrations > Identity providers).
 
-import { useEffect, useRef, useState } from "react";
-import { Form, useFetcher, useNavigate, useNavigation, useSearchParams } from "react-router";
+import { Form, useNavigate, useNavigation, useSearchParams, useSubmit } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Dialog, DialogBody, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
-import { useMessage } from "capsomer/react/message";
+import { RoleGrid, type RoleGridPerson, type RoleOption } from "capsomer/react/people-roles";
 import { Panel } from "capsomer/react/panel";
-import { Select } from "capsomer/react/select";
-import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
@@ -169,155 +166,42 @@ function AccessStatus({ access, busy }: { access: AccessState; busy: boolean }) 
   );
 }
 
-/**
- * Disable and Enable are one control that stays mounted across the reload that follows, so it can say
- * the result. Disabling is reversible on the server (Enable), so it happens at once and offers Undo.
- */
-function AccessButton({ person }: { person: Person }) {
-  const fetcher = useFetcher<ActionResult>();
-  const { say } = useMessage();
-  const said = useRef<unknown>(null);
-  const name = person.name || person.email;
-  const disabled = Boolean(person.disabledAt);
-  useEffect(() => {
-    const data = fetcher.data;
-    if (fetcher.state !== "idle" || !data?.ok || data.intent !== "disable" || said.current === data)
-      return;
-    said.current = data;
-    say(`${name} is disabled. They are refused at both doors on their next request.`, {
-      undo: () =>
-        fetcher.submit({ intent: "enable", person: String(person.id) }, { method: "post" }),
-      undone: `${name} is enabled again.`,
-    });
-  }, [fetcher, name, person.id, say]);
-  return (
-    <fetcher.Form method="post">
-      <input type="hidden" name="person" value={person.id} />
-      <Button
-        type="submit"
-        name="intent"
-        value={disabled ? "enable" : "disable"}
-        size="sm"
-        pending={fetcher.state !== "idle"}
-      >
-        {disabled ? "Enable" : "Disable"}
-        <span className="cap-sr-only"> {name}</span>
-      </Button>
-    </fetcher.Form>
-  );
-}
-
 type Project = Route.ComponentProps["loaderData"]["projects"][number];
 
-const ROLE_LABEL: Record<string, string> = {
-  "": "No access",
-  reader: "Reader",
-  editor: "Editor",
-  author: "Author",
-};
+const isAgent = (person: Person) => person.email.startsWith("agent:");
 
-/** One person's row: a role select per project that saves on change. With no script, the row's
- * Save button posts every project's role at once. */
-function PersonRow({
-  person,
-  projects,
-  onSaved,
-}: {
-  person: Person;
-  projects: Project[];
-  onSaved: (text: string) => void;
-}) {
-  const fetcher = useFetcher<ActionResult>();
-  const hydrated = useHydrated();
-  const name = person.name || person.email;
+/** A person as the role grid draws them: their role on each project, and what kind of member they are. */
+function gridPerson(person: Person): RoleGridPerson {
   const kind = person.isOwner
     ? "Owner"
-    : person.email.startsWith("agent:")
+    : isAgent(person)
       ? "Agent (AI)"
       : person.isReviewer
         ? "Reviewer (AI)"
         : null;
-  const formId = `roles-${person.id}`;
-  return (
-    <tr>
-      <th scope="row">
-        <span className="app-role-person">{name}</span>
-        {person.name ? (
-          <span className="cap-muted app-outliner-chapter">{person.email}</span>
-        ) : null}
-        <span className="app-role-pills">
-          {kind ? <Pill variant="outline">{kind}</Pill> : null}
-          {person.disabledAt ? (
-            <Pill variant="secondary">Disabled {person.disabledAt.slice(0, 10)}</Pill>
-          ) : null}
-        </span>
-        {person.isOwner ? null : (
-          <span className="app-actions app-role-actions">
-            {hydrated ? null : (
-              <Button type="submit" form={formId} size="sm">
-                Save<span className="cap-sr-only"> roles for {name}</span>
-              </Button>
-            )}
-            <AccessButton person={person} />
-          </span>
-        )}
-        {person.isOwner ? null : (
-          <form id={formId} method="post" hidden>
-            <input type="hidden" name="intent" value="roles" />
-            <input type="hidden" name="person" value={person.id} />
-          </form>
-        )}
-      </th>
-      {person.isOwner ? (
-        <td colSpan={projects.length} className="cap-muted">
-          Owner of every project.
-        </td>
-      ) : (
-        projects.map((project) => {
-          const role = person.roles.find((r) => r.projectId === project.id)?.role ?? "";
-          return (
-            <td key={project.id}>
-              <Select
-                form={formId}
-                name={`role-${project.id}`}
-                size="sm"
-                aria-label={`${name} on ${project.name}`}
-                defaultValue={role}
-                onChange={(event) => {
-                  const value = event.currentTarget.value;
-                  void fetcher
-                    .submit(
-                      {
-                        intent: "role",
-                        person: String(person.id),
-                        project: String(project.id),
-                        role: value,
-                      },
-                      { method: "post" },
-                    )
-                    .then(() =>
-                      onSaved(`Saved: ${name} on ${project.name}, ${ROLE_LABEL[value]}.`),
-                    );
-                }}
-                options={[
-                  { value: "", label: "No access" },
-                  { value: "reader", label: "Reader" },
-                  // Reviewers read and flag only: Editor and Author are not offered, and the server refuses them anyway.
-                  ...(person.isReviewer ? [] : [{ value: "editor", label: "Editor" }]),
-                  // An Author publishes their own posts: a person on a site's project, never an agent.
-                  ...(person.isReviewer ||
-                  person.email.startsWith("agent:") ||
-                  project.kind !== "site"
-                    ? []
-                    : [{ value: "author", label: "Author" }]),
-                ]}
-              />
-            </td>
-          );
-        })
-      )}
-    </tr>
-  );
+  return {
+    id: String(person.id),
+    email: person.email,
+    name: person.name || undefined,
+    roles: Object.fromEntries(person.roles.map((r) => [String(r.projectId), r.role])),
+    badges: kind ? [kind] : [],
+    disabledAt: person.disabledAt ?? undefined,
+    everyScope: person.isOwner ? "Owner of every project." : undefined,
+  };
+}
+
+/** The roles a person may hold on a project, after No access (which the grid always offers). */
+function rolesFor(person: Person | undefined, project: Project | undefined): RoleOption[] {
+  if (!person || !project) return [];
+  return [
+    { value: "reader", label: "Reader" },
+    // Reviewers read and flag only: Editor and Author are not offered, and the server refuses them anyway.
+    ...(person.isReviewer ? [] : [{ value: "editor", label: "Editor" }]),
+    // An Author publishes their own posts: a person on a site's project, never an agent.
+    ...(person.isReviewer || isAgent(person) || project.kind !== "site"
+      ? []
+      : [{ value: "author", label: "Author" }]),
+  ];
 }
 
 /** Adding a person or an AI agent: dialogs opened from the head (?add=person, ?add=agent), so a link
@@ -421,7 +305,12 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
   const busy = useNavigation().state !== "idle";
   const [params] = useSearchParams();
   const adding = params.get("add");
-  const [saved, setSaved] = useState("");
+  const submit = useSubmit();
+  const byId = new Map(people.map((p) => [String(p.id), p]));
+  const projectById = new Map(projects.map((p) => [String(p.id), p]));
+  // Each change is its own fetcher (navigate: false), so a second change never cancels the first.
+  const post = (fields: Record<string, string>) =>
+    submit(fields, { method: "post", navigate: false });
 
   return (
     <div className="app-page">
@@ -542,36 +431,16 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
           Owner publishes anyone else's post, sends anything else outside Carrel and manages people.
           A role saves as soon as you change it.
         </p>
-        <p className="cap-sr-only" role="status">
-          {saved}
-        </p>
-        <div
-          className="cap-table-wrap app-roles-wrap"
-          role="region"
-          aria-labelledby="roles-caption"
-          tabIndex={0}
-        >
-          <table className="cap-table app-roles">
-            <caption id="roles-caption" className="cap-sr-only">
-              People, and their role on each project
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Person</th>
-                {projects.map((project) => (
-                  <th scope="col" key={project.id}>
-                    {project.name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {people.map((person) => (
-                <PersonRow key={person.id} person={person} projects={projects} onSaved={setSaved} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RoleGrid
+          people={people.map(gridPerson)}
+          scopes={projects.map((p) => ({ id: String(p.id), name: p.name }))}
+          caption="People, and their role on each project"
+          options={(person, scope) => rolesFor(byId.get(person.id), projectById.get(scope.id))}
+          onRoleChange={(person, scope, role) =>
+            post({ intent: "role", person: person.id, project: scope.id, role })
+          }
+          onAccess={(person, intent) => post({ intent, person: person.id })}
+        />
       </Panel>
 
       <AddDialogs adding={adding} busy={busy} />
