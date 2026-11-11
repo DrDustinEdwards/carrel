@@ -17,11 +17,15 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changeContributors, changes, drafts, people, rooms } from "~/db/schema";
-import { roomName } from "~/lib/editor/collab";
-import type { Dialect } from "~/lib/editor/markdown.mjs";
+import type { Dialect } from "capsomer/behavior/rich-editor";
 import type { Viewer } from "~/lib/people.server";
 import { can, type Role } from "~/lib/roles";
-import { ROOM_VIEWER_HEADER, roomAccess, type RoomViewer } from "~/lib/editor/room-protocol";
+import {
+  ROOM_VIEWER_HEADER,
+  roomAccess,
+  roomName,
+  type RoomViewer,
+} from "~/lib/editor/room-protocol";
 
 type Where = { id: number; role: Role };
 

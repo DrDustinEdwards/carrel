@@ -7,12 +7,8 @@ import { getServerByName } from "partyserver";
 import * as syncProtocol from "y-protocols/sync";
 import * as Y from "yjs";
 
-import { patchMarkdown, roomName } from "~/lib/editor/collab";
-import {
-  ROOM_VIEWER_HEADER,
-  type RoomViewer,
-  type ServerMessage,
-} from "~/lib/editor/room-protocol";
+import { patchMarkdown, type ServerMessage } from "capsomer/behavior/collab-editor";
+import { ROOM_VIEWER_HEADER, roomName, type RoomViewer } from "~/lib/editor/room-protocol";
 
 import { testEnv } from "./env";
 

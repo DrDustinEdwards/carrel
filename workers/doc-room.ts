@@ -33,22 +33,23 @@ import {
   isSeeded,
   loadMarkdown,
   markSaved,
-  parseRoomName,
   readMeta,
   roomJson,
   roomMarkdown,
   roomSchema,
+  settle,
+  suggestionCounts,
+  type ClientMessage,
   type RoomMeta,
-} from "~/lib/editor/collab";
-import type { Dialect } from "~/lib/editor/markdown.mjs";
+  type ServerMessage,
+} from "capsomer/behavior/collab-editor";
+import type { Dialect } from "capsomer/behavior/rich-editor";
 import {
+  parseRoomName,
   ROOM_VIEWER_HEADER,
   roomAccess,
-  type ClientMessage,
   type RoomViewer,
-  type ServerMessage,
 } from "~/lib/editor/room-protocol";
-import { settle, suggestionCounts } from "~/lib/editor/suggest";
 import { currentRole } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 

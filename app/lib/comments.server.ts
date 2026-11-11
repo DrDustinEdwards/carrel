@@ -6,7 +6,7 @@ import { and, asc, eq, isNull, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { comments, people, projectMembers } from "~/db/schema";
-import type { RoomComment } from "~/lib/editor/room-protocol";
+import type { RoomComment } from "capsomer/behavior/collab-editor";
 
 export async function listComments(
   db: D1Database,

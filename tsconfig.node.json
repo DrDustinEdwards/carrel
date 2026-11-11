@@ -6,7 +6,6 @@
     "vitest.config.ts",
     "react-router.config.ts",
     "scripts/**/*",
-    "app/lib/editor/*.mjs",
     "www/*.mjs"
   ],
   "compilerOptions": {

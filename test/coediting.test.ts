@@ -1,7 +1,7 @@
 // Live co-editing (ruling point 3, build step 10): several people in one file through its room
 // (workers/doc-room.ts). Each person here is a real Yjs client on a real WebSocket into the room, as a
-// browser is. What is checked is what would cost work if it broke: the shared copy saves byte for
-// byte, one person's change reaches the other, a save writes the room's text with everyone credited,
+// browser is. What is checked is what would cost work if it broke (the shared copy's byte-for-byte
+// round trip is Capsomer's collab editor test): one person's change reaches the other, a save writes the room's text with everyone credited,
 // a coauthor who suggests cannot change the text itself, and comments go to everyone.
 
 import { EditorState } from "@tiptap/pm/state";
@@ -12,30 +12,23 @@ import * as Y from "yjs";
 
 import {
   FRAGMENT,
+  listSuggestions,
   loadMarkdown,
   patchMarkdown,
   roomMarkdown,
   roomSchema,
-} from "~/lib/editor/collab";
-import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
-import {
-  listSuggestions,
   settle,
   suggestingDispatch,
   suggestionPlugins,
-} from "~/lib/editor/suggest";
+  type ServerMessage,
+} from "capsomer/behavior/collab-editor";
+import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { mergeRoom, openRoom, saveRoom } from "~/lib/rooms.server";
 import { ROLE_RECHECK_MS } from "../workers/doc-room";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { join } from "./room";
 import { viewerFor } from "./site";
-
-const corpus = import.meta.glob("./fixtures/markdown/*.md", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
 
 let projectId: number;
 let ids: { owner: number; editor: number; reader: number };
@@ -74,20 +67,6 @@ function edit(doc: Y.Doc, change: (state: EditorState) => EditorState) {
 
 const typeAtEnd = (text: string) => (state: EditorState) =>
   state.apply(state.tr.insertText(text, state.doc.child(0).nodeSize - 1));
-
-describe("the shared copy", () => {
-  for (const [name, source] of Object.entries(corpus)) {
-    it(`PLANT: gives back ${name.replace("./fixtures/markdown/", "")} byte for byte after a trip through Yjs, for a site and for a book`, () => {
-      for (const dialect of ["site", "plain"] as const) {
-        const room = new Y.Doc();
-        loadMarkdown(room, { markdown: source, version: "v1", dialect });
-        const copy = new Y.Doc();
-        Y.applyUpdate(copy, Y.encodeStateAsUpdate(room));
-        expect(roomMarkdown(copy)).toBe(source);
-      }
-    });
-  }
-});
 
 describe("a room", () => {
   it("carries one person's change to the other, and a save writes the room's text with both credited", async () => {

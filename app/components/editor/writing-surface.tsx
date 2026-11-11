@@ -2,7 +2,7 @@
 // the Markdown kept byte for byte underneath, and "Markdown" beside it, which is Capsomer's Markdown
 // editor exactly as before. Both get Carrel's blocks, its link targets and its image upload, set in
 // the serif prose layout, with "Insert from library" beside them. The choice is remembered on this
-// device. The formatted editor is components/editor/rich-editor.tsx; the Markdown one is Capsomer's.
+// device. Both editors are Capsomer's: the formatted one is its rich editor, the Markdown one its markdown editor.
 // In a file's room (`room`), the formatted editor is bound to the room's shared copy, and Markdown
 // typed in the Markdown view goes into it block by block (room-editing.tsx).
 
@@ -15,10 +15,10 @@ import type { Editor } from "@tiptap/core";
 import { Alert } from "capsomer/react/banner";
 
 import { ChartInsert, type ChartPreview } from "~/components/editor/chart-insert";
-import { RichEditor, type RichEditorHandle, type RichRoom } from "~/components/editor/rich-editor";
+import { RichEditor, type RichEditorHandle, type RichRoom } from "capsomer/react/rich-editor";
 import { LibraryInsert } from "~/components/media/library-insert";
 import { uploadImage, type EditorMedia } from "~/components/media/upload";
-import type { Dialect } from "~/lib/editor/markdown.mjs";
+import type { Dialect } from "capsomer/behavior/rich-editor";
 import { useRemembered } from "~/lib/remembered";
 import { SCAFFOLDS } from "~/lib/site-markdown";
 

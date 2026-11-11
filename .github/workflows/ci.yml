@@ -41,7 +41,7 @@ jobs:
       - run: npm test
       # The public site (www/) builds, so a Capsomer or Prelum bump cannot break it unseen.
       - run: npm run www
-      # The formatted editor keeps the Markdown underneath byte for byte. The
+      # The formatted editor (Capsomer's rich editor, capsomer-roundtrip) keeps the Markdown byte for byte. The
       # site's own content is checked out read-only at test time, never committed here (this repo
       # holds no writing), and every file must come back from the editor unchanged.
       - name: Check out dustinedwards.info's content (public, read-only)
@@ -52,7 +52,6 @@ jobs:
           sparse-checkout: content
           persist-credentials: false
       - run: npm run check:roundtrip -- .roundtrip/dustinedwards-info/content
-      - run: npm run check:roundtrip -- test/fixtures/markdown --plain
       - run: npm run check:postinstall
       # Raw console.* calls in server code may not rise above .console.json's baseline (devkit-console), and every D1
       # migration is recorded in drizzle/manifest.json and, after it, expand only (devkit-migrations).
