@@ -664,7 +664,11 @@ async function build(base: Env): Promise<World> {
   const moved = (title: string, tags: string, paras: string[]) =>
     `---\ntitle: "${title}"\ntags: [${tags}]\n---\n\n${paras.join("\n\n")}\n`;
   const first = await site.adapter.content.saveDraft("a-post-that-moved", {
-    source: moved("A post that moved", "notes", ["One opening.", "A middle paragraph.", "The close."]),
+    source: moved("A post that moved", "notes", [
+      "One opening.",
+      "A middle paragraph.",
+      "The close.",
+    ]),
     expectedVersion: null,
     changeId: "seed-moved-1",
   });
