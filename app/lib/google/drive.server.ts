@@ -21,6 +21,7 @@ import { userAccessToken } from "./oauth.server";
 import { GoogleNotConnected, saClient } from "./service-account.server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 type Fetch = typeof fetch;
 
@@ -210,7 +211,7 @@ export async function searchManuscripts(
 // ---------- Send to Docs and Import, over drive.file
 
 function splitFrontmatter(source: string): { frontmatter: string; body: string } {
-  const s = splitSource(source.replace(/\r\n/g, "\n"));
+  const s = splitSource(normalizeNewlines(source));
   if (s.front === null) return { frontmatter: "", body: source };
   const fence = `${s.open}${s.front}${s.close}`;
   return { frontmatter: fence.endsWith("\n") ? fence : `${fence}\n`, body: s.body };
@@ -332,7 +333,7 @@ export async function importFromDocs(
       ok: false as const,
       message: `Google did not export the Doc (${res.status}). It may have been deleted or moved out of reach.`,
     };
-  const body = (await res.text()).replace(/\r\n/g, "\n");
+  const body = normalizeNewlines(await res.text());
   const current = await readDoc(env, project, itemId, fetcher);
   const source = `${sent.frontmatter}${body}`;
   // A file open for live editing takes the import in its room, where everyone sees it.

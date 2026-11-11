@@ -23,6 +23,7 @@ import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
 import { draftForEvent, draftSocialPost } from "~/lib/social/queue.server";
 import { publishTranscriptDraft, TranscriptRefusal } from "~/lib/transcripts.server";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 /**
  * An AI client acting for a person, known by the door it came through: the person the OAuth grant
@@ -202,7 +203,7 @@ export async function saveAiDraft(
       itemId,
       personId: session.viewer.id,
       client: session.client,
-      source: input.source.replace(/\r\n/g, "\n"),
+      source: normalizeNewlines(input.source),
       baseVersion,
       note: (input.note ?? "").trim().slice(0, 500),
       sources: JSON.stringify(input.sources ?? []),

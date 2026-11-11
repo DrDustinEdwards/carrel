@@ -30,6 +30,7 @@ import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteClient } from "~/lib/sites.server";
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 /** The newest published posts a pack is built from: enough to show a range, few enough for one request's subrequests. */
 export const PACK_POSTS = 40;
@@ -79,7 +80,7 @@ function strings(json: string): string[] {
  * excerpt of the raw source would show a model brackets and markup as the author's style.
  */
 function proseOf(source: string): string {
-  return splitSource(source.replace(/\r\n/g, "\n"))
+  return splitSource(normalizeNewlines(source))
     .body.replace(/```[\s\S]*?```/g, "")
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
@@ -200,7 +201,7 @@ export async function saveVoiceGuide(
   now = new Date(),
 ) {
   if (!can(project.role, "manage")) forbid();
-  const own = input.own.replace(/\r\n/g, "\n").trim();
+  const own = normalizeNewlines(input.own).trim();
   const values = {
     guide: input.guide.trim(),
     own,
@@ -259,7 +260,7 @@ function scanAgainst(
  * against the excerpts. `sources`, the text of what the draft drew on, turns on the check of its names and numbers.
  */
 export function checkAgainstPack(pack: VoicePack, source: string, sources?: string[]): DraftCheck {
-  const text = source.replace(/\r\n/g, "\n");
+  const text = normalizeNewlines(source);
   const { front, open, close, body } = splitSource(text);
   const fence = front === null ? "" : `${open}${front}${close}`;
   const firstLine = fence ? fence.split("\n").length - (fence.endsWith("\n") ? 1 : 0) + 1 : 1;

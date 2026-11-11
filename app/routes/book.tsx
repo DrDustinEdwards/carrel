@@ -36,6 +36,7 @@ import { statusList } from "~/lib/writing.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.head.name} · Carrel` : "Carrel" }];
@@ -180,7 +181,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         <StatTile
           label="Words in scenes"
           figure={words.toLocaleString()}
-          detail={`${chapters.length} chapter${chapters.length === 1 ? "" : "s"}`}
+          detail={`${plural(chapters.length, "chapter")}`}
         />
         {open === 0 ? (
           <StatTile

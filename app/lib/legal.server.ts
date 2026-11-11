@@ -20,6 +20,7 @@ import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 export type StoredSection = SharedSection & { updatedAt: string };
 
@@ -48,7 +49,7 @@ export async function saveSection(
   if (!can(project.role, "manage")) throw new Response("Forbidden", { status: 403 });
   const key = input.key.trim();
   const title = input.title.trim();
-  const body = input.body.replace(/\r\n/g, "\n").trim();
+  const body = normalizeNewlines(input.body).trim();
   if (!SECTION_KEY.test(key))
     return {
       ok: false,

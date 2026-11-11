@@ -39,6 +39,7 @@ import {
 } from "~/lib/novels/repo.server";
 import { voiceExcerpts } from "@dustinedwards/site-runtime/prose";
 import { takeUntyped } from "~/lib/writing.server";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 export type BookProject = { id: number; slug: string; name: string; book: string; role: Role };
 
@@ -832,7 +833,7 @@ export async function saveBookAiDraft(
       itemId: path,
       personId: session.viewer.id,
       client: session.client,
-      source: input.source.replace(/\r\n/g, "\n"),
+      source: normalizeNewlines(input.source),
       baseVersion: base?.sha ?? null,
       note: (input.note ?? "").trim().slice(0, 500),
     })

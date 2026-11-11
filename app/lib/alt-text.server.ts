@@ -16,6 +16,7 @@ import {
 import { listMediaFiles, setMediaAlt, suggestMediaAlt } from "~/lib/media.server";
 import type { Viewer } from "~/lib/people.server";
 import { d1FireStore, fireOnce, routineConfig } from "~/lib/social/routine.server";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 /** Files one press handles through the API: a page of the library, so a request stays inside the Worker's subrequest budget. */
 const API_BATCH = 20;
@@ -93,7 +94,7 @@ export async function writeAltText(
       engine: "api",
       set: tally.set,
       skipped: tally.skipped,
-      message: `Alt text set on ${tally.set} file${tally.set === 1 ? "" : "s"}${tally.skipped ? `; ${tally.skipped} skipped${tally.first ? ` (${tally.first})` : ""}` : ""}. The next press does the next ${API_BATCH}.`,
+      message: `Alt text set on ${plural(tally.set, "file")}${tally.skipped ? `; ${tally.skipped} skipped${tally.first ? ` (${tally.first})` : ""}` : ""}. The next press does the next ${API_BATCH}.`,
     };
   const fire = ran.fire as { sessionUrl?: string };
   return {
