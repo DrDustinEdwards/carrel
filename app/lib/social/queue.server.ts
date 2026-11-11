@@ -27,6 +27,7 @@ import { draftPostViaApi, monthSpendMicros, readAiSettings } from "~/lib/ai-engi
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { formatMoney } from "@dustinedwards/site-runtime/money";
 
 type Fetch = typeof fetch;
 
@@ -383,7 +384,7 @@ async function sendQueued(
       await d
         .update(socialPosts)
         .set({
-          error: `Held: it would pass this month's X budget ($${(account.monthlyBudgetMills / 1000).toFixed(2)}).`,
+          error: `Held: it would pass this month's X budget (${formatMoney(account.monthlyBudgetMills, "usd", { scale: 3 })}).`,
         })
         .where(eq(socialPosts.id, post.id));
       result.waitingOnCaps++;

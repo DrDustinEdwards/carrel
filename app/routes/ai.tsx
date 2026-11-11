@@ -36,6 +36,7 @@ import { processSocial } from "~/lib/social/queue.server";
 import { routineConfig } from "~/lib/social/routine.server";
 
 import type { Route } from "./+types/ai";
+import { moneyInputValue, parseMoneyInput } from "@dustinedwards/site-runtime/money";
 
 export function meta() {
   return [{ title: "AI engine · Carrel" }];
@@ -147,12 +148,11 @@ export async function action({ request, context }: Route.ActionArgs) {
     const m = String(form.get(`model-${f.key}`) ?? "");
     if (m) models[f.key] = m;
   }
-  const cap = Number(form.get("cap") || 0);
   await saveAiSettings(env.DB, viewer, {
     master: String(form.get("master") ?? "auto"),
     features,
     models,
-    apiCapMicros: Number.isFinite(cap) ? Math.round(cap * 1_000_000) : 0,
+    apiCapMicros: parseMoneyInput(String(form.get("cap") ?? ""), "usd", { scale: 6 }) ?? 0,
     override: current.override,
   });
   return { done: "Saved." };
@@ -323,7 +323,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
                 type="number"
                 min={0}
                 step="0.01"
-                defaultValue={(settings.apiCapMicros / 1_000_000).toFixed(2)}
+                defaultValue={moneyInputValue(settings.apiCapMicros, "usd", { scale: 6 })}
               />
             </Field>
             {usage.length === 0 ? (
