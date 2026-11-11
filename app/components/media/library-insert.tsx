@@ -29,6 +29,7 @@ import {
 import { Empty } from "capsomer/react/empty";
 import type { FormComponent, MediaData } from "capsomer/react/media-library";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 // The grid loads when the dialog first opens, not with the editor: it is never on the server's page
 // (it waits for the library's answer) and most edits never open it. Opening starts the fetch and the
 // import together.
@@ -79,7 +80,7 @@ export function LibraryInsert({
       if (body && "rows" in body) setData(body);
       else setError((body && body.error) || `The library answered ${response.status}.`);
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : String(thrown));
+      setError(errorMessage(thrown));
     }
   };
 

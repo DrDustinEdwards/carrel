@@ -47,6 +47,7 @@ import { unseenTemplates } from "~/lib/social/queue.server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { plural } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 /** A site's line in the conformance report, in the scoreboard's format (devkit live/README). */
 type SiteConformance = {
   status: "pass" | "fail" | "error";
@@ -547,5 +548,5 @@ export function healthAnswer(env: Env): Promise<Response> {
 }
 
 function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return errorMessage(error);
 }

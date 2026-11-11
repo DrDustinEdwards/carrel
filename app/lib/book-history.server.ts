@@ -16,6 +16,7 @@ import { can } from "~/lib/roles";
 import { coauthorsOf, withOthers } from "~/lib/rooms.server";
 import { plural } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export type BookVersion = {
   /** The commit that made this version. */
   version: string;
@@ -116,7 +117,7 @@ export async function bookVersions(
         }
       }
     } catch (error) {
-      gitError = `Git did not answer (${error instanceof Error ? error.message : String(error)}), so only the versions Carrel recorded are listed.`;
+      gitError = `Git did not answer (${errorMessage(error)}), so only the versions Carrel recorded are listed.`;
     }
   }
   const versions = [...byCommit.values()].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));

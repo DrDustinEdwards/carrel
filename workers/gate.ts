@@ -10,7 +10,12 @@
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { applyHeaderSet } from "@dustinedwards/site-runtime/headers";
-import { logEvent, OWASP_EVENTS, requestFields } from "@dustinedwards/site-runtime/log";
+import {
+  errorMessage,
+  logEvent,
+  OWASP_EVENTS,
+  requestFields,
+} from "@dustinedwards/site-runtime/log";
 import { isolationVerdict, refuseCrossSite } from "@dustinedwards/site-runtime/origin";
 
 import { verifyAccess } from "~/lib/access.server";
@@ -68,7 +73,7 @@ export async function gate(
     if (!access.ok) return refuse(request, access.reason);
     viewer = await findViewer(env.DB, env, access.email);
   } catch (error) {
-    return refuse(request, `error: ${error instanceof Error ? error.message : String(error)}`);
+    return refuse(request, `error: ${errorMessage(error)}`);
   }
   if (!viewer) return refuse(request, "unknown-person");
   return admit(request, viewer, render);

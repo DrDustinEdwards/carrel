@@ -30,6 +30,8 @@ import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { formatMoney } from "@dustinedwards/site-runtime/money";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
+import { isSlug } from "@drdustinedwards/site-helpers/slug";
 type Fetch = typeof fetch;
 
 /** How long published items gather before one routine run takes them all. */
@@ -68,7 +70,7 @@ export type AccountInput = {
 
 export async function createAccount(db: D1Database, viewer: Viewer, input: AccountInput) {
   requireOwner(viewer);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.key))
+  if (!isSlug(input.key))
     return {
       ok: false as const,
       error: "The key is lower-case letters, digits and hyphens, such as example-bluesky.",
@@ -416,7 +418,7 @@ async function sendQueued(
       last = now.getTime();
       result.sent++;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       await d
         .update(socialPosts)
         .set({ status: "failed", error: message })

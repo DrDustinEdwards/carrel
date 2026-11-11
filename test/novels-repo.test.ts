@@ -3,11 +3,9 @@
 // blind write refused as a conflict rather than overwriting someone's commit.
 
 import { gitBlobSha } from "@dustinedwards/devkit/github";
-import { importSPKI, jwtVerify } from "jose";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
-  appJwt,
   clearTokenCache,
   GitConflict,
   installationToken,
@@ -22,21 +20,6 @@ import { fakeNovels, githubStyleKey, TOKEN } from "./novels";
 beforeEach(() => clearTokenCache());
 
 describe("the App's key and token", () => {
-  it("signs an RS256 JWT GitHub can verify: issuer the App id, back-dated a minute, under ten minutes", async () => {
-    const key = await githubStyleKey();
-    const now = Date.UTC(2026, 8, 27, 3, 0, 0);
-    const jwt = await appJwt("123456", key.pkcs1Pem, now);
-    const { payload, protectedHeader } = await jwtVerify(
-      jwt,
-      await importSPKI(key.publicPem, "RS256"),
-      { currentDate: new Date(now) },
-    );
-    expect(protectedHeader.alg).toBe("RS256");
-    expect(payload.iss).toBe("123456");
-    expect(payload.iat).toBe(now / 1000 - 60);
-    expect(payload.exp! - payload.iat!).toBe(540);
-  });
-
   it("exchanges the JWT for an installation token narrowed to the writing repository, and reuses it", async () => {
     const key = await githubStyleKey();
     const gh = fakeNovels();

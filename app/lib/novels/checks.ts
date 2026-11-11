@@ -16,6 +16,7 @@ import {
 import { slopScan } from "@dustinedwards/site-runtime/prose";
 import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 type CheckName = "header" | "continuity" | "timeline" | "world-rules" | "voice";
 
 export type Finding = {
@@ -265,7 +266,7 @@ export function checkRuleFile(path: string, source: string, rule: RuleEntry): Fi
       out.push({
         path,
         check: "world-rules",
-        message: `The pattern ${pattern} is not a valid expression, so it matches nothing: ${error instanceof Error ? error.message : String(error)}`,
+        message: `The pattern ${pattern} is not a valid expression, so it matches nothing: ${errorMessage(error)}`,
         line: headerLine(source, "forbidden"),
         excerpt: pattern,
       });

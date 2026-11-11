@@ -61,8 +61,9 @@ import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.file";
-import { plural } from "@drdustinedwards/site-helpers/text";
+import { normalizeNewlines, plural } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel" }];
 }
@@ -100,7 +101,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     try {
       git = await repo.read(`${project.book}/${path}`);
     } catch (error) {
-      gitError = `Git did not answer (${error instanceof Error ? error.message : String(error)}), so this shows Carrel's index.`;
+      gitError = `Git did not answer (${errorMessage(error)}), so this shows Carrel's index.`;
     }
   }
   // Without Git, the index's copy stands in, read-only for saving but fine for reading.
@@ -212,7 +213,7 @@ export async function action({
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
   const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
-  const source = String(form.get("source") ?? "").replace(/\r\n/g, "\n");
+  const source = normalizeNewlines(String(form.get("source") ?? ""));
 
   switch (intent) {
     case "discard": {

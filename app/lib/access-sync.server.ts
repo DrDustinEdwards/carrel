@@ -16,6 +16,7 @@ import { postAccessSync, type AccessSyncResult } from "@dustinedwards/site-runti
 import { capsidOrigin } from "@dustinedwards/site-runtime/inbox-report";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 /**
  * Who Access should let into Desk: every active person with a role on at least one project. Left out
  * are AI agents (they reach the AI door with a key, never through Access), reviewers (another
@@ -85,7 +86,7 @@ export async function syncAccess(
       fetch: fetcher,
     });
   } catch (error) {
-    result = { ok: false, refusal: error instanceof Error ? error.message : String(error) };
+    result = { ok: false, refusal: errorMessage(error) };
   }
   const ok = result.ok;
   const refusal = result.ok ? null : result.refusal.slice(0, 1000);
@@ -101,7 +102,7 @@ export async function syncAccess(
     console.error(
       JSON.stringify({
         access: "sync-record-failed",
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
       }),
     );
   }

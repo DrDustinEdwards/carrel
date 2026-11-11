@@ -25,6 +25,7 @@ import { draftForEvent, draftSocialPost } from "~/lib/social/queue.server";
 import { publishTranscriptDraft, TranscriptRefusal } from "~/lib/transcripts.server";
 import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 /**
  * An AI client acting for a person, known by the door it came through: the person the OAuth grant
  * belongs to, and the client that holds the grant (its CIMD name), credited on every change.
@@ -410,7 +411,7 @@ async function recordAiPublication(
       .where(eq(aiPublications.changeId, outcome.changeId));
     return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     console.error(
       JSON.stringify({ aiPublish: "email-failed", changeId: outcome.changeId, error: message }),
     );

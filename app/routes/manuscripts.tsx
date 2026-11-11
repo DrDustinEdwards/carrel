@@ -26,6 +26,7 @@ import { GoogleNotConnected, saConnection } from "~/lib/google/service-account.s
 
 import type { Route } from "./+types/manuscripts";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export function meta() {
   return [{ title: "Manuscripts · Carrel" }];
 }
@@ -55,7 +56,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       error =
         e instanceof GoogleNotConnected
           ? e.detail
-          : `Drive did not answer the search: ${e instanceof Error ? e.message : String(e)}`;
+          : `Drive did not answer the search: ${errorMessage(e)}`;
     }
   }
   // Google is the Owner's: the manuscripts and his drive.file grant (Send to Docs and Import).
@@ -74,8 +75,7 @@ export async function action({ context }: Route.ActionArgs) {
   } catch (e) {
     return {
       refreshed: null,
-      error:
-        e instanceof GoogleNotConnected ? e.detail : e instanceof Error ? e.message : String(e),
+      error: e instanceof GoogleNotConnected ? e.detail : errorMessage(e),
     };
   }
 }

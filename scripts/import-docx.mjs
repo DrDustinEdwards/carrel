@@ -14,6 +14,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { readDocx } from "./lib/docx.mjs";
 import { buildBook, writeBook } from "./lib/manuscript.mjs";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 const USAGE =
   'usage: npm run import:docx -- <file.docx | folder> [more...] --book <folder> --novels <path to writing clone> [--title "Title"]';
 
@@ -86,7 +87,7 @@ for (const file of files) {
     const { paragraphs, flags } = await readDocx(new Uint8Array(readFileSync(file)));
     sources.push({ name: basename(file), paragraphs, flags });
   } catch (error) {
-    fail(`${file}: ${error instanceof Error ? error.message : String(error)}`);
+    fail(`${file}: ${errorMessage(error)}`);
   }
 }
 
