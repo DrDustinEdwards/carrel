@@ -37,7 +37,7 @@ export function SharePanel({ site }: { site: boolean }) {
       ) : null}
       <fetcher.Form method="post" className="cap-stack">
         <input type="hidden" name="intent" value="share" />
-        <div className="app-fields">
+        <div className="cap-fields">
           <Field label="Email" required>
             <input className="cap-input" type="email" name="email" required autoComplete="off" />
           </Field>

@@ -55,6 +55,7 @@
 @import "capsomer/media.css";
 @import "capsomer/tree.css";
 @import "capsomer/sortable-list.css";
+@import "capsomer/card.css";
 @import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
 @import "capsomer/summary-list.css";
@@ -141,14 +142,6 @@
 /* A form on a page of its own sits in a column the width of a form, not the whole window. */
 .app-page[data-narrow] {
   max-width: 44rem;
-}
-
-.app-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-  gap: var(--space-5);
-  /* Fields side by side line up on their inputs, whatever help one carries above its own. */
-  align-items: end;
 }
 
 /* A select and its button on one line (a role on People). The select keeps the width of its
@@ -264,11 +257,6 @@
 
 .app-note {
   margin: 0;
-}
-
-.app-fields > .cap-check {
-  align-self: end;
-  min-height: var(--control);
 }
 
 .app-account h3 .cap-muted {
@@ -858,63 +846,6 @@
   gap: var(--space-3) var(--space-5);
 }
 
-/* The corkboard's card (design 4.2): the scene's title and status, its summary, then its point of
-   view and words, and the one-pointer move to another chapter at the foot. */
-.app-card {
-  display: grid;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.app-card-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.app-card-title {
-  font-weight: 600;
-}
-
-.app-card-summary,
-.app-card-facts {
-  margin: 0;
-}
-
-.app-card-facts {
-  font-size: 12px;
-}
-
-.app-card-move {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-3);
-
-  & .cap-field {
-    flex: 1 1 9rem;
-  }
-}
-
-/* The read-only corkboard, for a Reader: the same cards in a wrapping grid, with no grips. */
-.app-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: var(--space-5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  & > li {
-    padding: var(--space-5);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--surface);
-  }
-}
-
 /* The formatted editor (job_1ba8094853f5): the same prose layout as the Markdown editor, set as the
    page will read it. Source blocks hold Markdown the editor does not format, in the mono face on the
    sunken surface, each labeled with what it is. */
@@ -1395,15 +1326,6 @@ img.ProseMirror-separator {
 }
 .app-chip-edit {
   margin-inline-start: auto;
-}
-
-/* Corkboard cards: the facts and the Move to menu share the last line. */
-.app-card-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
 }
 
 /* Bible and notes: the three kinds of entry side by side where there is room. */
