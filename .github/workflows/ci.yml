@@ -61,6 +61,7 @@ jobs:
       - run: npm run check:mcp-roles
       # The MCP door against the protocol's conformance suite, on two local Workers (about 15 s).
       - run: npm run check:conformance
+      - run: npm run check:secrets
 
   # THE ACCESSIBILITY SCAN, check:a11y: axe on every Desk screen as the real app renders it, both themes, desktop and
   # phone, and any script error or hydration mismatch on the way. It is the browser check for flows that must never
