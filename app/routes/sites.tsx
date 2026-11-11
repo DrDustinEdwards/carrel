@@ -5,7 +5,8 @@ import { Link } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Pill } from "capsomer/react/status";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { inList } from "@dustinedwards/site-runtime/d1";
+import { and, count, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { findings, siteItems } from "~/db/schema";
@@ -32,13 +33,13 @@ export async function loader({ context }: Route.LoaderArgs) {
           d
             .select({ projectId: siteItems.projectId, status: siteItems.status, n: count() })
             .from(siteItems)
-            .where(inArray(siteItems.projectId, ids))
+            .where(inList(siteItems.projectId, ids))
             .groupBy(siteItems.projectId, siteItems.status)
             .all(),
           d
             .select({ projectId: findings.projectId, n: count() })
             .from(findings)
-            .where(and(eq(findings.status, "open"), inArray(findings.projectId, ids)))
+            .where(and(eq(findings.status, "open"), inList(findings.projectId, ids)))
             .groupBy(findings.projectId)
             .all(),
         ]);
