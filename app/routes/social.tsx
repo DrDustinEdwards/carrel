@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { Form, useFetcher, useNavigation } from "react-router";
+import { Table } from "capsomer/react/table";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -17,7 +18,7 @@ import { Select } from "capsomer/react/select";
 import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
-import { Link } from "capsomer/react/link";
+import { Link, ButtonLink } from "capsomer/react/link";
 import { TabsNav } from "capsomer/react/tabs";
 
 import { getEnv, getViewer } from "~/lib/context";
@@ -443,57 +444,47 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
               Posts appear here once a piece goes live.
             </Empty>
           ) : (
-            <div
-              className="cap-table-wrap"
-              role="region"
-              aria-labelledby="record-caption"
-              tabIndex={0}
-            >
-              <table className="cap-table">
-                <caption id="record-caption" className="cap-sr-only">
-                  Every post
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Account</th>
-                    <th scope="col">Post</th>
-                    <th scope="col">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {posts.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.accountKey}</td>
-                      <th scope="row">
-                        <span className="app-post-text">{p.text}</span>
+            <Table caption="Every post" captionHidden>
+              <thead>
+                <tr>
+                  <th scope="col">Account</th>
+                  <th scope="col">Post</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {posts.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.accountKey}</td>
+                    <th scope="row">
+                      <span className="app-post-text">{p.text}</span>
+                      <span className="cap-table-aside">
+                        {p.source} by {p.createdBy}
+                        {p.error ? ` · ${p.error}` : ""}
+                      </span>
+                    </th>
+                    <td>
+                      <Pill
+                        variant={
+                          p.status === "failed"
+                            ? "destructive"
+                            : p.status === "sent" || p.status === "by-hand"
+                              ? "outline"
+                              : "secondary"
+                        }
+                      >
+                        {STATUS[p.status]}
+                      </Pill>
+                      {p.sentAt ? (
                         <span className="cap-table-aside">
-                          {p.source} by {p.createdBy}
-                          {p.error ? ` · ${p.error}` : ""}
+                          {p.sentAt.slice(0, 16).replace("T", " ")}
                         </span>
-                      </th>
-                      <td>
-                        <Pill
-                          variant={
-                            p.status === "failed"
-                              ? "destructive"
-                              : p.status === "sent" || p.status === "by-hand"
-                                ? "outline"
-                                : "secondary"
-                          }
-                        >
-                          {STATUS[p.status]}
-                        </Pill>
-                        {p.sentAt ? (
-                          <span className="cap-table-aside">
-                            {p.sentAt.slice(0, 16).replace("T", " ")}
-                          </span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
           )}
         </Panel>
       ) : null}
@@ -521,15 +512,9 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                 meta={<Time at={r.requestedAt} />}
                 actions={
                   r.sessionUrl ? (
-                    <a
-                      className="cap-btn"
-                      data-size="sm"
-                      href={r.sessionUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Session<span className="cap-sr-only"> (opens in a new tab)</span>
-                    </a>
+                    <ButtonLink size="sm" href={r.sessionUrl} away newTab>
+                      Session
+                    </ButtonLink>
                   ) : undefined
                 }
               />

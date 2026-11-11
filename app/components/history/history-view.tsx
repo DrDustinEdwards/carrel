@@ -3,7 +3,7 @@
 
 import type { ReactNode } from "react";
 import { useLocation, useNavigate, useNavigation } from "react-router";
-import { Link } from "capsomer/react/link";
+import { ButtonLink } from "capsomer/react/link";
 import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
@@ -98,20 +98,18 @@ export function SourcePanel({
         <>
           {view.current ? <Pill tone="ok">Current</Pill> : null}
           {view.previous ? (
-            <Link
-              className="cap-btn"
+            <ButtonLink
               to={`${historyPath}?v=${encodeURIComponent(view.previous)}&v=${encodeURIComponent(view.version)}`}
             >
               Changes in this {noun}
-            </Link>
+            </ButtonLink>
           ) : null}
           {view.newest ? (
-            <Link
-              className="cap-btn"
+            <ButtonLink
               to={`${historyPath}?v=${encodeURIComponent(view.version)}&v=${encodeURIComponent(view.newest)}`}
             >
               Compare with the current version
-            </Link>
+            </ButtonLink>
           ) : null}
           {restore}
         </>

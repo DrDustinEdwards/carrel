@@ -13,7 +13,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Form, useFetcher, useNavigate, useNavigation, useSearchParams } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Table } from "capsomer/react/table";
+import { ButtonLink } from "capsomer/react/link";
 import { Dialog, DialogBody, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -430,17 +431,17 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page."
         actions={
           <>
-            <Link to="/people?add=agent" className="cap-btn" preventScrollReset>
+            <ButtonLink to="/people?add=agent" preventScrollReset>
               Add an AI agent
-            </Link>
-            <Link
+            </ButtonLink>
+            <ButtonLink
               to="/people?add=person"
-              className="cap-btn"
-              data-variant="primary"
+
+              variant="primary"
               preventScrollReset
             >
               Add a person
-            </Link>
+            </ButtonLink>
           </>
         }
       />
@@ -545,33 +546,28 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         <p className="cap-sr-only" role="status">
           {saved}
         </p>
-        <div
-          className="cap-table-wrap app-roles-wrap"
-          role="region"
-          aria-labelledby="roles-caption"
-          tabIndex={0}
+        <Table
+          caption="People, and their role on each project"
+          captionHidden
+          className="app-roles-wrap"
+          tableClassName="app-roles"
         >
-          <table className="cap-table app-roles">
-            <caption id="roles-caption" className="cap-sr-only">
-              People, and their role on each project
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Person</th>
-                {projects.map((project) => (
-                  <th scope="col" key={project.id}>
-                    {project.name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {people.map((person) => (
-                <PersonRow key={person.id} person={person} projects={projects} onSaved={setSaved} />
+          <thead>
+            <tr>
+              <th scope="col">Person</th>
+              {projects.map((project) => (
+                <th scope="col" key={project.id}>
+                  {project.name}
+                </th>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody>
+            {people.map((person) => (
+              <PersonRow key={person.id} person={person} projects={projects} onSaved={setSaved} />
+            ))}
+          </tbody>
+        </Table>
       </Panel>
 
       <AddDialogs adding={adding} busy={busy} />

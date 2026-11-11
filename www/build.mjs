@@ -38,6 +38,9 @@ import { securityTxt } from "@dustinedwards/site-runtime/security-txt";
 import { familyFooterHtml } from "capsomer/behavior/family-footer";
 import { patchSvg } from "capsomer/behavior/manual";
 import { letterheadHtml } from "capsomer/behavior/site-header";
+import { Hero } from "capsomer/react/hero";
+import { createElement as h } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "vite";
 
 import { PAGE_PRELOADS } from "./headers.mjs";
@@ -102,6 +105,7 @@ function writeStyles(outDir) {
     `@layer cap.tokens {\n${inlineCss(join(capsomer, "tokens", `family-${FAMILY}.css`))}\n}`,
     inlineCss(join(capsomer, "components", "manual", "manual.css")),
     inlineCss(join(capsomer, "components", "family-footer", "family-footer.css")),
+    inlineCss(join(capsomer, "components", "hero", "hero.css")),
     // The theme button's tip (the popover's tooltip form) and the button itself, then the family letterhead at the top
     // of every page, pinned while it scrolls.
     inlineCss(join(capsomer, "components", "popover", "popover.css")),
@@ -110,6 +114,62 @@ function writeStyles(outDir) {
     readFileSync(join(HERE, "site.css"), "utf8"),
   ].join("\n\n");
   writeFileSync(join(outDir, "site.css"), css);
+}
+
+/**
+ * The first screen (Capsomer's Hero): the page's h1, the lead, the two ways on and a note, beside an example post's checks
+ * as an Apollo cue card. Rendered to static HTML here, since the page is built as a string.
+ */
+function heroHtml() {
+  const cueLines = [
+    ["Search title", "64 of 60 characters"],
+    ["Description", "142 of 155"],
+    ["Image alt text", "1 image has none"],
+    ["Share card", "Set"],
+  ];
+  const cue = h(
+    "section",
+    { className: "cap-cue hero-card", "aria-labelledby": "cue-title" },
+    h(
+      "p",
+      { className: "cap-cue-strip" },
+      h("span", null, "Post \u00b7 Checks"),
+      h("span", null, "As you type"),
+    ),
+    h("h2", { className: "cap-cue-title", id: "cue-title" }, "How AI changed peer review"),
+    h(
+      "ul",
+      { className: "cap-cue-lines" },
+      cueLines.map(([name, value]) =>
+        h(
+          "li",
+          { key: name },
+          h("span", { className: "cap-cue-name" }, name),
+          h("span", { className: "cap-cue-value" }, value),
+        ),
+      ),
+    ),
+    h(
+      "p",
+      { className: "hero-card-note" },
+      "An example post. Two flags, and Publish still works: checks flag, the writer decides.",
+    ),
+  );
+  const signs = h(
+    "nav",
+    { className: "cap-signs", "aria-label": "Get started" },
+    h("a", { className: "cap-sign", "data-variant": "forward", href: REPO }, "Get the code"),
+    h("a", { className: "cap-sign", href: DESK, rel: "nofollow" }, "Sign in to Desk"),
+  );
+  return renderToStaticMarkup(
+    h(Hero, {
+      title: "One desk for everything you write.",
+      lead: "Carrel is an open-source writing app you run on Cloudflare. Write and publish posts for several websites from one place, keep your books in a Git repository, and work with AI that drafts beside you and never over you.",
+      actions: signs,
+      note: "Desk is the signed-in app, where you write. This instance is Dustin Edwards's; to use Carrel, run your own.",
+      aside: cue,
+    }),
+  );
 }
 
 /** The sites Carrel publishes to on Dustin's Desk (app/lib/sites.server.ts). */
@@ -200,25 +260,7 @@ const page = () => {
 <p class="cap-family-footer-stamp"><span>Publishing to ${SITES.length} sites</span></p>
 </div>`;
   return `<main id="main" tabindex="-1">
-<header class="hero">
-<div class="hero-text">
-<h1>One desk for everything you write.</h1>
-<p class="hero-lead">Carrel is an open-source writing app you run on Cloudflare. Write and publish posts for several websites from one place, keep your books in a Git repository, and work with AI that drafts beside you and never over you.</p>
-<nav class="cap-signs" aria-label="Get started"><a class="cap-sign" data-variant="forward" href="${REPO}">Get the code</a><a class="cap-sign" href="${DESK}" rel="nofollow">Sign in to Desk</a></nav>
-<p class="hero-note">Desk is the signed-in app, where you write. This instance is Dustin Edwards's; to use Carrel, run your own.</p>
-</div>
-<section class="cap-cue hero-card" aria-labelledby="cue-title">
-<p class="cap-cue-strip"><span>Post · Checks</span><span>As you type</span></p>
-<h2 class="cap-cue-title" id="cue-title">How AI changed peer review</h2>
-<ul class="cap-cue-lines">
-<li><span class="cap-cue-name">Search title</span><span class="cap-cue-value">64 of 60 characters</span></li>
-<li><span class="cap-cue-name">Description</span><span class="cap-cue-value">142 of 155</span></li>
-<li><span class="cap-cue-name">Image alt text</span><span class="cap-cue-value">1 image has none</span></li>
-<li><span class="cap-cue-name">Share card</span><span class="cap-cue-value">Set</span></li>
-</ul>
-<p class="hero-card-note">An example post. Two flags, and Publish still works: checks flag, the writer decides.</p>
-</section>
-</header>
+${heroHtml()}
 
 <dl class="cap-form-boxes" data-variant="readings">
 <div class="cap-form-boxes-box"><dt>Sites on this Desk</dt><dd>${SITES.length}</dd></div>

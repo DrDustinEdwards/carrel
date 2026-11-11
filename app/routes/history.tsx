@@ -7,7 +7,7 @@
 // "By word" sets the same two texts against each other sentence by sentence.
 
 import { Form } from "react-router";
-import { Link } from "capsomer/react/link";
+import { ButtonLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
@@ -326,11 +326,7 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
         ]}
         title={`History of ${title || itemId}`}
         lead={`What the site remembers of this ${noun}, newest first. Looking here changes nothing.`}
-        actions={
-          <Link to={editor} className="cap-btn">
-            Back to the editor
-          </Link>
-        }
+        actions={<ButtonLink to={editor}>Back to the editor</ButtonLink>}
       />
 
       {siteError ? <Banner tone="warn">{siteError}</Banner> : null}

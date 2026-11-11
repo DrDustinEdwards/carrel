@@ -6,6 +6,7 @@
 import { Form, useNavigation } from "react-router";
 import { PRICES } from "@dustinedwards/site-runtime/ai-engine";
 import { MODEL_IDS } from "@dustinedwards/site-runtime/anthropic";
+import { Table } from "capsomer/react/table";
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
@@ -236,76 +237,70 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
             </div>
           }
         >
-          <div
-            className="cap-table-wrap"
-            role="region"
-            aria-labelledby="engine-caption"
-            tabIndex={0}
+          <Table
+            caption="The engine and model for each job"
+            captionHidden
+            tableClassName="app-engine-table"
           >
-            <table className="cap-table app-engine-table">
-              <caption id="engine-caption" className="cap-sr-only">
-                The engine and model for each job
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Job</th>
-                  <th scope="col">Engine</th>
-                  <th scope="col">Model when the API does it</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
+            <thead>
+              <tr>
+                <th scope="col">Job</th>
+                <th scope="col">Engine</th>
+                <th scope="col">Model when the API does it</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">
+                  Everything
+                  <span className="cap-muted app-outliner-chapter">
+                    Each job follows this unless it says otherwise.
+                  </span>
+                </th>
+                <td>
+                  <Select
+                    name="master"
+                    aria-label="Engine for everything"
+                    defaultValue={settings.master}
+                    options={ENGINES}
+                  />
+                </td>
+                <td className="cap-muted">Each job's own</td>
+              </tr>
+              {features.map((f) => (
+                <tr key={f.key}>
                   <th scope="row">
-                    Everything
-                    <span className="cap-muted app-outliner-chapter">
-                      Each job follows this unless it says otherwise.
-                    </span>
+                    {f.label}
+                    {f.note ? (
+                      <span className="cap-muted app-outliner-chapter">{f.note}</span>
+                    ) : null}
                   </th>
                   <td>
                     <Select
-                      name="master"
-                      aria-label="Engine for everything"
-                      defaultValue={settings.master}
-                      options={ENGINES}
+                      name={`feature-${f.key}`}
+                      aria-label={`${f.label}: engine`}
+                      defaultValue={settings.features[f.key] ?? ""}
+                      options={[
+                        {
+                          value: "",
+                          label: `Follow everything (${engineLabel(settings.master).split(":")[0]})`,
+                        },
+                        ...ENGINES,
+                      ]}
                     />
                   </td>
-                  <td className="cap-muted">Each job's own</td>
+                  <td>
+                    <Select
+                      name={`model-${f.key}`}
+                      aria-label={`${f.label}: model when the API does it`}
+                      defaultValue={models[f.key] ?? ""}
+                      options={MODELS}
+                    />
+                  </td>
                 </tr>
-                {features.map((f) => (
-                  <tr key={f.key}>
-                    <th scope="row">
-                      {f.label}
-                      {f.note ? (
-                        <span className="cap-muted app-outliner-chapter">{f.note}</span>
-                      ) : null}
-                    </th>
-                    <td>
-                      <Select
-                        name={`feature-${f.key}`}
-                        aria-label={`${f.label}: engine`}
-                        defaultValue={settings.features[f.key] ?? ""}
-                        options={[
-                          {
-                            value: "",
-                            label: `Follow everything (${engineLabel(settings.master).split(":")[0]})`,
-                          },
-                          ...ENGINES,
-                        ]}
-                      />
-                    </td>
-                    <td>
-                      <Select
-                        name={`model-${f.key}`}
-                        aria-label={`${f.label}: model when the API does it`}
-                        defaultValue={models[f.key] ?? ""}
-                        options={MODELS}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </Table>
         </Panel>
       </Form>
 

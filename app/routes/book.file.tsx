@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, ButtonLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -422,11 +422,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </>
         }
         actions={
-          data.version ? (
-            <Link className="cap-btn" to={`${base}/h/${data.path}`}>
-              History
-            </Link>
-          ) : undefined
+          data.version ? <ButtonLink to={`${base}/h/${data.path}`}>History</ButtonLink> : undefined
         }
       />
 
@@ -652,13 +648,12 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                             {d.note ? <p>{d.note}</p> : null}
                             <p className="app-bible-body">{d.source}</p>
                             <div className="app-actions">
-                              <Link
-                                className="cap-btn"
-                                data-size="sm"
+                              <ButtonLink
+                                size="sm"
                                 to={`${base}/h/${data.path}?compare=ai&ai=${d.id}`}
                               >
                                 Compare with yours
-                              </Link>
+                              </ButtonLink>
                               {data.canEdit ? (
                                 <Button
                                   size="sm"

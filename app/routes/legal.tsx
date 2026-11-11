@@ -3,6 +3,7 @@
 // keeps the text every site says alike. Nothing here is a second editor for a page.
 
 import { Form, useNavigation } from "react-router";
+import { Table } from "capsomer/react/table";
 import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -131,61 +132,51 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
       ) : null}
 
       <Panel title="Pages" count={pages.length} src={`${project.site}'s content`} flush>
-        <div
-          className="cap-table-wrap"
-          role="region"
-          aria-labelledby="legal-pages-caption"
-          tabIndex={0}
-        >
-          <table className="cap-table">
-            <caption id="legal-pages-caption" className="cap-sr-only">
-              Legal pages on {project.site}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Page</th>
-                <th scope="col">Status</th>
-                <th scope="col">Last updated</th>
-                <th scope="col">Shared text</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pages.map((page) =>
-                page.setUp ? (
-                  <tr key={page.id}>
-                    <th scope="row">
-                      <Link
-                        className="cap-table-open"
-                        to={`/p/${project.slug}/e/${encodeURIComponent(page.id)}`}
-                      >
-                        {page.title}
-                      </Link>
-                      <span className="cap-table-aside">{page.id}</span>
-                    </th>
-                    <td>
-                      {page.status === "published" ? (
-                        <Pill tone="ok">Published</Pill>
-                      ) : (
-                        <Pill variant="secondary">Draft</Pill>
-                      )}
-                      {page.draftBanner ? <Pill tone="warn">{BANNER_WORD} banner on</Pill> : null}
-                    </td>
-                    <td>{page.lastUpdated || "Not set"}</td>
-                    <td>
-                      {page.shared.length === 0 ? "None" : page.shared.join(", ")}
-                      {page.behind ? <Pill tone="warn">Shared text has changed</Pill> : null}
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={page.id}>
-                    <th scope="row">{NAMES[page.type]}</th>
-                    <td colSpan={3}>Not set up on this site</td>
-                  </tr>
-                ),
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table caption={<>Legal pages on {project.site}</>} captionHidden>
+          <thead>
+            <tr>
+              <th scope="col">Page</th>
+              <th scope="col">Status</th>
+              <th scope="col">Last updated</th>
+              <th scope="col">Shared text</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pages.map((page) =>
+              page.setUp ? (
+                <tr key={page.id}>
+                  <th scope="row">
+                    <Link
+                      className="cap-table-open"
+                      to={`/p/${project.slug}/e/${encodeURIComponent(page.id)}`}
+                    >
+                      {page.title}
+                    </Link>
+                    <span className="cap-table-aside">{page.id}</span>
+                  </th>
+                  <td>
+                    {page.status === "published" ? (
+                      <Pill tone="ok">Published</Pill>
+                    ) : (
+                      <Pill variant="secondary">Draft</Pill>
+                    )}
+                    {page.draftBanner ? <Pill tone="warn">{BANNER_WORD} banner on</Pill> : null}
+                  </td>
+                  <td>{page.lastUpdated || "Not set"}</td>
+                  <td>
+                    {page.shared.length === 0 ? "None" : page.shared.join(", ")}
+                    {page.behind ? <Pill tone="warn">Shared text has changed</Pill> : null}
+                  </td>
+                </tr>
+              ) : (
+                <tr key={page.id}>
+                  <th scope="row">{NAMES[page.type]}</th>
+                  <td colSpan={3}>Not set up on this site</td>
+                </tr>
+              ),
+            )}
+          </tbody>
+        </Table>
       </Panel>
 
       <Panel title="Shared sections" count={sections.length} src="Carrel, used by every site">

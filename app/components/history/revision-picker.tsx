@@ -3,6 +3,7 @@
 // the history page orders them. Once two are ticked, a Compare bar holds to the bottom of the window.
 // Read-only: nothing here changes the site.
 
+import { Table } from "capsomer/react/table";
 import { useState } from "react";
 import { Link } from "capsomer/react/link";
 import { Button } from "capsomer/react/button";
@@ -47,7 +48,6 @@ export function RevisionPicker({
   picked?: string[];
   label: string;
 }) {
-  const captionId = `${label.replace(/\W+/g, "-").toLowerCase()}-caption`;
   const [count, setCount] = useState(picked.length);
   return (
     <form
@@ -60,55 +60,50 @@ export function RevisionPicker({
         setCount(event.currentTarget.querySelectorAll("input[name=v]:checked").length)
       }
     >
-      <div className="cap-table-wrap" role="region" aria-labelledby={captionId} tabIndex={0}>
-        <table className="cap-table">
-          <caption id={captionId} className="cap-sr-only">
-            {label}, newest first
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Compare</th>
-              <th scope="col">What changed</th>
-              <th scope="col">By</th>
-              <th scope="col">Saved</th>
+      <Table caption={<>{label}, newest first</>} captionHidden>
+        <thead>
+          <tr>
+            <th scope="col">Compare</th>
+            <th scope="col">What changed</th>
+            <th scope="col">By</th>
+            <th scope="col">Saved</th>
+          </tr>
+        </thead>
+        <tbody>
+          {revisions.map((r, i) => (
+            <tr key={r.version} data-state={picked.includes(r.version) ? "selected" : undefined}>
+              <td>
+                <label className="cap-check">
+                  <input
+                    type="checkbox"
+                    name="v"
+                    value={r.version}
+                    defaultChecked={picked.includes(r.version)}
+                  />
+                  <span className="cap-sr-only">
+                    Compare the revision from {utc(r.at)} by {r.author}
+                  </span>
+                </label>
+              </td>
+              <th scope="row">
+                <Link
+                  className="cap-table-open"
+                  to={`${historyPath}?version=${encodeURIComponent(r.version)}`}
+                >
+                  {revisionLabel(r.message)}
+                  <span className="cap-sr-only">, open its source</span>
+                </Link>
+                {i === 0 ? <Pill tone="ok">Current</Pill> : null}
+              </th>
+              <td>{r.author}</td>
+              <td>
+                <Time at={r.at} />
+                <span className="cap-table-aside">{utc(r.at)}</span>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {revisions.map((r, i) => (
-              <tr key={r.version} data-state={picked.includes(r.version) ? "selected" : undefined}>
-                <td>
-                  <label className="cap-check">
-                    <input
-                      type="checkbox"
-                      name="v"
-                      value={r.version}
-                      defaultChecked={picked.includes(r.version)}
-                    />
-                    <span className="cap-sr-only">
-                      Compare the revision from {utc(r.at)} by {r.author}
-                    </span>
-                  </label>
-                </td>
-                <th scope="row">
-                  <Link
-                    className="cap-table-open"
-                    to={`${historyPath}?version=${encodeURIComponent(r.version)}`}
-                  >
-                    {revisionLabel(r.message)}
-                    <span className="cap-sr-only">, open its source</span>
-                  </Link>
-                  {i === 0 ? <Pill tone="ok">Current</Pill> : null}
-                </th>
-                <td>{r.author}</td>
-                <td>
-                  <Time at={r.at} />
-                  <span className="cap-table-aside">{utc(r.at)}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </Table>
       <div className="app-actions app-compare-bar" data-ready={count === 2 ? "" : undefined}>
         <Button type="submit" variant="primary">
           Compare the two picked

@@ -10,7 +10,7 @@
 
 import { Suspense, useEffect, useId, useSyncExternalStore } from "react";
 import { Await, useFetcher, useSubmit } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, ButtonLink } from "capsomer/react/link";
 import { useMessage } from "capsomer/react/message";
 import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
@@ -191,9 +191,9 @@ function NeedRow({
               {aside ? "Bring back" : "Later"}
             </button>
           </fetcher.Form>
-          <Link to={need.action.href} className="cap-btn" data-variant="primary">
+          <ButtonLink to={need.action.href} variant="primary">
             {need.action.label}
-          </Link>
+          </ButtonLink>
         </>
       }
     />
@@ -307,13 +307,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         actions={
           hasProjects ? (
             <>
-              <Link to="/writing" className="cap-btn">
-                Writing
-              </Link>
+              <ButtonLink to="/writing">Writing</ButtonLink>
               {isOwner ? (
-                <Link to="/books/new" className="cap-btn" data-variant="primary">
+                <ButtonLink to="/books/new" variant="primary">
                   New book
-                </Link>
+                </ButtonLink>
               ) : null}
             </>
           ) : null
