@@ -28,6 +28,7 @@ import { readForm } from "~/lib/form.server";
 
 import approvalQueueCss from "capsomer/approval-queue.css?url";
 import type { Route } from "./+types/social";
+import { formatMoney, moneyInputValue, parseMoneyInput } from "@dustinedwards/site-runtime/money";
 
 // This route's Capsomer stylesheets; app.css holds only what every route needs.
 export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: approvalQueueCss }];
@@ -89,7 +90,8 @@ export async function action({ request, context }: Route.ActionArgs) {
         enabled: form.get("enabled") === "on",
         mode: form.get("mode") === "auto" ? "auto" : "approval",
         dailyCap: Number(form.get("dailyCap")),
-        monthlyBudgetMills: Math.round(Number(form.get("monthlyBudget") || 0) * 1000),
+        monthlyBudgetMills:
+          parseMoneyInput(String(form.get("monthlyBudget") ?? ""), "usd", { scale: 3 }) ?? 0,
         template: String(form.get("template") ?? ""),
         voiceGuide: String(form.get("voiceGuide") ?? ""),
       });
@@ -130,7 +132,7 @@ function toItem(p: Post): ApprovalItem {
     context: [
       p.source,
       p.title ? `for "${p.title}"` : null,
-      p.platform === "x" ? `$${(p.costMills / 1000).toFixed(3)} through the API` : null,
+      p.platform === "x" ? `${formatMoney(p.costMills, "usd", { scale: 3, digits: 3 })} through the API` : null,
     ]
       .filter(Boolean)
       .join(" · "),
@@ -295,7 +297,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                           type="number"
                           min={0}
                           step="0.01"
-                          defaultValue={(a.monthlyBudgetMills / 1000).toFixed(2)}
+                          defaultValue={moneyInputValue(a.monthlyBudgetMills, "usd", { scale: 3 })}
                         />
                       </Field>
                     ) : null}

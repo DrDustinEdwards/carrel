@@ -98,6 +98,8 @@ jobs:
           cache: npm
       - if: steps.scope.outputs.run == 'true'
         run: npm ci
+      # Chromium only: ubuntu-latest already carries the libraries it needs (it ships Google Chrome), so the
+      # scan does not wait on the Ubuntu apt mirrors, which runners could not resolve on 2026-11-11.
       - name: Install Chromium for the accessibility scan
         if: steps.scope.outputs.run == 'true'
         run: npx playwright install chromium

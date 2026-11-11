@@ -49,7 +49,7 @@ import {
   type RoomViewer,
   type ServerMessage,
 } from "~/lib/editor/room-protocol";
-import { settle, suggestionCounts } from "~/lib/editor/suggest";
+import { settle, suggestionCounts, type JsonDoc } from "~/lib/editor/suggest";
 import { currentRole } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 
@@ -88,14 +88,22 @@ const bytesOf = (message: WSMessage): Uint8Array | null =>
       ? new Uint8Array(message)
       : new Uint8Array(message.buffer, message.byteOffset, message.byteLength);
 
-/** The room's document as site-runtime's `suggestOnly` reads it. */
-const SUGGEST_MODEL = {
+/**
+ * The room's document operations, in the shape site-runtime's ./doc-room takes, so the suggester's
+ * check (`suggestOnly`) is the shared one: with every suggestion rejected the document reads the same
+ * before and after, nobody else has more suggested, and the room's own state ("carrel") is unchanged.
+ */
+const roomModel: DocModel = {
   metaKey: "carrel",
+  isSeeded,
+  readMeta,
+  markdown: roomMarkdown,
+  load: (doc, input) => loadMarkdown(doc, input as Parameters<typeof loadMarkdown>[1]),
+  markSaved,
   json: roomJson,
-  settle: (json: unknown) => settle(roomSchema(), json as ReturnType<typeof roomJson>),
-  suggestionCounts: (json: unknown) =>
-    suggestionCounts(roomSchema(), json as ReturnType<typeof roomJson>),
-} as unknown as DocModel;
+  settle: (json) => settle(roomSchema(), json as JsonDoc),
+  suggestionCounts: (json) => suggestionCounts(roomSchema(), json as JsonDoc),
+};
 
 export class DocRoom extends YServer<Env> {
   static options = { hibernate: true };
@@ -386,7 +394,7 @@ export class DocRoom extends YServer<Env> {
         const step = decoding.readVarUint(decoder);
         if (step === SYNC_STEP2 || step === SYNC_UPDATE) {
           const update = decoding.readVarUint8Array(decoder);
-          if (suggestOnly(SUGGEST_MODEL, this.document, update, viewer.id))
+          if (suggestOnly(roomModel, this.document, update, viewer.id))
             Y.applyUpdate(this.document, update, conn);
           else
             this.#send(conn, {
