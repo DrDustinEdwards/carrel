@@ -328,7 +328,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
   const person = (
     <Form method="post" action="/people" className="app-form">
       <div className="app-fields">
-        <EmailInput label="Email" name="email" required />
+        <EmailInput label="Email" name="email" required someoneElse />
         <Field label="Name">
           <input className="cap-input" type="text" name="name" autoComplete="off" />
         </Field>

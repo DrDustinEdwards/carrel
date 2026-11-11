@@ -38,7 +38,7 @@ export function SharePanel({ site }: { site: boolean }) {
       <fetcher.Form method="post" className="app-form">
         <input type="hidden" name="intent" value="share" />
         <div className="app-fields">
-          <EmailInput label="Email" name="email" required />
+          <EmailInput label="Email" name="email" required someoneElse />
           <Field
             label="Name"
             help="For someone new to Carrel. An existing person keeps their name."
