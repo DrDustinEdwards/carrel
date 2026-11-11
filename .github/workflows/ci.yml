@@ -100,7 +100,7 @@ jobs:
         run: npm ci
       - name: Install Chromium for the accessibility scan
         if: steps.scope.outputs.run == 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - if: steps.scope.outputs.run == 'true'
         run: npm run check:a11y
 
