@@ -3,7 +3,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { reportInbox } from "~/lib/inbox-report.server";
+import { reportAiDrafts as reportInbox } from "~/lib/inbox-report.server";
 import { addPerson, addProject, resetDb, testEnv } from "./env";
 
 const ORIGIN = "https://desk.dustinedwards.info";
@@ -73,7 +73,7 @@ describe("reportInbox", () => {
       state: "failed",
       detail: "Capsid answered 429",
     });
-    expect(log).toHaveBeenCalledWith(expect.stringContaining("report-failed"));
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("inbox_report_failed"));
     log.mockRestore();
   });
 

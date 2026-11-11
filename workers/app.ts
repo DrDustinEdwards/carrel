@@ -15,12 +15,12 @@ import { cloudflareContext, cspNonceContext, viewerContext, zoneContext } from "
 import { runBackup } from "~/lib/backup.server";
 import { draftEpisodes } from "~/lib/episode-drafts.server";
 import { ALL_JOBS, CRON_JOBS, type JobName, type ScheduledJob } from "~/lib/cron-schedule";
-import { deployedSha } from "~/lib/deployed";
+import { deployedSha } from "@dustinedwards/site-runtime/deploy";
 import { OPERATOR_PATH, operatorAnswer } from "~/lib/operator.server";
 import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
 import { runSignedInCrawl, type DeskAs } from "~/lib/signed-in-crawl.server";
-import { reportInbox } from "~/lib/inbox-report.server";
+import { reportAiDrafts } from "~/lib/inbox-report.server";
 import { aiDoor, isMcpHost } from "~/lib/mcp/door";
 import { carrelOrigin } from "~/lib/mcp/server";
 import { refreshAllSites } from "~/lib/refresh.server";
@@ -177,7 +177,7 @@ const WORK: Record<JobName, (env: Env, ctx: ExecutionContext) => Promise<unknown
   health: (env) => runHealth(env),
   "refresh-sites": (env) => refreshAllSites(env),
   "refresh-google": (env) => refreshGoogle(env),
-  "inbox-report": (env) => reportInbox(env),
+  "inbox-report": (env) => reportAiDrafts(env),
   social: (env) => processSocial(env),
   "episode-drafts": (env) => draftEpisodes(env),
   backup: (env) => runBackup(env),
@@ -232,7 +232,7 @@ export default {
         secret: env.ADMIN_IDLE_SECRET,
       }),
     {
-      sha: (env) => deployedSha(env),
+      sha: (env) => deployedSha(env, { fallback: "unknown" }),
       route: routeName,
     },
   ),
