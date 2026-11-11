@@ -30,23 +30,21 @@ function inboxReport(waiting: number, since: string | null, origin: string): Inb
   return { namespace: "carrel", items: [item] };
 }
 
-/** Counts the waiting AI drafts and reports them (site-runtime's ./inbox-report sends it). Never throws. */
+/** Counts the waiting AI drafts and reports them. Never throws; a failure is logged and returned. */
 export async function reportDraftsInbox(
   env: Env,
   fetcher: typeof fetch = timedFetch,
 ): Promise<ReportResult> {
-  const key = env.CAPSID_AGENT_KEY?.trim();
-  if (!key) return reportInbox({ namespace: "carrel", items: [], key });
   try {
     const row = await drizzle(env.DB)
       .select({ waiting: count(), since: min(aiDrafts.createdAt) })
       .from(aiDrafts)
       .get();
-    const { items } = inboxReport(row?.waiting ?? 0, row?.since ?? null, carrelOrigin(env));
+    const body = inboxReport(row?.waiting ?? 0, row?.since ?? null, carrelOrigin(env));
     return await reportInbox({
-      namespace: "carrel",
-      items,
-      key,
+      namespace: body.namespace,
+      items: body.items,
+      key: env.CAPSID_AGENT_KEY?.trim(),
       origin: capsidOrigin(env),
       fetcher,
     });

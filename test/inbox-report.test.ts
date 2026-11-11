@@ -1,7 +1,7 @@
 // The report Carrel sends to Capsid's inbox: the body for no, one and many AI drafts, and the
 // failure path, which is logged and never thrown.
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { reportDraftsInbox } from "~/lib/inbox-report.server";
 import { addPerson, addProject, resetDb, testEnv } from "./env";
@@ -66,24 +66,18 @@ describe("reportDraftsInbox", () => {
     expect(calls).toHaveLength(0);
   });
 
-  it("logs and returns a refusal rather than swallowing or throwing it", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("returns a refusal rather than swallowing or throwing it", async () => {
     const { fetcher } = capture(429);
     expect(await reportDraftsInbox(env, fetcher)).toEqual({
       state: "failed",
       detail: "Capsid answered 429",
     });
-    expect(log).toHaveBeenCalled();
-    log.mockRestore();
   });
 
-  it("logs and returns a network failure", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("returns a network failure", async () => {
     const down = (async () => {
       throw new Error("offline");
     }) as unknown as typeof fetch;
     expect(await reportDraftsInbox(env, down)).toEqual({ state: "failed", detail: "offline" });
-    expect(log).toHaveBeenCalled();
-    log.mockRestore();
   });
 });

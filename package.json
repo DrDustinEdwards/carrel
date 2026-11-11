@@ -18,6 +18,7 @@
     "check:mcp-roles": "node scripts/check-mcp-roles.mjs",
     "check:conformance": "devkit-conformance",
     "check:secrets": "devkit-secrets",
+    "check:destructive": "devkit-destructive",
     "check:plants": "node scripts/plant-gates.mjs",
     "check:bloat": "devkit-no-bloat && npm run build && devkit-route-weight",
     "check:roundtrip": "node scripts/check-roundtrip.mjs",

@@ -173,6 +173,7 @@ describe("flags in the editor", () => {
     const dismiss = (email: string) => {
       const body = new FormData();
       body.set("intent", "dismiss-flag");
+      body.set("confirmed", "1");
       body.set("flag", String(flag.id));
       return context(email).then((c) =>
         settle(
