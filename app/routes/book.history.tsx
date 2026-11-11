@@ -4,7 +4,7 @@
 // draft saved beside it. Read-only, and it works for a Reader. The compare components and the patch
 // are the site page's.
 
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
@@ -20,7 +20,6 @@ import {
   type View,
 } from "~/components/history/history-view";
 import { RevisionPicker, revisionLabel } from "~/components/history/revision-picker";
-import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { bookVersions, readVersion } from "~/lib/book-history.server";
 import { bookRepo, indexedFile, requireBookProject } from "~/lib/books.server";
@@ -214,7 +213,7 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
   return (
     <div className="app-page">
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: project.name, href: base },
           { label, href: editor },

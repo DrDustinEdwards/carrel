@@ -89,7 +89,7 @@ function Comment({
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
-          <div className="app-actions">
+          <div className="cap-cluster" data-gap="3">
             <Button size="sm" type="submit">
               Save
             </Button>
@@ -102,7 +102,7 @@ function Comment({
         <p className="app-comment-body">{c.body}</p>
       )}
       {!editing && (c.personId === me.id || canDelete) ? (
-        <div className="app-actions">
+        <div className="cap-cluster" data-gap="3">
           {c.personId === me.id ? (
             <Button size="xs" variant="quiet" onClick={() => setEditing(true)}>
               Edit
@@ -199,7 +199,7 @@ export function CommentsPanel({
             <Comment key={c.id} c={c} me={me} send={send} canDelete={canDelete} />
           ))}
         </ul>
-        <div className="app-actions">
+        <div className="cap-cluster" data-gap="3">
           {!gone && t.head.anchor ? (
             <Button size="xs" variant="quiet" onClick={() => show(t)}>
               Show in the text
@@ -236,7 +236,7 @@ export function CommentsPanel({
       src="Everyone in this file sees them at once"
       id="comments"
     >
-      <div className="app-stack" ref={list}>
+      <div className="cap-stack" data-gap="6" ref={list}>
         {writing ? (
           <div className="app-thread" data-new="">
             <blockquote className="app-thread-quote">{writing.quote}</blockquote>

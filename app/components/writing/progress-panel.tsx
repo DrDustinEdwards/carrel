@@ -31,7 +31,7 @@ import {
   type Pace,
   type SaveEntry,
 } from "~/lib/writing/progress";
-import { useBrowserZone } from "~/lib/hydrated";
+import { useBrowserZone } from "capsomer/react/hooks";
 
 const n = (value: number) => value.toLocaleString("en-US");
 
@@ -159,7 +159,7 @@ export function ProgressPanel({
   const days = recentDays(totals, today, 7, goal.writingDays);
 
   const body = (
-    <div className="app-stack" data-tight>
+    <div className="cap-stack" data-gap="4">
       {target !== null ? (
         <Meter
           label="Typed today"
@@ -196,7 +196,7 @@ export function ProgressPanel({
 
   return (
     <Panel title="Today's writing" src="Typed words only">
-      <div className="app-stack" data-tight>
+      <div className="cap-stack" data-gap="4">
         {body}
         <p className="cap-muted app-note">
           Pastes, imports and AI drafts you take as your draft do not count. A day runs midnight to
@@ -209,7 +209,7 @@ export function ProgressPanel({
         ) : null}
         {canEdit ? (
           <Disclosure summary="Your target" defaultOpen={Boolean(error)}>
-            <Form method="post" className="app-stack" data-tight>
+            <Form method="post" className="cap-stack" data-gap="4">
               <input type="hidden" name="intent" value="goal" />
               <fieldset className="app-fieldset">
                 <legend>Set the daily target</legend>
@@ -270,7 +270,7 @@ export function ProgressPanel({
                 label="Let deletions take a day below zero"
                 defaultChecked={goal.allowNegative}
               />
-              <div className="app-actions">
+              <div className="cap-cluster" data-gap="3">
                 <Button type="submit">Save my target</Button>
               </div>
             </Form>

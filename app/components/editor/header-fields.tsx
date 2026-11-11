@@ -54,7 +54,7 @@ export function HeaderFields({
     onChange(joinSource({ ...split, front }));
   };
   return (
-    <div className="app-stack">
+    <div className="cap-stack" data-gap="6">
       <div className="app-fm" role="group" aria-label="Header">
         {keys.map((key) => {
           const value = data[key];

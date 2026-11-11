@@ -153,7 +153,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
               label: "Checks",
               count: checks.findings.length,
               content: (
-                <div className="app-stack">
+                <div className="cap-stack" data-gap="6">
                   <Panel
                     title="Writing checks"
                     count={checks.findings.length}

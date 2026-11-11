@@ -34,6 +34,7 @@ import {
   type Scaffold,
 } from "capsomer/behavior/markdown-editor";
 import { place } from "capsomer/behavior/popover";
+import { isImeEnter } from "capsomer/behavior/shortcuts";
 
 import { FRAGMENT, markdownOf } from "~/lib/editor/collab";
 import {
@@ -806,7 +807,7 @@ export function RichEditor(props: RichEditorProps) {
               readOnly={Boolean(upload.sending)}
               onChange={(e) => setAlt(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" && !isImeEnter(e.nativeEvent)) {
                   e.preventDefault();
                   void insertImage(false);
                 }
@@ -896,7 +897,7 @@ export function RichEditor(props: RichEditorProps) {
                       (palette.active + (e.key === "ArrowDown" ? 1 : matches.length - 1)) %
                       matches.length,
                   });
-              } else if (e.key === "Enter") {
+              } else if (e.key === "Enter" && !isImeEnter(e.nativeEvent)) {
                 e.preventDefault();
                 if (typedUrl) applyLink(typedUrl, typedUrl);
                 else if (matches[palette.active])

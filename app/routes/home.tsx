@@ -10,7 +10,7 @@
 
 import { Suspense, useEffect, useId, useSyncExternalStore } from "react";
 import { Await, useFetcher, useSubmit } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { useMessage } from "capsomer/react/message";
 import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
@@ -34,7 +34,7 @@ import {
   type NeedGroup,
 } from "~/lib/desk.server";
 import { readForm } from "~/lib/form.server";
-import { useBrowserZone } from "~/lib/hydrated";
+import { useBrowserZone } from "capsomer/react/hooks";
 import { visibleProjects } from "~/lib/people.server";
 
 import type { Route } from "./+types/home";
@@ -140,9 +140,6 @@ function NeedRow({
 }) {
   const fetcher = useFetcher<typeof action>();
   const { say } = useMessage();
-  const link = ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <Link to={href}>{children}</Link>
-  );
   // The row leaves the list as soon as it is sent; it is back if the server refused it.
   if (fetcher.state !== "idle") return null;
   const aside = need.later !== undefined;
@@ -161,7 +158,7 @@ function NeedRow({
           <Time at={need.at} />
         ) : undefined
       }
-      renderLink={link}
+      renderLink={routerRenderLink}
       actions={
         <>
           <fetcher.Form
@@ -296,9 +293,6 @@ function Needs({ needs, show, zone }: { needs: Need[]; show: Show; zone: string 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { isOwner, hasProjects, show, needs, mentions, resume, typed, googleMessage } = loaderData;
   const zone = useBrowserZone(loaderData.zone);
-  const link = ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <Link to={href}>{children}</Link>
-  );
   return (
     <div className="app-page">
       <PageHead
@@ -361,7 +355,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                       key={r.href}
                       title={r.title}
                       href={r.href}
-                      renderLink={link}
+                      renderLink={routerRenderLink}
                       detail={r.projectName}
                       meta={<Time at={r.at} />}
                     />
@@ -381,7 +375,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                       key={t.href}
                       title={t.name}
                       href={t.href}
-                      renderLink={link}
+                      renderLink={routerRenderLink}
                       meta={`${t.words.toLocaleString("en-US")} words`}
                     />
                   ))}

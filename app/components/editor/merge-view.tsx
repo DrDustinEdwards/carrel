@@ -77,7 +77,7 @@ export function MergeView({ plan, busy, apply }: Props) {
       id="merge"
       src={`${choices.length} ${choices.length === 1 ? "difference" : "differences"}${plan.hasBase ? `, ${both} changed on both` : ""}`}
     >
-      <div className="app-stack">
+      <div className="cap-stack" data-gap="6">
         <p>
           Choose which text to keep for each difference, then use the merged text and save as usual.
           The unsaved text stays exactly as it is until then.{" "}
@@ -138,7 +138,7 @@ export function MergeView({ plan, busy, apply }: Props) {
             );
           })}
         </ol>
-        <div className="app-actions">
+        <div className="cap-cluster" data-gap="3">
           <Button variant="primary" pending={busy} onClick={() => apply(picks)}>
             Use the merged text
           </Button>

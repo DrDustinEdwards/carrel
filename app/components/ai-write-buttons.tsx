@@ -30,8 +30,8 @@ export function AiWriteButtons({
   const busy = fetcher.state !== "idle";
   const answer = fetcher.data;
   return (
-    <div className="app-stack">
-      <fetcher.Form method="post" action={action} className="app-actions">
+    <div className="cap-stack" data-gap="6">
+      <fetcher.Form method="post" action={action} className="cap-cluster" data-gap="3">
         {Object.entries(fields ?? {}).map(([name, value]) => (
           <input key={name} type="hidden" name={name} value={value} />
         ))}
@@ -42,7 +42,7 @@ export function AiWriteButtons({
         ))}
       </fetcher.Form>
       {answer?.job && (answer.error || answer.message) ? (
-        <fetcher.Form method="post" action={action} className="app-actions">
+        <fetcher.Form method="post" action={action} className="cap-cluster" data-gap="3">
           {Object.entries(fields ?? {}).map(([name, value]) => (
             <input key={name} type="hidden" name={name} value={value} />
           ))}

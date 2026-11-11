@@ -220,7 +220,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                       ))}
                     </ul>
                   ) : null}
-                  <Form method="post" className="app-form">
+                  <Form method="post" className="cap-stack">
                     <input type="hidden" name="id" value={p.id} />
                     <label className="cap-sr-only" htmlFor={`post-${p.id}`}>
                       Post text for {p.accountKey}
@@ -232,7 +232,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                       defaultValue={p.text}
                       rows={3}
                     />
-                    <div className="app-actions">
+                    <div className="cap-cluster" data-gap="3">
                       {p.status === "awaiting" ? (
                         <Button
                           type="submit"
@@ -285,7 +285,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                 <Form
                   key={a.id}
                   method="post"
-                  className="app-account app-form"
+                  className="app-account"
                   aria-labelledby={`account-${a.id}`}
                 >
                   <input type="hidden" name="id" value={a.id} />
@@ -347,7 +347,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                       rows={2}
                     />
                   </Field>
-                  <div className="app-actions">
+                  <div className="cap-cluster" data-gap="3">
                     <Button type="submit" name="intent" value="switches" pending={busy}>
                       Save {a.key}
                     </Button>
@@ -362,7 +362,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
               actionData !== undefined && "error" in actionData && Boolean(actionData.error)
             }
           >
-            <Form method="post" className="app-form">
+            <Form method="post" className="cap-stack">
               <div className="app-fields">
                 <Field label="Key" required>
                   <input
@@ -420,7 +420,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                 </Field>
               </div>
               <p className="cap-muted app-note">It starts off, in approval mode.</p>
-              <div className="app-actions">
+              <div className="cap-cluster" data-gap="3">
                 <Button
                   type="submit"
                   name="intent"

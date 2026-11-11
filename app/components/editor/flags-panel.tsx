@@ -28,7 +28,7 @@ export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDi
       count={openFlags}
       src={`${drafts} draft${drafts === 1 ? "" : "s"} beside yours`}
     >
-      <div className="app-stack" data-tight>
+      <div className="cap-stack" data-gap="4">
         {flags.length > 0 ? (
           <ul className="app-flags" aria-label="Flags">
             {flags.map((f) => (

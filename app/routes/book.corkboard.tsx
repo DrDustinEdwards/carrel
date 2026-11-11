@@ -12,6 +12,7 @@ import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { SortableList, moveId } from "capsomer/react/sortable-list";
+import { Icon } from "capsomer/react/icons";
 import { Link } from "capsomer/react/link";
 
 import { BookHead } from "~/components/book-head";
@@ -146,9 +147,7 @@ function CardMenu({
     <details className="cap-menu-form app-card-menu" data-cap="menu-form" ref={ref}>
       <summary className="cap-btn cap-menu-trigger" data-size="sm">
         Move to<span className="cap-sr-only"> another chapter: {title}</span>
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-          <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
+        <Icon name="chevron-down" />
       </summary>
       <div className="cap-popover cap-menu">
         {chapters.map((c) => (
@@ -219,7 +218,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
   return (
     <div className="app-page">
       <BookHead book={head} section="manuscript" view="corkboard" />
-      <div className="app-stack" data-tight>
+      <div className="cap-stack" data-gap="4">
         <p className="cap-muted app-note">
           Each chapter's scenes as cards, in reading order. Moving a card or a chapter renumbers the
           files after it, in one commit.

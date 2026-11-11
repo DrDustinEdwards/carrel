@@ -40,7 +40,7 @@ import {
   setDisabled,
   setProjectRole,
 } from "~/lib/people-admin.server";
-import { useHydrated } from "~/lib/hydrated";
+import { useHydrated } from "capsomer/react/hooks";
 import { isMemberRole } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
@@ -252,7 +252,7 @@ function PersonRow({
           ) : null}
         </span>
         {person.isOwner ? null : (
-          <span className="app-actions app-role-actions">
+          <span className="cap-cluster app-role-actions" data-gap="3">
             {hydrated ? null : (
               <Button type="submit" form={formId} size="sm">
                 Save<span className="cap-sr-only"> roles for {name}</span>
@@ -326,7 +326,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
   const hydrated = useHydrated();
   const navigate = useNavigate();
   const person = (
-    <Form method="post" action="/people" className="app-form">
+    <Form method="post" action="/people" className="cap-stack">
       <div className="app-fields">
         <Field label="Email" required>
           <input className="cap-input" type="email" name="email" required autoComplete="off" />
@@ -353,7 +353,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
           />
         </div>
       </fieldset>
-      <div className="app-actions">
+      <div className="cap-cluster" data-gap="3">
         <Button type="submit" name="intent" value="add" variant="primary" pending={busy}>
           Add
         </Button>
@@ -361,7 +361,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
     </Form>
   );
   const agent = (
-    <Form method="post" action="/people" className="app-form">
+    <Form method="post" action="/people" className="cap-stack">
       <p className="cap-muted app-note">
         For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never
         as you.
@@ -381,7 +381,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
           <input className="cap-input" type="text" name="label" autoComplete="off" />
         </Field>
       </div>
-      <div className="app-actions">
+      <div className="cap-cluster" data-gap="3">
         <Button type="submit" name="intent" value="add-agent" variant="primary" pending={busy}>
           Add agent
         </Button>

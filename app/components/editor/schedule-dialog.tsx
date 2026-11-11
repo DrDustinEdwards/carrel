@@ -14,7 +14,7 @@ import {
 } from "capsomer/react/dialog";
 import { Field } from "capsomer/react/field";
 import { Time } from "capsomer/react/time";
-import { useBrowserZone } from "~/lib/hydrated";
+import { useBrowserZone } from "capsomer/react/hooks";
 
 type Props = {
   open: boolean;

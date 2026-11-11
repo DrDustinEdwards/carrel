@@ -3,10 +3,11 @@
 // with comments and suggestions; the site's own render in a sandboxed preview; and the writes the
 // viewer's role allows, each sending the room's text through site-api's version check.
 
+import { routerRenderLink } from "capsomer/react/link";
 import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher } from "react-router";
-import { useHydrated } from "~/lib/hydrated";
+import { useHydrated } from "capsomer/react/hooks";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -32,7 +33,6 @@ import { useSaveShortcut } from "~/components/editor/save-keys";
 import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
-import { RouterLink } from "~/components/frame";
 import { SiteBinder } from "~/components/writing/binder";
 import {
   dismissItemFinding,
@@ -804,7 +804,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor" data-layout={layout}>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: data.project.name, href: `/p/${data.project.slug}` },
           { label: kindWord(data.kind) },
@@ -1002,7 +1002,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       : "Only in Carrel so far"
                   }
                 >
-                  <div className="app-stack" data-tight>
+                  <div className="cap-stack" data-gap="4">
                     <p role="status" className="app-savestate">
                       {saveState}
                     </p>
@@ -1027,7 +1027,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         <Alert tone="crit">{google.message}</Alert>
                       )
                     ) : null}
-                    <div className="app-actions">
+                    <div className="cap-cluster" data-gap="3">
                       {!onSite && maySave ? (
                         <Button
                           variant="primary"
@@ -1080,7 +1080,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       ) : null}
                     </div>
                     {data.canSend && data.googleConnected ? (
-                      <div className="app-actions">
+                      <div className="cap-cluster" data-gap="3">
                         <Button
                           variant="quiet"
                           pending={busy}
@@ -1109,7 +1109,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               value: "details",
               label: "Details",
               content: (
-                <div className="app-stack">
+                <div className="cap-stack" data-gap="6">
                   {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
                   <FrontmatterFields
                     source={source}
@@ -1147,7 +1147,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Checks",
               count: gateChecks.filter((c) => !c.ok).length,
               content: (
-                <div className="app-stack">
+                <div className="cap-stack" data-gap="6">
                   {onSite && data.canPublish && hydrated ? (
                     <PublishGate
                       label="Publish checks"
@@ -1184,7 +1184,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               value: "search",
               label: "Search",
               content: seo ? (
-                <div className="app-stack">
+                <div className="cap-stack" data-gap="6">
                   {data.searchFields.length > 0 ? (
                     <SearchFields
                       source={source}
@@ -1220,7 +1220,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               value: "history",
               label: "History",
               content: (
-                <div className="app-stack">
+                <div className="cap-stack" data-gap="6">
                   {data.revisions || data.historyError ? (
                     <HistoryPanel
                       revisions={data.revisions}

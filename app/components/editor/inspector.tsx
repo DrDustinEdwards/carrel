@@ -26,7 +26,11 @@ export function commentsTab(panels: ReactNode): InspectorTab {
   return {
     value: "comments",
     label: "Comments",
-    content: panels ? <div className="app-stack">{panels}</div> : null,
+    content: panels ? (
+      <div className="cap-stack" data-gap="6">
+        {panels}
+      </div>
+    ) : null,
   };
 }
 

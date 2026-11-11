@@ -53,8 +53,8 @@ export function RevisionPicker({
     <form
       method="get"
       action={historyPath}
-      className="app-stack"
-      data-tight
+      className="cap-stack"
+      data-gap="4"
       aria-label={label}
       onChange={(event) =>
         setCount(event.currentTarget.querySelectorAll("input[name=v]:checked").length)
@@ -109,7 +109,11 @@ export function RevisionPicker({
           </tbody>
         </table>
       </div>
-      <div className="app-actions app-compare-bar" data-ready={count === 2 ? "" : undefined}>
+      <div
+        className="cap-cluster app-compare-bar"
+        data-gap="3"
+        data-ready={count === 2 ? "" : undefined}
+      >
         <Button type="submit" variant="primary">
           Compare the two picked
         </Button>
