@@ -16,6 +16,7 @@ import { siteEntry, type SiteId } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.new";
+import { isSlug, SLUG_MAX_LENGTH } from "@drdustinedwards/site-helpers/slug";
 
 /** A site with a fixed set of items refuses a new one, so Carrel has no New post for it. */
 function newSourceFor(site: SiteId) {
@@ -28,7 +29,6 @@ function newSourceFor(site: SiteId) {
 }
 
 /** Stricter than the contract's id: lower case, digits and single hyphens, as the site's slugs are. */
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function meta() {
   return [{ title: "New post · Carrel" }];
@@ -47,7 +47,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
   const newSource = newSourceFor(project.site);
   const slug = String((await readForm(request)).get("slug") ?? "").trim();
-  if (!SLUG.test(slug) || slug.length > 120) {
+  if (!isSlug(slug, { max: SLUG_MAX_LENGTH })) {
     return { error: "Use lower-case letters, digits and single hyphens, such as my-new-post." };
   }
   if (await readDoc(env, project, slug)) {

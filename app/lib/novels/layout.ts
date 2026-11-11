@@ -3,10 +3,11 @@
 // ignored. Paths here are relative to the book's folder unless a name says otherwise.
 
 import { flag, list, parseFile, text, type HeaderValue } from "./frontmatter";
+import { SLUG_PATTERN } from "@drdustinedwards/site-helpers/slug";
 
 export type FileKind = "scene" | "character" | "place" | "rule" | "outline" | "book" | "note";
 
-const SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SEGMENT = SLUG_PATTERN;
 const NUMBERED = /^(\d{2,3})-([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 
 /** A book folder name: lower case, digits and single hyphens, as every segment is. */

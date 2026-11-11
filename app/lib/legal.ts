@@ -6,6 +6,7 @@
 
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { readFields, setField } from "~/lib/frontmatter";
+import { SLUG_PATTERN } from "@drdustinedwards/site-helpers/slug";
 
 export const LEGAL_TYPES = ["privacy", "terms"] as const;
 export type LegalType = (typeof LEGAL_TYPES)[number];
@@ -17,7 +18,7 @@ export const legalItemId = (type: LegalType) => `page.${type}`;
 const VARIABLES = ["site_name", "operator_name", "contact", "jurisdiction", "data_held"] as const;
 type Variable = (typeof VARIABLES)[number];
 
-export const SECTION_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const SECTION_KEY = SLUG_PATTERN;
 
 /** Reads the frontmatter's `legal_type`, or null when the source is not a legal page. */
 export function legalTypeOf(source: string): LegalType | null {

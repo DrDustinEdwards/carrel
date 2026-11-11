@@ -5,8 +5,7 @@
 // history is the commits that touched its path.
 
 import { fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
-import { pkcs8FromPem } from "@dustinedwards/site-runtime/jwt";
-import { SignJWT } from "jose";
+import { githubAppJwt } from "@dustinedwards/site-runtime/jwt";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 export const NOVELS_REPO = "DrDustinEdwards/writing";
@@ -97,24 +96,7 @@ export function novelsConnection(env: Env): NovelsConnection {
   return { state: "connected", appId, privateKey: key };
 }
 
-// ---------- GitHub App authentication
-
-export async function appJwt(appId: string, pem: string, now = Date.now()): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pkcs8FromPem(pem),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const iat = Math.floor(now / 1000) - 60; // GitHub allows for clock drift this way.
-  return new SignJWT({})
-    .setProtectedHeader({ alg: "RS256" })
-    .setIssuer(appId)
-    .setIssuedAt(iat)
-    .setExpirationTime(iat + 540)
-    .sign(key);
-}
+// ---------- GitHub App authentication (the JWT is site-runtime's githubAppJwt)
 
 type Fetch = typeof fetch;
 
@@ -138,7 +120,7 @@ export async function installationToken(
 ): Promise<string> {
   const cached = tokenCache.get(appId);
   if (cached && cached.expires - 5 * 60_000 > now) return cached.token;
-  const jwt = await appJwt(appId, pem, now);
+  const jwt = await githubAppJwt(appId, pem, now);
   const inst = await fetcher(`${API}/repos/${NOVELS_REPO}/installation`, { headers: headers(jwt) });
   if (!inst.ok)
     throw new Error(

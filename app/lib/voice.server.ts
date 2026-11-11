@@ -114,8 +114,7 @@ export async function readVoicePack(db: D1Database, project: ProjectRole): Promi
 
 /** The pieces of the author's own writing: the pasted text split at each line holding only ---. */
 function piecesOf(own: string): string[] {
-  return own
-    .replace(/\r\n/g, "\n")
+  return normalizeNewlines(own)
     .split(/^\s*---\s*$/m)
     .map(proseOf)
     .filter(Boolean);
