@@ -2,11 +2,11 @@
 // deadline asks for and the last seven days (Capsomer's writing progress). The goal is each
 // person's own; the project target and deadline are keys on the title page (book.md).
 
+import { Form } from "react-router";
 import { Link } from "capsomer/react/link";
 import { WritingProgress } from "capsomer/react/writing-progress";
 
 import { BookHead } from "~/components/book-head";
-import { RouterForm } from "~/components/router-form";
 
 import { bookHead, listFiles, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer, getZone } from "~/lib/context";
@@ -82,7 +82,7 @@ export default function BookProgress({ loaderData, actionData }: Route.Component
           {...progress}
           wordsNow={wordsNow}
           canEdit={canEdit}
-          Form={RouterForm}
+          Form={Form}
           goalNote={<TitlePageNote to={`/b/${head.slug}/f/book.md`} />}
           source="Typed words in Carrel's authorship record"
           error={actionData?.goal.error ?? null}

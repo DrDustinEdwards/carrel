@@ -26,8 +26,6 @@ import {
 } from "~/lib/ai-engine.server";
 import { drizzle } from "drizzle-orm/d1";
 
-import { RouterForm } from "~/components/router-form";
-
 import { projects } from "~/db/schema";
 import { writeAltText } from "~/lib/alt-text.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -72,10 +70,7 @@ export async function loader({ context }: Route.LoaderArgs) {
   return {
     sites: sites.map((p) => ({ value: p.slug, label: p.name })),
     settings,
-    // The jobs that name a model, as the settings table reads them.
-    models: Object.fromEntries(
-      Object.entries(models).flatMap(([job, tier]) => (tier ? [[job, tier]] : [])),
-    ) as Record<string, string>,
+    models,
     spent,
     usage,
     features: FEATURES.map((f) => ({ ...f })),
@@ -190,7 +185,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
         usage={usage.map((u) => ({ job: u.feature, calls: u.calls, micros: u.micros }))}
         capHelp="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then. Saved with the table."
         costNote="Costs are Anthropic's list prices times the tokens each call used. The subscription has no meter Carrel can read; claude.ai/settings/usage shows it."
-        Form={RouterForm}
+        Form={Form}
         pending={busy}
       />
 

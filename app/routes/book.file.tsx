@@ -26,7 +26,6 @@ import { commentsTab, Inspector } from "~/components/editor/inspector";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { RouterLink } from "~/components/frame";
 import { Binder } from "~/components/writing/binder";
-import { fetcherForm } from "~/components/router-form";
 
 import {
   bookRepo,
@@ -512,7 +511,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     {data.version ? (
                       <AiJobButtons
                         action={`${base}/ai-write`}
-                        Form={fetcherForm(aiJob.Form)}
+                        Form={aiJob.Form}
                         answer={aiJob.data}
                         pending={aiJob.state !== "idle"}
                         fields={{ path: data.path }}

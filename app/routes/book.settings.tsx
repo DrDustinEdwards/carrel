@@ -6,7 +6,8 @@ import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Disclosure } from "capsomer/react/disclosure";
-import { LabelColorEditor, LabelColorList } from "capsomer/react/label-color-list";
+import { LabelColorEditor } from "capsomer/react/label-color-editor";
+import { LabelColorList } from "capsomer/react/label-color-list";
 import { Panel } from "capsomer/react/panel";
 import { rowsFromForm } from "capsomer/behavior/label-color-list";
 

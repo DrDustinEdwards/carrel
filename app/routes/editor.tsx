@@ -28,7 +28,6 @@ import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { RouterLink } from "~/components/frame";
 import { SiteBinder } from "~/components/writing/binder";
-import { fetcherForm } from "~/components/router-form";
 import {
   dismissItemFinding,
   itemFindings,
@@ -1119,7 +1118,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   {mayEdit ? (
                     <AiJobButtons
                       action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
-                      Form={fetcherForm(aiJob.Form)}
+                      Form={aiJob.Form}
                       answer={aiJob.data}
                       pending={aiJob.state !== "idle"}
                       buttons={[

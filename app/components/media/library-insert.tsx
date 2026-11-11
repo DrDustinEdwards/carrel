@@ -25,7 +25,8 @@ import {
   DialogTitle,
 } from "capsomer/react/dialog";
 import { Empty } from "capsomer/react/empty";
-import { MediaLibrary, type FormComponent, type MediaData } from "capsomer/react/media-library";
+import { MediaLibrary, type MediaData } from "capsomer/react/media-library";
+import type { FormComponent } from "capsomer/react/plain-form";
 
 type LibraryPick = { url: string; alt: string; caption: string };
 

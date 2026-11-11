@@ -2,7 +2,7 @@
 // straight through, as the index last had it from Git.
 
 import type { ReactNode } from "react";
-import { redirect } from "react-router";
+import { Form, redirect } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
 import { Field } from "capsomer/react/field";
@@ -13,7 +13,6 @@ import { PageHead } from "capsomer/react/page-head";
 import { InlineAddForm } from "capsomer/react/inline-add-form";
 
 import { RouterLink } from "~/components/frame";
-import { RouterForm } from "~/components/router-form";
 
 import { indexedFile, listFiles, listFindings, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -136,7 +135,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
           flush
           footer={
             canEdit ? (
-              <InlineAddForm Form={RouterForm} submit="Start it">
+              <InlineAddForm Form={Form} submit="Start it">
                 <Field label="New scene">
                   <input
                     className="cap-input"

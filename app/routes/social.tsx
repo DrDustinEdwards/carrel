@@ -19,8 +19,6 @@ import { PageHead } from "capsomer/react/page-head";
 import { Link } from "capsomer/react/link";
 import { TabsNav } from "capsomer/react/tabs";
 
-import { RouterForm } from "~/components/router-form";
-
 import { getEnv, getViewer } from "~/lib/context";
 import { visibleProjects } from "~/lib/people.server";
 import { routineConfig } from "~/lib/social/routine.server";
@@ -231,7 +229,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
             items={open.map(toItem)}
             label="Waiting on you"
             hideLabel
-            Form={RouterForm}
+            Form={Form}
             pending={busy}
             textLabel={(i) => `Post text for ${i.who}`}
             findingsLabel="What the lint held it for"

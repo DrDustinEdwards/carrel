@@ -4,7 +4,7 @@
 // the settings are tabs of their own (book.progress.tsx, book.bible.tsx, book.settings.tsx).
 
 import type { ReactNode } from "react";
-import { redirect } from "react-router";
+import { Form, redirect } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
@@ -17,7 +17,6 @@ import { ColorLabelPill } from "capsomer/react/label-color-list";
 import { InlineAddForm } from "capsomer/react/inline-add-form";
 
 import { BookHead } from "~/components/book-head";
-import { RouterForm } from "~/components/router-form";
 
 import {
   bookHead,
@@ -245,7 +244,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         flush
         footer={
           canEdit ? (
-            <InlineAddForm Form={RouterForm} hidden={{ intent: "new-chapter" }} submit="Start it">
+            <InlineAddForm Form={Form} hidden={{ intent: "new-chapter" }} submit="Start it">
               <Field label="New chapter">
                 <input
                   className="cap-input"
