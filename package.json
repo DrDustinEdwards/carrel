@@ -59,9 +59,9 @@
     "@tiptap/extensions": "3.31.4",
     "@tiptap/pm": "3.31.4",
     "@tiptap/starter-kit": "3.31.4",
-    "@tiptap/y-tiptap": "3.0.10",
+    "@tiptap/y-tiptap": "3.3.0",
     "agents": "0.32.0",
-    "capsomer": "github:DrDustinEdwards/capsomer#v0.94.0",
+    "capsomer": "github:DrDustinEdwards/capsomer#v0.100.0",
     "diff": "9.0.0",
     "docx": "9.7.2",
     "drizzle-orm": "0.45.2",
@@ -116,6 +116,9 @@
     "@cloudflare/workers-types": "5.20261031.1",
     "@drdustinedwards/site-helpers": {
       "enarratio": "$enarratio"
+    },
+    "capsomer": {
+      "@drdustinedwards/site-helpers": "$@drdustinedwards/site-helpers"
     }
   },
   "engines": {

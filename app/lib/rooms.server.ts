@@ -11,7 +11,6 @@
 // what is written. The version it is checked against is the room's too. After the write, the room is
 // told the new version, and everyone who had a hand in the text goes into the authorship record.
 
-import { viewerRequest } from "@dustinedwards/site-runtime/doc-room";
 import { getServerByName } from "partyserver";
 import { chunked, inList, rowsPerInsert } from "@dustinedwards/site-runtime/d1";
 import { and, eq } from "drizzle-orm";
@@ -22,7 +21,7 @@ import { roomName } from "~/lib/editor/collab";
 import type { Dialect } from "~/lib/editor/markdown.mjs";
 import type { Viewer } from "~/lib/people.server";
 import { can, type Role } from "~/lib/roles";
-import { roomViewer } from "~/lib/editor/room-protocol";
+import { ROOM_VIEWER_HEADER, roomAccess, type RoomViewer } from "~/lib/editor/room-protocol";
 
 type Where = { id: number; role: Role };
 
@@ -362,10 +361,16 @@ export async function connectRoom(
   const [, kind, slug, rest] = match as unknown as [string, "p" | "b", string, string];
   const itemId = rest.split("/").map(decodeURIComponent).join("/");
   const project = await find(kind, decodeURIComponent(slug));
-  const who = roomViewer({ id: viewer.id, name: viewer.name || viewer.email }, project.role);
-  if (!who) return new Response("Forbidden", { status: 403 });
+  const access = roomAccess(project.role);
+  if (!access) return new Response("Forbidden", { status: 403 });
+  const who: RoomViewer = {
+    id: viewer.id,
+    name: viewer.name || viewer.email,
+    role: project.role,
+    access,
+  };
+  const headers = new Headers(request.headers);
+  headers.set(ROOM_VIEWER_HEADER, JSON.stringify(who));
   const room = await stub(env, project.id, itemId);
-  return room.fetch(
-    viewerRequest(new Request(request.url, { method: "GET", headers: request.headers }), who),
-  );
+  return room.fetch(new Request(request.url, { method: "GET", headers }));
 }

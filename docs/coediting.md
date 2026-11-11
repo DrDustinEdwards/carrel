@@ -14,7 +14,7 @@ Desk has one public page, the chart demo at `/demos/progress` (sample data, noin
 
 ## The room
 
-- **One Durable Object per file** (`workers/doc-room.ts`, which extends site-runtime's shared `./doc-room` with Carrel's roles from D1, its `comments` table and its `rooms` mirror), built on [y-partyserver](https://github.com/cloudflare/partykit/tree/main/packages/y-partyserver) 2.2.0 over Yjs 13.6. The binding is `DOC_ROOM`, migration tag `v1-doc-room` (`wrangler.jsonc.example`). The room keeps its copy in its own SQLite storage after every change, so it outlives hibernation and deploys, and mirrors it as Markdown into D1's `rooms` table, which the nightly backup carries.
+- **One Durable Object per file** (`workers/doc-room.ts`), built on [y-partyserver](https://github.com/cloudflare/partykit/tree/main/packages/y-partyserver) 2.2.0 over Yjs 13.6. The binding is `DOC_ROOM`, migration tag `v1-doc-room` (`wrangler.jsonc.example`). The room keeps its copy in its own SQLite storage after every change, so it outlives hibernation and deploys, and mirrors it as Markdown into D1's `rooms` table, which the nightly backup carries.
 - **The door decides who is in.** The browser reaches a room only at `/collab/...` on Desk, behind Access. `connectRoom` (`app/lib/rooms.server.ts`) checks the person's role on the project and passes who they are in a header it sets itself, so names in the room come from Carrel, never from another browser.
 - **Starting.** The first person to open a file seeds the room: from their own earlier working draft when they have one, else from the site's text (or Git's). After that, everyone opening the file joins the same copy. Someone who had their own draft from before co-editing sees a banner offering **Use as the working copy** or **Drop it**.
 - **Following the site.** When the site or Git moves on (a save through the AI door, or another tool) and nobody has unsaved changes, the room takes the new text. With unsaved changes the room stays, and the page says the site has a newer version.
@@ -31,7 +31,7 @@ Desk has one public page, the chart demo at `/demos/progress` (sample data, noin
 - An Editor, an Author or the Owner chooses **Editing** or **Suggesting** above the text; a Reader always suggests. The choice and the revision round are remembered on that device.
 - A suggestion (`@handlewithcare/prosemirror-suggest-changes` 0.1.8, `app/lib/editor/suggest.ts`) carries who made it, when, and an optional revision round.
 - The **Suggestions** panel lists them in reading order. Someone who edits accepts or rejects one, a round, or all. The person who made one withdraws it.
-- The room enforces it: from a Reader it takes only changes that touch nothing but that Reader's own suggestions (`suggestOnly` in site-runtime `./doc-room`), and refuses anything else.
+- The room enforces it: from a Reader it takes only changes that touch nothing but that Reader's own suggestions (`suggestOnly` in `workers/doc-room.ts`), and refuses anything else.
 - A save leaves out every pending suggestion, so a suggestion reaches the site or Git only once accepted.
 
 ## Comments

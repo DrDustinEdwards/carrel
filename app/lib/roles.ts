@@ -23,7 +23,7 @@ export function isMemberRole(value: unknown): value is MemberRole {
  * post off the site's list altogether.
  * `suggest` makes tracked changes in a file's live editor, which someone with `edit` accepts or rejects:
  * a Reader is a coauthor who comments and suggests (ruling of 2026-10-10, point 2b), as a commenter in
- * Google Docs suggests. The room enforces it (site-runtime ./doc-room, `suggestOnly`).
+ * Google Docs suggests. The room enforces it (workers/doc-room.ts, `suggestOnly`).
  * `read_mentions` and `decide_mention` are the Owner's alone: Dustin ruled (2026-09-26) that the inbox belongs to
  * Dustin alone (a mention is text a stranger sent, and the site reserves deleting one to its admin).
  * They are two actions so the page can be opened to Editors and Readers by changing one line here.

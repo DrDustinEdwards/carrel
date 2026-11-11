@@ -3,13 +3,16 @@
 
 import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
-import { viewerRequest } from "@dustinedwards/site-runtime/doc-room";
 import { getServerByName } from "partyserver";
 import * as syncProtocol from "y-protocols/sync";
 import * as Y from "yjs";
 
 import { patchMarkdown, roomName } from "~/lib/editor/collab";
-import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
+import {
+  ROOM_VIEWER_HEADER,
+  type RoomViewer,
+  type ServerMessage,
+} from "~/lib/editor/room-protocol";
 
 import { testEnv } from "./env";
 
@@ -17,12 +20,9 @@ import { testEnv } from "./env";
 export async function join(projectId: number, itemId: string, viewer: RoomViewer) {
   const room = await getServerByName(testEnv.DOC_ROOM, roomName(projectId, itemId));
   const response = await room.fetch(
-    viewerRequest(
-      new Request(`https://carrel.test/collab/p/x/${itemId}`, {
-        headers: { Upgrade: "websocket" },
-      }),
-      viewer,
-    ),
+    new Request(`https://carrel.test/collab/p/x/${itemId}`, {
+      headers: { Upgrade: "websocket", [ROOM_VIEWER_HEADER]: JSON.stringify(viewer) },
+    }),
   );
   const ws = response.webSocket!;
   ws.accept();

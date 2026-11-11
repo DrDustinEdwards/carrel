@@ -174,7 +174,7 @@ export function CommentsPanel({
     if (editor && range) editor.chain().focus().setTextSelection(range).scrollIntoView().run();
   };
   const mayResolve = (t: Thread) => t.head.personId === me.id || me.access === "edit";
-  const canDelete = Boolean(me.deletesAny);
+  const canDelete = me.role === "owner";
 
   const renderThread = (t: Thread) => {
     const gone =
