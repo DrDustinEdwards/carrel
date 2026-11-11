@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { runChecks } from "~/lib/health.server";
-import { figureMarkup } from "~/lib/site-markdown";
+import { siteFigureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteOrigins } from "~/lib/sites.server";
 import { addPerson, resetDb, testEnv } from "./env";
 import { fakeSite, SITE_KEY, SITE_ORIGIN } from "./site";
@@ -45,13 +45,13 @@ describe("germomics", () => {
 
   it("PLANT: a URL cannot end the figure's src attribute or the Markdown link", () => {
     const url = 'https://media.example.com/a b"(c)<d>.png';
-    expect(figureMarkup("dustinedwards", url, "A figure")).toBe(
+    expect(siteFigureMarkup("dustinedwards", url, "A figure")).toBe(
       ':::figure{src="https://media.example.com/a%20b%22%28c%29%3Cd%3E.png" alt="A figure"}\n:::',
     );
-    expect(figureMarkup("unknown-site", url, "A figure")).toBe(
+    expect(siteFigureMarkup("unknown-site", url, "A figure")).toBe(
       "![A figure](https://media.example.com/a%20b%22%28c%29%3Cd%3E.png)",
     );
-    expect(figureMarkup("dustinedwards", "https://media.example.com/plain.png", "x")).toContain(
+    expect(siteFigureMarkup("dustinedwards", "https://media.example.com/plain.png", "x")).toContain(
       'src="https://media.example.com/plain.png"',
     );
   });

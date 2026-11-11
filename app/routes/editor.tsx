@@ -92,7 +92,7 @@ import {
 } from "~/lib/rooms.server";
 import type { ChartFinding } from "~/lib/chart-check.client";
 import { featureImageFault, imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
-import { figureMarkup } from "~/lib/site-markdown";
+import { siteFigureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
 import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
@@ -1017,7 +1017,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       ? {
                           ...data.media,
                           figure: (url: string, alt: string, caption?: string) =>
-                            figureMarkup(data.project.siteId, url, alt, caption),
+                            siteFigureMarkup(data.project.siteId, url, alt, caption),
                         }
                       : null
                   }
