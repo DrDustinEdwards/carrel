@@ -6,6 +6,7 @@
 // image is marked decorative (missingAltFields, shown on its box and in the publish gate).
 
 import { useState } from "react";
+import { isImeEnter } from "capsomer/behavior/shortcuts";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
 import { SortableList } from "capsomer/react/sortable-list";
@@ -129,7 +130,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
                   value={adding}
                   onChange={(event) => setAdding(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") {
+                    if (event.key === "Enter" && !isImeEnter(event.nativeEvent)) {
                       event.preventDefault();
                       add();
                     }
@@ -180,7 +181,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
                 <span className="cap-muted">No feature image</span>
               )}
             </div>
-            <div className="app-stack" data-tight="">
+            <div className="cap-stack" data-gap="4">
               {media ? (
                 values.featureImage ? (
                   <p className="app-share-image-url cap-mono">{values.featureImage}</p>
@@ -191,7 +192,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
                 </Field>
               )}
               {!locked ? (
-                <div className="app-actions">
+                <div className="cap-cluster" data-gap="3">
                   {media ? (
                     <LibraryInsert
                       media={media}

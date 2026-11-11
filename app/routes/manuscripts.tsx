@@ -175,7 +175,7 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
                 placeholder="Words in a manuscript"
               />
             </Field>
-            <div className="app-actions">
+            <div className="cap-cluster" data-gap="3">
               <Button type="submit" variant="primary">
                 Search
               </Button>

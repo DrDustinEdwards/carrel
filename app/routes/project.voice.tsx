@@ -174,7 +174,7 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
             />
           </Field>
           {canManage ? (
-            <div className="app-actions">
+            <div className="cap-cluster" data-gap="3">
               <Button type="submit" name="intent" value="save" variant="primary" pending={busy}>
                 Save
               </Button>

@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -26,7 +26,6 @@ import { commentsTab } from "~/components/editor/comments-tab";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { useSaveShortcut } from "~/components/editor/save-keys";
 import { useTypingRecede } from "~/components/editor/typing";
-import { RouterLink } from "~/components/frame";
 import { Binder } from "~/components/writing/binder";
 
 import {
@@ -424,7 +423,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor">
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={crumbs}
         title={data.label}
         lead={

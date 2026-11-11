@@ -1,17 +1,17 @@
 // Each site's own Markdown for the things Carrel's editor inserts, shared by the server and the
 // browser (the editor runs in both). One place per site, so the editor writes what the site renders.
 
-import { figureMarkup as prelumFigureMarkup } from "@drdustinedwards/site-helpers/source";
+import { figureMarkup } from "@drdustinedwards/site-helpers/source";
 import type { Scaffold } from "capsomer/react/markdown-editor";
 
-/** The sites whose renderer reads Prelum's `:::figure` directive (its caption is the directive's body); the others get plain
- *  Markdown with the caption as an emphasized line. germomics renders its Markdown with Prelum too, since germomics#186. */
-const FIGURE_SITES = new Set(["dustinedwards", "germomics"]);
+/** The sites whose Markdown has Prelum's figure directive; the others get plain Markdown. germomics renders with Prelum
+ *  too, since germomics#186. */
+const FIGURE_SITES: ReadonlySet<string> = new Set(["dustinedwards", "germomics"]);
 
-/** How the site places an image with its alt text and, when it has one, its caption (stage 3), in the site's own dialect.
- *  An empty alt is a decorative pick, always plain `![""](url)`. */
-export function figureMarkup(site: string, url: string, alt: string, caption = ""): string {
-  return prelumFigureMarkup(url, alt, { caption, figure: FIGURE_SITES.has(site) });
+/** How the site places an image with its alt text and, when it has one, its caption, in the site's own dialect. An empty
+ *  alt is a decorative pick: plain Markdown for every site. */
+export function siteFigureMarkup(site: string, url: string, alt: string, caption = ""): string {
+  return figureMarkup(url, alt, { caption, figure: FIGURE_SITES.has(site) });
 }
 
 /**

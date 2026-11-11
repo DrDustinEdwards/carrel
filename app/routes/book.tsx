@@ -3,9 +3,8 @@
 // Refresh (in the head of every tab) posts here and reads Git again. Progress, the bible and notes and
 // the settings are tabs of their own (book.progress.tsx, book.bible.tsx, book.settings.tsx).
 
-import type { ReactNode } from "react";
 import { Form, redirect } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
@@ -172,9 +171,6 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
   const { head, canEdit, connectionDetail, chapters, words, open, unsaved, labels } = loaderData;
   const base = `/b/${head.slug}`;
   const file = (path: string) => `${base}/f/${path}`;
-  const link = ({ href, children }: { href: string; children: ReactNode }) => (
-    <Link to={href}>{children}</Link>
-  );
 
   return (
     <div className="app-page">
@@ -230,7 +226,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                 key={p}
                 title={<span className="cap-mono">{p}</span>}
                 href={file(p)}
-                renderLink={link}
+                renderLink={routerRenderLink}
                 detail="Started here; nothing is in Git until the first Save."
               />
             ))}

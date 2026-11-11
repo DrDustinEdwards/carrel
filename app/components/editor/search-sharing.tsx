@@ -20,7 +20,7 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
       count={findings.length}
       src="As a search result and a shared link"
     >
-      <div className="app-stack">
+      <div className="cap-stack" data-gap="6">
         {findings.length === 0 ? (
           <Empty kind="all-clear" flush title="Nothing flagged">
             The title and description fit a search result, every image has alt text, and the post

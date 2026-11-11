@@ -33,7 +33,7 @@ export default function ProgressDemo({ loaderData }: Route.ComponentProps) {
     <Frame data={FRAME}>
       <div className="app-page">
         <PageHead title="Sample book" lead="A book's page in Desk, with its writing progress." />
-        <div className="app-stack">
+        <div className="cap-stack" data-gap="6">
           <Banner tone="info" title="Demo with sample data">
             This is how the page looks for a signed-in writer. The numbers are made up, and nothing
             here belongs to a real account.

@@ -24,6 +24,8 @@ import {
 } from "@drdustinedwards/site-helpers/head";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { imagesWithoutAlt, isAbsoluteHttps } from "@drdustinedwards/site-helpers/source";
+
+export { imagesWithoutAlt };
 import {
   missingAltFields,
   searchFieldsOf,

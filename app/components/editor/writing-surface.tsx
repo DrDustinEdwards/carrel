@@ -19,7 +19,7 @@ import { RichEditor, type RichEditorHandle, type RichRoom } from "~/components/e
 import { LibraryInsert } from "~/components/media/library-insert";
 import { uploadImage, type EditorMedia } from "~/components/media/upload";
 import type { Dialect } from "~/lib/editor/markdown.mjs";
-import { useRemembered } from "~/lib/remembered";
+import { useRemembered } from "capsomer/react/hooks";
 import { SCAFFOLDS } from "~/lib/site-markdown";
 
 export type { LinkTarget };

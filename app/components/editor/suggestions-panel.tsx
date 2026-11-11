@@ -82,7 +82,7 @@ export function SuggestionsPanel({
       src="Saved to the site or Git only once accepted"
       id="suggestions"
     >
-      <div className="app-stack">
+      <div className="cap-stack" data-gap="6">
         <Field
           label="Revision round for your suggestions"
           help="Optional. Each suggestion you make from now on carries it, so a round can be accepted at once."
@@ -116,7 +116,7 @@ export function SuggestionsPanel({
               </Field>
             ) : null}
             {mayDecide ? (
-              <div className="app-actions">
+              <div className="cap-cluster" data-gap="3">
                 <Button
                   size="sm"
                   onClick={() =>
@@ -165,7 +165,7 @@ export function SuggestionsPanel({
                       <span>Formatting changed</span>
                     ) : null}
                   </p>
-                  <div className="app-actions">
+                  <div className="cap-cluster" data-gap="3">
                     <Button
                       size="xs"
                       variant="quiet"

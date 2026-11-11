@@ -43,7 +43,7 @@ export function HistoryPanel({
         ) : undefined
       }
     >
-      <div className="app-stack" data-tight>
+      <div className="cap-stack" data-gap="4">
         {historyError ? <Banner tone="warn">{historyError}</Banner> : null}
         {revisions && revisions.length > 0 ? (
           <RevisionPicker
