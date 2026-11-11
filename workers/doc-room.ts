@@ -19,6 +19,7 @@
 // A save is the editor route's: it reads the room's Markdown, sends it through site-api's version
 // check (or Git's), and tells the room what it wrote (`saved`), with who had a hand in it.
 
+import { suggestOnly, type DocModel } from "@dustinedwards/site-runtime/doc-room";
 import { logEvent } from "@dustinedwards/site-runtime/log";
 import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -48,7 +49,7 @@ import {
   type RoomViewer,
   type ServerMessage,
 } from "~/lib/editor/room-protocol";
-import { settle, suggestionCounts } from "~/lib/editor/suggest";
+import { settle, suggestionCounts, type JsonDoc } from "~/lib/editor/suggest";
 import { currentRole } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 
@@ -88,29 +89,21 @@ const bytesOf = (message: WSMessage): Uint8Array | null =>
       : new Uint8Array(message.buffer, message.byteOffset, message.byteLength);
 
 /**
- * Whether `update` changes only suggestions, and only the suggester's own: with every suggestion
- * rejected the document reads the same before and after, and nobody else has more suggested.
+ * The room's document operations, in the shape site-runtime's ./doc-room takes, so the suggester's
+ * check (`suggestOnly`) is the shared one: with every suggestion rejected the document reads the same
+ * before and after, nobody else has more suggested, and the room's own state ("carrel") is unchanged.
  */
-function suggestOnly(doc: Y.Doc, update: Uint8Array, by: number): boolean {
-  const probe = new Y.Doc();
-  Y.applyUpdate(probe, Y.encodeStateAsUpdate(doc));
-  const schema = roomSchema();
-  const before = roomJson(probe);
-  Y.applyUpdate(probe, update);
-  const after = roomJson(probe);
-  // The rest of the room's state (the version, the prints) is never a suggester's to change.
-  if (
-    JSON.stringify(probe.getMap("carrel").toJSON()) !==
-    JSON.stringify(doc.getMap("carrel").toJSON())
-  )
-    return false;
-  if (JSON.stringify(settle(schema, before)) !== JSON.stringify(settle(schema, after)))
-    return false;
-  const was = suggestionCounts(schema, before);
-  for (const [person, n] of suggestionCounts(schema, after))
-    if (person !== String(by) && n > (was.get(person) ?? 0)) return false;
-  return true;
-}
+const roomModel: DocModel = {
+  metaKey: "carrel",
+  isSeeded,
+  readMeta,
+  markdown: roomMarkdown,
+  load: (doc, input) => loadMarkdown(doc, input as Parameters<typeof loadMarkdown>[1]),
+  markSaved,
+  json: roomJson,
+  settle: (json) => settle(roomSchema(), json as JsonDoc),
+  suggestionCounts: (json) => suggestionCounts(roomSchema(), json as JsonDoc),
+};
 
 export class DocRoom extends YServer<Env> {
   static options = { hibernate: true };
@@ -401,7 +394,7 @@ export class DocRoom extends YServer<Env> {
         const step = decoding.readVarUint(decoder);
         if (step === SYNC_STEP2 || step === SYNC_UPDATE) {
           const update = decoding.readVarUint8Array(decoder);
-          if (suggestOnly(this.document, update, viewer.id))
+          if (suggestOnly(roomModel, this.document, update, viewer.id))
             Y.applyUpdate(this.document, update, conn);
           else
             this.#send(conn, {
