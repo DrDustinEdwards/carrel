@@ -21,6 +21,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
+import { confirmationRequired, confirmationSatisfied } from "~/lib/confirm.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.flags";
@@ -51,6 +52,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const project = await requireSiteProject(env.DB, viewer, params.project, "publish");
   const form = await readForm(request);
   if (form.get("intent") !== "dismiss") throw new Response("Bad request", { status: 400 });
+  if (!confirmationSatisfied(form)) throw confirmationRequired();
   const id = Number(form.get("flag"));
   const item = String(form.get("item") ?? "");
   if (!Number.isInteger(id) || !item) throw new Response("Bad request", { status: 400 });
@@ -168,7 +170,12 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
         perform={async () => {
           if (!target) return;
           await fetcher.submit(
-            { intent: "dismiss", flag: String(target.flag.id), item: target.flag.itemId },
+            {
+              intent: "dismiss",
+              flag: String(target.flag.id),
+              item: target.flag.itemId,
+              confirmed: "1",
+            },
             { method: "post" },
           );
         }}

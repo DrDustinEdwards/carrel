@@ -2,7 +2,8 @@
 // A legal page is an ordinary page on the site, edited in the normal editor; this tab lists them and
 // keeps the text every site says alike. Nothing here is a second editor for a page.
 
-import { Form, useNavigation } from "react-router";
+import { Form, useNavigate, useNavigation } from "react-router";
+import { ConfirmModal } from "capsomer/react/confirm-dialog";
 import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -23,6 +24,7 @@ import { deleteSection, listSections, saveSection, sectionsCurrent } from "~/lib
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry, SiteNotConnected } from "~/lib/sites.server";
+import { confirmationSatisfied } from "~/lib/confirm.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/legal";
@@ -76,6 +78,9 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   };
 }
 
+/** The word typed to remove a shared section: nothing keeps an earlier copy of it. */
+const REMOVE_WORD = "remove";
+
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
@@ -84,8 +89,18 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const intent = String(form.get("intent") ?? "");
   const key = String(form.get("key") ?? "");
   if (intent === "delete-section") {
+    // A removed section has no earlier version to bring back, so the action asks, and asks for a typed word.
+    if (!confirmationSatisfied(form, REMOVE_WORD)) {
+      const tried = form.get("confirmed") === "1";
+      return {
+        saved: null,
+        error: null,
+        deleted: null,
+        confirm: { key, refused: tried },
+      };
+    }
     await deleteSection(env.DB, project, key);
-    return { saved: null, error: null, deleted: key };
+    return { saved: null, error: null, deleted: key, confirm: null };
   }
   if (intent !== "save-section") throw new Response("Bad request", { status: 400 });
   const result = await saveSection(env.DB, project, viewer, {
@@ -94,13 +109,14 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     body: String(form.get("body") ?? ""),
   });
   return result.ok
-    ? { saved: key, error: null, deleted: null }
-    : { saved: null, error: result.message, deleted: null };
+    ? { saved: key, error: null, deleted: null, confirm: null }
+    : { saved: null, error: result.message, deleted: null, confirm: null };
 }
 
 export default function Legal({ loaderData, actionData }: Route.ComponentProps) {
   const { project, canManage, siteError, pages, sections } = loaderData;
   const navigation = useNavigation();
+  const navigate = useNavigate();
   const saving = navigation.state !== "idle" ? String(navigation.formData?.get("key") ?? "") : null;
 
   return (
@@ -122,6 +138,27 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
           Saved "{actionData.saved}". A page picks up the new wording when it is next saved to the
           site, and its date changes when the Owner publishes it.
         </Banner>
+      ) : null}
+      {actionData?.confirm ? (
+        <ConfirmModal
+          title={`Remove the shared section "${actionData.confirm.key}"?`}
+          lead="This cannot be undone: nothing keeps an earlier copy of it."
+          body={["A page that still names it is refused at publish until the marker is removed."]}
+          typeToConfirm={REMOVE_WORD}
+          action_label="Remove section"
+          cancelHref={`/p/${encodeURIComponent(project.slug)}/legal`}
+          onCancel={() => void navigate(`/p/${encodeURIComponent(project.slug)}/legal`)}
+          error={
+            actionData.confirm.refused
+              ? "Not done. Nothing was changed. Type the word to confirm."
+              : undefined
+          }
+          renderForm={(props) => <Form {...props} />}
+        >
+          <input type="hidden" name="intent" value="delete-section" />
+          <input type="hidden" name="key" value={actionData.confirm.key} />
+          <input type="hidden" name="confirmed" value="1" />
+        </ConfirmModal>
       ) : null}
       {actionData?.deleted ? (
         <Banner tone="ok">

@@ -93,6 +93,7 @@ import { featureImageFault, imagesWithoutAlt, searchFieldFaults, seoCheck } from
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
+import { confirmationRequired, confirmationSatisfied } from "~/lib/confirm.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/editor";
@@ -391,6 +392,7 @@ export async function action({
 
   switch (intent) {
     case "discard": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       // Everyone in the room goes back to the site's text.
       const current = await readDoc(env, project, itemId);
       if (!current)
@@ -402,6 +404,7 @@ export async function action({
       return { intent, discarded: true };
     }
     case "use-own-draft": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       // The person's own draft from before live editing, put in the room for everyone.
       const own = await readOwnDraft(env.DB, project, viewer, itemId);
       if (!own) throw new Response("That draft is gone.", { status: 404 });
@@ -455,9 +458,11 @@ export async function action({
         : moved;
     }
     case "drop-own-draft":
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       await discardDraft(env.DB, project, viewer, itemId);
       return { intent: "discard", discarded: true };
     case "dismiss-flag": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       const id = Number(form.get("flag"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       await dismissItemFinding(env.DB, project, viewer, itemId, id);
@@ -465,6 +470,9 @@ export async function action({
     }
     case "send-to-docs":
     case "import-from-docs": {
+      if (intent === "import-from-docs") {
+        if (!confirmationSatisfied(form)) throw confirmationRequired();
+      }
       try {
         if (intent === "send-to-docs") {
           const sent = await sendToDocs(env, project, viewer, itemId);
@@ -550,7 +558,15 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
   const [layout, chooseLayout] = useEditorLayout();
   const [asking, setAsking] = useState<null | {
-    kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule";
+    kind:
+      | "discard"
+      | "drop-draft"
+      | "put-draft"
+      | "import"
+      | "schedule"
+      | "dismiss"
+      | "save-live"
+      | "unschedule";
     flag?: number;
     opener: HTMLElement | null;
   }>(null);
@@ -805,7 +821,15 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
   const historyPath = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/history`;
   const ask = (
-    kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule",
+    kind:
+      | "discard"
+      | "drop-draft"
+      | "put-draft"
+      | "import"
+      | "schedule"
+      | "dismiss"
+      | "save-live"
+      | "unschedule",
     opener: HTMLElement | null,
     flag?: number,
   ) => setAsking({ kind, opener, flag });
@@ -894,14 +918,18 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             title="You have a draft of your own from before shared editing"
             actions={
               <>
-                <Button size="sm" pending={busy} onClick={() => void send("use-own-draft")}>
+                <Button
+                  size="sm"
+                  pending={busy}
+                  onClick={(event) => ask("put-draft", event.currentTarget)}
+                >
                   Put it in for everyone
                 </Button>
                 <Button
                   size="sm"
                   variant="quiet"
                   pending={busy}
-                  onClick={() => void send("drop-own-draft")}
+                  onClick={(event) => ask("drop-draft", event.currentTarget)}
                 >
                   Delete it
                 </Button>
@@ -1265,13 +1293,33 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       </div>
 
       <ConfirmDialog
+        open={asking?.kind === "put-draft"}
+        title="Put your draft in for everyone?"
+        lead="Your draft's text replaces the text everyone here is working on, and changes since the last save are not kept."
+        body={[]}
+        action="Replace the text"
+        returnTo={asking?.opener}
+        perform={async () => void (await send("use-own-draft", { confirmed: "1" }))}
+        onClose={() => setAsking(null)}
+      />
+      <ConfirmDialog
+        open={asking?.kind === "drop-draft"}
+        title="Delete your own draft?"
+        lead="The draft you kept from before shared editing is deleted. This cannot be undone."
+        body={[]}
+        action="Delete draft"
+        returnTo={asking?.opener}
+        perform={async () => void (await send("drop-own-draft", { confirmed: "1" }))}
+        onClose={() => setAsking(null)}
+      />
+      <ConfirmDialog
         open={asking?.kind === "discard"}
         title="Discard the unsaved changes?"
         lead="The text goes back to the site's version for everyone working on it, and every change since the last save is lost, suggestions too. This cannot be undone."
         body={[]}
         action="Discard unsaved changes"
         returnTo={asking?.opener}
-        perform={async () => void (await send("discard"))}
+        perform={async () => void (await send("discard", { confirmed: "1" }))}
         onClose={() => setAsking(null)}
       />
       <ConfirmDialog
@@ -1281,7 +1329,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         body={[]}
         action="Import and replace"
         returnTo={asking?.opener}
-        perform={async () => void (await send("import-from-docs"))}
+        perform={async () => void (await send("import-from-docs", { confirmed: "1" }))}
         onClose={() => setAsking(null)}
       />
       <ConfirmDialog
@@ -1298,7 +1346,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         perform={async () => {
           if (asking?.flag !== undefined)
             await writer.submit(
-              { intent: "dismiss-flag", flag: String(asking.flag) },
+              { intent: "dismiss-flag", flag: String(asking.flag), confirmed: "1" },
               { method: "post" },
             );
         }}

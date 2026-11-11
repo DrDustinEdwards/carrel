@@ -204,6 +204,7 @@ describe("AI drafts in the book editor", () => {
 
     const body = new FormData();
     body.set("intent", "use-ai-draft");
+    body.set("confirmed", "1");
     body.set("draft", String(data.aiDrafts[0]!.id));
     expect(
       await fileAction({
