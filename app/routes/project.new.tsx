@@ -2,9 +2,11 @@
 // site until the first Save, which sends it with expectedVersion null: the site refuses it if the
 // slug was taken in the meantime.
 
+import { isSlug } from "@drdustinedwards/site-helpers/slug";
+import { useState } from "react";
 import { Form, redirect, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
-import { Field } from "capsomer/react/field";
+import { SlugField } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
 
@@ -29,7 +31,7 @@ function newSourceFor(site: SiteId) {
 }
 
 /** Stricter than the contract's id: lower case, digits and single hyphens, as the site's slugs are. */
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SLUG_MAX = 120;
 
 export function meta() {
   return [{ title: "New post · Carrel" }];
@@ -48,7 +50,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
   const newSource = newSourceFor(project.site);
   const slug = String((await readForm(request)).get("slug") ?? "").trim();
-  if (!SLUG.test(slug) || slug.length > 120) {
+  if (!isSlug(slug, { max: SLUG_MAX })) {
     return { error: "Use lower-case letters, digits and single hyphens, such as my-new-post." };
   }
   if (await readDoc(env, project, slug)) {
@@ -64,6 +66,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 
 export default function NewPost({ loaderData, actionData }: Route.ComponentProps) {
   const busy = useNavigation().state !== "idle";
+  const [slug, setSlug] = useState("");
   return (
     <div className="app-page" data-narrow>
       <PageHead
@@ -77,23 +80,19 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
       />
       <Panel title="Address">
         <Form method="post" className="app-form">
-          <Field
+          <SlugField
             label="Slug, the post's address on the site"
             required
             help="Lower-case letters, digits and single hyphens, such as my-new-post. The site gives it its address when it is published. It stays a draft in Carrel until you save it to the site."
             error={actionData?.error}
             announce
-          >
-            <input
-              className="cap-input"
-              name="slug"
-              required
-              pattern="[a-z0-9]+(-[a-z0-9]+)*"
-              autoComplete="off"
-              spellCheck={false}
-              data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as my-new-post."
-            />
-          </Field>
+            name="slug"
+            value={slug}
+            onChange={setSlug}
+            max={SLUG_MAX}
+            autoComplete="off"
+            data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as my-new-post."
+          />
           <div className="app-actions">
             <Button type="submit" variant="primary" pending={busy}>
               Start writing

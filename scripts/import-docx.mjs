@@ -10,6 +10,7 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
+import { isSlug } from "@drdustinedwards/site-helpers/slug";
 
 import { readDocx } from "./lib/docx.mjs";
 import { buildBook, writeBook } from "./lib/manuscript.mjs";
@@ -41,7 +42,7 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 if (inputs.length === 0 || !options.book || !options.novels) fail(USAGE);
-if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(options.book) || options.book === "shared") {
+if (!isSlug(options.book) || options.book === "shared") {
   fail(
     "--book is the book's folder name: lower-case letters, digits and single hyphens, such as paluxy-portal.",
   );

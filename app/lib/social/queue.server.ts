@@ -13,6 +13,7 @@
 // loop over accounts, the daily cap, the gap between posts and the record of every post are carried
 // over from legacy Recova's social-poster cron.
 
+import { isSlug } from "@drdustinedwards/site-helpers/slug";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -66,7 +67,7 @@ export type AccountInput = {
 
 export async function createAccount(db: D1Database, viewer: Viewer, input: AccountInput) {
   requireOwner(viewer);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.key))
+  if (!isSlug(input.key))
     return {
       ok: false as const,
       error: "The key is lower-case letters, digits and hyphens, such as example-bluesky.",

@@ -17,8 +17,6 @@ export const legalItemId = (type: LegalType) => `page.${type}`;
 const VARIABLES = ["site_name", "operator_name", "contact", "jurisdiction", "data_held"] as const;
 type Variable = (typeof VARIABLES)[number];
 
-export const SECTION_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
 /** Reads the frontmatter's `legal_type`, or null when the source is not a legal page. */
 export function legalTypeOf(source: string): LegalType | null {
   const { front } = splitSource(source);

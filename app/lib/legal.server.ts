@@ -1,6 +1,7 @@
 // The shared sections of legal pages, and what a write to a legal page needs from them. The
 // sections live here and are the Owner's to change; a page picks them up when it is next published.
 
+import { isSlug } from "@drdustinedwards/site-helpers/slug";
 import { asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -11,7 +12,6 @@ import {
   legalTypeOf,
   pathOf,
   prepareLegalWrite,
-  SECTION_KEY,
   valuesOf,
   type SharedSection,
 } from "~/lib/legal";
@@ -49,7 +49,7 @@ export async function saveSection(
   const key = input.key.trim();
   const title = input.title.trim();
   const body = input.body.replace(/\r\n/g, "\n").trim();
-  if (!SECTION_KEY.test(key))
+  if (!isSlug(key))
     return {
       ok: false,
       message: "A section's name is lowercase words joined by hyphens, like cloudflare-hosting.",
