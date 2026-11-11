@@ -16,13 +16,22 @@ import { Alert } from "capsomer/react/banner";
 
 import { ChartInsert, type ChartPreview } from "~/components/editor/chart-insert";
 import { RichEditor, type RichEditorHandle, type RichRoom } from "~/components/editor/rich-editor";
-import { LibraryInsert } from "~/components/media/library-insert";
-import { uploadImage, type EditorMedia } from "~/components/media/upload";
+import { MediaPicker } from "capsomer/react/media-picker";
+import { uploadImage } from "capsomer/behavior/media-picker";
 import type { Dialect } from "~/lib/editor/markdown.mjs";
 import { useRemembered } from "~/lib/remembered";
 import { SCAFFOLDS } from "~/lib/site-markdown";
 
 export type { LinkTarget };
+
+export type EditorMedia = {
+  /** Carrel's media endpoint for this project: GET lists for the picker, POST uploads. */
+  endpoint: string;
+  /** The types the site accepts, for the file chooser's `accept`. A hint, not a control: the site checks. */
+  accept: string;
+  /** The site's own Markdown for an image with its alt text, and its caption when it has one. */
+  figure: (url: string, alt: string, caption?: string) => string;
+};
 
 type Mode = "formatted" | "markdown";
 const MODE_KEY = "carrel:editor-mode";
@@ -126,8 +135,8 @@ export function WritingSurface({
           />
         ) : null}
         {images ? (
-          <LibraryInsert
-            media={images}
+          <MediaPicker
+            endpoint={images.endpoint}
             onPick={({ url, alt, caption }) => {
               const md = images.figure(url, alt, caption);
               if (mode === "formatted") rich.current?.insertMarkdown(md);
