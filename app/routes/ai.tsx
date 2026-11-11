@@ -19,6 +19,7 @@ import { Select } from "capsomer/react/select";
 
 import {
   FEATURES,
+  apiKeyMissing,
   monthSpendMicros,
   readAiModels,
   readAiSettings,
@@ -85,7 +86,7 @@ export async function loader({ context }: Route.LoaderArgs) {
     features: FEATURES.map((f) => ({ ...f })),
     // What each engine can do right now, so a setting that cannot work says so.
     routineMissing: "missing" in routine,
-    apiKeyMissing: !env.ANTHROPIC_API_KEY,
+    apiKeyMissing: apiKeyMissing(env),
   };
 }
 
