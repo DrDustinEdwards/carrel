@@ -4,16 +4,7 @@
     "www": "static"
   },
   "libraries": {
-    "jose": "signs JWTs (RS256): the GitHub App's for the novels repository and the Google service account's; site-runtime's ./access only verifies Access tokens",
-    "mdast-util-directive": "an optional peer of Capsomer's rich editor (its Markdown round trip parses and writes source back; Prelum renders to HTML and never writes Markdown), and the chart check (app/lib/chart-check.client.ts) reads directives with it",
-    "mdast-util-from-markdown": "an optional peer of Capsomer's rich editor, and the chart check, as above",
-    "mdast-util-frontmatter": "an optional peer of Capsomer's rich editor, as above",
-    "mdast-util-gfm": "an optional peer of Capsomer's rich editor, as above",
-    "mdast-util-math": "an optional peer of Capsomer's rich editor, as above",
-    "micromark-extension-directive": "an optional peer of Capsomer's rich editor, and the chart check, as above",
-    "micromark-extension-frontmatter": "an optional peer of Capsomer's rich editor, as above",
-    "micromark-extension-gfm": "an optional peer of Capsomer's rich editor, as above",
-    "micromark-extension-math": "an optional peer of Capsomer's rich editor, as above"
+    "jose": "signs JWTs (RS256): the GitHub App's for the novels repository and the Google service account's; site-runtime's ./access only verifies Access tokens"
   },
   "copies": {
     "app/lib/novels/layout.ts": "kindOf here names a book file's kind from its path (scene, character, outline), not site-api's media kind",
