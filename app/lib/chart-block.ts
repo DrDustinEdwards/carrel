@@ -2,7 +2,7 @@
 // check (E4). Pure, shared by the browser and the tests. The syntax is Prelum's (README, "Charts in
 // posts"): the attributes on the directive, the data as a fenced CSV block, an optional caption.
 
-import { parseCsv } from "capsomer/behavior/csv";
+import { parseCsv } from "@dustinedwards/site-runtime/csv";
 import { escapeHtml } from "@dustinedwards/site-runtime/html";
 
 export const CHART_KINDS = [
