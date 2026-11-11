@@ -6,7 +6,8 @@
 // - Send to Docs and Import, through Dustin's drive.file grant: a post's body goes out as a new Doc,
 //   and comes back as a new draft, never over one.
 
-import { and, asc, desc, eq, notInArray } from "drizzle-orm";
+import { notInList } from "@dustinedwards/site-runtime/d1";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { manuscripts, sentDocs } from "~/db/schema";
@@ -138,7 +139,7 @@ export async function refreshManuscripts(
     const seen = files.map((f) => f.id);
     const gone = await d
       .delete(manuscripts)
-      .where(seen.length ? notInArray(manuscripts.fileId, seen) : undefined)
+      .where(seen.length ? notInList(manuscripts.fileId, seen) : undefined)
       .returning({ id: manuscripts.fileId });
     removed = gone.length;
   }

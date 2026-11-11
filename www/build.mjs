@@ -112,17 +112,21 @@ function writeStyles(outDir) {
   writeFileSync(join(outDir, "site.css"), css);
 }
 
-/** The sites Carrel publishes to on Dustin's Desk (app/lib/sites.server.ts). */
+/** The sites Carrel publishes to on Dustin's Desk, read from app/lib/sites.server.ts at build time so the page
+ *  cannot fall behind it (it said 6 when the Desk had 7). */
 const SITES = [
-  "dustinedwards.info",
-  "Germomics",
-  "Foxhound",
-  "Foxing",
-  "Texas Branch ASM",
-  "julieedwards.info",
-];
-/** The tools Carrel's MCP server gives an AI client (app/lib/mcp/tools.ts). */
-const TOOL_COUNT = 16;
+  ...readFileSync(join(HERE, "..", "app", "lib", "sites.server.ts"), "utf8").matchAll(
+    /^    name: "([^"]+)",$/gm,
+  ),
+].map((m) => /** @type {string} */ (m[1]));
+/** The tools Carrel's MCP server gives an AI client, counted in app/lib/mcp/tools.ts (it said 16 when there were 23). */
+const TOOL_COUNT = [
+  ...readFileSync(join(HERE, "..", "app", "lib", "mcp", "tools.ts"), "utf8").matchAll(
+    /^    name: "carrel_[a-z_]+",$/gm,
+  ),
+].length;
+if (SITES.length === 0 || TOOL_COUNT === 0)
+  throw new Error("www/build.mjs: could not read the sites or the tools");
 
 /** A feature with no section of its own on the page has no href and shows its name unlinked. @param {{ name: string, href?: string, kind: string, note: string }} item */
 const checklistItem = ({ name, href, kind, note }) =>
