@@ -2,6 +2,7 @@
 // straight through, as the index last had it from Git.
 
 import { Form, redirect } from "react-router";
+import { markup } from "capsomer/behavior/trusted-html";
 import { routerRenderLink } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -168,7 +169,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                     * * *
                   </p>
                 ) : null}
-                <div dangerouslySetInnerHTML={{ __html: s.html }} />
+                <div dangerouslySetInnerHTML={markup(s.html)} />
               </div>
             ))}
           </div>

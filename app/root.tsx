@@ -1,5 +1,6 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteLoaderData } from "react-router";
 
+import { markup } from "capsomer/behavior/trusted-html";
 import { ErrorPage, errorTitle } from "capsomer/react/error-page";
 import { themeScript } from "capsomer/theme-server";
 
@@ -43,9 +44,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="text-scale" content="scale" />
         <Meta />
         <Links />
-        {nonce ? <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} /> : null}
+        {nonce ? <script nonce={nonce} dangerouslySetInnerHTML={markup(THEME_SCRIPT)} /> : null}
       </head>
       <body>
         <LinkPrefetch exclude={NO_PREFETCH}>{children}</LinkPrefetch>

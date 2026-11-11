@@ -57,7 +57,7 @@ const weekday = (day: string) => WEEKDAYS[new Date(`${day}T12:00:00Z`).getUTCDay
 type Day = { day: string; words: number; writingDay: boolean };
 
 // The last seven days as Enarratio's bar chart, oldest first, with the band at or above today's
-// target; the table behind its "Show data" is the same numbers.
+// target; its hidden data table is the same numbers.
 function weekChart(days: Day[], target: number | null) {
   const data = days.map((d) => ({ day: weekday(d.day).slice(0, 3), words: d.words })).reverse();
   const writing = days.filter((d) => d.writingDay);

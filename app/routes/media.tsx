@@ -17,7 +17,8 @@ import { PageHead } from "capsomer/react/page-head";
 import { loadMedia, readMediaQuery, type IntentResult } from "@dustinedwards/site-api/admin";
 
 import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
-import { ScopeChip } from "~/components/scope-chip";
+import { ScopeChip } from "capsomer/react/scope-chip";
+import { Form } from "react-router";
 import { visibleProjects } from "~/lib/people.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
@@ -108,7 +109,15 @@ export default function MediaPage({ loaderData, actionData }: Route.ComponentPro
         title="Media"
         lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`}
         actions={
-          <ScopeChip sites={project.sites} value={project.slug} all={null} action="/media" />
+          <ScopeChip
+            options={project.sites.map((s) => ({ value: s.slug, label: s.name }))}
+            value={project.slug}
+            label="Show media from"
+            all={null}
+            name="site"
+            action="/media"
+            renderForm={(props) => <Form {...props} />}
+          />
         }
       />
       {unavailable || !data ? (

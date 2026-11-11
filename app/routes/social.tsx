@@ -28,6 +28,7 @@ import { xCostMills } from "~/lib/social/platforms.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/social";
+import { formatMoney, moneyInputValue, parseMoneyInput } from "@dustinedwards/site-runtime/money";
 
 export function meta() {
   return [{ title: "Social · Carrel" }];
@@ -86,7 +87,8 @@ export async function action({ request, context }: Route.ActionArgs) {
         enabled: form.get("enabled") === "on",
         mode: form.get("mode") === "auto" ? "auto" : "approval",
         dailyCap: Number(form.get("dailyCap")),
-        monthlyBudgetMills: Math.round(Number(form.get("monthlyBudget") || 0) * 1000),
+        monthlyBudgetMills:
+          parseMoneyInput(String(form.get("monthlyBudget") ?? ""), "usd", { scale: 3 }) ?? 0,
         template: String(form.get("template") ?? ""),
         voiceGuide: String(form.get("voiceGuide") ?? ""),
       });
@@ -207,7 +209,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                       {p.source}
                       {p.title ? ` · for "${p.title}"` : ""}
                       {p.platform === "x"
-                        ? ` · $${(p.costMills / 1000).toFixed(3)} through the API`
+                        ? ` · ${formatMoney(p.costMills, "usd", { scale: 3, digits: 3 })} through the API`
                         : ""}
                     </span>
                   </p>
@@ -326,7 +328,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                           type="number"
                           min={0}
                           step="0.01"
-                          defaultValue={(a.monthlyBudgetMills / 1000).toFixed(2)}
+                          defaultValue={moneyInputValue(a.monthlyBudgetMills, "usd", { scale: 3 })}
                         />
                       </Field>
                     ) : null}
