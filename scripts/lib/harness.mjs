@@ -335,6 +335,13 @@ export const SCREENS = [
     path: `/p/${SITE}/e/what-a-carrel-is-for`,
     wait: ".app-rich-surface",
   },
+  // The site changed under unsaved text in Carrel: the merge view, each difference with its pick.
+  {
+    name: "post-merge",
+    viewer: "owner",
+    path: `/p/${SITE}/e/a-post-that-moved`,
+    wait: ".app-merge",
+  },
   {
     name: "post-scheduled",
     viewer: "owner",

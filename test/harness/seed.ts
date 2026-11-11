@@ -3,7 +3,7 @@
 // Test-only; nothing here is deployed and nothing reaches the network.
 
 import { runMediaIntent } from "@dustinedwards/site-api/admin";
-import { SEARCH_FIELDS } from "@dustinedwards/site-api/frontmatter";
+import { POST_FIELDS, SEARCH_FIELDS } from "@dustinedwards/site-api/frontmatter";
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { nearestPassages, profileOf } from "@dustinedwards/site-runtime/prose";
 
@@ -180,7 +180,8 @@ async function build(base: Env): Promise<World> {
 
   // The site renders all six search fields (site-api v0.17.0), so the editor shows every box.
   const adapter = kindedAdapter(memoryAdapter({ notFound: NOT_FOUND }));
-  adapter.content = { ...adapter.content, searchFields: SEARCH_FIELDS };
+  // It renders every post field too (v0.17.0, v0.22.0), so the editor shows the post fields box whole.
+  adapter.content = { ...adapter.content, searchFields: SEARCH_FIELDS, postFields: POST_FIELDS };
   const [site, gh, saKey, appKey] = [
     fakeSite(adapter),
     fakeNovels(),
@@ -657,6 +658,37 @@ async function build(base: Env): Promise<World> {
   await autosave(db, sitePr, owner, "what-a-carrel-is-for", {
     source: `${draftDoc!.source.trimEnd()}\n\nThe habit is simple: one door, one desk, one thing to finish.\n`,
     baseVersion: draftDoc!.version,
+  });
+
+  // A post the site changed under Dustin's unsaved text in Carrel, so its editor opens on the merge view.
+  const moved = (title: string, tags: string, paras: string[]) =>
+    `---\ntitle: "${title}"\ntags: [${tags}]\n---\n\n${paras.join("\n\n")}\n`;
+  const first = await site.adapter.content.saveDraft("a-post-that-moved", {
+    source: moved("A post that moved", "notes", [
+      "One opening.",
+      "A middle paragraph.",
+      "The close.",
+    ]),
+    expectedVersion: null,
+    changeId: "seed-moved-1",
+  });
+  await autosave(db, sitePr, owner, "a-post-that-moved", {
+    source: moved("A post that moved", "notes, drafts", [
+      "One opening, rewritten in Carrel.",
+      "A middle paragraph, edited in Carrel.",
+      "The close.",
+    ]),
+    baseVersion: first.version,
+  });
+  await site.adapter.content.saveDraft("a-post-that-moved", {
+    source: moved("A post that moved on the site", "notes", [
+      "One opening.",
+      "A middle paragraph, edited on the site.",
+      "The close.",
+      "A paragraph the site added.",
+    ]),
+    expectedVersion: first.version,
+    changeId: "seed-moved-2",
   });
 
   // Flags and AI drafts on the site.

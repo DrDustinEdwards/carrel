@@ -4,7 +4,6 @@
 // width as a Google result sets them (serp-width.ts); too wide only warns. The two faults that block a
 // publish are seo-checks' searchFieldFaults, shown here on their boxes and in the publish gate.
 
-import { useState, type ChangeEvent } from "react";
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
@@ -18,6 +17,7 @@ import {
   type SearchValues,
 } from "@dustinedwards/site-api/frontmatter";
 import { LibraryInsert } from "~/components/media/library-insert";
+import { typedProps, useTyped } from "~/components/editor/typed-box";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { SERP_WIDTH, textWidth } from "~/lib/serp-width";
 import { useHydrated } from "~/lib/hydrated";
@@ -38,16 +38,6 @@ type Props = {
   /** Carrel's media endpoint for the picker; null on a site without a library, where the image is typed. */
   media: { endpoint: string } | null;
 };
-
-/** A text box that keeps what is typed while it has focus: the stored value is trimmed, the typing is not. */
-function useTyped(stored: string) {
-  const [typed, setTyped] = useState<string | null>(null);
-  return {
-    value: typed ?? stored,
-    onBlur: () => setTyped(null),
-    keep: (text: string) => setTyped(text),
-  };
-}
 
 function WidthMeter({
   label,
@@ -100,16 +90,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
   const typed = (
     box: ReturnType<typeof useTyped>,
     field: "searchTitle" | "description" | "image" | "imageAlt" | "canonical",
-  ) => ({
-    className: "cap-input",
-    value: box.value,
-    readOnly: locked,
-    onBlur: box.onBlur,
-    onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      box.keep(event.target.value);
-      write({ [field]: event.target.value });
-    },
-  });
+  ) => typedProps(box, locked, (text) => write({ [field]: text }));
   const faults = searchFieldFaults(front, listed);
   const fault = (field: "imageAlt" | "canonical") => {
     const found = faults.find((f) => f.field === field);

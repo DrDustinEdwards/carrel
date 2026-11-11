@@ -10,8 +10,8 @@ import { drizzle } from "drizzle-orm/d1";
 import { changes, drafts, rooms } from "~/db/schema";
 import { indexDoc } from "~/lib/index.server";
 import { checkLegalWrite } from "~/lib/legal.server";
-import { missingAltRefusal, searchFieldRefusal } from "~/lib/seo-checks";
-import { listedSearchFields } from "~/lib/seo.server";
+import { missingAltRefusal, postFieldRefusal, searchFieldRefusal } from "~/lib/seo-checks";
+import { listedPostFields, listedSearchFields } from "~/lib/seo.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, mayPublish, type Action, type Role } from "~/lib/roles";
@@ -283,7 +283,8 @@ export async function writeToSite(
 
   // An image with no alt text blocks the text going out (Dustin approved, 2026-10-31): a publish, a
   // schedule, or a save to a post the public already sees. The refusal names each image. So do the two
-  // broken search fields: a share image with no alt text, a canonical that is not a full https address.
+  // broken search fields (a share image with no alt text, a canonical that is not a full https address)
+  // and a feature image with no alt text that is not marked decorative.
   if (
     request.action === "publish" ||
     request.action === "schedule" ||
@@ -295,7 +296,8 @@ export async function writeToSite(
         : (current?.source ?? "");
     const refusal =
       missingAltRefusal(outgoing) ??
-      searchFieldRefusal(outgoing, await listedSearchFields(env, project, outgoing, fetcher));
+      searchFieldRefusal(outgoing, await listedSearchFields(env, project, outgoing, fetcher)) ??
+      postFieldRefusal(outgoing, await listedPostFields(env, project, outgoing, fetcher));
     if (refusal) return { ok: false, reason: "refused", message: refusal };
   }
 
@@ -345,7 +347,7 @@ export async function writeToSite(
         reason: "conflict",
         currentVersion: error.body.currentVersion ?? null,
         message:
-          "The post changed on the site since you opened it. Your text is kept here; reload the site's version to compare before saving.",
+          "The post changed on the site since you opened it. Your text is kept here; merge it with the site's copy, then save.",
       };
     }
     // The site's own words for a refusal, a text it cannot take or a write it does not do for this kind.

@@ -4,7 +4,12 @@
 import { searchItems, sitePaths } from "~/lib/index.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { searchFieldsOf, type SearchField } from "@dustinedwards/site-api/frontmatter";
+import {
+  postFieldsOf,
+  searchFieldsOf,
+  type PostField,
+  type SearchField,
+} from "@dustinedwards/site-api/frontmatter";
 
 import { seoCheck, type SeoCheck } from "~/lib/seo-checks";
 import { siteClient, siteConnection } from "~/lib/sites.server";
@@ -25,6 +30,21 @@ export async function listedSearchFields(
   if (!set) return [];
   try {
     return (await siteClient(env, project.site, fetcher).meta()).capabilities.searchFields ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** The post fields the site renders (capabilities.postFields), asked only when the source has a feature image, the one a publish checks. */
+export async function listedPostFields(
+  env: Env,
+  project: SiteProject,
+  source: string,
+  fetcher?: typeof fetch,
+): Promise<PostField[]> {
+  if (!postFieldsOf(splitSource(source.replace(/\r\n/g, "\n")).front).featureImage) return [];
+  try {
+    return (await siteClient(env, project.site, fetcher).meta()).capabilities.postFields ?? [];
   } catch {
     return [];
   }
