@@ -23,7 +23,12 @@ import {
   truncateForSerp,
 } from "@drdustinedwards/site-helpers/head";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { searchFieldsOf, type SearchField } from "@dustinedwards/site-api/frontmatter";
+import {
+  missingAltFields,
+  searchFieldsOf,
+  type PostField,
+  type SearchField,
+} from "@dustinedwards/site-api/frontmatter";
 
 import { legalTypeOf } from "~/lib/legal";
 
@@ -213,6 +218,24 @@ export function searchFieldFaults(
     });
   }
   return faults;
+}
+
+/** The feature image's fault that blocks a publish where the site lists it: no alt text, and not marked decorative. */
+export function featureImageFault(
+  front: string | null,
+  listed: readonly PostField[],
+): string | null {
+  return missingAltFields(front, { postFields: listed }).includes("featureImageAlt")
+    ? "The feature image has no alt text"
+    : null;
+}
+
+/** Why a publish is refused for the post fields, or null when they are sound. */
+export function postFieldRefusal(source: string, listed: readonly PostField[]): string | null {
+  const fault = featureImageFault(splitSource(source.replace(/\r\n/g, "\n")).front, listed);
+  return fault
+    ? `${fault}. Describe it, mark it decorative, or remove it before the post goes out.`
+    : null;
 }
 
 /** Why a publish is refused for the search fields, or null when they are sound. */

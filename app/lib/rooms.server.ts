@@ -158,6 +158,44 @@ export async function replaceRoom(
     throw new Response("Open the file before replacing its text.", { status: 409 });
 }
 
+/**
+ * A merge of the room's text with the site's newer copy: the merged text goes in for everyone, standing
+ * on the site's version, so the next save goes through. Refused (false) when anyone typed since the
+ * merge was read, or the room moved on, so nothing typed is lost: the page shows the merge again.
+ */
+export async function mergeRoom(
+  env: Env,
+  project: Where,
+  viewer: Viewer,
+  itemId: string,
+  input: {
+    from: { markdown: string; version: string | null };
+    site: { source: string; version: string };
+    merged: string;
+  },
+): Promise<boolean> {
+  if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
+  const room = await stub(env, project.id, itemId);
+  return room.replace({
+    markdown: input.merged,
+    version: input.site.version,
+    by: viewer.name || viewer.email,
+    expectedVersion: input.from.version,
+    expectedMarkdown: input.from.markdown,
+    saved: input.site.source,
+  });
+}
+
+/** The room's text and the version it stands on, now. */
+export async function roomText(
+  env: Env,
+  project: Where,
+  itemId: string,
+): Promise<{ markdown: string; version: string | null }> {
+  const snap = await (await stub(env, project.id, itemId)).snapshot();
+  return { markdown: snap.markdown, version: snap.version };
+}
+
 /** The room's version now, for a write that sends no text (unpublish, unschedule). */
 export async function roomVersion(
   env: Env,

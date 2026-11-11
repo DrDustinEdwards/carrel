@@ -24,7 +24,7 @@ import {
   suggestingDispatch,
   suggestionPlugins,
 } from "~/lib/editor/suggest";
-import { openRoom, saveRoom } from "~/lib/rooms.server";
+import { mergeRoom, openRoom, saveRoom } from "~/lib/rooms.server";
 import { ROLE_RECHECK_MS } from "../workers/doc-room";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
@@ -190,6 +190,27 @@ describe("a room", () => {
       unsaved: true,
       behind: true,
     });
+
+    // A merge read before someone typed again is refused, so their typing is not lost.
+    const site = { source: "Three.\n", version: "v3" };
+    const from = { markdown: behind!.source, version: behind!.version };
+    edit(a.doc, typeAtEnd(" More."));
+    await a.flush();
+    expect(
+      await mergeRoom(testEnv, project("owner"), owner, itemId, { from, site, merged: "x\n" }),
+    ).toBe(false);
+    // The merge of the room's text now stands on the site's version, still unsaved, so a save goes through.
+    const now = { markdown: "One, from the AI door. Mine. More.\n", version: "v2" };
+    const merged = "Three.\n\nOne, from the AI door. Mine. More.\n";
+    expect(
+      await mergeRoom(testEnv, project("owner"), owner, itemId, { from: now, site, merged }),
+    ).toBe(true);
+    expect(
+      await openRoom(testEnv, project("owner"), owner, itemId, { dialect: "site", current: site }),
+    ).toMatchObject({ source: merged, version: "v3", unsaved: true, behind: false });
+    await expect(
+      mergeRoom(testEnv, project("reader"), owner, itemId, { from: now, site, merged }),
+    ).rejects.toMatchObject({ status: 403 });
     a.close();
   });
 

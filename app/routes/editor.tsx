@@ -23,6 +23,8 @@ import { commentsTab, Inspector } from "~/components/editor/inspector";
 import { useEditorLayout } from "~/components/editor/layout";
 import { ScheduleDialog } from "~/components/editor/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { MergeView } from "~/components/editor/merge-view";
+import { PostFields } from "~/components/editor/post-fields";
 import { SearchFields } from "~/components/editor/search-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 import { useRoomEditing } from "~/components/editor/room-editing";
@@ -51,9 +53,12 @@ import {
   type WriteOutcome,
 } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { listRevisions } from "~/lib/history.server";
+import { listRevisions, readRevision } from "~/lib/history.server";
+import { choicesOf, merged, type Pick } from "~/lib/merge";
+import { mergePlan } from "~/lib/merge.server";
+import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { type SearchField } from "@dustinedwards/site-api/frontmatter";
+import { type PostField, type SearchField } from "@dustinedwards/site-api/frontmatter";
 import { listSections } from "~/lib/legal.server";
 import { kindNoun, kindWord } from "~/lib/kind-words";
 import { siteState } from "~/lib/save-state";
@@ -68,17 +73,19 @@ import { PageHead } from "capsomer/react/page-head";
 import type { RoomViewer } from "~/lib/editor/room-protocol";
 import { can } from "~/lib/roles";
 import {
+  mergeRoom,
   openRoom,
   rebaseRoom,
   replaceRoom,
   roomPath,
+  roomText,
   roomVersion,
   saveRoom,
   siteCoauthors,
   withOthers,
 } from "~/lib/rooms.server";
 import type { ChartFinding } from "~/lib/chart-check.client";
-import { imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
+import { featureImageFault, imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
@@ -91,6 +98,29 @@ const HISTORY_SHOWN = 8;
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.title || data.itemId} · Carrel` : "Carrel" }];
+}
+
+/**
+ * The merge of the room's unsaved text with the site's newer copy, over the site's own revision of the
+ * version the room started from (null when the site no longer holds it). `from` is the room's text as
+ * a hash, so the merge is refused if anyone typed after it was read.
+ */
+async function mergeOf(
+  env: Env,
+  project: Parameters<typeof readRevision>[1],
+  itemId: string,
+  room: { markdown: string; version: string | null },
+  site: { source: string; version: string },
+) {
+  const base = room.version
+    ? await readRevision(env, project, itemId, room.version).catch(() => null)
+    : null;
+  return {
+    plan: mergePlan(room.markdown, site.source, base),
+    from: await sha256Hex(room.markdown),
+    fromVersion: room.version ?? "",
+    siteVersion: site.version,
+  };
 }
 
 export async function loader({ params, context }: Route.LoaderArgs) {
@@ -126,6 +156,17 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     current: doc ? { source: doc.source, version: doc.version } : null,
     unknown: Boolean(siteError),
   });
+  // The site moved on under unsaved text: someone who may edit merges the two before the next save.
+  const merge =
+    opened?.behind && doc && can(project.role, "edit")
+      ? await mergeOf(
+          env,
+          project,
+          itemId,
+          { markdown: opened.source, version: opened.version },
+          doc,
+        )
+      : null;
   const roomViewer: RoomViewer = {
     id: viewer.id,
     name: viewer.name || viewer.email,
@@ -167,6 +208,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   let scheduledUpdates = false;
   // The search fields the site renders (site-api v0.17.0), one box each in the editor.
   let searchFields: SearchField[] = [];
+  // The post fields the site renders (site-api v0.17.0, v0.22.0): only those get a box.
+  let postFields: PostField[] = [];
   // The text of an update waiting on the live post, so its Author or the Owner can open it again.
   let pendingUpdate: { publishAt: string; source: string } | null = null;
   if (doc?.scheduledUpdate) {
@@ -185,6 +228,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
           : null;
       scheduledUpdates = capabilities.scheduledUpdates === true;
       searchFields = capabilities.searchFields ?? [];
+      postFields = capabilities.postFields ?? [];
     } catch {
       mediaAccept = null;
     }
@@ -217,6 +261,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     canDismiss: can(project.role, "publish"),
     scheduledUpdates,
     searchFields,
+    postFields,
     pendingUpdate,
     title: doc?.title ?? "",
     kind: doc?.kind ?? null,
@@ -241,6 +286,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     ownDraft: opened?.ownDraft ?? null,
     // The site moved on since the room's copy was started: saving it would be refused as stale.
     behind: opened?.behind ?? false,
+    merge,
     room: opened
       ? {
           path: roomPath("p", project.slug, itemId),
@@ -286,6 +332,7 @@ type ActionResult =
   | { intent: "discard"; discarded: true }
   | { intent: "publish"; needsConfirm: true }
   | { intent: "dismiss-flag"; dismissed: number }
+  | { intent: "merge"; ok: boolean; message: string }
   | { intent: "write"; outcome: WriteOutcome }
   | { intent: "google"; ok: boolean; message: string; url?: string; imported?: boolean };
 
@@ -350,6 +397,47 @@ export async function action({
       });
       await discardDraft(env.DB, project, viewer, itemId);
       return { intent: "discard", discarded: true };
+    }
+    case "merge": {
+      // The picks are applied to the merge as it stands now, read again, never to text the browser sends.
+      if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
+      let picks: Pick[];
+      try {
+        picks = JSON.parse(String(form.get("picks") ?? "")) as Pick[];
+      } catch {
+        throw new Response("Bad request", { status: 400 });
+      }
+      if (
+        !Array.isArray(picks) ||
+        !picks.every((p) => p === "mine" || p === "theirs" || p === "both")
+      )
+        throw new Response("Bad request", { status: 400 });
+      const room = await roomText(env, project, itemId);
+      const site = await readDoc(env, project, itemId);
+      if (!site)
+        throw new Response("Only a post on the site has a copy to merge with.", { status: 400 });
+      const now = await mergeOf(env, project, itemId, room, site);
+      const moved = {
+        intent,
+        ok: false,
+        message:
+          "The text changed while you were merging, so the merge is shown again with the newest text.",
+      } as const;
+      if (
+        now.from !== form.get("from") ||
+        now.fromVersion !== form.get("fromVersion") ||
+        now.siteVersion !== form.get("siteVersion") ||
+        choicesOf(now.plan).length !== picks.length
+      )
+        return moved;
+      const done = await mergeRoom(env, project, viewer, itemId, {
+        from: room,
+        site,
+        merged: merged(now.plan, picks),
+      });
+      return done
+        ? { intent, ok: true, message: "Merged for everyone. Save to send it to the site." }
+        : moved;
     }
     case "drop-own-draft":
       await discardDraft(env.DB, project, viewer, itemId);
@@ -655,6 +743,20 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           : "Enter the original's full https:// address, or clear the box.",
     });
   }
+  // A feature image with no alt text blocks it too, unless marked decorative (the site refuses it).
+  const featureFault = featureImageFault(splitSource(source).front, data.postFields);
+  if (featureFault) {
+    gateChecks.push({
+      id: "post-featureImageAlt",
+      name: "Feature image alt text",
+      required: true,
+      ok: false,
+      cause: featureFault,
+      pass: "Sound",
+      href: "#post-fields",
+      fix: "Describe the feature image, mark it decorative, or remove it.",
+    });
+  }
   // The other search and sharing checks are advisory: the gate names each and points to the panel.
   for (const [i, f] of (seo?.findings ?? []).entries()) {
     if (f.check === "image-alt" || f.check === "imageAlt" || f.check === "canonical") continue;
@@ -742,9 +844,27 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="The site's copy changed">
-            It changed after this copy was started, so saving it will be refused. Discard the
-            unsaved changes to load the site's version, then make them again.
+            {data.merge && mayEdit
+              ? "It changed after this text was started, so a save is refused until the two are merged below. Nothing here is lost."
+              : "It changed after this text was started, so a save is refused until someone who may edit merges the two."}
           </Banner>
+        ) : null}
+        {data.merge && mayEdit && !readOnly ? (
+          <MergeView
+            key={`${data.merge.from}:${data.merge.siteVersion}`}
+            plan={data.merge.plan}
+            busy={busy}
+            apply={(picks) =>
+              void send("merge", {
+                picks: JSON.stringify(picks),
+                from: data.merge!.from,
+                fromVersion: data.merge!.fromVersion,
+                siteVersion: data.merge!.siteVersion,
+              }).then((result) => {
+                if (result.intent === "merge") say(result.message);
+              })
+            }
+          />
         ) : null}
         {data.ownDraft && mayEdit ? (
           <Banner
@@ -999,6 +1119,16 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     kind={data.kind}
                     searchFields={seo ? data.searchFields : []}
                   />
+                  {data.postFields.length > 0 && (!data.kind || data.kind === "post") ? (
+                    <PostFields
+                      source={source}
+                      onChange={setSource}
+                      readOnly={readOnly || !mayEdit}
+                      listed={data.postFields}
+                      origin={data.origin}
+                      media={data.media}
+                    />
+                  ) : null}
                   {mayEdit ? (
                     <AiWriteButtons
                       action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
