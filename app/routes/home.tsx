@@ -3,21 +3,22 @@
 // tools, because the menu already has them. The needs that D1 knows are in the page; the mention counts are
 // asked of each site and arrive after, so a slow site never holds Home.
 //
-// Later sets a row aside until 8 am tomorrow in the person's time zone, or sooner when the need changes
-// (desk.server.ts laterUntil, markLater). The row leaves at once, focus moves to the next row, and the message
-// offers Undo; the Later tab lists what is set aside, with Bring back. On a row, j and k move (row-list's own
-// keys) and l sets it aside: single keys that act only while focus is on a row (WCAG 2.1.4).
+// The queue is Capsomer's NeedsList (attention-list): Later sets a row aside until 8 am tomorrow in the
+// person's time zone (capsomer/behavior/time laterUntil), or sooner when the need changes (desk.server.ts
+// setLater); the row leaves at once, focus moves to the next row, and the message offers Undo; the Later tab
+// lists what is set aside, with Bring back. j, k and l are the list's own keys.
 
-import { Suspense, useEffect, useId, useSyncExternalStore } from "react";
-import { Await, useFetcher, useSubmit } from "react-router";
-import { Link, routerRenderLink } from "capsomer/react/link";
-import { useMessage } from "capsomer/react/message";
+import { Suspense, useSyncExternalStore } from "react";
+import { Await, useSubmit } from "react-router";
+import { NeedsList, type NeedLinkProps } from "capsomer/react/attention-list";
+import { laterUntil } from "capsomer/behavior/time";
+import { useRouterRowForm } from "capsomer/react/router";
+import { Link } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
-import { Pill } from "capsomer/react/status";
 import { TabsNav } from "capsomer/react/tabs";
 import { Time } from "capsomer/react/time";
 
@@ -25,7 +26,6 @@ import { getEnv, getViewer, getZone } from "~/lib/context";
 import {
   bringBack,
   continueWriting,
-  laterUntil,
   mentionNeeds,
   needsYou,
   setLater,
@@ -34,7 +34,7 @@ import {
   type NeedGroup,
 } from "~/lib/desk.server";
 import { readForm } from "~/lib/form.server";
-import { useBrowserZone } from "capsomer/react/hooks";
+import { useBrowserZone } from "~/lib/hydrated";
 import { visibleProjects } from "~/lib/people.server";
 
 import type { Route } from "./+types/home";
@@ -102,101 +102,6 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 }
 
-const URGENCY = {
-  blocking: { title: "Blocking", tone: "crit" as const },
-  waiting: { title: "Waiting for you", tone: "info" as const },
-};
-
-/** The row that holds keyboard focus on Home's list, if any. */
-function focusedNeedRow(): HTMLElement | null {
-  return document.activeElement?.closest<HTMLElement>(".app-need-row") ?? null;
-}
-
-/**
- * Moves focus off a row that is about to leave: to the next row's title, else the previous one's, else the
- * current filter tab, so a keyboard user keeps their place.
- */
-function focusNeighbor(row: HTMLElement) {
-  const list = row.closest("[data-cap='row-list']");
-  const rows = list ? Array.from(list.querySelectorAll<HTMLElement>(".app-need-row")) : [];
-  const at = rows.indexOf(row);
-  const next = rows[at + 1] ?? rows[at - 1];
-  const target =
-    next?.querySelector<HTMLElement>(".cap-row-title :is(a, button)") ??
-    row.closest(".cap-panel")?.querySelector<HTMLElement>("[aria-current='page']");
-  target?.focus();
-}
-
-function NeedRow({
-  need,
-  zone,
-  noteId,
-  onBack,
-}: {
-  need: Need;
-  zone: string;
-  noteId: string;
-  onBack: (need: Need) => void;
-}) {
-  const fetcher = useFetcher<typeof action>();
-  const { say } = useMessage();
-  // The row leaves the list as soon as it is sent; it is back if the server refused it.
-  if (fetcher.state !== "idle") return null;
-  const aside = need.later !== undefined;
-  return (
-    <Row
-      className="app-need-row"
-      title={need.title}
-      href={need.action.href}
-      detail={need.detail}
-      meta={
-        aside ? (
-          <span>
-            Back <Time at={need.later!} />
-          </span>
-        ) : need.at ? (
-          <Time at={need.at} />
-        ) : undefined
-      }
-      renderLink={routerRenderLink}
-      actions={
-        <>
-          <fetcher.Form
-            method="post"
-            onSubmit={(e) => {
-              const row = e.currentTarget.closest<HTMLElement>(".app-need-row");
-              if (row) focusNeighbor(row);
-              if (aside) say(`Back on Home: ${need.title}`);
-              else
-                say(`Set for later, until tomorrow morning: ${need.title}`, {
-                  undo: () => onBack(need),
-                  undone: `Back on Home: ${need.title}`,
-                });
-            }}
-          >
-            <input type="hidden" name="intent" value={aside ? "back" : "later"} />
-            <input type="hidden" name="need" value={need.id} />
-            <input type="hidden" name="title" value={need.title} />
-            <input type="hidden" name="zone" value={zone} />
-            <button
-              type="submit"
-              className="cap-btn"
-              data-variant="quiet"
-              data-later=""
-              aria-describedby={aside ? undefined : noteId}
-            >
-              {aside ? "Bring back" : "Later"}
-            </button>
-          </fetcher.Form>
-          <Link to={need.action.href} className="cap-btn" data-variant="primary">
-            {need.action.label}
-          </Link>
-        </>
-      }
-    />
-  );
-}
-
 const noSubscribe = () => () => {};
 
 /** The key that opens search: ⌘ on a Mac once hydrated, Ctrl until then and elsewhere. */
@@ -208,91 +113,36 @@ function useSearchKey(): string {
   );
 }
 
+const needLink = ({ href, children, ...rest }: NeedLinkProps) => (
+  <Link to={href} {...rest}>
+    {children}
+  </Link>
+);
+
 function Needs({ needs, show, zone }: { needs: Need[]; show: Show; zone: string }) {
-  const noteId = useId();
   const submit = useSubmit();
   const searchKey = useSearchKey();
-  // l on a row sets it aside (Bring back in the Later tab); only while focus is on a row, so the key is the
-  // row's own and typing elsewhere never fires it (WCAG 2.1.4). It also obeys the network's switch for single
-  // keys (data-cap-single-keys on <html>), as row-list's j and k do.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "l" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
-      if (document.documentElement.dataset.capSingleKeys === "off") return;
-      const button = focusedNeedRow()?.querySelector<HTMLButtonElement>("[data-later]");
-      if (!button) return;
-      e.preventDefault();
-      button.click();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
-  const onBack = (need: Need) => {
-    void submit({ intent: "back", need: need.id }, { method: "post", navigate: false });
-  };
-  const rows = needs.filter((n) =>
-    show === "later"
-      ? n.later !== undefined
-      : n.later === undefined && (show === "all" || n.group === show),
-  );
-  if (rows.length === 0)
-    return show === "later" ? (
-      <Empty kind="all-clear" flush title="Nothing set aside">
-        Later on a row hides it until tomorrow morning.
-      </Empty>
-    ) : (
-      <Empty kind="all-clear" flush title="Nothing needs you">
-        {show === "all" ? "Everything waiting on you is done." : "Nothing here. Try All."}
-      </Empty>
-    );
-  // One list, so j and k move through Blocking and Waiting alike; the urgency headings sit between the rows.
   return (
-    <>
-      <RowList label={show === "later" ? "Set aside for later" : "Needs you"}>
-        {(["blocking", "waiting"] as const).map((u) => {
-          const group = rows.filter((n) => n.urgency === u);
-          if (group.length === 0) return null;
-          return [
-            <li key={u} className="app-need-group">
-              <h3 className="app-need-head">
-                <Pill tone={URGENCY[u].tone === "crit" ? "crit" : undefined} variant="secondary">
-                  {URGENCY[u].title}
-                </Pill>
-                <span className="app-need-count">{group.length}</span>
-              </h3>
-            </li>,
-            ...group.map((n) => (
-              <NeedRow key={n.id} need={n} zone={zone} noteId={noteId} onBack={onBack} />
-            )),
-          ];
-        })}
-      </RowList>
-      <p className="app-need-keys">
-        <span className="app-need-key">
-          <kbd>j</kbd> <kbd>k</kbd> move
-        </span>
-        <span className="app-need-key">
-          <kbd>Enter</kbd> open
-        </span>
-        <span className="app-need-key">
-          <kbd>l</kbd> {show === "later" ? "bring back" : "later"}
-        </span>
-        <span className="app-need-key">
-          <kbd>{searchKey}</kbd> <kbd>K</kbd> search
-        </span>
-        <span id={noteId}>
-          {show === "later"
-            ? "These come back on their own at 8 am, or sooner if they change."
-            : "Later hides a row until 8 am tomorrow, or sooner if it changes."}
-        </span>
-      </p>
-    </>
+    <NeedsList
+      needs={needs}
+      show={show}
+      zone={zone}
+      renderLink={needLink}
+      useRowForm={useRouterRowForm}
+      searchKey={searchKey}
+      onBack={(need) =>
+        void submit({ intent: "back", need: need.id }, { method: "post", navigate: false })
+      }
+    />
   );
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { isOwner, hasProjects, show, needs, mentions, resume, typed, googleMessage } = loaderData;
   const zone = useBrowserZone(loaderData.zone);
+  const link = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <Link to={href}>{children}</Link>
+  );
   return (
     <div className="app-page">
       <PageHead
@@ -355,7 +205,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                       key={r.href}
                       title={r.title}
                       href={r.href}
-                      renderLink={routerRenderLink}
+                      renderLink={link}
                       detail={r.projectName}
                       meta={<Time at={r.at} />}
                     />
@@ -375,7 +225,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                       key={t.href}
                       title={t.name}
                       href={t.href}
-                      renderLink={routerRenderLink}
+                      renderLink={link}
                       meta={`${t.words.toLocaleString("en-US")} words`}
                     />
                   ))}

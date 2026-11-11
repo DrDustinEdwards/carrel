@@ -7,7 +7,7 @@
 // "By word" sets the same two texts against each other sentence by sentence.
 
 import { Form } from "react-router";
-import { Link, routerRenderLink } from "capsomer/react/link";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
@@ -24,6 +24,8 @@ import {
   type View,
 } from "~/components/history/history-view";
 import { RevisionPicker } from "~/components/history/revision-picker";
+import { comparePicks } from "capsomer/behavior/history-list";
+import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, readDraft, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -70,7 +72,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 
   const noun = kindNoun(doc?.kind);
   const list = revisions ?? [];
-  const picks = query.getAll("v");
+  // Two picks, older first: `?from=&to=` from the Compare link, or `?compare=` twice from the form.
+  const atOf = (version: string) =>
+    Date.parse(list.find((r) => r.version === version)?.at ?? "") || 0;
+  const picks = comparePicks(query, atOf) ?? query.getAll("compare");
   let view: View = { kind: "none" };
   let picked: string[] = [];
 
@@ -317,7 +322,7 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
   return (
     <div className="app-page">
       <PageHead
-        renderLink={routerRenderLink}
+        renderLink={RouterLink}
         crumbs={[
           { label: project.name, href: `/p/${project.slug}` },
           { label: title || itemId, href: editor },

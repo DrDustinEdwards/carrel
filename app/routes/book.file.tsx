@@ -4,8 +4,8 @@
 // from. Beside a scene: its flags and the bible entries it names.
 
 import { useEffect, useRef, useState } from "react";
-import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
-import { Link, routerRenderLink } from "capsomer/react/link";
+import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
+import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -21,10 +21,12 @@ import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { HeaderFields } from "~/components/editor/header-fields";
-import { commentsTab, Inspector } from "~/components/editor/inspector";
+import { Inspector } from "capsomer/react/inspector";
+import { commentsTab } from "~/components/editor/comments-tab";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { useSaveShortcut } from "~/components/editor/save-keys";
 import { useTypingRecede } from "~/components/editor/typing";
+import { RouterLink } from "~/components/frame";
 import { Binder } from "~/components/writing/binder";
 
 import {
@@ -321,6 +323,8 @@ type Ask = {
 };
 
 function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
+  // `?tab=checks` opens the inspector on that tab (a link from Home's flags lands on the checks).
+  const [params] = useSearchParams();
   const [asking, setAsking] = useState<Ask | null>(null);
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
@@ -420,7 +424,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor">
       <PageHead
-        renderLink={routerRenderLink}
+        renderLink={RouterLink}
         crumbs={crumbs}
         title={data.label}
         lead={
@@ -511,12 +515,14 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         </div>
 
         <Inspector
+          className="app-editor-side"
+          initialTab={params.get("tab")}
           label={data.kind === "scene" ? "About this scene" : "About this file"}
           head={
             <>
               {data.canEdit ? (
                 <Panel title="This file" src={data.version ? "In Git" : "Only in Carrel so far"}>
-                  <div className="cap-stack" data-gap="4">
+                  <div className="app-stack" data-tight>
                     <p role="status" className="app-savestate">
                       {saveState}
                     </p>
@@ -531,7 +537,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         ]}
                       />
                     ) : null}
-                    <div className="cap-cluster" data-gap="3">
+                    <div className="app-actions">
                       <Button
                         variant="primary"
                         pending={busy}
@@ -584,9 +590,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Checks",
               count: openFlags,
               content: (
-                <div className="cap-stack" data-gap="6">
+                <div className="app-stack">
                   <Panel title="Flags" count={openFlags} src="From the last save" id="flags">
-                    <div className="cap-stack" data-gap="4">
+                    <div className="app-stack" data-tight>
                       <p className="cap-muted app-note">
                         A flag never stops a save; it holds export until it is fixed or the Owner
                         dismisses it.
@@ -620,7 +626,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         </ul>
                       )}
                       {checked ? (
-                        <div role="status" className="cap-stack" data-gap="4">
+                        <div role="status" className="app-stack" data-tight>
                           <h3 className="app-subhead">This text, checked now</h3>
                           {checked.length === 0 ? (
                             <p>Nothing flagged.</p>
@@ -650,7 +656,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       count={data.aiDrafts.length}
                       src="None has touched the text or Git"
                     >
-                      <div className="cap-stack" data-gap="4">
+                      <div className="app-stack" data-tight>
                         {data.aiDrafts.map((d) => (
                           <Disclosure
                             key={d.id}
@@ -665,7 +671,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           >
                             {d.note ? <p>{d.note}</p> : null}
                             <p className="app-bible-body">{d.source}</p>
-                            <div className="cap-cluster" data-gap="3">
+                            <div className="app-actions">
                               <Link
                                 className="cap-btn"
                                 data-size="sm"
@@ -697,13 +703,13 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Bible",
               content:
                 data.kind !== "scene" ? null : (
-                  <div className="cap-stack" data-gap="6">
+                  <div className="app-stack">
                     {data.kind === "scene" ? (
                       <Panel title="From the bible" count={data.bible.length}>
                         {data.bible.length === 0 ? (
                           <p className="cap-muted">No entries match this scene's header.</p>
                         ) : (
-                          <div className="cap-stack" data-gap="4">
+                          <div className="app-stack" data-tight>
                             {data.bible.map((b) => (
                               <Disclosure
                                 key={b.path}
