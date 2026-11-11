@@ -20,7 +20,7 @@ jobs:
     with:
       bucket: carrel-backups
       # The same d1-dump release the nightly dump runs (package.json).
-      d1-dump-ref: v0.8.0
+      d1-dump-ref: v0.16.0
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
