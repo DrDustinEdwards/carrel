@@ -1,6 +1,6 @@
 // Writing 1: the status, summary, target and limit header keys; each project's
 // status list; the outliner; and daily progress, which counts only typed words. The day, pace and
-// streak maths and the status list's checks are Capsomer's (writing-progress, label-color-list) and
+// streak math and the status list's checks are Capsomer's (writing-progress, label-color-list) and
 // tested there.
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
