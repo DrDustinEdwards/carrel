@@ -21,7 +21,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { people, reports } from "~/db/schema";
-import { deployedSha } from "@dustinedwards/site-runtime/deploy";
+import { deployedSha } from "@dustinedwards/site-runtime/health";
 import { visibleProjects, type Viewer } from "~/lib/people.server";
 
 export const SIGNED_IN_REPORT_NAME = "signed-in-security";

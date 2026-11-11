@@ -18,6 +18,8 @@ import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
 import {
+  deployedAt,
+  deployedSha,
   durableObjectCheck,
   emailCheck,
   healthResponse,
@@ -37,7 +39,6 @@ import {
 } from "~/db/schema";
 import { backupStatus } from "~/lib/backup.server";
 import { ALL_JOBS } from "~/lib/cron-schedule";
-import { deployedAt, deployedSha } from "@dustinedwards/site-runtime/deploy";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
 import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
