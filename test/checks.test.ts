@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { chartBlock } from "~/lib/chart-block";
+import { chartBlock } from "@drdustinedwards/site-helpers/source";
 import { checkCharts, suggestFinding } from "~/lib/chart-check.client";
 import {
   checkContinuity,
