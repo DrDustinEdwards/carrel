@@ -140,7 +140,7 @@ describe("restoring a revision", () => {
 
 describe("comparing revisions", () => {
   it("sets the older revision against the newer whichever was picked first, from the site's own patch", async () => {
-    const data = await load("reader@test.invalid", `?v=${versions[2]}&v=${versions[0]}`);
+    const data = await load("reader@test.invalid", `?from=${versions[2]}&to=${versions[0]}`);
     expect(data.picked).toEqual([versions[0], versions[2]]);
     expect(data.view.kind).toBe("compare");
     const patch = (data.view as { patch: string }).patch;
@@ -151,7 +151,10 @@ describe("comparing revisions", () => {
   });
 
   it("by word, hands the two revisions' texts to the word compare, older as Before", async () => {
-    const data = await load("reader@test.invalid", `?v=${versions[0]}&v=${versions[1]}&by=word`);
+    const data = await load(
+      "reader@test.invalid",
+      `?compare=${versions[0]}&compare=${versions[1]}&by=word`,
+    );
     expect(data.view).toMatchObject({
       kind: "compare",
       patch: null,
@@ -162,9 +165,9 @@ describe("comparing revisions", () => {
 
   it("refuses one pick, the same pick twice and a pick the site does not hold, in words", async () => {
     for (const search of [
-      `?v=${versions[0]}`,
-      `?v=${versions[0]}&v=${versions[0]}`,
-      `?v=${versions[0]}&v=nope`,
+      `?compare=${versions[0]}`,
+      `?compare=${versions[0]}&compare=${versions[0]}`,
+      `?compare=${versions[0]}&compare=nope`,
     ]) {
       const data = await load("reader@test.invalid", search);
       expect(data.view, search).toMatchObject({
