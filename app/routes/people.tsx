@@ -211,7 +211,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
   const navigate = useNavigate();
   const person = (
     <Form method="post" action="/people" className="app-form">
-      <div className="app-fields">
+      <div className="cap-fields">
         <Field label="Email" required>
           <input className="cap-input" type="email" name="email" required autoComplete="off" />
         </Field>
@@ -250,7 +250,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
         For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never
         as you.
       </p>
-      <div className="app-fields">
+      <div className="cap-fields">
         <Field label="Agent name" required help="Lower case, such as grok.">
           <input
             className="cap-input"

@@ -297,7 +297,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                       {a.platform} · @{a.handle} · {a.kind}
                     </span>
                   </h3>
-                  <div className="app-fields">
+                  <div className="cap-fields">
                     <Check name="enabled" defaultChecked={a.enabled} label="On" />
                     <Field label="Mode">
                       <Select
@@ -365,7 +365,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
             }
           >
             <Form method="post" className="cap-stack">
-              <div className="app-fields">
+              <div className="cap-fields">
                 <Field label="Key" required>
                   <input
                     className="cap-input"

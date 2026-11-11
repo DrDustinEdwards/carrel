@@ -144,25 +144,30 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
   // A card's "Move to" sits inside the list's form, so its buttons belong to a form of their own
   // placed after the list (the form attribute), never a form nested in another.
   const moveForm = (c: Card) => `move-${c.path.replace(/[^a-z0-9]+/g, "-")}`;
+  // Capsomer's card (card.css): the title is its heading link, stretched over the card, with the
+  // status beside it; the summary is its content; the facts and Move to are its footer. In the
+  // sortable list the item is the card's box, so the card keeps only its regions.
   const card = (c: Card, chapter: string) => (
-    <div className="app-card">
-      <div className="app-card-head">
-        <Link to={`${base}/f/${c.path}`} className="app-card-title">
-          {c.title}
-        </Link>
+    <article className="cap-card">
+      <header>
+        <h3>
+          <Link to={`${base}/f/${c.path}`} className="cap-card-link">
+            {c.title}
+          </Link>
+        </h3>
         <StatusLabelPill labels={labels} status={c.status} />
-      </div>
-      <p className={c.fromText ? "app-card-summary cap-muted" : "app-card-summary"}>
+      </header>
+      <p>
         {c.summary || "No summary yet."}
         {c.fromText && c.summary ? (
           <span className="cap-sr-only"> (the scene's first sentence; it has no summary)</span>
         ) : null}
       </p>
-      <div className="app-card-foot">
-        <p className="app-card-facts cap-muted">
+      <footer>
+        <span>
           {c.pov ? <>{c.pov}, </> : null}
           {c.words.toLocaleString("en-US")} words
-        </p>
+        </span>
         {canMove && chapters.length > 1 ? (
           // Move to each other chapter. Its buttons submit the card's own form (`form`), since the
           // card sits inside its chapter's list form and forms do not nest.
@@ -180,8 +185,8 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
               .map((x) => ({ label: x.title, value: x.slug }))}
           />
         ) : null}
-      </div>
-    </div>
+      </footer>
+    </article>
   );
 
   return (
@@ -293,11 +298,16 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
                   ))
                 : null}
               {canMove ? null : (
-                <ol className="app-cards" aria-labelledby={`cork-${chapter.slug}`}>
-                  {chapter.cards.map((c) => (
-                    <li key={c.path}>{card(c, chapter.slug)}</li>
-                  ))}
-                </ol>
+                <SortableList
+                  items={chapter.cards}
+                  getId={(c) => c.path}
+                  getLabel={(c) => c.title}
+                  layout="cards"
+                  readOnly
+                  aria-labelledby={`cork-${chapter.slug}`}
+                  renderItem={(c) => card(c, chapter.slug)}
+                  onReorder={() => {}}
+                />
               )}
             </Panel>
           ))}
