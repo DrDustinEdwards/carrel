@@ -8,7 +8,7 @@
 // site audit use, so a draft is held to what the published page is measured against. Prelum sets no
 // floor for a description; DESCRIPTION_MIN is Carrel's.
 //
-// Each site names these fields differently, so SOCIAL_FIELDS holds one entry per site, as FIGURES in
+// Each site names these fields differently, so SOCIAL_FIELDS holds one entry per site, as FIGURE_SITES in
 // site-markdown.ts does: shared by the server and the browser. A site on site-api v0.17.0 lists the shared
 // search fields it renders (capabilities.searchFields), and a listed one comes before the site's own key.
 //
@@ -23,6 +23,7 @@ import {
   truncateForSerp,
 } from "@drdustinedwards/site-helpers/head";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { imagesWithoutAlt, isAbsoluteHttps } from "@drdustinedwards/site-helpers/source";
 import {
   missingAltFields,
   searchFieldsOf,
@@ -146,60 +147,7 @@ export const titleSuffixOf = (site: string): string => SOCIAL_FIELDS[site]?.titl
 
 const plural = (n: number) => `${n} character${n === 1 ? "" : "s"}`;
 
-/** Each image in a body with no alt text, or an empty one: Markdown, HTML and a `:::figure` directive. Code is skipped. */
-export function imagesWithoutAlt(source: string): { excerpt: string; src: string; line: number }[] {
-  const text = source.replace(/\r\n/g, "\n");
-  const { body } = splitSource(text);
-  const startLine = text.slice(0, text.length - body.length).split("\n").length;
-  const found: { excerpt: string; src: string; line: number }[] = [];
-  const srcOf = (attrs: string) =>
-    /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>}]+))/i
-      .exec(attrs)
-      ?.slice(1)
-      .find((v) => v !== undefined) ?? "";
-  let fence: string | null = null;
-  body.split("\n").forEach((raw, i) => {
-    const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(raw)?.[1];
-    if (marker && (fence === null || marker[0] === fence[0])) {
-      fence = fence === null ? marker : null;
-      return;
-    }
-    if (fence !== null) return;
-    const line = raw.replace(/`[^`]*`/g, "");
-    for (const m of line.matchAll(/!\[([^\]]*)\](\([^)]*\)|\[[^\]]*\])/g)) {
-      if (!m[1]!.trim())
-        found.push({
-          excerpt: m[0],
-          src: m[2]!.slice(1, -1).trim().split(/\s+/)[0] ?? "",
-          line: startLine + i,
-        });
-    }
-    for (const m of line.matchAll(/<img\b[^>]*>/gi)) {
-      const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(m[0]);
-      if (!alt || !(alt[1] ?? alt[2] ?? alt[3] ?? "").trim())
-        found.push({ excerpt: m[0], src: srcOf(m[0]), line: startLine + i });
-    }
-    for (const m of line.matchAll(/^\s*:{2,}figure\{([^}]*)\}/g)) {
-      const alt = /\balt\s*=\s*"([^"]*)"/.exec(m[1]!);
-      if (!alt || !alt[1]!.trim())
-        found.push({ excerpt: m[0].trim(), src: srcOf(m[1]!), line: startLine + i });
-    }
-  });
-  return found;
-}
-
 type SearchFault = { field: "imageAlt" | "canonical"; message: string };
-
-/** A full https address with a host: what a canonical link must be for a search engine to follow it. */
-function isAbsoluteHttps(value: string): boolean {
-  if (/\s/.test(value)) return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && url.hostname !== "";
-  } catch {
-    return false;
-  }
-}
 
 /** The search fields' faults that block a publish, for the fields the site lists. */
 export function searchFieldFaults(

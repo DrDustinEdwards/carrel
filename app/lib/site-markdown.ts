@@ -1,47 +1,17 @@
 // Each site's own Markdown for the things Carrel's editor inserts, shared by the server and the
 // browser (the editor runs in both). One place per site, so the editor writes what the site renders.
 
+import { figureMarkup as prelumFigureMarkup } from "@drdustinedwards/site-helpers/source";
 import type { Scaffold } from "capsomer/react/markdown-editor";
 
-/** Prelum's figure directive: the caption is the directive's body, as the Figure block writes it (dustinedwards-info@f84b978,
- *  app/components/admin/use-image-upload.ts). */
-const prelumFigure = (url: string, alt: string, caption: string) =>
-  [
-    `:::figure{src="${urlPart(url)}" alt="${alt.trim().replace(/"/g, "&quot;")}"}`,
-    ...(caption ? [oneLine(caption)] : []),
-    ":::",
-  ].join("\n");
+/** The sites whose renderer reads Prelum's `:::figure` directive (its caption is the directive's body); the others get plain
+ *  Markdown with the caption as an emphasized line. germomics renders its Markdown with Prelum too, since germomics#186. */
+const FIGURE_SITES = new Set(["dustinedwards", "germomics"]);
 
-/** How the site places an image with its alt text and, when it has one, its caption (stage 3), in the site's own dialect. */
-const FIGURES: Record<string, (url: string, alt: string, caption: string) => string> = {
-  dustinedwards: prelumFigure,
-  // germomics renders its Markdown with Prelum too, since germomics#186.
-  germomics: prelumFigure,
-};
-
-/** A caption on one line: a line break would end the figure's body early. */
-function oneLine(text: string): string {
-  return text.trim().replace(/\s*\n\s*/g, " ");
-}
-
-/** The URL with the characters that would end a directive attribute or a Markdown link percent-encoded: a quote, a
- *  space, parentheses, angle brackets. Encoding keeps the URL the same address, where an entity relies on the
- *  site's parser decoding it. */
-function urlPart(url: string): string {
-  return url.replace(
-    /["\s()<>]/g,
-    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`,
-  );
-}
-
-/** Plain Markdown for a site with no figure syntax of its own: the caption, when there is one, as an emphasized line under it. */
-const plain = (url: string, alt: string, caption: string) =>
-  `![${alt.trim().replace(/[[\]]/g, "") || '""'}](${urlPart(url)})${caption ? `\n*${oneLine(caption).replace(/[*_]/g, "\\$&")}*` : ""}`;
-
-// An empty alt is a decorative pick (the picker asks for alt text or decorative). Prelum refuses
-// ![](x) and :::figure with no alt, and reads ![""](x) as decorative, so a decorative pick is plain.
+/** How the site places an image with its alt text and, when it has one, its caption (stage 3), in the site's own dialect.
+ *  An empty alt is a decorative pick, always plain `![""](url)`. */
 export function figureMarkup(site: string, url: string, alt: string, caption = ""): string {
-  return ((alt.trim() && FIGURES[site]) || plain)(url, alt, caption.trim());
+  return prelumFigureMarkup(url, alt, { caption, figure: FIGURE_SITES.has(site) });
 }
 
 /**

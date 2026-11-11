@@ -91,7 +91,8 @@ import {
   withOthers,
 } from "~/lib/rooms.server";
 import type { ChartFinding } from "~/lib/chart-check.client";
-import { featureImageFault, imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
+import { imagesWithoutAlt } from "@drdustinedwards/site-helpers/source";
+import { featureImageFault, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
 import { figureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";

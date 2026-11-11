@@ -19,7 +19,12 @@ import { Check, Field } from "capsomer/react/field";
 import { Segmented } from "capsomer/react/segmented";
 import { Select } from "capsomer/react/select";
 
-import { CHART_KINDS, chartBlock, csvColumns, type ChartKind } from "~/lib/chart-block";
+import {
+  CHART_KINDS,
+  chartBlock,
+  csvColumns,
+  type ChartKind,
+} from "@drdustinedwards/site-helpers/source";
 import type { ChartFinding } from "~/lib/chart-check.client";
 
 // Larger than any chart a post should inline; Prelum and Enarratio set their own limits under it.

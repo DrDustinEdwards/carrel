@@ -12,7 +12,7 @@ import { directiveFromMarkdown } from "mdast-util-directive";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { directive } from "micromark-extension-directive";
 
-import { chartBlocks } from "~/lib/chart-block";
+import { chartBlocks } from "@drdustinedwards/site-helpers/source";
 
 export type ChartFinding = {
   /** The line the block starts on, in the text given. */
