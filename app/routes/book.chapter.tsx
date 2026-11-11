@@ -3,6 +3,7 @@
 
 import type { ReactNode } from "react";
 import { Form, redirect } from "react-router";
+import { markup } from "capsomer/behavior/trusted-html";
 import { Link } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
 import { Field } from "capsomer/react/field";
@@ -177,7 +178,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                     * * *
                   </p>
                 ) : null}
-                <div dangerouslySetInnerHTML={{ __html: s.html }} />
+                <div dangerouslySetInnerHTML={markup(s.html)} />
               </div>
             ))}
           </div>

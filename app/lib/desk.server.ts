@@ -3,6 +3,7 @@
 // (the index of each site's posts, the drafts, the flags, the social queue); only the mention counts ask
 // the sites, and they are separate so a slow site never holds the page.
 
+import { inList } from "@dustinedwards/site-runtime/d1";
 import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -73,7 +74,7 @@ export async function needsYou(
         first: min(aiDrafts.id),
       })
       .from(aiDrafts)
-      .where(and(eq(aiDrafts.personId, viewer.id), inArray(aiDrafts.projectId, ids)))
+      .where(and(eq(aiDrafts.personId, viewer.id), inList(aiDrafts.projectId, ids)))
       .groupBy(aiDrafts.projectId)
       .all(),
     d
@@ -86,7 +87,7 @@ export async function needsYou(
       .from(siteItems)
       .where(
         and(
-          inArray(siteItems.projectId, ids),
+          inList(siteItems.projectId, ids),
           eq(siteItems.status, "scheduled"),
           isNotNull(siteItems.publishAt),
           lte(siteItems.publishAt, soon),
@@ -98,7 +99,7 @@ export async function needsYou(
     d
       .select({ projectId: findings.projectId, n: count(), since: min(findings.createdAt) })
       .from(findings)
-      .where(and(eq(findings.status, "open"), inArray(findings.projectId, ids)))
+      .where(and(eq(findings.status, "open"), inList(findings.projectId, ids)))
       .groupBy(findings.projectId)
       .all(),
     viewer.isOwner
@@ -419,7 +420,7 @@ export async function writingRows(
   const ids = scoped.map((p) => p.id);
   const words = (query.q?.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).slice(0, 6);
   const filters = [
-    inArray(siteItems.projectId, ids),
+    inList(siteItems.projectId, ids),
     sql`not (${siteItems.status} = 'published' and ${siteItems.path} is null)`,
     ...(query.kind ? [eq(siteItems.kind, query.kind)] : []),
     ...words.map(

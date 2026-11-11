@@ -19,7 +19,6 @@ import { exact, parse } from "capsomer/behavior/time";
 import { FlagsPanel } from "~/components/editor/flags-panel";
 import { commentsTab, Inspector } from "~/components/editor/inspector";
 import { ItemDetails } from "~/components/editor/item-details";
-import { MergeView } from "~/components/editor/merge-view";
 import { PostFields } from "~/components/editor/post-fields";
 import { SearchFields } from "~/components/editor/search-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
@@ -48,8 +47,13 @@ import {
 } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions, readRevision } from "~/lib/history.server";
-import { choicesOf, merged, type Pick } from "~/lib/merge";
-import { mergePlan } from "~/lib/merge.server";
+import {
+  choicesOf,
+  merged,
+  mergePlan,
+  type MergePick as Pick,
+} from "capsomer/behavior/draft-compare";
+import { DraftMerge, mergeCountsText } from "capsomer/react/draft-compare";
 import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { type PostField, type SearchField } from "@dustinedwards/site-api/frontmatter";
@@ -109,6 +113,17 @@ export const links: Route.LinksFunction = () => [
 
 /** The editor shows the newest revisions; the history page lists them all. */
 const HISTORY_SHOWN = 8;
+
+/** The merge view's words: the room's text is Carrel's, the newer copy is the site's. */
+const MERGE_LABELS = {
+  mine: "In Carrel",
+  theirs: "On the site",
+  keepMine: "Keep Carrel's",
+  keepTheirs: "Take the site's",
+  notInMine: "Not in Carrel's text",
+  notInTheirs: "Not on the site",
+  withoutBase: "Carrel could not read the version both started from, so each starts on Carrel's.",
+};
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.title || data.itemId} · Carrel` : "Carrel" }];
@@ -847,21 +862,28 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </Banner>
         ) : null}
         {data.merge && mayEdit && !readOnly ? (
-          <MergeView
-            key={`${data.merge.from}:${data.merge.siteVersion}`}
-            plan={data.merge.plan}
-            busy={busy}
-            apply={(picks) =>
-              void send("merge", {
-                picks: JSON.stringify(picks),
-                from: data.merge!.from,
-                fromVersion: data.merge!.fromVersion,
-                siteVersion: data.merge!.siteVersion,
-              }).then((result) => {
-                if (result.intent === "merge") say(result.message);
-              })
-            }
-          />
+          <Panel
+            title="Merge Carrel's text with the site's"
+            id="merge"
+            src={mergeCountsText(data.merge.plan)}
+          >
+            <DraftMerge
+              key={`${data.merge.from}:${data.merge.siteVersion}`}
+              plan={data.merge.plan}
+              pending={busy}
+              labels={MERGE_LABELS}
+              onApply={(picks) =>
+                void send("merge", {
+                  picks: JSON.stringify(picks),
+                  from: data.merge!.from,
+                  fromVersion: data.merge!.fromVersion,
+                  siteVersion: data.merge!.siteVersion,
+                }).then((result) => {
+                  if (result.intent === "merge") say(result.message);
+                })
+              }
+            />
+          </Panel>
         ) : null}
         {data.ownDraft && mayEdit ? (
           <Banner
