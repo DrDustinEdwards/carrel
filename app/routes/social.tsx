@@ -132,7 +132,9 @@ function toItem(p: Post): ApprovalItem {
     context: [
       p.source,
       p.title ? `for "${p.title}"` : null,
-      p.platform === "x" ? `${formatMoney(p.costMills, "usd", { scale: 3, digits: 3 })} through the API` : null,
+      p.platform === "x"
+        ? `${formatMoney(p.costMills, "usd", { scale: 3, digits: 3 })} through the API`
+        : null,
     ]
       .filter(Boolean)
       .join(" · "),
