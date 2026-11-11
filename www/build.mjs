@@ -389,6 +389,7 @@ const documentHtml = (
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="text-scale" content="scale">
 ${headHtml([...head({ path, title, fullTitle: true, description, noindex: !index }), ...(index && path === "/" ? [jsonLd(SCHEMA)] : [])])}
 ${ICON_LINKS}
 <link rel="stylesheet" href="/site.css">
