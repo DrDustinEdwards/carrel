@@ -394,13 +394,19 @@ describe("typed words on save", () => {
       fileAction,
       "owner@test.invalid",
       url,
-      { intent: "use-ai-draft", draft: String(ai!.id) },
+      { intent: "use-ai-draft", confirmed: "1", draft: String(ai!.id) },
       params,
     );
     expect(
       await testEnv.DB.prepare("SELECT words FROM untyped_words").first<{ words: number }>(),
     ).toEqual({ words: 6 });
-    await post(fileAction, "owner@test.invalid", url, { intent: "discard" }, params);
+    await post(
+      fileAction,
+      "owner@test.invalid",
+      url,
+      { intent: "discard", confirmed: "1" },
+      params,
+    );
     expect(
       await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM untyped_words").first<{ n: number }>(),
     ).toEqual({ n: 0 });

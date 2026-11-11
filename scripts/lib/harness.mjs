@@ -142,6 +142,15 @@ export const SCREENS = [
   { name: "legal", viewer: "owner", path: `/p/${SITE}/legal` },
   { name: "legal-editor", viewer: "editor", path: `/p/${SITE}/legal` },
   {
+    name: "legal-remove",
+    viewer: "owner",
+    path: `/p/${SITE}/legal`,
+    after: async (page) => {
+      await page.getByRole("button", { name: "Remove", exact: true }).first().click();
+      await page.getByRole("alertdialog").waitFor();
+    },
+  },
+  {
     name: "legal-page",
     viewer: "owner",
     path: `/p/${SITE}/e/page.privacy`,

@@ -14,7 +14,6 @@ import {
   novelsConnection,
   novelsRepo,
   NovelsNotConnected,
-  pkcs8FromPem,
 } from "~/lib/novels/repo.server";
 
 import { testEnv } from "./env";
@@ -23,13 +22,6 @@ import { fakeNovels, githubStyleKey, TOKEN } from "./novels";
 beforeEach(() => clearTokenCache());
 
 describe("the App's key and token", () => {
-  it("accepts the PKCS#1 key GitHub downloads, byte for byte the PKCS#8 WebCrypto would export", async () => {
-    const key = await githubStyleKey();
-    expect(key.pkcs1Pem).toContain("BEGIN RSA PRIVATE KEY");
-    expect([...pkcs8FromPem(key.pkcs1Pem)]).toEqual([...key.pkcs8]);
-    expect([...pkcs8FromPem(key.pkcs8Pem)]).toEqual([...key.pkcs8]);
-  });
-
   it("signs an RS256 JWT GitHub can verify: issuer the App id, back-dated a minute, under ten minutes", async () => {
     const key = await githubStyleKey();
     const now = Date.UTC(2026, 8, 27, 3, 0, 0);

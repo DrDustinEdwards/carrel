@@ -302,6 +302,7 @@ async function indexed(itemId: string, title: string) {
 function dismissForm(id: number, item: string) {
   const body = new FormData();
   body.set("intent", "dismiss");
+  body.set("confirmed", "1");
   body.set("flag", String(id));
   body.set("item", item);
   return new Request(`https://carrel.test/p/${SLUG}/flags`, { method: "POST", body });
