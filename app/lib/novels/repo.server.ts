@@ -5,6 +5,7 @@
 // history is the commits that touched its path.
 
 import { fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
+import { pkcs8FromPem } from "@dustinedwards/site-runtime/jwt";
 import { SignJWT } from "jose";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
@@ -97,36 +98,6 @@ export function novelsConnection(env: Env): NovelsConnection {
 }
 
 // ---------- GitHub App authentication
-
-function derLength(n: number): number[] {
-  if (n < 0x80) return [n];
-  const bytes: number[] = [];
-  for (let v = n; v > 0; v >>= 8) bytes.unshift(v & 0xff);
-  return [0x80 | bytes.length, ...bytes];
-}
-
-function der(tag: number, content: Uint8Array | number[]): number[] {
-  const body = Array.from(content);
-  return [tag, ...derLength(body.length), ...body];
-}
-
-/**
- * GitHub hands out App keys as PKCS#1 ("BEGIN RSA PRIVATE KEY"); WebCrypto imports PKCS#8 only. The
- * PKCS#8 form is the PKCS#1 key wrapped with the rsaEncryption algorithm id, so Dustin can paste the
- * downloaded file as it is.
- */
-export function pkcs8FromPem(pem: string): Uint8Array<ArrayBuffer> {
-  const body = pem.replace(/-----(BEGIN|END) [A-Z ]+-----/g, "");
-  const bytes = fromBase64(body);
-  if (!/BEGIN RSA PRIVATE KEY/.test(pem)) return bytes;
-  const version = der(0x02, [0x00]);
-  // SEQUENCE { OID 1.2.840.113549.1.1.1, NULL }
-  const algorithm = der(
-    0x30,
-    [0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00],
-  );
-  return new Uint8Array(der(0x30, [...version, ...algorithm, ...der(0x04, bytes)]));
-}
 
 export async function appJwt(appId: string, pem: string, now = Date.now()): Promise<string> {
   const key = await crypto.subtle.importKey(

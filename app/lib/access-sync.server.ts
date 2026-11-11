@@ -13,7 +13,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { accessSync, people, projectMembers } from "~/db/schema";
 import { agentEmail } from "~/lib/agent-keys.server";
 import { postAccessSync, type AccessSyncResult } from "@dustinedwards/site-runtime/access-sync";
-import { capsidOrigin } from "~/lib/inbox-report.server";
+import { capsidOrigin } from "@dustinedwards/site-runtime/inbox-report";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 /**

@@ -18,6 +18,8 @@ import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
 import {
+  deployedAt,
+  deployedSha,
   durableObjectCheck,
   emailCheck,
   healthResponse,
@@ -37,7 +39,6 @@ import {
 } from "~/db/schema";
 import { backupStatus } from "~/lib/backup.server";
 import { ALL_JOBS } from "~/lib/cron-schedule";
-import { deployedSha } from "~/lib/deployed";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
 import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
@@ -506,7 +507,7 @@ export function healthAnswer(env: Env): Promise<Response> {
   return healthResponse({
     ping: () => env.DB.prepare("SELECT 1").first(),
     backup: () => backupStatus(env),
-    sha: deployedSha(env),
+    sha: deployedSha(env, { fallback: "unknown" }),
     checks: [
       { ...kvCheck("oauth-kv", env.OAUTH_KV), level: "warn" },
       durableObjectCheck("doc-room", env.DOC_ROOM),
@@ -542,14 +543,6 @@ export function healthAnswer(env: Env): Promise<Response> {
       },
     ],
   });
-}
-
-/** When this version was deployed, from the CF_VERSION_METADATA binding; read loosely, since an older config has none. */
-function deployedAt(env: Env): Date | undefined {
-  const timestamp = (env as { CF_VERSION_METADATA?: { timestamp?: string } }).CF_VERSION_METADATA
-    ?.timestamp;
-  const at = timestamp ? new Date(timestamp) : undefined;
-  return at && !Number.isNaN(at.getTime()) ? at : undefined;
 }
 
 function message(error: unknown): string {

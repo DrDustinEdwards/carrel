@@ -9,6 +9,7 @@ import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { Disclosure } from "capsomer/react/disclosure";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
@@ -56,6 +57,7 @@ import { can } from "~/lib/roles";
 import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.file";
@@ -213,6 +215,7 @@ export async function action({
 
   switch (intent) {
     case "discard": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       // Everyone in the room goes back to Git's text.
       const { repo } = bookRepo(env);
       const git = repo ? await repo.read(`${project.book}/${path}`).catch(() => null) : null;
@@ -224,6 +227,7 @@ export async function action({
       return { intent, discarded: true };
     }
     case "use-own-draft": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       const own = await readOwnDraft(env.DB, project, viewer, path);
       if (!own) throw new Response("That draft is gone.", { status: 404 });
       await replaceRoom(env, project, viewer, path, {
@@ -235,17 +239,20 @@ export async function action({
       return { intent: "discard", discarded: true };
     }
     case "drop-own-draft":
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       await discardDraft(env.DB, project, viewer, path);
       return { intent: "discard", discarded: true };
     case "check":
       return { intent, findings: await checkDraft(env.DB, project, path, source) };
     case "dismiss": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       const id = Number(form.get("finding"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       await dismissFinding(env.DB, project, viewer, id);
       return { intent, dismissed: id };
     }
     case "use-ai-draft": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       // The person's decision: the AI draft's text becomes the working copy in the room, to edit and save.
       const id = Number(form.get("draft"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
@@ -308,7 +315,11 @@ export default function BookFileRoute({ loaderData }: Route.ComponentProps) {
   return <BookFile key={`${loaderData.project.slug}/${loaderData.path}`} data={loaderData} />;
 }
 
-type Ask = { kind: "discard" | "dismiss" | "use-ai"; id?: number; opener: HTMLElement | null };
+type Ask = {
+  kind: "discard" | "drop-draft" | "put-draft" | "dismiss" | "use-ai";
+  id?: number;
+  opener: HTMLElement | null;
+};
 
 function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [asking, setAsking] = useState<Ask | null>(null);
@@ -444,14 +455,18 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
             title="You have a draft of your own from before shared editing"
             actions={
               <>
-                <Button size="sm" pending={busy} onClick={() => void send("use-own-draft")}>
+                <Button
+                  size="sm"
+                  pending={busy}
+                  onClick={(event) => ask("put-draft", event.currentTarget)}
+                >
                   Put it in for everyone
                 </Button>
                 <Button
                   size="sm"
                   variant="quiet"
                   pending={busy}
-                  onClick={() => void send("drop-own-draft")}
+                  onClick={(event) => ask("drop-draft", event.currentTarget)}
                 >
                   Delete it
                 </Button>
@@ -728,6 +743,22 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         />
       </div>
 
+      <PutDraftDialog
+        open={asking?.kind === "put-draft"}
+        returnTo={asking?.opener}
+        perform={async () => {
+          await send("use-own-draft", { confirmed: "1" });
+        }}
+        onClose={() => setAsking(null)}
+      />
+      <DropDraftDialog
+        open={asking?.kind === "drop-draft"}
+        returnTo={asking?.opener}
+        perform={async () => {
+          await send("drop-own-draft", { confirmed: "1" });
+        }}
+        onClose={() => setAsking(null)}
+      />
       <ConfirmDialog
         open={asking?.kind === "discard"}
         title="Discard the unsaved changes?"
@@ -736,7 +767,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         action="Discard unsaved changes"
         returnTo={asking?.opener}
         perform={async () => {
-          await send("discard");
+          await send("discard", { confirmed: "1" });
         }}
         onClose={() => setAsking(null)}
       />
@@ -754,7 +785,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         perform={async () => {
           if (asking?.id !== undefined)
             await writer.submit(
-              { intent: "dismiss", finding: String(asking.id) },
+              { intent: "dismiss", finding: String(asking.id), confirmed: "1" },
               { method: "post" },
             );
         }}
@@ -770,7 +801,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         perform={async () => {
           if (asking?.id !== undefined)
             await writer.submit(
-              { intent: "use-ai-draft", draft: String(asking.id) },
+              { intent: "use-ai-draft", draft: String(asking.id), confirmed: "1" },
               { method: "post" },
             );
         }}
