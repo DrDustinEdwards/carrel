@@ -7,7 +7,7 @@
 // "By word" sets the same two texts against each other sentence by sentence.
 
 import { Form } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
@@ -25,7 +25,6 @@ import {
 } from "~/components/history/history-view";
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { comparePicks } from "capsomer/behavior/history-list";
-import { RouterLink } from "~/components/frame";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, readDraft, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -322,7 +321,7 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
   return (
     <div className="app-page">
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: project.name, href: `/p/${project.slug}` },
           { label: title || itemId, href: editor },

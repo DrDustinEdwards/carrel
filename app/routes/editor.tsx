@@ -33,7 +33,7 @@ import { useSaveShortcut } from "~/components/editor/save-keys";
 import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
 import { useTypingRecede } from "~/components/editor/typing";
-import { RouterLink } from "~/components/frame";
+import { routerRenderLink } from "capsomer/react/link";
 import { SiteBinder } from "~/components/writing/binder";
 import {
   dismissItemFinding,
@@ -847,7 +847,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor" data-layout={layout}>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: data.project.name, href: `/p/${data.project.slug}` },
           { label: kindWord(data.kind) },
