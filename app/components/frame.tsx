@@ -9,12 +9,7 @@ import type { Command } from "capsomer/react/command-menu";
 import { Icon } from "capsomer/react/icons";
 import { routerRenderLink } from "capsomer/react/link";
 import { MessageProvider } from "capsomer/react/message";
-import {
-  AdminShell,
-  currentEntryId,
-  type AdminEntry,
-  type LinkProps,
-} from "capsomer/react/admin-shell";
+import { AdminShell, currentEntryId, type AdminEntry } from "capsomer/react/admin-shell";
 
 // The search palette loads once the page is idle, or at once when the search button is pressed first, so
 // its code is not on every page's first load (devkit-route-weight). It binds Ctrl or Cmd K and / itself.
