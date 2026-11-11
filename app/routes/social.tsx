@@ -87,7 +87,8 @@ export async function action({ request, context }: Route.ActionArgs) {
         enabled: form.get("enabled") === "on",
         mode: form.get("mode") === "auto" ? "auto" : "approval",
         dailyCap: Number(form.get("dailyCap")),
-        monthlyBudgetMills: parseMoneyInput(String(form.get("monthlyBudget") ?? ""), "usd", { scale: 3 }) ?? 0,
+        monthlyBudgetMills:
+          parseMoneyInput(String(form.get("monthlyBudget") ?? ""), "usd", { scale: 3 }) ?? 0,
         template: String(form.get("template") ?? ""),
         voiceGuide: String(form.get("voiceGuide") ?? ""),
       });
