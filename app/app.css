@@ -19,6 +19,7 @@
 @import "capsomer/button.css";
 @import "capsomer/field.css";
 @import "capsomer/select.css";
+@import "capsomer/scope-chip.css";
 @import "capsomer/segmented.css";
 @import "capsomer/switch.css";
 @import "capsomer/status.css";
@@ -1340,12 +1341,7 @@ img.ProseMirror-separator {
   color: var(--muted);
 }
 
-/* Desk's scope chip, status tabs with counts, and the list toolbar. */
-.app-scope {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
+/* Desk's status tabs with counts, and the list toolbar. */
 .app-tab-count {
   margin-inline-start: var(--space-1);
   color: var(--muted);
