@@ -14,6 +14,7 @@ import type { BookProject } from "~/lib/books.server";
 import type { NovelsRepo } from "~/lib/novels/repo.server";
 import { can } from "~/lib/roles";
 import { coauthorsOf, withOthers } from "~/lib/rooms.server";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 export type BookVersion = {
   /** The commit that made this version. */
@@ -82,7 +83,7 @@ export async function bookVersions(
       path: s.path,
       at: s.at,
       author: s.client ? `${s.client} (AI, for ${who})` : who,
-      message: `Saved in Carrel: ${s.added} word${s.added === 1 ? "" : "s"} added, ${s.removed} removed`,
+      message: `Saved in Carrel: ${plural(s.added, "word")} added, ${s.removed} removed`,
       kind: "carrel",
     });
   }

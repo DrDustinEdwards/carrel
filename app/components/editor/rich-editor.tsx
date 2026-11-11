@@ -60,6 +60,7 @@ import {
 } from "./room-extensions";
 import { sourceBlockView, SourceInlineView } from "./source-views";
 import { GLYPH, Icon } from "./toolbar-icons";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 export type RichEditorHandle = {
   /** Puts Markdown (a figure, an image) in as blocks at the cursor, as the editor's own blocks are put. */
@@ -747,7 +748,7 @@ export function RichEditor(props: RichEditorProps) {
           ) : null}
           <p className="cap-md-stats">
             <span className="cap-md-count">
-              {words.toLocaleString("en")} word{words === 1 ? "" : "s"}
+              {plural(words, "word", undefined, { grouped: true })}
               {words > 0 ? ` · ${minutesForWords(words)} min read` : ""}
             </span>
           </p>
@@ -932,7 +933,7 @@ export function RichEditor(props: RichEditorProps) {
               ? `Enter links to ${typedUrl}.`
               : matches.length === 0
                 ? "No page matches. Type a full address to link to it."
-                : `${matches.length} page${matches.length === 1 ? "" : "s"}.`}
+                : `${plural(matches.length, "page")}.`}
           </p>
         </div>
       ) : null}

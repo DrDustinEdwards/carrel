@@ -9,6 +9,7 @@ import { Time } from "capsomer/react/time";
 
 import type { AiDraftSummary, ItemFinding } from "~/lib/ai.server";
 import type { TranscriptDraftSummary } from "~/lib/transcripts.server";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 type Props = {
   flags: ItemFinding[];
@@ -26,7 +27,7 @@ export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDi
       title="Flags and AI drafts"
       id="flags"
       count={openFlags}
-      src={`${drafts} draft${drafts === 1 ? "" : "s"} beside yours`}
+      src={`${plural(drafts, "draft")} beside yours`}
     >
       <div className="cap-stack" data-gap="4">
         {flags.length > 0 ? (

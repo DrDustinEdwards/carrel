@@ -45,6 +45,7 @@ import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/r
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 import { unseenTemplates } from "~/lib/social/queue.server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 /** A site's line in the conformance report, in the scoreboard's format (devkit live/README). */
 type SiteConformance = {
@@ -364,7 +365,7 @@ async function checkSocialTemplates(env: Env): Promise<CheckResult> {
     return {
       name: "social-templates",
       ok: false,
-      detail: `${unseen.length} template post${unseen.length === 1 ? "" : "s"} went out because the routine did not draft ${unseen.length === 1 ? "it" : "them"}: ${unseen
+      detail: `${plural(unseen.length, "template post")} went out because the routine did not draft ${unseen.length === 1 ? "it" : "them"}: ${unseen
         .map((u) => `${u.accountKey}: "${u.text}"`)
         .join("; ")}. Mark ${unseen.length === 1 ? "it" : "them"} seen in Carrel's social page.`,
     };
@@ -458,7 +459,7 @@ export async function runHealth(
       subject:
         failing.length === 0
           ? "Carrel: all checks pass"
-          : `Carrel: ${failing.length} check${failing.length === 1 ? "" : "s"} failing`,
+          : `Carrel: ${plural(failing.length, "check")} failing`,
       text: results.map((r) => `${r.ok ? "ok  " : "FAIL"} ${r.name}: ${r.detail}`).join("\n"),
     });
     if (!sent.sent) return { results, emailed: false };

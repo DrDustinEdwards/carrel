@@ -15,6 +15,7 @@ import { GitConflict, type NovelsRepo } from "~/lib/novels/repo.server";
 import type { Viewer } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 import { planRenames, type ChapterOrder, type Rename } from "~/lib/writing/binder";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 export type ReorderResult =
   | { ok: true; renames: Rename[]; commit: string | null }
@@ -71,7 +72,7 @@ export async function reorderBook(
         to: `${project.book}/${r.to}`,
         sha: sha.get(r.from)!,
       })),
-      message: `Reorder ${project.book}: ${plan.renames.length} file${plan.renames.length === 1 ? "" : "s"} renumbered\n\nCarrel-Change: ${changeId}`,
+      message: `Reorder ${project.book}: ${plural(plan.renames.length, "file")} renumbered\n\nCarrel-Change: ${changeId}`,
       author: { name: viewer.name || viewer.email, email: viewer.email },
     }));
   } catch (error) {

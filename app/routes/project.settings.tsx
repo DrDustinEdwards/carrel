@@ -21,6 +21,7 @@ import { siteConnection, siteEntry } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.settings";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Share and connection · ${data.project.name} · Carrel` : "Carrel" }];
@@ -98,7 +99,7 @@ export default function SiteSettings({ loaderData }: Route.ComponentProps) {
           <div>
             <dt>In Desk's index</dt>
             <dd>
-              {indexed.toLocaleString("en-US")} post{indexed === 1 ? "" : "s"} and pages
+              {plural(indexed, "post", undefined, { grouped: true })} and pages
               {lastRead ? (
                 <>
                   , last read <Time at={lastRead} />. Desk reads every site again every 15 minutes;

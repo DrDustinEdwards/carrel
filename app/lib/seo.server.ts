@@ -13,6 +13,7 @@ import {
 
 import { seoCheck, type SeoCheck } from "~/lib/seo-checks";
 import { siteClient, siteConnection } from "~/lib/sites.server";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 /**
  * The search fields the site renders (capabilities.searchFields), asked only when the source sets one, so a
@@ -24,7 +25,7 @@ export async function listedSearchFields(
   source: string,
   fetcher?: typeof fetch,
 ): Promise<SearchField[]> {
-  const set = Object.values(searchFieldsOf(splitSource(source.replace(/\r\n/g, "\n")).front)).some(
+  const set = Object.values(searchFieldsOf(splitSource(normalizeNewlines(source)).front)).some(
     Boolean,
   );
   if (!set) return [];
@@ -42,7 +43,7 @@ export async function listedPostFields(
   source: string,
   fetcher?: typeof fetch,
 ): Promise<PostField[]> {
-  if (!postFieldsOf(splitSource(source.replace(/\r\n/g, "\n")).front).featureImage) return [];
+  if (!postFieldsOf(splitSource(normalizeNewlines(source)).front).featureImage) return [];
   try {
     return (await siteClient(env, project.site, fetcher).meta()).capabilities.postFields ?? [];
   } catch {

@@ -3,13 +3,14 @@
 // minute late. It quotes the words a chapter opens with, and the time is the start of the cue that says them.
 
 const CUE = /(\d{2}):(\d{2}):(\d{2})\.\d{3} --> (\d{2}):(\d{2}):(\d{2})\.\d{3}/;
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 type Cue = { start: number; text: string };
 type ParsedTranscript = { text: string; duration: number; cues: Cue[] };
 
 /** The transcript's cues as running text, with each cue's start in seconds. */
 export function parseTranscript(vtt: string): ParsedTranscript {
-  const lines = vtt.replace(/\r\n/g, "\n").split("\n");
+  const lines = normalizeNewlines(vtt).split("\n");
   const cues: Cue[] = [];
   let duration = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -115,7 +116,7 @@ type WrittenCue = { timing: string; start: number; text: string };
 const TIMING = /^((\d{2,}):)?(\d{2}):(\d{2})\.(\d{3}) --> \S+/;
 
 function writtenCues(vtt: string): WrittenCue[] {
-  const lines = vtt.replace(/\r\n/g, "\n").split("\n");
+  const lines = normalizeNewlines(vtt).split("\n");
   const cues: WrittenCue[] = [];
   for (let i = 0; i < lines.length; i++) {
     const m = TIMING.exec(lines[i]!.trim());

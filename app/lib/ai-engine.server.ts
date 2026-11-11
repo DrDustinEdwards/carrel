@@ -37,6 +37,7 @@ import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { socialFieldsOf } from "~/lib/seo-checks";
 import { formatMoney } from "@dustinedwards/site-runtime/money";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 /** Whether the API engine has no key yet. The route reads this, never the secret, so the secret stays on the server. */
 export function apiKeyMissing(env: Pick<Env, "ANTHROPIC_API_KEY">): boolean {
@@ -393,7 +394,7 @@ export async function draftEpisodeViaApi(
   episode: { id: string; title: string; source: string; transcript: string },
   fetcher?: typeof fetch,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const parts = splitSource(episode.source.replace(/\r\n/g, "\n"));
+  const parts = splitSource(normalizeNewlines(episode.source));
   if (parts.front === null) return { ok: false, error: "The episode has no front matter." };
   const front = parts.front;
   const models = await readAiModels(env.DB);
@@ -483,7 +484,7 @@ export async function workingParts(
     (await readDraft(env.DB, project, viewer, itemId))?.source ??
     (await readDoc(env, project, itemId))?.source;
   if (!working) return { ok: false, error: "This item has no text yet." };
-  return { ok: true, parts: splitSource(working.replace(/\r\n/g, "\n")) };
+  return { ok: true, parts: splitSource(normalizeNewlines(working)) };
 }
 
 export type SeoSuggestion = { ok: true; draftId: number } | { ok: false; error: string };

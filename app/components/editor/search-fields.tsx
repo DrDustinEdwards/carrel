@@ -21,6 +21,7 @@ import { typedProps, useTyped } from "~/components/editor/typed-box";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { SERP_WIDTH, textWidth } from "~/lib/serp-width";
 import { useHydrated } from "capsomer/react/hooks";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 const PICK_WORDS = {
   label: "Choose from library",
@@ -54,7 +55,7 @@ function WidthMeter({
 }) {
   const px = ready ? textWidth(text, font) : null;
   const over = px !== null && px > limit;
-  const chars = `${text.length} character${text.length === 1 ? "" : "s"}`;
+  const chars = `${plural(text.length, "character")}`;
   return (
     <Meter
       size="sm"

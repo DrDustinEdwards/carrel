@@ -32,6 +32,7 @@ import { statusList } from "~/lib/writing.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.corkboard";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Corkboard · ${data.head.name} · Carrel` : "Carrel" }];
@@ -198,7 +199,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
             : result?.ok
               ? result.renames.length === 0
                 ? "Nothing to move."
-                : `Moved. ${result.renames.length} file${result.renames.length === 1 ? "" : "s"} renumbered in one commit.`
+                : `Moved. ${plural(result.renames.length, "file")} renumbered in one commit.`
               : ""}
         </p>
       </div>
@@ -228,9 +229,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
                   renderItem={(c) => (
                     <>
                       <span className="cap-sortable-label">{c.title}</span>
-                      <span className="cap-sortable-detail">
-                        {c.cards.length} scene{c.cards.length === 1 ? "" : "s"}
-                      </span>
+                      <span className="cap-sortable-detail">{plural(c.cards.length, "scene")}</span>
                     </>
                   )}
                   onReorder={(order) => send({ intent: "chapters", order })}

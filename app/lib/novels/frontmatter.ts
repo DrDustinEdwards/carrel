@@ -3,6 +3,7 @@
 // (inline `[a, b]` or one `- item` per line). Anything else is reported, never guessed at.
 
 export type HeaderValue = string | boolean | string[];
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 export type Parsed = {
   data: Record<string, HeaderValue>;
@@ -58,7 +59,7 @@ function scalar(raw: string): HeaderValue {
 }
 
 export function parseFile(source: string): Parsed {
-  const lines = source.replace(/\r\n/g, "\n").split("\n");
+  const lines = normalizeNewlines(source).split("\n");
   if (lines[0]?.trim() !== "---")
     return { data: {}, body: lines.join("\n"), bodyLine: 1, problems: [] };
   const end = lines.findIndex((line, i) => i > 0 && line.trim() === "---");
