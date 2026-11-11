@@ -1,0 +1,4 @@
+{
+  "dirs": ["app", "www"],
+  "declared_in": ["node_modules/capsomer"]
+}
