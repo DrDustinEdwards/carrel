@@ -4,7 +4,7 @@ import { exportAuditLog } from "@dustinedwards/site-runtime/audit-log";
 import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
 import { maintenanceOn, maintenanceResponse } from "@dustinedwards/site-runtime/maintenance";
-import { logEvent, withRequestLog } from "@dustinedwards/site-runtime/log";
+import { logEvent, routeNamer, withRequestLog } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
 import { carrel, carrelMcp } from "@dustinedwards/site-runtime/sites";
@@ -41,10 +41,23 @@ export { DocRoom } from "./doc-room";
 export { ToolCallLog } from "@dustinedwards/site-runtime/audit-log";
 export { RateLimiter } from "@dustinedwards/site-runtime/rate-limit/durable-object";
 
-const requestHandler = createRequestHandler(
-  () => import("virtual:react-router/server-build"),
-  import.meta.env.MODE,
-);
+const serverBuild = () => import("virtual:react-router/server-build");
+const requestHandler = createRequestHandler(serverBuild, import.meta.env.MODE);
+
+// The route pattern each `request` log line names (`/blog/:slug`), from the React Router build's route table, made once
+// per isolate (site-runtime ./log's routeNamer). Requests the Worker answers itself (/api, /health, /mcp, /media) carry
+// the path alone. The build loads beside the request, so the first few lines in an isolate may go without a route.
+let nameRoute: ((request: Request) => string | undefined) | undefined;
+function routeName(request: Request): string | undefined {
+  if (!nameRoute)
+    void serverBuild().then(
+      (build) => (nameRoute ??= routeNamer(build.routes)),
+      () => undefined,
+    );
+  return /^\/(api|health|mcp|media)(\/|$)/.test(new URL(request.url).pathname)
+    ? undefined
+    : nameRoute?.(request);
+}
 
 /*
  * The AI door's headers, all from site-runtime: its registry entry's set, noindex and no-store, the consent page's
@@ -220,6 +233,7 @@ export default {
       }),
     {
       sha: (env) => deployedSha(env),
+      route: routeName,
     },
   ),
   scheduled,
