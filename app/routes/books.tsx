@@ -6,7 +6,8 @@ import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Pill } from "capsomer/react/status";
 import { drizzle } from "drizzle-orm/d1";
-import { count, inArray, sql } from "drizzle-orm";
+import { inList } from "@dustinedwards/site-runtime/d1";
+import { count, sql } from "drizzle-orm";
 
 import { bookFiles } from "~/db/schema";
 import { getEnv, getViewer } from "~/lib/context";
@@ -34,7 +35,7 @@ export async function loader({ context }: Route.LoaderArgs) {
           })
           .from(bookFiles)
           .where(
-            inArray(
+            inList(
               bookFiles.projectId,
               books.map((b) => b.id),
             ),
