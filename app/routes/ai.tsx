@@ -34,7 +34,11 @@ import { readForm } from "~/lib/form.server";
 import { processSocial } from "~/lib/social/queue.server";
 import { routineConfig } from "~/lib/social/routine.server";
 
+import aiEngineSettingsCss from "capsomer/ai-engine-settings.css?url";
 import type { Route } from "./+types/ai";
+
+// This route's Capsomer stylesheets; app.css holds only what every route needs.
+export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: aiEngineSettingsCss }];
 
 export function meta() {
   return [{ title: "AI engine · Carrel" }];

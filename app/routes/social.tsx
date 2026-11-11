@@ -26,7 +26,11 @@ import { createAccount, decidePost, setSwitches, socialOverview } from "~/lib/so
 import { xCostMills } from "~/lib/social/platforms.server";
 import { readForm } from "~/lib/form.server";
 
+import approvalQueueCss from "capsomer/approval-queue.css?url";
 import type { Route } from "./+types/social";
+
+// This route's Capsomer stylesheets; app.css holds only what every route needs.
+export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: approvalQueueCss }];
 
 export function meta() {
   return [{ title: "Social · Carrel" }];

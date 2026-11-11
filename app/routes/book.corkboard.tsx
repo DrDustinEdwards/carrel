@@ -32,7 +32,11 @@ import {
 import { statusList } from "~/lib/writing.server";
 import { readForm } from "~/lib/form.server";
 
+import labelColorListCss from "capsomer/label-color-list.css?url";
 import type { Route } from "./+types/book.corkboard";
+
+// This route's Capsomer stylesheets; app.css holds only what every route needs.
+export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: labelColorListCss }];
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Corkboard · ${data.head.name} · Carrel` : "Carrel" }];

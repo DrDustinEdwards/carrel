@@ -15,7 +15,11 @@ import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { siteClient, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 
+import notFoundReportCss from "capsomer/not-found-report.css?url";
 import type { Route } from "./+types/project.not-found";
+
+// This route's Capsomer stylesheets; app.css holds only what every route needs.
+export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: notFoundReportCss }];
 
 /** The two windows the page offers: the last week, to see a link that just broke, and the last 30 days, the default. */
 const WINDOWS = [7, 30];

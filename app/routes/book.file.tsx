@@ -58,7 +58,10 @@ import { addUntyped, clearUntyped } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
 import { readForm } from "~/lib/form.server";
 
+import { workspaceStyles } from "~/components/editor/workspace-styles";
 import type { Route } from "./+types/book.file";
+
+export const links: Route.LinksFunction = () => workspaceStyles;
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel" }];

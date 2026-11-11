@@ -64,17 +64,6 @@
 @import "capsomer/menu.css";
 @import "capsomer/moderation-queue.css";
 @import "capsomer/mentions-list.css";
-@import "capsomer/label-color-list.css";
-@import "capsomer/writing-progress.css";
-@import "capsomer/inline-add-form.css";
-@import "capsomer/approval-queue.css";
-@import "capsomer/not-found-report.css";
-@import "capsomer/ai-job-buttons.css";
-@import "capsomer/ai-engine-settings.css";
-@import "capsomer/frontmatter-fields.css";
-@import "capsomer/chart-builder.css";
-@import "capsomer/editor-workspace.css";
-@import "capsomer/schedule-dialog.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */

@@ -25,7 +25,15 @@ import { can } from "~/lib/roles";
 import { seoOf } from "~/lib/seo.server";
 import { checkAgainstPack, readVoicePack } from "~/lib/voice.server";
 
+import editorWorkspaceCss from "capsomer/editor-workspace.css?url";
+import frontmatterFieldsCss from "capsomer/frontmatter-fields.css?url";
 import type { Route } from "./+types/ai-draft";
+
+// This route's Capsomer stylesheets; app.css holds only what every route needs.
+export const links: Route.LinksFunction = () => [
+  { rel: "stylesheet", href: editorWorkspaceCss },
+  { rel: "stylesheet", href: frontmatterFieldsCss },
+];
 
 export function meta() {
   return [{ title: "AI draft · Carrel" }];

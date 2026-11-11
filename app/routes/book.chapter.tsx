@@ -23,7 +23,11 @@ import { chapterOf, nextNumbered, readingOrder, titleFromSegment } from "~/lib/n
 import { can } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
+import inlineAddFormCss from "capsomer/inline-add-form.css?url";
 import type { Route } from "./+types/book.chapter";
+
+// This route's Capsomer stylesheets; app.css holds only what every route needs.
+export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: inlineAddFormCss }];
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.chapter.title} · ${data.project.name} · Carrel` : "Carrel" }];

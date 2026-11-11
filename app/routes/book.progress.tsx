@@ -14,7 +14,11 @@ import { can } from "~/lib/roles";
 import { progressEntries, readGoal, saveGoal } from "~/lib/writing.server";
 import { readForm } from "~/lib/form.server";
 
+import writingProgressCss from "capsomer/writing-progress.css?url";
 import type { Route } from "./+types/book.progress";
+
+// This route's Capsomer stylesheets; app.css holds only what every route needs.
+export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: writingProgressCss }];
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Progress · ${data.head.name} · Carrel` : "Carrel" }];

@@ -97,7 +97,15 @@ import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/s
 import { siteBinderTree } from "~/lib/writing/binder";
 import { readForm } from "~/lib/form.server";
 
+import scheduleDialogCss from "capsomer/schedule-dialog.css?url";
+import { workspaceStyles } from "~/components/editor/workspace-styles";
 import type { Route } from "./+types/editor";
+
+// The workspace's stylesheets, and the schedule dialog's.
+export const links: Route.LinksFunction = () => [
+  ...workspaceStyles,
+  { rel: "stylesheet", href: scheduleDialogCss },
+];
 
 /** The editor shows the newest revisions; the history page lists them all. */
 const HISTORY_SHOWN = 8;

@@ -10,7 +10,11 @@ import { Frame, type FrameData } from "~/components/frame";
 import { getZone } from "~/lib/context";
 import { sampleProgress } from "~/lib/demo/writing-sample";
 
+import writingProgressCss from "capsomer/writing-progress.css?url";
 import type { Route } from "./+types/demos.progress";
+
+// This route's Capsomer stylesheets; app.css holds only what every route needs.
+export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: writingProgressCss }];
 
 export function meta() {
   return [{ title: "Writing progress demo · Carrel" }, { name: "robots", content: "noindex" }];
