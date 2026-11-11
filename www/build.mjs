@@ -9,7 +9,6 @@
 import { execFileSync } from "node:child_process";
 import {
   copyFileSync,
-  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -17,7 +16,6 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -38,12 +36,11 @@ import { securityTxt } from "@dustinedwards/site-runtime/security-txt";
 import { familyFooterHtml } from "capsomer/behavior/family-footer";
 import { patchSvg } from "capsomer/behavior/manual";
 import { letterheadHtml } from "capsomer/behavior/site-header";
-import { build } from "vite";
+import { bundleScript, capsomerStylesheet, copyFonts } from "capsomer/build";
 
 import { PAGE_PRELOADS } from "./headers.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
 
 export const ORIGIN = "https://carrel.dustinedwards.info";
 const DESK = "https://desk.dustinedwards.info";
@@ -64,52 +61,19 @@ const TITLE = "Carrel: one desk for everything you write";
 const DESCRIPTION =
   "Carrel is an open-source writing app on Cloudflare: publish posts to several websites from one place, keep books in Git, and work with AI that drafts beside you.";
 
-/**
- * Capsomer's stylesheets import their parts; the site serves one file, so each import is read in place, wrapped in its
- * layer when it names one.
- *
- * @param {string} file
- * @returns {string}
- */
-function inlineCss(file) {
-  return readFileSync(file, "utf8").replace(
-    /@import\s+"([^"]+)"(?:\s+layer\(([\w.-]+)\))?\s*;/g,
-    (_, path, layer) => {
-      const inner = inlineCss(join(dirname(file), path));
-      return layer ? `@layer ${layer} {\n${inner}\n}` : inner;
-    },
+/** Capsomer's fonts, tokens, base, link system and Carrel's family, the manual theme, the family footer, the theme
+ * button's tip and the letterhead, then www/site.css, as one file (capsomer/build); the fonts beside it. */
+function writeStyles(/** @type {string} */ outDir) {
+  copyFonts(join(outDir, "fonts"));
+  const css = capsomerStylesheet({
+    family: FAMILY,
+    parts: ["manual", "family-footer", "popover", "theme-switch", "site-header"],
+    after: [readFileSync(join(HERE, "site.css"), "utf8")],
+  });
+  writeFileSync(
+    join(outDir, "site.css"),
+    `/* Built by www/build.mjs with capsomer/build, then www/site.css. */\n${css}`,
   );
-}
-
-/** Source Serif 4, the one face Capsomer's fonts.css leaves to @fontsource (latin only: the site is in English). */
-const SERIF = "@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2";
-
-/** @param {string} outDir */
-function writeStyles(outDir) {
-  const capsomer = dirname(require.resolve("capsomer/package.json"));
-  const base = join(capsomer, "css/base.css");
-  // Capsomer's font files sit beside site.css, so its fonts.css loads them as fonts/.
-  cpSync(join(capsomer, "fonts"), join(outDir, "fonts"), { recursive: true });
-  const serif = SERIF.split("/").pop() ?? "";
-  copyFileSync(require.resolve(SERIF), join(outDir, "fonts", serif));
-  const css = [
-    "/* Built by www/build.mjs: Capsomer's fonts, tokens, base, link system, Carrel's family, the manual theme and the family footer, then www/site.css. */",
-    inlineCss(join(capsomer, "css", "fonts.css")).replaceAll('url("../fonts/', 'url("fonts/'),
-    `@font-face {\n  font-family: "Source Serif 4";\n  font-style: normal;\n  font-weight: 200 900;\n  font-display: swap;\n  src: url("fonts/${serif}") format("woff2");\n}`,
-    inlineCss(join(capsomer, "css", "tokens.css")),
-    inlineCss(base),
-    inlineCss(join(capsomer, "components", "link", "link.css")),
-    `@layer cap.tokens {\n${inlineCss(join(capsomer, "tokens", `family-${FAMILY}.css`))}\n}`,
-    inlineCss(join(capsomer, "components", "manual", "manual.css")),
-    inlineCss(join(capsomer, "components", "family-footer", "family-footer.css")),
-    // The theme button's tip (the popover's tooltip form) and the button itself, then the family letterhead at the top
-    // of every page, pinned while it scrolls.
-    inlineCss(join(capsomer, "components", "popover", "popover.css")),
-    inlineCss(join(capsomer, "components", "theme-switch", "theme-switch.css")),
-    inlineCss(join(capsomer, "components", "site-header", "site-header.css")),
-    readFileSync(join(HERE, "site.css"), "utf8"),
-  ].join("\n\n");
-  writeFileSync(join(outDir, "site.css"), css);
 }
 
 /** The sites Carrel publishes to on Dustin's Desk (app/lib/sites.server.ts). */
@@ -404,32 +368,6 @@ ${body}
 </html>
 `;
 
-/**
- * Bundles a script of www/browser/ with Capsomer's behavior in it, minified, as one file.
- *
- * @param {string} file
- * @param {"es" | "iife"} format
- * @returns {Promise<string>}
- */
-async function bundle(file, format) {
-  const result = await build({
-    configFile: false,
-    logLevel: "silent",
-    build: {
-      write: false,
-      minify: true,
-      lib: { entry: join(HERE, "browser", file), formats: [format], name: "carrel" },
-    },
-  });
-  const [{ output }] = /** @type {import("vite").Rolldown.RolldownOutput[]} */ (
-    Array.isArray(result) ? result : [result]
-  );
-  const [chunk] = output;
-  if (output.length !== 1 || chunk?.type !== "chunk")
-    throw new Error(`${file}: expected one chunk`);
-  return chunk.code;
-}
-
 /** site-runtime's one `_headers` writer, from the public site's registry entry, with Prelum's TDMRep header. */
 const HEADERS_BIN = join(
   HERE,
@@ -483,8 +421,11 @@ export async function buildSite(outDir) {
     "tdm-reservation: 1",
   ]);
   writeStyles(outDir);
-  const theme = await bundle("theme.js", "iife");
-  const site = await bundle("site.js", "es");
+  const theme = await bundleScript(join(HERE, "browser", "theme.js"), {
+    format: "iife",
+    name: "carrel",
+  });
+  const site = await bundleScript(join(HERE, "browser", "site.js"));
   writeFileSync(join(outDir, "theme.js"), theme);
   writeFileSync(join(outDir, "site.js"), site);
   const integrity = { theme: await integrityHash(theme), site: await integrityHash(site) };

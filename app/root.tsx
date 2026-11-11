@@ -8,8 +8,6 @@ import { getNonce } from "~/lib/context";
 import type { Route } from "./+types/root";
 import { LinkPrefetch } from "capsomer/react/link";
 import "capsomer/fonts.css";
-import "@fontsource-variable/source-serif-4/index.css";
-import "@fontsource-variable/source-serif-4/wght-italic.css";
 import "./app.css";
 
 // Run before first paint, so a remembered theme never flashes the other one: Capsomer's own
