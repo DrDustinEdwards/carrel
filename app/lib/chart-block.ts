@@ -2,6 +2,7 @@
 // check (E4). Pure, shared by the browser and the tests. The syntax is Prelum's (README, "Charts in
 // posts"): the attributes on the directive, the data as a fenced CSV block, an optional caption.
 
+import { parseCsv } from "capsomer/behavior/csv";
 import { escapeHtml } from "@dustinedwards/site-runtime/html";
 
 export const CHART_KINDS = [
@@ -25,39 +26,13 @@ export type ChartFields = {
   csv: string;
 };
 
-/** One CSV line split into its cells, with RFC 4180 quoting ("a, b" and doubled quotes). */
-function cells(line: string): string[] {
-  const out: string[] = [];
-  let cell = "";
-  let quoted = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (quoted) {
-      if (c === '"' && line[i + 1] === '"') {
-        cell += '"';
-        i++;
-      } else if (c === '"') quoted = false;
-      else cell += c;
-    } else if (c === '"') quoted = true;
-    else if (c === ",") {
-      out.push(cell.trim());
-      cell = "";
-    } else cell += c;
-  }
-  out.push(cell.trim());
-  return out;
-}
-
 /** The CSV's column names, and which hold only numbers (the columns a chart can measure). */
 export function csvColumns(csv: string): { name: string; numeric: boolean }[] {
-  const lines = csv
-    .replace(/^﻿/, "")
-    .split(/\r?\n/)
-    .filter((l) => l.trim() !== "");
-  const [head, ...rows] = lines;
-  if (!head) return [];
-  const names = cells(head);
-  const table = rows.map(cells);
+  // Capsomer's reader (RFC 4180, a byte order mark dropped); a blank line is no row, and cells are trimmed.
+  const [names, ...table] = parseCsv(csv)
+    .filter((r) => r.length > 1 || r[0]!.trim() !== "")
+    .map((r) => r.map((c) => c.trim()));
+  if (!names) return [];
   return names.map((name, i) => ({
     name,
     numeric:
