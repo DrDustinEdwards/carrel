@@ -58,7 +58,7 @@
     "@tiptap/extensions": "3.31.4",
     "@tiptap/pm": "3.31.4",
     "@tiptap/starter-kit": "3.31.4",
-    "@tiptap/y-tiptap": "3.0.10",
+    "@tiptap/y-tiptap": "3.3.0",
     "agents": "0.32.0",
     "capsomer": "github:DrDustinEdwards/capsomer#v0.99.0",
     "diff": "9.0.0",
