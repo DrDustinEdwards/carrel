@@ -9,6 +9,7 @@ import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { Disclosure } from "capsomer/react/disclosure";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
@@ -742,24 +743,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         />
       </div>
 
-      <ConfirmDialog
+      <PutDraftDialog
         open={asking?.kind === "put-draft"}
-        title="Put your draft in for everyone?"
-        lead="Your draft's text replaces the text everyone here is working on, and changes since the last save are not kept."
-        body={[]}
-        action="Replace the text"
         returnTo={asking?.opener}
         perform={async () => {
           await send("use-own-draft", { confirmed: "1" });
         }}
         onClose={() => setAsking(null)}
       />
-      <ConfirmDialog
+      <DropDraftDialog
         open={asking?.kind === "drop-draft"}
-        title="Delete your own draft?"
-        lead="The draft you kept from before shared editing is deleted. This cannot be undone."
-        body={[]}
-        action="Delete draft"
         returnTo={asking?.opener}
         perform={async () => {
           await send("drop-own-draft", { confirmed: "1" });
