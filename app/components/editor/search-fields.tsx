@@ -1,13 +1,14 @@
 // The post's search and sharing fields (site-api v0.17.0): one box for each field the site lists in
 // capabilities.searchFields, read and written through site-api's searchFieldsOf and setSearchFields, so
 // every other key of the frontmatter is left as it was. The search title and description measure their
-// width as a Google result sets them (serp-width.ts); too wide only warns. The two faults that block a
+// width as a Google result sets them (Capsomer's SerpWidthMeter, from Arial's advance widths, so the
+// server render already shows the number); too wide only warns. The two faults that block a
 // publish are seo-checks' searchFieldFaults, shown here on their boxes and in the publish gate.
 
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
-import { Meter } from "capsomer/react/meter";
+import { SerpWidthMeter } from "capsomer/react/share-preview";
 
 import { joinSource, readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import {
@@ -19,9 +20,6 @@ import {
 import { LibraryInsert } from "~/components/media/library-insert";
 import { typedProps, useTyped } from "~/components/editor/typed-box";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
-import { SERP_WIDTH, textWidth } from "~/lib/serp-width";
-import { useHydrated } from "capsomer/react/hooks";
-import { plural } from "@drdustinedwards/site-helpers/text";
 
 const PICK_WORDS = {
   label: "Choose from library",
@@ -40,42 +38,9 @@ type Props = {
   media: { endpoint: string } | null;
 };
 
-function WidthMeter({
-  label,
-  text,
-  limit,
-  font,
-  ready,
-}: {
-  label: string;
-  text: string;
-  limit: number;
-  font: string;
-  ready: boolean;
-}) {
-  const px = ready ? textWidth(text, font) : null;
-  const over = px !== null && px > limit;
-  const chars = `${plural(text.length, "character")}`;
-  return (
-    <Meter
-      size="sm"
-      label={label}
-      value={px}
-      max={limit}
-      measuring={px === null}
-      tone={over ? "warn" : "ok"}
-      words={{ warn: "Google cuts it off", crit: "Google cuts it off" }}
-      display={`${px ?? 0} of ${limit} px · ${chars}`}
-      valueText={`${px ?? 0} of ${limit} pixels, ${chars}.${over ? ` Google cuts it off past about ${limit} pixels.` : ""}`}
-    />
-  );
-}
-
 export function SearchFields({ source, onChange, readOnly, listed, site, origin, media }: Props) {
   const parts = splitSource(source);
   const front = parts.front;
-  // Canvas is only in the browser; the meters say "Measuring" until the page is live.
-  const ready = useHydrated();
   const title = useTyped(readKey(front, "searchTitle"));
   const description = useTyped(readKey(front, "description"));
   const alt = useTyped(readKey(front, "imageAlt"));
@@ -114,11 +79,9 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
           >
             <input {...typed(title, "searchTitle")} type="text" placeholder={postTitle} />
           </Field>
-          <WidthMeter
+          <SerpWidthMeter
             label="Width in a search result"
             text={`${title.value.trim() || postTitle}${titleSuffixOf(site)}`}
-            ready={ready}
-            {...SERP_WIDTH.title}
           />
         </div>
       ) : null}
@@ -130,11 +93,10 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
           >
             <textarea {...typed(description, "description")} rows={3} />
           </Field>
-          <WidthMeter
+          <SerpWidthMeter
             label="Width in a search result"
             text={description.value.trim()}
-            ready={ready}
-            {...SERP_WIDTH.description}
+            part="description"
           />
         </div>
       ) : null}

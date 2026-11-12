@@ -6,7 +6,7 @@
 import { Form, redirect } from "react-router";
 import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
+import { InlineAddForm } from "capsomer/react/inline-add-form";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
@@ -242,8 +242,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         flush
         footer={
           canEdit ? (
-            <Form method="post" className="app-inline-form">
-              <input type="hidden" name="intent" value="new-chapter" />
+            <InlineAddForm Form={Form} hidden={{ intent: "new-chapter" }} submit="Start it">
               <Field label="New chapter">
                 <input
                   className="cap-input"
@@ -261,8 +260,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                   autoComplete="off"
                 />
               </Field>
-              <Button type="submit">Start it</Button>
-            </Form>
+            </InlineAddForm>
           ) : undefined
         }
       >

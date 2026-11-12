@@ -19,13 +19,12 @@ import { PageHead } from "capsomer/react/page-head";
 
 import { AiWriteButtons } from "~/components/ai-write-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
-import { WritingSurface } from "~/components/editor/writing-surface";
+import { WRITING_SURFACES, WritingSurface } from "~/components/editor/writing-surface";
 import { HeaderFields } from "~/components/editor/header-fields";
 import { Inspector } from "capsomer/react/inspector";
 import { commentsTab } from "~/components/editor/comments-tab";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { useSaveShortcut } from "~/components/editor/save-keys";
-import { useTypingRecede } from "~/components/editor/typing";
+import { useSaveShortcut, useTypingRecede } from "capsomer/react/editor-workspace";
 import { Binder } from "~/components/writing/binder";
 
 import {
@@ -330,7 +329,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
   const { say } = useMessage();
-  useTypingRecede();
+  useTypingRecede(WRITING_SURFACES);
   const base = `/b/${data.project.slug}`;
 
   // The file's room: one copy for everyone on the book, as they type.
@@ -445,7 +444,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         }
       />
 
-      <div className="app-notices">
+      <div className="app-notices" data-cap-recede="">
         {data.connectionDetail ? <Banner tone="warn">{data.connectionDetail}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="Git moved on">
@@ -492,7 +491,6 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       <div className="app-editor-grid">
         <div className="app-editor-main">
           <section
-            className="app-editor-pane"
             aria-label="Write"
             onPasteCapture={(event) => countUntyped(event.clipboardData?.getData("text/plain"))}
             onDropCapture={(event) => countUntyped(event.dataTransfer?.getData("text/plain"))}

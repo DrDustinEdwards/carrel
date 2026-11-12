@@ -5,7 +5,7 @@ import { Form, redirect } from "react-router";
 import { markup } from "capsomer/behavior/trusted-html";
 import { routerRenderLink } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
+import { InlineAddForm } from "capsomer/react/inline-add-form";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
@@ -131,7 +131,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
           flush
           footer={
             canEdit ? (
-              <Form method="post" className="app-inline-form">
+              <InlineAddForm Form={Form} submit="Start it">
                 <Field label="New scene">
                   <input
                     className="cap-input"
@@ -141,8 +141,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                     autoComplete="off"
                   />
                 </Field>
-                <Button type="submit">Start it</Button>
-              </Form>
+              </InlineAddForm>
             ) : undefined
           }
         >

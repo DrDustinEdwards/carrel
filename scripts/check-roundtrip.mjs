@@ -1,6 +1,6 @@
 // check:roundtrip. Every Markdown file under the folders given must come back from the formatted
 // editor byte for byte when it is opened and saved with no edit. It runs the
-// editor's own parser, schema and writer (app/lib/editor), with no browser: the document is loaded
+// editor's own parser, schema and writer (Capsomer's rich editor), with no browser: the document is loaded
 // into the editor's schema and read back out of it, as the editor does.
 //
 // Then, for each file, each prose block in turn is edited (a word added at its end) and saved: every
@@ -19,13 +19,13 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import {
+  editorSchema,
   fingerprints,
   fromDoc,
   sameBlock,
   toDoc,
   writeChecked,
-} from "../app/lib/editor/markdown.mjs";
-import { editorSchema } from "../app/lib/editor/schema.mjs";
+} from "capsomer/behavior/rich-editor";
 import { plural } from "@drdustinedwards/site-helpers/text";
 
 const args = process.argv.slice(2);

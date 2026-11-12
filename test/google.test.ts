@@ -343,9 +343,10 @@ describe("connecting drive.file", () => {
 
   it("stores the refresh token encrypted, never as it came", async () => {
     expect(await connectGoogle()).toEqual({ ok: true });
-    const row = await testEnv.DB.prepare(
-      "SELECT refresh_token, scope FROM google_tokens",
-    ).first<{ refresh_token: string; scope: string }>();
+    const row = await testEnv.DB.prepare("SELECT refresh_token, scope FROM google_tokens").first<{
+      refresh_token: string;
+      scope: string;
+    }>();
     expect(row!.refresh_token).not.toContain(REFRESH);
     const c = await oauthConnection(env);
     if (c.state !== "configured") throw new Error("not configured");

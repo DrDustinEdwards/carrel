@@ -115,7 +115,7 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
                   </p>
                   <ol className="app-label-edit">
                     {editRows.map((l, i) => (
-                      <li key={i} className="app-inline-form">
+                      <li key={i} className="cap-inline-add">
                         <Field label={`Label ${i + 1}`}>
                           <input
                             className="cap-input"

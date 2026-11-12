@@ -9,6 +9,7 @@ import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
+import { PreviewPane } from "capsomer/react/editor-workspace";
 import { Segmented } from "capsomer/react/segmented";
 
 import { DraftHead, draftIdParam } from "~/components/editor/draft-head";
@@ -129,14 +130,10 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
             }
           >
             {view === "rendered" ? (
-              <div className="app-preview-pane">
-                {/* Sandboxed with no permissions, as the editor's preview is: the site's page runs no script. */}
-                <iframe
-                  title={`This AI draft as the site renders it`}
-                  src={`${editor}/ai/${draft.id}/preview`}
-                  sandbox=""
-                />
-              </div>
+              <PreviewPane
+                title="This AI draft as the site renders it"
+                src={`${editor}/ai/${draft.id}/preview`}
+              />
             ) : (
               <pre className="app-ai-draft">{draft.source}</pre>
             )}

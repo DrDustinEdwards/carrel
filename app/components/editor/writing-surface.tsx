@@ -2,9 +2,9 @@
 // the Markdown kept byte for byte underneath, and "Markdown" beside it, which is Capsomer's Markdown
 // editor exactly as before. Both get Carrel's blocks, its link targets and its image upload, set in
 // the serif prose layout, with "Insert from library" beside them. The choice is remembered on this
-// device. The formatted editor is components/editor/rich-editor.tsx; the Markdown one is Capsomer's.
-// In a file's room (`room`), the formatted editor is bound to the room's shared copy, and Markdown
-// typed in the Markdown view goes into it block by block (room-editing.tsx).
+// device. Both editors are Capsomer's (rich-editor and markdown-editor). In a file's room (`room`), the
+// formatted editor is bound to the room's shared copy, and Markdown typed in the Markdown view goes into
+// it block by block (Capsomer's collab editor, through room-editing.tsx).
 
 import { EditorView } from "@codemirror/view";
 import { useEffect, useEffectEvent, useRef } from "react";
@@ -15,14 +15,17 @@ import type { Editor } from "@tiptap/core";
 import { Alert } from "capsomer/react/banner";
 
 import { ChartInsert, type ChartPreview } from "~/components/editor/chart-insert";
-import { RichEditor, type RichEditorHandle, type RichRoom } from "~/components/editor/rich-editor";
+import type { Dialect } from "capsomer/behavior/rich-editor";
+import { RichEditor, type RichEditorHandle, type RichRoom } from "capsomer/react/rich-editor";
 import { LibraryInsert } from "~/components/media/library-insert";
 import { uploadImage, type EditorMedia } from "~/components/media/upload";
-import type { Dialect } from "~/lib/editor/markdown.mjs";
 import { useRemembered } from "capsomer/react/hooks";
 import { SCAFFOLDS } from "~/lib/site-markdown";
 
 export type { LinkTarget };
+
+/** The surfaces whose typing makes the chrome step back (Capsomer's useTypingRecede). */
+export const WRITING_SURFACES = ".cm-editor, .cap-rich-editor-surface";
 
 type Mode = "formatted" | "markdown";
 const MODE_KEY = "carrel:editor-mode";
@@ -104,7 +107,7 @@ export function WritingSurface({
 
   return (
     <div className="app-writing" ref={root} data-mode={mode}>
-      <div className="app-writing-tools">
+      <div className="app-writing-tools" data-cap-recede="">
         <Segmented
           legend={`Edit ${label.toLowerCase()} as`}
           hideLegend

@@ -18,21 +18,23 @@ import {
   isSeeded,
   loadMarkdown,
   markSaved,
-  META,
-  parseRoomName,
   readMeta,
   roomJson,
   roomMarkdown,
   roomSchema,
-} from "~/lib/editor/collab";
-import { roomViewer } from "~/lib/editor/room-protocol";
-import { settle, suggestionCounts, type JsonDoc } from "~/lib/editor/suggest";
+  settle,
+  suggestionCounts,
+  type JsonDoc,
+} from "capsomer/behavior/collab-editor";
+import { parseRoomName, roomViewer } from "~/lib/editor/room-protocol";
 import { currentRole } from "~/lib/people.server";
 
 export { ROLE_RECHECK_MS } from "@dustinedwards/site-runtime/doc-room";
 
 const model = {
-  metaKey: META,
+  // The Y.Map Capsomer's collab-editor-doc keeps the room's own state in (version, saved text, prints);
+  // Capsomer does not export the name yet.
+  metaKey: "carrel",
   isSeeded,
   readMeta,
   markSaved,

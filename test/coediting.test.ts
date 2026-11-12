@@ -12,18 +12,16 @@ import * as Y from "yjs";
 
 import {
   FRAGMENT,
+  listSuggestions,
   loadMarkdown,
   patchMarkdown,
   roomMarkdown,
   roomSchema,
-} from "~/lib/editor/collab";
-import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
-import {
-  listSuggestions,
   settle,
   suggestingDispatch,
   suggestionPlugins,
-} from "~/lib/editor/suggest";
+} from "capsomer/behavior/collab-editor";
+import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
 import { mergeRoom, openRoom, saveRoom } from "~/lib/rooms.server";
 import { ROLE_RECHECK_MS } from "../workers/doc-room";
 
