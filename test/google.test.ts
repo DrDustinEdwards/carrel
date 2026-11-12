@@ -2,9 +2,10 @@
 // fake Google in test/google.ts. Planted: a missing, broken, revoked or old key fails closed with a
 // clear health message; a Drive write through the service account is refused in code, unsent.
 
+import { open } from "@dustinedwards/site-runtime/secret-box";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { decryptToken, finishAuth, oauthConnection, startAuth } from "~/lib/google/oauth.server";
+import { finishAuth, oauthConnection, startAuth } from "~/lib/google/oauth.server";
 import {
   importFromDocs,
   listManuscripts,
@@ -343,12 +344,12 @@ describe("connecting drive.file", () => {
   it("stores the refresh token encrypted, never as it came", async () => {
     expect(await connectGoogle()).toEqual({ ok: true });
     const row = await testEnv.DB.prepare(
-      "SELECT refresh_token, iv, scope FROM google_tokens",
-    ).first<{ refresh_token: string; iv: string; scope: string }>();
+      "SELECT refresh_token, scope FROM google_tokens",
+    ).first<{ refresh_token: string; scope: string }>();
     expect(row!.refresh_token).not.toContain(REFRESH);
     const c = await oauthConnection(env);
-    if (c.state !== "configured" || !c.key) throw new Error("not configured");
-    expect(await decryptToken(c.key, row!.refresh_token, row!.iv)).toBe(REFRESH);
+    if (c.state !== "configured") throw new Error("not configured");
+    expect(await open(c.ring, row!.refresh_token)).toBe(REFRESH);
   });
 
   it("PLANT: a callback Carrel did not start, or one used twice, is refused", async () => {

@@ -52,7 +52,7 @@ interface CarrelSecrets {
   /** The Web OAuth client for Dustin's drive.file grant (Send to Docs, Import). */
   GOOGLE_OAUTH_CLIENT_ID?: string;
   GOOGLE_OAUTH_CLIENT_SECRET?: string;
-  /** 32 random bytes, base64, that encrypt the drive.file refresh token in D1. */
+  /** 32 random bytes, base64 or hex, that seal the drive.file refresh token in D1 (site-runtime secret-box). */
   GOOGLE_TOKEN_KEY?: string;
   /**
    * The Claude Code routine that drafts brand posts (design decision 5): its API trigger's /fire URL

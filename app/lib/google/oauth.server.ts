@@ -1,10 +1,13 @@
 // Dustin's own Google grant (design decision 6): drive.file only, which reaches only files Carrel
 // itself created or he opened with it, used for Send to Docs and Import. The refresh token is kept in
-// D1 encrypted under a key from `wrangler secret`, so the database alone cannot use it.
+// D1 sealed with site-runtime's secret-box under GOOGLE_TOKEN_KEY from `wrangler secret`, so the
+// database alone cannot use it. The sealed value names its key, so the key rotates (secret-box's
+// keyringFromEnv: GOOGLE_TOKEN_KEY_ID names the active key, GOOGLE_TOKEN_KEYS_OLD holds the old ones).
 
 import { and, eq, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { base64url, fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
+import { base64url } from "@dustinedwards/site-runtime/encoding";
+import { keyringFromEnv, open, seal, type Keyring } from "@dustinedwards/site-runtime/secret-box";
 
 import { googleOauthStates, googleTokens } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
@@ -19,21 +22,9 @@ const STATE_TTL_MS = 10 * 60_000;
 type Fetch = typeof fetch;
 
 export type OauthConnection =
-  | { state: "configured"; clientId: string; clientSecret: string; key: CryptoKey | null }
+  | { state: "configured"; clientId: string; clientSecret: string; ring: Keyring }
   | { state: "not-configured"; detail: string }
   | { state: "misconfigured"; detail: string };
-
-async function tokenKey(raw: string | undefined): Promise<CryptoKey | null> {
-  if (!raw?.trim()) return null;
-  let bytes: Uint8Array<ArrayBuffer>;
-  try {
-    bytes = fromBase64(raw.trim());
-  } catch {
-    return null;
-  }
-  if (bytes.length !== 32) return null;
-  return crypto.subtle.importKey("raw", bytes, "AES-GCM", false, ["encrypt", "decrypt"]);
-}
 
 export async function oauthConnection(env: Env): Promise<OauthConnection> {
   const clientId = env.GOOGLE_OAUTH_CLIENT_ID?.trim();
@@ -50,40 +41,26 @@ export async function oauthConnection(env: Env): Promise<OauthConnection> {
       state: "misconfigured",
       detail: "GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET must both be set.",
     };
-  const key = await tokenKey(env.GOOGLE_TOKEN_KEY);
-  if (!key)
+  let ring: Keyring;
+  try {
+    ring = keyringFromEnv(env, {
+      key: "GOOGLE_TOKEN_KEY",
+      id: "GOOGLE_TOKEN_KEY_ID",
+      old: "GOOGLE_TOKEN_KEYS_OLD",
+    });
+  } catch (error) {
     return {
       state: "misconfigured",
-      detail:
-        "GOOGLE_TOKEN_KEY must be 32 random bytes in base64, so the refresh token can be stored encrypted.",
+      detail: `${(error as Error).message}, so the refresh token can be stored encrypted.`,
     };
-  return { state: "configured", clientId, clientSecret, key };
+  }
+  return { state: "configured", clientId, clientSecret, ring };
 }
 
 async function configured(env: Env) {
   const c = await oauthConnection(env);
-  if (c.state !== "configured" || !c.key)
-    throw new GoogleNotConnected(
-      c.state === "configured" ? "GOOGLE_TOKEN_KEY is missing." : c.detail,
-    );
-  return { clientId: c.clientId, clientSecret: c.clientSecret, key: c.key };
-}
-
-async function encryptToken(key: CryptoKey, token: string): Promise<{ data: string; iv: string }> {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const data = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(token)),
-  );
-  return { data: toBase64(data), iv: toBase64(iv) };
-}
-
-export async function decryptToken(key: CryptoKey, data: string, iv: string): Promise<string> {
-  const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: fromBase64(iv) },
-    key,
-    fromBase64(data),
-  );
-  return new TextDecoder().decode(plain);
+  if (c.state !== "configured") throw new GoogleNotConnected(c.detail);
+  return c;
 }
 
 /** Dustin's grant is his alone: Send to Docs sends outside Carrel, the Owner's action. */
@@ -140,7 +117,7 @@ export async function finishAuth(
   now = new Date(),
 ) {
   requireOwner(viewer);
-  const { clientId, clientSecret, key } = await configured(env);
+  const { clientId, clientSecret, ring } = await configured(env);
   const d = drizzle(env.DB);
   const state = params.get("state") ?? "";
   const used = await d
@@ -192,21 +169,19 @@ export async function finishAuth(
       message:
         "Google returned no refresh token. Remove Carrel's access in your Google account and connect again.",
     };
-  const sealed = await encryptToken(key, body.refresh_token);
+  const sealed = await seal(ring, body.refresh_token);
   await d
     .insert(googleTokens)
     .values({
       personId: viewer.id,
-      refreshToken: sealed.data,
-      iv: sealed.iv,
+      refreshToken: sealed,
       scope: DRIVE_FILE_SCOPE,
       connectedAt: now.toISOString(),
     })
     .onConflictDoUpdate({
       target: googleTokens.personId,
       set: {
-        refreshToken: sealed.data,
-        iv: sealed.iv,
+        refreshToken: sealed,
         scope: DRIVE_FILE_SCOPE,
         connectedAt: now.toISOString(),
         lastError: null,
@@ -231,14 +206,14 @@ export async function userAccessToken(
   personId: number,
   fetcher: Fetch = timedFetch,
 ): Promise<string> {
-  const { clientId, clientSecret, key } = await configured(env);
+  const { clientId, clientSecret, ring } = await configured(env);
   const d = drizzle(env.DB);
   const row = await d.select().from(googleTokens).where(eq(googleTokens.personId, personId)).get();
   if (!row)
     throw new GoogleNotConnected(
       "Google is not connected for Send to Docs yet. Connect it from the home page.",
     );
-  const refresh = await decryptToken(key, row.refreshToken, row.iv);
+  const refresh = await open(ring, row.refreshToken);
   const res = await fetcher(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
