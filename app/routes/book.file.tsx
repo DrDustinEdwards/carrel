@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Link, routerRenderLink } from "capsomer/react/link";
+import { RowList } from "capsomer/react/row-list";
+import { FlagRow } from "~/components/editor/flags-panel";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -17,15 +19,14 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
-import { AiWriteButtons } from "~/components/ai-write-buttons";
+import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
-import { WritingSurface } from "~/components/editor/writing-surface";
-import { HeaderFields } from "~/components/editor/header-fields";
+import { WRITING_SURFACES, WritingSurface } from "~/components/editor/writing-surface";
+import { FrontmatterFields } from "capsomer/react/frontmatter-fields";
 import { Inspector } from "capsomer/react/inspector";
 import { commentsTab } from "~/components/editor/comments-tab";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { useSaveShortcut } from "~/components/editor/save-keys";
-import { useTypingRecede } from "~/components/editor/typing";
+import { useSaveShortcut, useTypingRecede } from "capsomer/react/editor-workspace";
 import { Binder } from "~/components/writing/binder";
 
 import {
@@ -42,7 +43,7 @@ import {
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { roomNames } from "~/lib/comments.server";
 import { discardDraft, readDraft, readOwnDraft } from "~/lib/content.server";
-import type { RoomViewer } from "~/lib/editor/room-protocol";
+import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 import { getEnv, getViewer } from "~/lib/context";
 import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
@@ -329,8 +330,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [asking, setAsking] = useState<Ask | null>(null);
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
+  const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
-  useTypingRecede();
+  useTypingRecede(WRITING_SURFACES);
   const base = `/b/${data.project.slug}`;
 
   // The file's room: one copy for everyone on the book, as they type.
@@ -445,7 +447,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         }
       />
 
-      <div className="app-notices">
+      <div className="app-notices" data-cap-recede="">
         {data.connectionDetail ? <Banner tone="warn">{data.connectionDetail}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="Git moved on">
@@ -492,7 +494,6 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       <div className="app-editor-grid">
         <div className="app-editor-main">
           <section
-            className="app-editor-pane"
             aria-label="Write"
             onPasteCapture={(event) => countUntyped(event.clipboardData?.getData("text/plain"))}
             onDropCapture={(event) => countUntyped(event.dataTransfer?.getData("text/plain"))}
@@ -529,8 +530,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     </p>
                     {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
                     {data.version ? (
-                      <AiWriteButtons
+                      <AiJobButtons
                         action={`${base}/ai-write`}
+                        Form={aiJob.Form}
+                        answer={aiJob.data}
+                        pending={aiJob.state !== "idle"}
                         fields={{ path: data.path }}
                         buttons={[
                           { job: "continue", label: "Continue this file" },
@@ -579,10 +583,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               value: "details",
               label: "Details",
               content: (
-                <HeaderFields
+                <FrontmatterFields
                   source={source}
                   onChange={setSource}
                   readOnly={readOnly || !data.canEdit}
+                  legend="Header"
+                  empty={
+                    <p className="app-note">
+                      This file has no header, so it has no details to set.
+                    </p>
+                  }
                 />
               ),
             },
@@ -601,30 +611,18 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       {data.findings.length === 0 ? (
                         <p>None.</p>
                       ) : (
-                        <ul className="app-flags" aria-label="Flags on this file">
+                        <RowList label="Flags on this file" gap="xs">
                           {data.findings.map((f) => (
-                            <li key={f.id}>
-                              {f.status === "open" ? (
-                                <Status tone="warn">Open</Status>
-                              ) : (
-                                <Pill variant="secondary">Dismissed</Pill>
-                              )}
-                              <span>
-                                <strong>{f.check}</strong>{" "}
-                                {f.line ? <span className="cap-muted">line {f.line}</span> : null}{" "}
-                                {f.message}
-                              </span>
-                              {f.status === "open" && data.canPublish ? (
-                                <Button
-                                  size="sm"
-                                  onClick={(event) => ask("dismiss", event.currentTarget, f.id)}
-                                >
-                                  Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                                </Button>
-                              ) : null}
-                            </li>
+                            <FlagRow
+                              key={f.id}
+                              flag={f}
+                              meta={f.line ? `line ${f.line}` : undefined}
+                              onDismiss={
+                                data.canPublish ? (button) => ask("dismiss", button, f.id) : null
+                              }
+                            />
                           ))}
-                        </ul>
+                        </RowList>
                       )}
                       {checked ? (
                         <div role="status" className="app-stack" data-tight>
@@ -632,20 +630,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           {checked.length === 0 ? (
                             <p>Nothing flagged.</p>
                           ) : (
-                            <ul className="app-flags">
+                            <RowList label="This text, checked now" gap="xs">
                               {checked.map((f, i) => (
-                                <li key={i}>
-                                  <Status tone="warn">Found</Status>
-                                  <span>
-                                    <strong>{f.check}</strong>{" "}
-                                    {f.line ? (
-                                      <span className="cap-muted">line {f.line}</span>
-                                    ) : null}{" "}
-                                    {f.message}
-                                  </span>
-                                </li>
+                                <FlagRow
+                                  key={i}
+                                  flag={f}
+                                  status={<Status tone="warn">Found</Status>}
+                                  meta={f.line ? `line ${f.line}` : undefined}
+                                />
                               ))}
-                            </ul>
+                            </RowList>
                           )}
                         </div>
                       ) : null}

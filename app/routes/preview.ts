@@ -13,6 +13,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { siteClient, siteConnection, SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/preview";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 // A chart block with its CSV and the post's frontmatter, with room to spare; the site sets its own limit.
 const MAX_SOURCE = 256 * 1024;
@@ -43,7 +44,7 @@ function failed(error: unknown, itemId: string): Response {
   if (error instanceof SiteNotConnected) return previewFailure(error.detail);
   if (error instanceof SiteApiError && error.body)
     return previewFailure(`The site could not render this: ${error.body.message}`);
-  console.error(JSON.stringify({ preview: "failed", itemId, error: String(error) }));
+  logEvent("preview.failed", { itemId, error: String(error) }, { level: "error" });
   return previewFailure("The site did not answer the preview request.");
 }
 

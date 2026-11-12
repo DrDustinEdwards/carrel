@@ -1,18 +1,11 @@
 // What a file's room and the editors in it say to each other, besides the document itself, which Yjs
-// carries. The room is site-runtime's ./doc-room (workers/doc-room.ts gives it Carrel's roles, comments
-// and backup copy); the editors' side is components/editor/use-room.ts.
+// carries, and Carrel's part of it: who a role lets in and the room's name for a file. The room is
+// site-runtime's ./doc-room (workers/doc-room.ts gives it Carrel's roles, comments and backup copy);
+// the editors' side is Capsomer's collab editor (components/editor/room-editing.tsx).
 
 import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 
 import { can, type Role } from "~/lib/roles";
-
-export type {
-  ClientMessage,
-  RoomComment,
-  RoomPerson,
-  RoomViewer,
-  ServerMessage,
-} from "@dustinedwards/site-runtime/doc-room";
 
 /** What a role may do in a room: change the text, only suggest, or nothing (not let in). */
 function roomAccess(role: Role | null): RoomViewer["access"] | null {
@@ -32,4 +25,15 @@ export function roomViewer(
     access,
     ...(role === "owner" ? { deletesAny: true } : {}),
   };
+}
+
+/** The name of the room for one file: its project and the item's id (a post's id, or a book file's path). */
+export function roomName(projectId: number, itemId: string): string {
+  return `${projectId}/${itemId}`;
+}
+
+export function parseRoomName(name: string): { projectId: number; itemId: string } | null {
+  const at = name.indexOf("/");
+  const projectId = Number(name.slice(0, at));
+  return at > 0 && Number.isInteger(projectId) ? { projectId, itemId: name.slice(at + 1) } : null;
 }

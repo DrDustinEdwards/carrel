@@ -1,11 +1,13 @@
 // The editor's flags and the AI drafts kept beside the writer's own (routes/editor.tsx). Checks and
 // reviewers flag; they never decide, so a flag only asks to be read, and the Owner may dismiss it.
 
-import { Link } from "capsomer/react/link";
+import { routerRenderLink } from "capsomer/react/link";
+import { Row, RowList } from "capsomer/react/row-list";
 import { Button } from "capsomer/react/button";
 import { Panel } from "capsomer/react/panel";
 import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
+import type { ReactNode } from "react";
 
 import type { AiDraftSummary, ItemFinding } from "~/lib/ai.server";
 import type { TranscriptDraftSummary } from "~/lib/transcripts.server";
@@ -19,6 +21,59 @@ type Props = {
   onDismiss: (button: HTMLElement, flag: number) => void;
 };
 
+/**
+ * One flag, open or dismissed; an open one offers Dismiss to whoever may dismiss it. A row of the row list
+ * with Capsomer's flag row look (.cap-flag, flag-list.css): the check that raised it as the title, and the
+ * message, with the words it quotes, as the detail, which wraps whole instead of clamping.
+ */
+export function FlagRow({
+  flag,
+  status,
+  meta,
+  onDismiss = null,
+}: {
+  flag: { check: string; message: string; excerpt?: string | null; status?: string };
+  /** The status word; by default Open or Dismissed from the flag's own status. */
+  status?: ReactNode;
+  meta?: ReactNode;
+  onDismiss?: ((button: HTMLElement) => void) | null;
+}) {
+  return (
+    <Row
+      size="sm"
+      className="cap-flag"
+      title={flag.check}
+      status={
+        status ??
+        (flag.status === "open" ? (
+          <Status tone="warn">Open</Status>
+        ) : (
+          <Pill variant="secondary">Dismissed</Pill>
+        ))
+      }
+      detail={
+        <>
+          {flag.message}
+          {flag.excerpt ? (
+            <>
+              {" "}
+              <q>{flag.excerpt}</q>
+            </>
+          ) : null}
+        </>
+      }
+      meta={meta}
+      actions={
+        flag.status === "open" && onDismiss ? (
+          <Button size="sm" onClick={(event) => onDismiss(event.currentTarget)}>
+            Dismiss<span className="cap-sr-only"> flag: {flag.message}</span>
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+}
+
 export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDismiss }: Props) {
   const openFlags = flags.filter((f) => f.status === "open").length;
   const drafts = aiDrafts.length + transcriptDrafts.length;
@@ -31,61 +86,49 @@ export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDi
     >
       <div className="cap-stack" data-gap="4">
         {flags.length > 0 ? (
-          <ul className="app-flags" aria-label="Flags">
+          <RowList label="Flags" gap="xs">
             {flags.map((f) => (
-              <li key={f.id}>
-                {f.status === "open" ? (
-                  <Status tone="warn">Open</Status>
-                ) : (
-                  <Pill variant="secondary">Dismissed</Pill>
-                )}
-                <span>
-                  {f.message}
-                  {f.excerpt ? (
-                    <>
-                      {" "}
-                      <q className="cap-muted">{f.excerpt}</q>
-                    </>
-                  ) : null}
-                </span>
-                {f.status === "open" && canPublish ? (
-                  <Button size="sm" onClick={(event) => onDismiss(event.currentTarget, f.id)}>
-                    Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                  </Button>
-                ) : null}
-              </li>
+              <FlagRow
+                key={f.id}
+                flag={f}
+                onDismiss={canPublish ? (button) => onDismiss(button, f.id) : null}
+              />
             ))}
-          </ul>
+          </RowList>
         ) : null}
         {aiDrafts.length > 0 ? (
-          <ul className="app-flags" aria-label="AI drafts beside yours">
+          <RowList label="AI drafts beside yours" gap="xs">
             {aiDrafts.map((d) => (
-              <li key={d.id}>
-                <span>
-                  <Link to={`ai/${d.id}`}>AI draft from {d.client}</Link>{" "}
-                  <span className="cap-muted">
+              <Row
+                key={d.id}
+                size="sm"
+                title={`AI draft from ${d.client}`}
+                href={`ai/${d.id}`}
+                renderLink={routerRenderLink}
+                detail={d.note || undefined}
+                meta={
+                  <>
                     <Time at={d.createdAt} /> · {d.words} words
-                  </span>
-                  {d.note ? <span> · {d.note}</span> : null}
-                </span>
-              </li>
+                  </>
+                }
+              />
             ))}
-          </ul>
+          </RowList>
         ) : null}
         {transcriptDrafts.length > 0 ? (
-          <ul className="app-flags" aria-label="Transcript drafts">
+          <RowList label="Transcript drafts" gap="xs">
             {transcriptDrafts.map((d) => (
-              <li key={d.id}>
-                <span>
-                  <Link to={`transcript/${d.id}`}>Transcript draft from {d.client}</Link>{" "}
-                  <span className="cap-muted">
-                    <Time at={d.createdAt} />
-                  </span>
-                  {d.note ? <span> · {d.note}</span> : null}
-                </span>
-              </li>
+              <Row
+                key={d.id}
+                size="sm"
+                title={`Transcript draft from ${d.client}`}
+                href={`transcript/${d.id}`}
+                renderLink={routerRenderLink}
+                detail={d.note || undefined}
+                meta={<Time at={d.createdAt} />}
+              />
             ))}
-          </ul>
+          </RowList>
         ) : null}
       </div>
     </Panel>

@@ -16,6 +16,7 @@ import type { Viewer } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 import { planRenames, type ChapterOrder, type Rename } from "~/lib/writing/binder";
 import { plural } from "@drdustinedwards/site-helpers/text";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 export type ReorderResult =
   | { ok: true; renames: Rename[]; commit: string | null }
@@ -84,7 +85,7 @@ export async function reorderBook(
           "The book changed in Git since Carrel last read it, so nothing was moved. Refresh the book from Git, then move again.",
       };
     }
-    console.error(JSON.stringify({ book: "reorder-failed", error: String(error) }));
+    logEvent("book.reorder-failed", { error: String(error) }, { level: "error" });
     return {
       ok: false,
       reason: "failed",

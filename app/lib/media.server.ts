@@ -28,6 +28,7 @@ import type { Viewer } from "~/lib/people.server";
 import { answer, kitBase } from "~/lib/kit.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
 import { siteClient, siteUnreachable } from "~/lib/sites.server";
+import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
 /** The authorship record's action for each kind the kit records (migration 0007 and later; site-api v0.13's in 0024). */
 const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
@@ -114,9 +115,7 @@ export async function mediaBytes(
   const detail = capabilities.media ? await source.client.media.get(id).catch(() => null) : null;
   if (!detail || !CROPPABLE.includes(bareType(detail.contentType)) || detail.bytes > limit)
     return null;
-  const src = detail.url.startsWith("/")
-    ? `${source.site.origin.replace(/\/+$/, "")}${detail.url}`
-    : detail.url;
+  const src = absoluteUrl(source.site.origin, detail.url);
   const response = await fetcher(src);
   if (!response.ok) return null;
   const bytes = await response.arrayBuffer();
@@ -254,7 +253,7 @@ export async function listMediaFiles(
           alt: item.alt,
           decorative: item.decorative === true,
           caption: item.caption ?? "",
-          url: item.url.startsWith("/") ? `${origin}${item.url}` : item.url,
+          url: absoluteUrl(origin, item.url),
           version: item.version ?? detail?.version ?? null,
           usedBy: (detail?.usedBy ?? []).map((use) => ({
             type: use.type,

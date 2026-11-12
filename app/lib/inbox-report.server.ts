@@ -17,7 +17,7 @@ import {
   type ReportResult,
 } from "@dustinedwards/site-runtime/inbox-report";
 
-import { errorMessage } from "@dustinedwards/site-runtime/log";
+import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 type InboxReport = { namespace: "carrel"; items: InboxItem[] };
 
 /** The report body for `waiting` AI drafts, the oldest made at `since`. None waiting: no items. */
@@ -51,7 +51,7 @@ export async function reportDraftsInbox(
     });
   } catch (error) {
     const detail = errorMessage(error);
-    console.error(JSON.stringify({ inbox: "report-failed", error: detail }));
+    logEvent("inbox.report-failed", { error: detail }, { level: "error" });
     return { state: "failed", detail };
   }
 }

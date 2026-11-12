@@ -12,7 +12,7 @@ import { manuscriptsFolder, refreshManuscripts } from "./drive.server";
 import { refreshSearchConsole } from "./search-console.server";
 import { saConnection } from "./service-account.server";
 
-import { errorMessage } from "@dustinedwards/site-runtime/log";
+import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 export async function refreshGoogle(
   env: Env,
   fetcher?: typeof fetch,
@@ -21,7 +21,7 @@ export async function refreshGoogle(
   const out: Record<string, unknown> = {};
   const note = (key: string, error: unknown) => {
     const message = errorMessage(error);
-    console.error(JSON.stringify({ google: "refresh-failed", key, error: message }));
+    logEvent("google.refresh-failed", { key, error: message }, { level: "error" });
     out[key] = `failed: ${message}`;
   };
   if (manuscriptsFolder(env)) {

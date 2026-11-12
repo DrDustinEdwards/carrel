@@ -17,6 +17,7 @@ import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.new";
 import { isSlug, SLUG_MAX_LENGTH } from "@drdustinedwards/site-helpers/slug";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
 
 /** A site with a fixed set of items refuses a new one, so Carrel has no New post for it. */
 function newSourceFor(site: SiteId) {
@@ -53,7 +54,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   if (await readDoc(env, project, slug)) {
     return { error: `The site already has a post at ${slug}. Open it from the list instead.` };
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = isoDay(new Date())!;
   await autosave(env.DB, project, viewer, slug, {
     source: newSource(slug, today),
     baseVersion: null,

@@ -17,6 +17,7 @@
 // not judgment; a title or description too wide for a result only warns.
 
 import {
+  absoluteUrl,
   SERP_DESCRIPTION,
   SERP_TITLE,
   serpWidth,
@@ -306,8 +307,7 @@ export function seoCheck(
   }
   const canonical = listed.includes("canonical") ? value(front, "canonical") : "";
 
-  const absolute = (url: string) =>
-    url.startsWith("/") && page.origin ? `${page.origin.replace(/\/+$/, "")}${url}` : url;
+  const absolute = (url: string) => (page.origin ? absoluteUrl(page.origin, url) : url);
   return {
     findings,
     preview: {

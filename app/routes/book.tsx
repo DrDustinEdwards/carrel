@@ -6,7 +6,7 @@
 import { Form, redirect } from "react-router";
 import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
+import { InlineAddForm } from "capsomer/react/inline-add-form";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
@@ -15,7 +15,7 @@ import { StatTile, StatTiles } from "capsomer/react/stat-tile";
 import { Status } from "capsomer/react/status";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
 
 import {
   bookHead,
@@ -242,8 +242,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         flush
         footer={
           canEdit ? (
-            <Form method="post" className="app-inline-form">
-              <input type="hidden" name="intent" value="new-chapter" />
+            <InlineAddForm Form={Form} hidden={{ intent: "new-chapter" }} submit="Start it">
               <Field label="New chapter">
                 <input
                   className="cap-input"
@@ -261,8 +260,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                   autoComplete="off"
                 />
               </Field>
-              <Button type="submit">Start it</Button>
-            </Form>
+            </InlineAddForm>
           ) : undefined
         }
       >
@@ -322,7 +320,11 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                           {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
                         </th>
                         <td>
-                          <StatusLabelPill labels={labels} status={s.status} />
+                          <ColorLabelPill
+                            labels={labels}
+                            value={s.status}
+                            unknownNote=" (not on the status list)"
+                          />
                         </td>
                         <td data-drop="1">{s.pov}</td>
                         <td data-drop="1">{s.date}</td>

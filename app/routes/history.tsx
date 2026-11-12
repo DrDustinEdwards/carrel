@@ -20,9 +20,9 @@ import {
   type Side,
   SourcePanel,
   sides,
-  utc,
   type View,
 } from "~/components/history/history-view";
+import { utc } from "capsomer/behavior/time";
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { comparePicks } from "capsomer/behavior/history-list";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
@@ -185,7 +185,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       picked = picks;
     } else {
       picked = [pair.from.version, pair.to.version];
-      const heading = `${utc(pair.from.at)} to ${utc(pair.to.at)}`;
+      const heading = `${utc(Date.parse(pair.from.at))} to ${utc(Date.parse(pair.to.at))}`;
       const lead = `What changed on the site between the revision by ${pair.from.author} and the one by ${pair.to.author}.`;
       if (by === "line") {
         const patch = await revisionPatch(env, project, itemId, pair.from.version, pair.to.version);

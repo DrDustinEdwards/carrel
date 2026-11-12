@@ -3,7 +3,7 @@
 // with comments and suggestions; the site's own render in a sandboxed preview; and the writes the
 // viewer's role allows, each sending the room's text through site-api's version check.
 
-import { AiWriteButtons } from "~/components/ai-write-buttons";
+import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useSearchParams } from "react-router";
 import { useHydrated } from "capsomer/react/hooks";
@@ -14,7 +14,6 @@ import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import { PublishGate, type GateCheck, type GateSite } from "capsomer/react/publish-gate";
-import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { exact, parse } from "capsomer/behavior/time";
@@ -22,17 +21,24 @@ import { exact, parse } from "capsomer/behavior/time";
 import { FlagsPanel } from "~/components/editor/flags-panel";
 import { Inspector } from "capsomer/react/inspector";
 import { commentsTab } from "~/components/editor/comments-tab";
-import { useEditorLayout } from "~/components/editor/layout";
-import { ScheduleDialog } from "~/components/editor/schedule-dialog";
-import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import {
+  EditorWorkspace,
+  LayoutSwitch,
+  PreviewPane,
+  previewUrl,
+  usePausedStamp,
+  useSaveShortcut,
+  useTypingRecede,
+  useWorkspaceLayout,
+} from "capsomer/react/editor-workspace";
+import { ScheduleDialog } from "capsomer/react/schedule-dialog";
+import { ItemDetails } from "~/components/editor/item-details";
 import { PostFields } from "~/components/editor/post-fields";
 import { SearchFields } from "~/components/editor/search-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 import { useRoomEditing } from "~/components/editor/room-editing";
-import { useSaveShortcut } from "~/components/editor/save-keys";
 import { HistoryPanel } from "~/components/history/history-panel";
-import { WritingSurface } from "~/components/editor/writing-surface";
-import { useTypingRecede } from "~/components/editor/typing";
+import { WRITING_SURFACES, WritingSurface } from "~/components/editor/writing-surface";
 import { routerRenderLink } from "capsomer/react/link";
 import { SiteBinder } from "~/components/writing/binder";
 import {
@@ -76,7 +82,7 @@ import { searchItems, sitePaths } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { transitionsFor } from "capsomer/publish-transition";
 import { PageHead } from "capsomer/react/page-head";
-import type { RoomViewer } from "~/lib/editor/room-protocol";
+import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 import { can } from "~/lib/roles";
 import {
   mergeRoom,
@@ -560,7 +566,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   // A time in a string prop is in UTC until hydrated, as Capsomer's Time draws one.
   const hydrated = useHydrated();
   const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
-  const [layout, chooseLayout] = useEditorLayout();
+  const [layout, chooseLayout] = useWorkspaceLayout("carrel:editor-layout");
   const [asking, setAsking] = useState<null | {
     kind:
       | "discard"
@@ -575,8 +581,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     opener: HTMLElement | null;
   }>(null);
   const writer = useFetcher<ActionResult>();
+  const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
-  useTypingRecede();
+  useTypingRecede(WRITING_SURFACES);
 
   // The item's room: one copy for everyone on the project, as they type.
   const editing = useRoomEditing({
@@ -608,14 +615,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const outcome = writer.data?.intent === "write" ? writer.data.outcome : null;
 
   // The preview reads the room's copy, which the room keeps a second behind the typing.
-  const [previewAt, setPreviewAt] = useState(data.baseVersion ?? "");
-  useEffect(() => {
-    const timer = window.setTimeout(
-      () => setPreviewAt(String(source.length) + ":" + Date.now().toString(36)),
-      2000,
-    );
-    return () => window.clearTimeout(timer);
-  }, [source]);
+  const previewAt = usePausedStamp(source, 2000, data.baseVersion ?? "");
 
   const waiting = useRef<((result: ActionResult) => void) | null>(null);
   const viaGate = useRef(false);
@@ -687,7 +687,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           : "";
   // Absolute, not relative: from /p/x/e/item a bare "preview" would resolve to /p/x/e/preview.
   const previewBase = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview`;
-  const previewSrc = `${previewBase}?at=${encodeURIComponent(previewAt)}`;
+  const previewSrc = previewUrl(previewBase, previewAt);
   const failure = outcome && !outcome.ok && !viaGate.current ? outcome : null;
   const google = writer.data?.intent === "google" && !busy ? writer.data : null;
 
@@ -844,6 +844,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     else void send("save");
   }
 
+  // Scheduling on a live post schedules an update; the live post stays until then.
+  const scheduleUpdate = data.status === "published";
+  const pendingAt = data.pendingUpdate?.publishAt ?? null;
+
   return (
     <div className="app-page app-editor" data-layout={layout}>
       <PageHead
@@ -867,23 +871,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             {data.path ? <span className="cap-mono">{data.path}</span> : null}
           </>
         }
-        actions={
-          <Segmented
-            legend="Layout"
-            hideLegend
-            size="sm"
-            value={layout}
-            onChange={chooseLayout}
-            options={[
-              { value: "write", label: "Write" },
-              { value: "split", label: "Split" },
-              { value: "preview", label: "Preview" },
-            ]}
-          />
-        }
+        actions={<LayoutSwitch value={layout} onChange={chooseLayout} />}
       />
 
-      <div className="app-notices">
+      <div className="app-notices" data-cap-recede="">
         {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="The site's copy changed">
@@ -991,9 +982,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
       <div className="app-editor-grid">
         <div className="app-editor-main">
-          <div className="app-editor-body" data-layout={layout}>
-            {layout !== "preview" ? (
-              <section className="app-editor-pane" id="write" aria-label="Write">
+          <EditorWorkspace
+            layout={layout}
+            write={
+              <>
                 {data.room ? editing.bar : null}
                 <WritingSurface
                   label={kindWord(data.kind)}
@@ -1026,19 +1018,15 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     source: (block) => joinSource({ ...splitSource(source), body: block }),
                   }}
                 />
-              </section>
-            ) : null}
-            {layout !== "write" ? (
-              <section className="app-preview-pane" aria-label="Preview">
-                {/* Sandboxed with no permissions: the site's page runs no script and has an opaque origin. */}
-                <iframe
-                  title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`}
-                  src={previewSrc}
-                  sandbox=""
-                />
-              </section>
-            ) : null}
-          </div>
+              </>
+            }
+            preview={
+              <PreviewPane
+                title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`}
+                src={previewSrc}
+              />
+            }
+          />
         </div>
 
         <Inspector
@@ -1167,7 +1155,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               content: (
                 <div className="app-stack">
                   {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
-                  <FrontmatterFields
+                  <ItemDetails
                     source={source}
                     onChange={setSource}
                     readOnly={readOnly || !mayEdit}
@@ -1186,8 +1174,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     />
                   ) : null}
                   {mayEdit ? (
-                    <AiWriteButtons
+                    <AiJobButtons
                       action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
+                      Form={aiJob.Form}
+                      answer={aiJob.data}
+                      pending={aiJob.state !== "idle"}
                       buttons={[
                         { job: "continue", label: "Continue my draft" },
                         { job: "edit", label: "Suggest edits" },
@@ -1385,14 +1376,26 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       />
       <ScheduleDialog
         open={asking?.kind === "schedule"}
-        noun={kindNoun(data.kind)}
-        update={data.status === "published"}
-        current={data.pendingUpdate?.publishAt ?? null}
+        title={
+          scheduleUpdate
+            ? pendingAt
+              ? "Replace the scheduled update"
+              : `Schedule an update to this ${kindNoun(data.kind)}`
+            : `Schedule this ${kindNoun(data.kind)}`
+        }
+        description={
+          scheduleUpdate
+            ? `The live ${kindNoun(data.kind)} stays as it is. The site publishes the text in the editor at the time you choose${pendingAt ? ", in place of the update scheduled now" : ""}. You can cancel it before then.`
+            : "The site publishes it at the time you choose. Revert to draft takes it back."
+        }
+        confirm={
+          scheduleUpdate ? (pendingAt ? "Replace the update" : "Schedule update") : "Schedule"
+        }
+        current={pendingAt}
         returnTo={asking?.opener}
         onClose={() => setAsking(null)}
-        schedule={async (publishAt) => {
+        onSchedule={async (publishAt) => {
           await send("schedule", { publishAt });
-          setAsking(null);
         }}
       />
     </div>

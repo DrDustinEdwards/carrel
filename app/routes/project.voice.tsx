@@ -6,6 +6,7 @@
 import { Form, useNavigation } from "react-router";
 import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
+import { Disclosure } from "capsomer/react/disclosure";
 import { Field } from "capsomer/react/field";
 import { PageHead } from "capsomer/react/page-head";
 import { Panel } from "capsomer/react/panel";
@@ -130,17 +131,15 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
           <p>{fromOwn ? "No piece" : "No post"} had enough prose for an excerpt yet.</p>
         ) : null}
         {brief.excerpts.length > 0 ? (
-          <details>
-            <summary>
-              The {brief.excerpts.length} excerpts a session writes from, and its drafts are scanned
-              against
-            </summary>
+          <Disclosure
+            summary={`The ${brief.excerpts.length} excerpts a session writes from, and its drafts are scanned against`}
+          >
             {brief.excerpts.map((excerpt, i) => (
               <blockquote key={i} className="app-voice-excerpt">
                 {excerpt}
               </blockquote>
             ))}
-          </details>
+          </Disclosure>
         ) : null}
       </Panel>
 
@@ -148,7 +147,12 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
         title="Your guide and writing"
         src={canManage ? "Yours to edit" : "The Owner edits it"}
       >
-        <Form method="post" className="app-fm" aria-label="Voice guide and own writing">
+        <Form
+          method="post"
+          className="cap-stack"
+          data-gap="5"
+          aria-label="Voice guide and own writing"
+        >
           <Field
             label="Guide"
             help="Anything a session should know about how you write here: who reads it, what you never say, how you open and close."

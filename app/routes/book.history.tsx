@@ -5,6 +5,7 @@
 // are the site page's.
 
 import { Link, routerRenderLink } from "capsomer/react/link";
+import { Row, RowList } from "capsomer/react/row-list";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
@@ -16,9 +17,9 @@ import {
   type Side,
   SourcePanel,
   sides,
-  utc,
   type View,
 } from "~/components/history/history-view";
+import { utc } from "capsomer/behavior/time";
 import { RevisionPicker } from "~/components/history/revision-picker";
 import { comparePicks, messageSummary } from "capsomer/behavior/history-list";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
@@ -175,7 +176,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
               message: unread ?? "Git does not hold the file at one of those versions.",
             }
           : sides(
-              `${utc(pair.from.at)} to ${utc(pair.to.at)}`,
+              `${utc(Date.parse(pair.from.at))} to ${utc(Date.parse(pair.to.at))}`,
               `What changed between the version by ${pair.from.author} and the one by ${pair.to.author}.`,
               fileName,
               { title: "Earlier version", who: pair.from.author, time: pair.from.at, text: before },
@@ -259,15 +260,14 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
       {againstGit || aiDrafts.length > 0 ? (
         <Panel title="Your text" src="Your draft, or the saved file when you have none">
           {againstGit ? (
-            <ul className="app-flags" aria-label="Compare your draft with the saved file">
-              <li>
-                <span>
-                  <Link to={`${historyPath}?compare=git`}>
-                    Your working draft against the saved file
-                  </Link>
-                </span>
-              </li>
-            </ul>
+            <RowList label="Compare your draft with the saved file" gap="xs">
+              <Row
+                size="sm"
+                title="Your working draft against the saved file"
+                href={`${historyPath}?compare=git`}
+                renderLink={routerRenderLink}
+              />
+            </RowList>
           ) : null}
           <DraftLinks historyPath={historyPath} againstSite={false} aiDrafts={aiDrafts} />
         </Panel>

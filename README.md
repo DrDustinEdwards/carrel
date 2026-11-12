@@ -259,7 +259,7 @@ The **Mentions** tab of a site project is Capsomer's `MentionsList` over site-ap
 Two separate accesses (design decision 6), and no `drive.readonly` anywhere:
 
 - **The service account** (`GOOGLE_SA_KEY`, the whole JSON key file) reads the manuscripts folder's metadata (`drive.metadata.readonly`) and Search Console (`webmasters.readonly`). Every request it makes passes an allowlist in `app/lib/google/service-account.server.ts`: listing files and the Search Console query. Anything else, a Drive write or a file's content, is refused in code before it is sent.
-- **Dustin's grant** (`drive.file` only) is for Send to Docs and Import. Its refresh token sits in D1, encrypted with AES-GCM under `GOOGLE_TOKEN_KEY`.
+- **Dustin's grant** (`drive.file` only) is for Send to Docs and Import. Its refresh token sits in D1, sealed with site-runtime's secret-box (AES-256-GCM) under `GOOGLE_TOKEN_KEY`; the sealed value names its key, so the key rotates with `GOOGLE_TOKEN_KEY_ID` and `GOOGLE_TOKEN_KEYS_OLD` (secret-box's `keyringFromEnv`).
 
 What it gives:
 

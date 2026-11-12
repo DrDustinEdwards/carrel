@@ -32,6 +32,8 @@ import { formatMoney } from "@dustinedwards/site-runtime/money";
 
 import { errorMessage } from "@dustinedwards/site-runtime/log";
 import { isSlug } from "@drdustinedwards/site-helpers/slug";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
+import { monthKey } from "@dustinedwards/site-runtime/time";
 type Fetch = typeof fetch;
 
 /** How long published items gather before one routine run takes them all. */
@@ -50,11 +52,11 @@ function requireOwner(viewer: Viewer) {
 }
 
 function dayStart(now: Date): string {
-  return `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+  return `${isoDay(now)}T00:00:00.000Z`;
 }
 
 function monthStart(now: Date): string {
-  return `${now.toISOString().slice(0, 7)}-01T00:00:00.000Z`;
+  return `${monthKey(now)}-01T00:00:00.000Z`;
 }
 
 // ---------- accounts and switches

@@ -4,6 +4,8 @@
 
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
+import { RowList } from "capsomer/react/row-list";
+import { FlagRow } from "~/components/editor/flags-panel";
 import { OgCardPreview, SerpPreview } from "capsomer/react/share-preview";
 import { Status } from "capsomer/react/status";
 
@@ -27,22 +29,16 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
             has a card image.
           </Empty>
         ) : (
-          <ul className="app-flags" aria-label="Search and sharing checks">
+          <RowList label="Search and sharing checks" gap="xs">
             {findings.map((f, i) => (
-              <li key={i}>
-                <Status tone="warn">{f.line ? `Line ${f.line}` : "Flag"}</Status>
-                <span>
-                  {f.message}
-                  {f.excerpt ? (
-                    <>
-                      {" "}
-                      <q className="cap-muted">{f.excerpt}</q>
-                    </>
-                  ) : null}
-                </span>
-              </li>
+              <FlagRow
+                key={i}
+                flag={f}
+                status={<Status tone="warn">Flag</Status>}
+                meta={f.line ? `line ${f.line}` : undefined}
+              />
             ))}
-          </ul>
+          </RowList>
         )}
         <div className="app-share-previews">
           <SerpPreview
