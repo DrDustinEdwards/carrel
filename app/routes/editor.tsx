@@ -229,7 +229,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   // update to a live post only on a site that keeps it live meanwhile. A site that does not answer
   // leaves the editor without them rather than failing the page.
   let mediaAccept: string | null = null;
-  let keepsUpdates = false;
+  let canScheduleUpdate = false;
   // The search fields the site renders (site-api v0.17.0), one box each in the editor.
   let searchFields: SearchField[] = [];
   // The post fields the site renders (site-api v0.17.0, v0.22.0): only those get a box.
@@ -250,7 +250,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
         can(project.role, "edit") && capabilities.media
           ? (capabilities.mediaUpload?.types.join(",") ?? null)
           : null;
-      keepsUpdates = capabilities.scheduledUpdates === true;
+      canScheduleUpdate = capabilities.scheduledUpdates === true;
       searchFields = capabilities.searchFields ?? [];
       postFields = capabilities.postFields ?? [];
     } catch {
@@ -283,7 +283,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     canPublish,
     // Dismissing a flag clears it for publish on any post, so it stays the Owner's.
     canDismiss: can(project.role, "publish"),
-    keepsUpdates,
+    canScheduleUpdate,
     searchFields,
     postFields,
     pendingUpdate,
@@ -1088,7 +1088,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           onClick={(event) => saveToSite(event.currentTarget)}
                         >
                           {/* Beside a scheduled update, plain "Update" could mean either; this one changes the live post now. */}
-                          {data.status === "published" && data.keepsUpdates && data.canPublish
+                          {data.status === "published" && data.canScheduleUpdate && data.canPublish
                             ? "Update the live post now"
                             : saveTransition.label}
                         </Button>
@@ -1106,7 +1106,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       {onSite &&
                       data.canPublish &&
                       data.status === "published" &&
-                      data.keepsUpdates ? (
+                      data.canScheduleUpdate ? (
                         <Button onClick={(event) => ask("schedule", event.currentTarget)}>
                           {data.pendingUpdate
                             ? "Replace the scheduled update"
