@@ -7,6 +7,7 @@
 // syncAccess (access-sync.server.ts), which posts the whole allow list to Capsid. Adding a person
 // changes nothing there, since a person with no role is not on the list.
 
+import { isEmail } from "@dustinedwards/site-runtime/email";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -93,8 +94,6 @@ export async function listPeople(
   };
 }
 
-const EMAIL = /^[^\s@'"<>]+@[^\s@'"<>]+\.[^\s@'"<>]+$/;
-
 /**
  * Adds a person. Never an Owner: Carrel has one Owner, and this function cannot make another (the
  * database refuses a second as well). An email already in Carrel is refused rather than changed.
@@ -106,7 +105,7 @@ export async function addPerson(
 ): Promise<PersonRow> {
   requireOwner(viewer);
   const email = input.email.trim().toLowerCase();
-  if (!EMAIL.test(email) || email.length > 254)
+  if (!isEmail(email))
     throw new PeopleRefusal("That is not an email address.");
   return insertPerson(db, {
     email,
