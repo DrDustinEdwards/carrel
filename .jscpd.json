@@ -1,5 +1,5 @@
 {
-  "path": ["app", "workers", "scripts", "test"],
+  "path": ["app", "workers", "scripts", "test", "docs", "www", "oxlint.config.ts", "vite.config.ts", "vite.harness.config.ts", "vitest.config.ts"],
   "format": ["typescript", "tsx", "javascript", "css"],
   "ignore": [
     "**/node_modules/**",
