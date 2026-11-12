@@ -105,8 +105,7 @@ export async function addPerson(
 ): Promise<PersonRow> {
   requireOwner(viewer);
   const email = input.email.trim().toLowerCase();
-  if (!isEmail(email))
-    throw new PeopleRefusal("That is not an email address.");
+  if (!isEmail(email)) throw new PeopleRefusal("That is not an email address.");
   return insertPerson(db, {
     email,
     name: input.name.trim().slice(0, 200),
