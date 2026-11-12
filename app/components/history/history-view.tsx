@@ -36,8 +36,6 @@ export type View =
       after: Side | null;
     };
 
-export const utc = (iso: string) => `${iso.slice(0, 16).replace("T", " ")} UTC`;
-
 /** Both texts are in Carrel: line by line is a patch built here, word by word the two texts side by side. */
 export function sides(
   heading: string,

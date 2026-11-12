@@ -29,6 +29,7 @@ import { answer, kitBase } from "~/lib/kit.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
 import { siteClient, siteUnreachable } from "~/lib/sites.server";
 import { waitingWork } from "~/lib/waiting.server";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 /** The authorship record's action for each kind the kit records. Tags are a save of the post, as an editor's save is. */
 const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
@@ -161,12 +162,10 @@ export function postsSource(
           await removeFromIndex(env.DB, project.id, write.itemId);
         else await indexDoc(env.DB, project.id, await client.get(write.itemId));
       } catch (error) {
-        console.error(
-          JSON.stringify({
-            index: "after-write-failed",
-            itemId: write.itemId,
-            error: String(error),
-          }),
+        logEvent(
+          "index.after-write-failed",
+          { itemId: write.itemId, error: String(error) },
+          { level: "error" },
         );
       }
     },

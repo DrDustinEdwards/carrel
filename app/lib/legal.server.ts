@@ -21,6 +21,7 @@ import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
 import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
 
 export type StoredSection = SharedSection & { updatedAt: string };
 
@@ -130,7 +131,7 @@ export async function checkLegalWrite(
     storedPublic: current !== null && current.status !== "draft",
     sections: await listSections(db),
     public: live,
-    today: now.toISOString().slice(0, 10),
+    today: isoDay(now)!,
   });
   return prepared.ok ? { ok: true, source: prepared.source } : prepared;
 }

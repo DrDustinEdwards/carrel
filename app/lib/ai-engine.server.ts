@@ -38,6 +38,7 @@ import type { SiteProject } from "~/lib/projects.server";
 import { socialFieldsOf } from "~/lib/seo-checks";
 import { formatMoney } from "@dustinedwards/site-runtime/money";
 import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
+import { monthKey } from "@dustinedwards/site-runtime/time";
 
 /** Whether the API engine has no key yet. The route reads this, never the secret, so the secret stays on the server. */
 export function apiKeyMissing(env: Pick<Env, "ANTHROPIC_API_KEY">): boolean {
@@ -241,7 +242,7 @@ async function capAlert(env: Env, now = new Date()): Promise<boolean> {
     if (settings.apiCapMicros <= 0) return false;
     const spent = await monthSpendMicros(env.DB, now);
     if (spent < settings.apiCapMicros * CAP_ALERT_AT) return false;
-    const month = now.toISOString().slice(0, 7);
+    const month = monthKey(now);
     if (!(await d1FireStore(env.DB).add(`ai-cap-alert:${month}`, now.toISOString()))) return false;
     const sent = await sendEmail(env.EMAIL, {
       from: env.ALERT_FROM,

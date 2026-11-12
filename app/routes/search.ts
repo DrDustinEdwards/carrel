@@ -11,7 +11,7 @@ import type { Route } from "./+types/search";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-  if (q.length === 0 || q.length > 200) return Response.json([]);
+  if (q.length === 0 || q.length > 200) return jsonResponse([]);
   const env = getEnv(context);
   const visible = await visibleProjects(env.DB, getViewer(context));
   return jsonResponse(await searchEverything(env.DB, visible, q));

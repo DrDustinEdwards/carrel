@@ -9,10 +9,11 @@ import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
+import { PreviewPane } from "capsomer/react/editor-workspace";
 import { Segmented } from "capsomer/react/segmented";
 
 import { DraftHead, draftIdParam } from "~/components/editor/draft-head";
-import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { ItemDetails } from "~/components/editor/item-details";
 import { Inspector } from "capsomer/react/inspector";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 
@@ -25,6 +26,7 @@ import { seoOf } from "~/lib/seo.server";
 import { checkAgainstPack, readVoicePack } from "~/lib/voice.server";
 
 import type { Route } from "./+types/ai-draft";
+import { wordCount } from "@drdustinedwards/site-helpers/text";
 
 export function meta() {
   return [{ title: "AI draft · Carrel" }];
@@ -113,7 +115,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
         <div className="app-editor-main">
           <Panel
             title="The draft"
-            src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}
+            src={`${wordCount(draft.source).toLocaleString()} words`}
             actions={
               <Segmented
                 legend="View"
@@ -129,14 +131,10 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
             }
           >
             {view === "rendered" ? (
-              <div className="app-preview-pane">
-                {/* Sandboxed with no permissions, as the editor's preview is: the site's page runs no script. */}
-                <iframe
-                  title={`This AI draft as the site renders it`}
-                  src={`${editor}/ai/${draft.id}/preview`}
-                  sandbox=""
-                />
-              </div>
+              <PreviewPane
+                title="This AI draft as the site renders it"
+                src={`${editor}/ai/${draft.id}/preview`}
+              />
             ) : (
               <pre className="app-ai-draft">{draft.source}</pre>
             )}
@@ -150,7 +148,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
             {
               value: "details",
               label: "Details",
-              content: <FrontmatterFields source={draft.source} readOnly />,
+              content: <ItemDetails source={draft.source} readOnly />,
             },
             {
               value: "checks",

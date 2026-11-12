@@ -14,7 +14,7 @@ import { Link } from "capsomer/react/link";
 import { FormMenu } from "capsomer/react/menu";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
 
 import { reorderBook, chapterSources, type ReorderResult } from "~/lib/binder.server";
 import { bookHead, bookRepo, listFiles, requireBookProject } from "~/lib/books.server";
@@ -33,6 +33,7 @@ import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.corkboard";
 import { plural } from "@drdustinedwards/site-helpers/text";
+import { slugify } from "@drdustinedwards/site-helpers/slug";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Corkboard · ${data.head.name} · Carrel` : "Carrel" }];
@@ -143,7 +144,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
 
   // A card's "Move to" sits inside the list's form, so its buttons belong to a form of their own
   // placed after the list (the form attribute), never a form nested in another.
-  const moveForm = (c: Card) => `move-${c.path.replace(/[^a-z0-9]+/g, "-")}`;
+  const moveForm = (c: Card) => `move-${slugify(c.path)}`;
   // Capsomer's card (card.css): the title is its heading link, stretched over the card, with the
   // status beside it; the summary is its content; the facts and Move to are its footer. In the
   // sortable list the item is the card's box, so the card keeps only its regions.
@@ -155,7 +156,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
             {c.title}
           </Link>
         </h3>
-        <StatusLabelPill labels={labels} status={c.status} />
+        <ColorLabelPill labels={labels} value={c.status} unknownNote=" (not on the status list)" />
       </header>
       <p>
         {c.summary || "No summary yet."}

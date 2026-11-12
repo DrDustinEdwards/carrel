@@ -7,8 +7,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { writeToSite } from "~/lib/content.server";
 import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
-import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { readFields } from "~/lib/frontmatter";
+import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { expandShared, prepareLegalWrite, type SharedSection } from "~/lib/legal";
 import { deleteSection, listSections, saveSection } from "~/lib/legal.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -67,7 +66,7 @@ describe("prepareLegalWrite", () => {
       storedPublic: true,
       public: true,
     });
-    expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe(
+    expect(result.ok && readKey(splitSource(result.source).front, "last_updated")).toBe(
       "2026-10-06",
     );
   });
@@ -81,7 +80,7 @@ describe("prepareLegalWrite", () => {
       storedPublic: true,
       public: true,
     });
-    expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe("");
+    expect(result.ok && readKey(splitSource(result.source).front, "last_updated")).toBe("");
   });
 
   it("does not stamp a draft save, and keeps a missing field's token so no work is lost", () => {
@@ -95,7 +94,7 @@ describe("prepareLegalWrite", () => {
       public: false,
     });
     expect(result.ok && result.source).toContain("{{contact}}");
-    expect(result.ok && readFields(splitSource(result.source).front).last_updated).toBe("");
+    expect(result.ok && readKey(splitSource(result.source).front, "last_updated")).toBe("");
   });
 
   it("refuses to go public with a field missing or a section unknown, and says which", () => {
@@ -194,8 +193,10 @@ describe("a legal page written to the site", () => {
     );
     expect(published.ok).toBe(true);
     expect(
-      readFields(splitSource((await site.adapter.content.get("page.privacy"))!.source).front)
-        .last_updated,
+      readKey(
+        splitSource((await site.adapter.content.get("page.privacy"))!.source).front,
+        "last_updated",
+      ),
     ).toBe(new Date().toISOString().slice(0, 10));
   });
 
