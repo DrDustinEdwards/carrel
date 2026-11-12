@@ -70,11 +70,11 @@ describe("a scheduled update to a live post", () => {
       params: { project: SLUG, item: "post" },
       context,
     } as never)) as {
-      scheduledUpdates: boolean;
+      keepsUpdates: boolean;
       pendingUpdate: { publishAt: string; source: string } | null;
     };
     expect(opened).toMatchObject({
-      scheduledUpdates: true,
+      keepsUpdates: true,
       pendingUpdate: { publishAt: AT, source: "# Live, updated\n" },
     });
     const list = await projectLoader({
