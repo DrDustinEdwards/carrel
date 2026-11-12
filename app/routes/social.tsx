@@ -3,11 +3,10 @@
 // switches, and the drafting routine's runs. The Owner's alone.
 // There is no reply, message, follow or like anywhere here, because there is none in the code.
 
-import { useState } from "react";
-import { Form, useFetcher, useNavigation } from "react-router";
+import { Form, useNavigation } from "react-router";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { ApprovalQueue } from "capsomer/react/approval-queue";
 import { Disclosure } from "capsomer/react/disclosure";
 import { Empty } from "capsomer/react/empty";
 import { Check, Field } from "capsomer/react/field";
@@ -118,15 +117,9 @@ const STATUS: Record<string, string> = {
   rejected: "Rejected",
 };
 
-type Post = Route.ComponentProps["loaderData"]["posts"][number];
-
 export default function Social({ loaderData, actionData }: Route.ComponentProps) {
   const { accounts, projects, posts, runs, routineMissing, tab } = loaderData;
-  const fetcher = useFetcher();
   const busy = useNavigation().state !== "idle";
-  const [rejecting, setRejecting] = useState<{ post: Post; opener: HTMLElement | null } | null>(
-    null,
-  );
   const open = posts.filter((p) => p.status === "awaiting" || p.status === "held");
   const unseen = posts.filter(
     (p) => p.source === "template" && p.status === "sent" && !p.acknowledgedAt,
@@ -193,86 +186,50 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
       ) : null}
 
       {tab === "queue" ? (
-        <Panel title="Waiting on you" count={open.length}>
-          {open.length === 0 ? (
-            <Empty kind="all-clear" flush title={<Status tone="ok">All clear</Status>}>
-              Nothing is waiting.
-            </Empty>
-          ) : (
-            <ul className="app-posts" role="list">
-              {open.map((p) => (
-                <li key={p.id} className="app-post">
-                  <p className="app-post-meta">
-                    <strong>{p.accountKey}</strong>
-                    <Pill variant="secondary">{STATUS[p.status]}</Pill>
-                    <span className="cap-muted">
-                      {p.source}
-                      {p.title ? ` · for "${p.title}"` : ""}
-                      {p.platform === "x"
-                        ? ` · ${formatMoney(p.costMills, "usd", { scale: 3, digits: 3 })} through the API`
-                        : ""}
-                    </span>
-                  </p>
-                  {p.lint.length > 0 ? (
-                    <ul className="app-lint" aria-label="What the lint held it for">
-                      {p.lint.map((l) => (
-                        <li key={l}>
-                          <Status tone="warn">{l}</Status>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  <Form method="post" className="cap-stack">
-                    <input type="hidden" name="id" value={p.id} />
-                    <label className="cap-sr-only" htmlFor={`post-${p.id}`}>
-                      Post text for {p.accountKey}
-                    </label>
-                    <textarea
-                      className="cap-input"
-                      id={`post-${p.id}`}
-                      name="text"
-                      defaultValue={p.text}
-                      rows={3}
-                    />
-                    <div className="cap-cluster" data-gap="3">
-                      {p.status === "awaiting" ? (
-                        <Button
-                          type="submit"
-                          name="intent"
-                          value="approve"
-                          variant="primary"
-                          pending={busy}
-                        >
-                          Approve
-                        </Button>
-                      ) : null}
-                      <Button type="submit" name="intent" value="edit" pending={busy}>
-                        Save and lint again
-                      </Button>
-                      {p.kind === "personal" ? (
-                        <Button type="submit" name="intent" value="by-hand" pending={busy}>
-                          I copied it and posted it by hand
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="submit"
-                        name="intent"
-                        value="reject"
-                        variant="danger"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setRejecting({ post: p, opener: event.currentTarget });
-                        }}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </Form>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
+        <ApprovalQueue
+          label="Waiting on you"
+          Form={Form}
+          pending={busy}
+          textLabel={(item) => `Post text for ${item.who}`}
+          findingsLabel="What the lint held it for"
+          empty={{ title: <Status tone="ok">All clear</Status>, text: "Nothing is waiting." }}
+          items={open.map((p) => ({
+            id: String(p.id),
+            who: p.accountKey,
+            status: { tone: p.status === "held" ? "warn" : "info", word: STATUS[p.status]! },
+            context: [
+              p.source,
+              p.title ? `for "${p.title}"` : null,
+              p.platform === "x"
+                ? `${formatMoney(p.costMills, "usd", { scale: 3, digits: 3 })} through the API`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            findings: p.lint,
+            text: p.text,
+            editable: true,
+            actions: [
+              ...(p.status === "awaiting"
+                ? [{ intent: "approve", label: "Approve", variant: "primary" as const }]
+                : []),
+              { intent: "edit", label: "Save and lint again" },
+              ...(p.kind === "personal"
+                ? [{ intent: "by-hand", label: "I copied it and posted it by hand" }]
+                : []),
+              {
+                intent: "reject",
+                label: "Reject",
+                variant: "danger" as const,
+                confirm: {
+                  title: "Reject this post?",
+                  lead: "It will not be posted, and it cannot be brought back. A new draft can still be written.",
+                  action: "Reject post",
+                },
+              },
+            ],
+          }))}
+        />
       ) : null}
 
       {tab === "accounts" ? (
@@ -539,23 +496,6 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
           </RowList>
         </Panel>
       ) : null}
-
-      <ConfirmDialog
-        open={rejecting !== null}
-        title="Reject this post?"
-        lead="It will not be posted, and it cannot be brought back. A new draft can still be written."
-        body={rejecting ? [rejecting.post.text] : []}
-        action="Reject post"
-        returnTo={rejecting?.opener}
-        perform={async () => {
-          if (!rejecting) return;
-          await fetcher.submit(
-            { intent: "reject", id: String(rejecting.post.id) },
-            { method: "post" },
-          );
-        }}
-        onClose={() => setRejecting(null)}
-      />
     </div>
   );
 }
