@@ -5,10 +5,11 @@
 // feature image is picked from the media library with its alt text, which a publish needs unless the
 // image is marked decorative (missingAltFields, shown on its box and in the publish gate).
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { isImeEnter } from "capsomer/behavior/shortcuts";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
+import { useTyped, type TypedBox } from "capsomer/react/frontmatter-fields";
 import { SortableList } from "capsomer/react/sortable-list";
 
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
@@ -19,7 +20,6 @@ import {
   type PostValues,
 } from "@dustinedwards/site-api/frontmatter";
 import { LibraryInsert } from "~/components/media/library-insert";
-import { typedProps, useTyped } from "~/components/editor/typed-box";
 import { featureImageFault } from "~/lib/seo-checks";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
@@ -39,6 +39,20 @@ type Props = {
   media: { endpoint: string } | null;
 };
 
+/** A box's props: its typing kept, and each change written through `write`. */
+export function typedProps(box: TypedBox, locked: boolean, write: (text: string) => void) {
+  return {
+    className: "cap-input",
+    value: box.value,
+    readOnly: locked,
+    onBlur: box.done,
+    onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      box.keep(event.target.value);
+      write(event.target.value);
+    },
+  };
+}
+
 export function PostFields({ source, onChange, readOnly, listed, origin, media }: Props) {
   const parts = splitSource(source);
   const front = parts.front;
@@ -54,10 +68,8 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
   const locked = readOnly || !onChange;
   const write = (next: Partial<PostValues>) =>
     onChange?.(joinSource({ ...parts, front: setPostFields(front, next) }));
-  const typed = (
-    box: ReturnType<typeof useTyped>,
-    field: "excerpt" | "series" | "featureImage" | "featureImageAlt",
-  ) => typedProps(box, locked, (text) => write({ [field]: text }));
+  const typed = (box: TypedBox, field: "excerpt" | "series" | "featureImage" | "featureImageAlt") =>
+    typedProps(box, locked, (text) => write({ [field]: text }));
   const authors = values.authors;
   const add = () => {
     const name = adding.trim();

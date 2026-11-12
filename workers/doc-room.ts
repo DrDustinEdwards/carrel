@@ -15,6 +15,7 @@ import type * as Y from "yjs";
 import { comments, rooms } from "~/db/schema";
 import { listComments } from "~/lib/comments.server";
 import {
+  META,
   isSeeded,
   loadMarkdown,
   markSaved,
@@ -32,9 +33,8 @@ import { currentRole } from "~/lib/people.server";
 export { ROLE_RECHECK_MS } from "@dustinedwards/site-runtime/doc-room";
 
 const model = {
-  // The Y.Map Capsomer's collab-editor-doc keeps the room's own state in (version, saved text, prints);
-  // Capsomer does not export the name yet.
-  metaKey: "carrel",
+  // The Y.Map Capsomer's collab-editor-doc keeps the room's own state in (version, saved text, prints).
+  metaKey: META,
   isSeeded,
   readMeta,
   markSaved,
