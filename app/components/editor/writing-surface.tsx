@@ -14,7 +14,8 @@ import { Segmented } from "capsomer/react/segmented";
 import type { Editor } from "@tiptap/core";
 import { Alert } from "capsomer/react/banner";
 
-import { ChartInsert, type ChartPreview } from "~/components/editor/chart-insert";
+import { ChartBuilder } from "capsomer/react/chart-builder";
+import { CHART_KINDS, chartBlock } from "@drdustinedwards/site-helpers/source";
 import type { Dialect } from "capsomer/behavior/rich-editor";
 import { RichEditor, type RichEditorHandle, type RichRoom } from "capsomer/react/rich-editor";
 import { LibraryInsert } from "~/components/media/library-insert";
@@ -72,8 +73,11 @@ export function WritingSurface({
   room?: { rich: (RichRoom & { key: string }) | null; markdownLocked: string | null };
   /** The formatted editor, once made, for the room's panels. */
   onEditor?: (editor: Editor | null) => void;
-  /** A site post's chart preview; absent, no "Insert chart" (a book, a reader). */
-  chart?: ChartPreview | null;
+  /**
+   * A site post's chart preview: the preview route, and the post's frontmatter around a chart as the
+   * text it posts. Absent, no "Insert chart" (a book, a reader).
+   */
+  chart?: { action: string; source: (block: string) => string } | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const rich = useRef<RichEditorHandle | null>(null);
@@ -120,7 +124,17 @@ export function WritingSurface({
           ]}
         />
         {chart && !readOnly ? (
-          <ChartInsert
+          <ChartBuilder
+            label="Insert chart"
+            buttonVariant="quiet"
+            buttonSize="sm"
+            types={CHART_KINDS}
+            write={chartBlock}
+            // Prelum's own check and drafted finding, loaded only once the dialog has a chart.
+            check={async (block, drawable) => {
+              const m = await import("~/lib/chart-check.client");
+              return { findings: m.checkCharts(block), suggestion: m.suggestFinding(drawable) };
+            }}
             preview={chart}
             onInsert={(block) => {
               if (mode === "formatted") rich.current?.insertMarkdown(block);
