@@ -33,6 +33,7 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
               <Row
                 key={i}
                 size="sm"
+                className="cap-flag"
                 title={f.message}
                 status={<Status tone="warn">{f.line ? `Line ${f.line}` : "Flag"}</Status>}
                 detail={f.excerpt ? <q>{f.excerpt}</q> : undefined}

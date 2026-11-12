@@ -635,6 +635,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                                 <Row
                                   key={i}
                                   size="sm"
+                                  className="cap-flag"
                                   title={f.message}
                                   status={<Status tone="warn">Found</Status>}
                                   meta={f.line ? `${f.check} · line ${f.line}` : f.check}

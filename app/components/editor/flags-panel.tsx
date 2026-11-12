@@ -21,7 +21,10 @@ type Props = {
   onDismiss: (button: HTMLElement, flag: number) => void;
 };
 
-/** One flag, open or dismissed; an open one offers Dismiss to whoever may dismiss it. */
+/**
+ * One flag, open or dismissed; an open one offers Dismiss to whoever may dismiss it. A row of the row list
+ * with Capsomer's flag row look (.cap-flag, flag-list.css), so the whole message wraps instead of clamping.
+ */
 export function FlagRow({
   flag,
   detail,
@@ -36,6 +39,7 @@ export function FlagRow({
   return (
     <Row
       size="sm"
+      className="cap-flag"
       title={flag.message}
       status={
         flag.status === "open" ? (
