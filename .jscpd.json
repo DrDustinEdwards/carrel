@@ -18,8 +18,7 @@
     "**/node_modules/**",
     "**/build/**",
     "**/.react-router/**",
-    "**/worker-configuration.d.ts",
-    "**/fixtures/**"
+    "**/worker-configuration.d.ts"
   ],
   "gitignore": true,
   "reporters": ["json"],
