@@ -3,7 +3,13 @@
 // and every request it makes passes an allowlist here, so a write through it is refused in code
 // before anything is sent, whatever the scopes would allow.
 
-import { SignJWT } from "jose";
+import {
+  clearServiceAccountTokens,
+  GOOGLE_TOKEN_URL,
+  parseServiceAccountKey,
+  serviceAccountToken,
+  type ServiceAccountKey as SharedKey,
+} from "@dustinedwards/site-runtime/google-service-account";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 /** Read-only, and no drive.readonly: the index takes metadata, and search asks Drive each time. */
@@ -12,14 +18,10 @@ export const SA_SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly",
 ];
 
-export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+export { GOOGLE_TOKEN_URL };
 
-export type ServiceAccountKey = {
-  clientEmail: string;
-  privateKey: string;
-  privateKeyId: string;
-  tokenUri: string;
-};
+/** The key file's fields; carrel also needs `privateKeyId`, which the health check tracks. */
+export type ServiceAccountKey = SharedKey & { privateKeyId: string };
 
 export type SaConnection =
   | { state: "connected"; key: ServiceAccountKey }
@@ -27,55 +29,18 @@ export type SaConnection =
   | { state: "misconfigured"; detail: string };
 
 export function saConnection(env: Env): SaConnection {
-  const raw = env.GOOGLE_SA_KEY?.trim();
-  if (!raw)
-    return {
-      state: "not-connected",
-      detail: "GOOGLE_SA_KEY is not set, so the manuscripts index and Search Console are off.",
-    };
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return {
-      state: "misconfigured",
-      detail: "GOOGLE_SA_KEY is not JSON; set it to the whole key file Google downloads.",
-    };
-  }
-  const { type, client_email, private_key, private_key_id, token_uri } = parsed;
-  if (
-    type !== "service_account" ||
-    typeof client_email !== "string" ||
-    typeof private_key !== "string" ||
-    typeof private_key_id !== "string"
-  ) {
-    return {
-      state: "misconfigured",
-      detail:
-        "GOOGLE_SA_KEY is not a service account key file (type, client_email, private_key, private_key_id).",
-    };
-  }
-  if (!private_key.includes("BEGIN PRIVATE KEY"))
-    return {
-      state: "misconfigured",
-      detail: "GOOGLE_SA_KEY's private_key is not a PKCS#8 PEM key.",
-    };
-  // A key file pointing its token endpoint anywhere but Google's would hand the signed assertion elsewhere.
-  const tokenUri = typeof token_uri === "string" ? token_uri : GOOGLE_TOKEN_URL;
-  if (tokenUri !== GOOGLE_TOKEN_URL)
-    return {
-      state: "misconfigured",
-      detail: `GOOGLE_SA_KEY's token_uri is ${tokenUri}, not Google's.`,
-    };
-  return {
-    state: "connected",
-    key: {
-      clientEmail: client_email,
-      privateKey: private_key,
-      privateKeyId: private_key_id,
-      tokenUri,
-    },
-  };
+  const parsed = parseServiceAccountKey(env.GOOGLE_SA_KEY, "GOOGLE_SA_KEY");
+  if (!parsed.ok)
+    return parsed.state === "not-connected"
+      ? {
+          state: "not-connected",
+          detail: "GOOGLE_SA_KEY is not set, so the manuscripts index and Search Console are off.",
+        }
+      : { state: "misconfigured", detail: parsed.detail };
+  const { privateKeyId } = parsed.key;
+  if (!privateKeyId)
+    return { state: "misconfigured", detail: "GOOGLE_SA_KEY has no private_key_id." };
+  return { state: "connected", key: { ...parsed.key, privateKeyId } };
 }
 
 export class GoogleNotConnected extends Error {
@@ -114,61 +79,17 @@ export function assertReadOnly(method: string, url: string): void {
 
 type Fetch = typeof fetch;
 
-const tokenCache = new Map<string, { token: string; expires: number }>();
-
 export function clearSaTokenCache(): void {
-  tokenCache.clear();
+  clearServiceAccountTokens();
 }
 
-/** A signed JWT exchanged at Google's token endpoint for an hour's access token, cached per key. */
-export async function saAccessToken(
+/** An hour's access token for SA_SCOPES (site-runtime ./google-service-account), cached per key. */
+export function saAccessToken(
   key: ServiceAccountKey,
   fetcher: Fetch = timedFetch,
   now = Date.now(),
 ): Promise<string> {
-  const cached = tokenCache.get(key.privateKeyId);
-  if (cached && cached.expires - 5 * 60_000 > now) return cached.token;
-  const pem = key.privateKey.replace(/-----(BEGIN|END) PRIVATE KEY-----/g, "").replace(/\s+/g, "");
-  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
-  const signingKey = await crypto.subtle.importKey(
-    "pkcs8",
-    der,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const iat = Math.floor(now / 1000);
-  const assertion = await new SignJWT({ scope: SA_SCOPES.join(" ") })
-    .setProtectedHeader({ alg: "RS256", kid: key.privateKeyId, typ: "JWT" })
-    .setIssuer(key.clientEmail)
-    .setAudience(key.tokenUri)
-    .setIssuedAt(iat)
-    .setExpirationTime(iat + 3600)
-    .sign(signingKey);
-  const res = await fetcher(key.tokenUri, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion,
-    }).toString(),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as {
-      error?: string;
-      error_description?: string;
-    };
-    // invalid_grant is how Google answers a deleted, disabled or expired key.
-    throw new Error(
-      `Google refused the service account key (${res.status} ${body.error ?? ""}${body.error_description ? `: ${body.error_description}` : ""}).`,
-    );
-  }
-  const body = (await res.json()) as { access_token: string; expires_in: number };
-  tokenCache.set(key.privateKeyId, {
-    token: body.access_token,
-    expires: now + body.expires_in * 1000,
-  });
-  return body.access_token;
+  return serviceAccountToken(key, SA_SCOPES, { fetcher, now });
 }
 
 /** The service account's only way to reach Google: read-only by allowlist, then authenticated. */

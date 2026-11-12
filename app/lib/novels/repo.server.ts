@@ -4,13 +4,17 @@
 // that renames several files is one commit made through Git's data API (commitMany), and a file's
 // history is the commits that touched its path.
 
-import { fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
-import { githubAppJwt } from "@dustinedwards/site-runtime/jwt";
+import { fromBase64Text, toBase64 } from "@dustinedwards/site-runtime/encoding";
+import {
+  GITHUB_API,
+  githubHeaders,
+  installationToken as installationTokenFor,
+} from "@dustinedwards/site-runtime/github";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 export const NOVELS_REPO = "DrDustinEdwards/writing";
 const NOVELS_BRANCH = "main";
-const API = "https://api.github.com";
+const API = GITHUB_API;
 
 type RepoFile = { source: string; sha: string };
 
@@ -96,18 +100,9 @@ export function novelsConnection(env: Env): NovelsConnection {
   return { state: "connected", appId, privateKey: key };
 }
 
-// ---------- GitHub App authentication (the JWT is site-runtime's githubAppJwt)
+// ---------- GitHub App authentication (site-runtime ./github installationToken)
 
 type Fetch = typeof fetch;
-
-function headers(token: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "carrel",
-  };
-}
 
 /** Installation tokens last an hour; one per isolate, renewed five minutes early. */
 const tokenCache = new Map<string, { token: string; expires: number }>();
@@ -120,26 +115,21 @@ export async function installationToken(
 ): Promise<string> {
   const cached = tokenCache.get(appId);
   if (cached && cached.expires - 5 * 60_000 > now) return cached.token;
-  const jwt = await githubAppJwt(appId, pem, now);
-  const inst = await fetcher(`${API}/repos/${NOVELS_REPO}/installation`, { headers: headers(jwt) });
-  if (!inst.ok)
-    throw new Error(
-      `GitHub did not find the App's installation on ${NOVELS_REPO} (${inst.status}).`,
-    );
-  const { id } = (await inst.json()) as { id: number };
+  const [owner, repo] = NOVELS_REPO.split("/") as [string, string];
   // Narrowed to the one repository and to contents, whatever the installation allows.
-  const res = await fetcher(`${API}/app/installations/${id}/access_tokens`, {
-    method: "POST",
-    headers: headers(jwt),
-    body: JSON.stringify({
-      repositories: [NOVELS_REPO.split("/")[1]],
-      permissions: { contents: "write" },
-    }),
+  const minted = await installationTokenFor({
+    appId,
+    privateKey: pem,
+    userAgent: "carrel",
+    owner,
+    repo,
+    repositories: [repo],
+    permissions: { contents: "write" },
+    fetcher,
+    now,
   });
-  if (!res.ok) throw new Error(`GitHub refused an installation token (${res.status}).`);
-  const body = (await res.json()) as { token: string; expires_at: string };
-  tokenCache.set(appId, { token: body.token, expires: Date.parse(body.expires_at) });
-  return body.token;
+  tokenCache.set(appId, { token: minted.token, expires: minted.expiresAt });
+  return minted.token;
 }
 
 export function clearTokenCache(): void {
@@ -152,15 +142,11 @@ function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
-function base64ToUtf8(b64: string): string {
-  return new TextDecoder().decode(fromBase64(b64));
-}
-
 export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedFetch): NovelsRepo {
   const repoUrl = `${API}/repos/${NOVELS_REPO}`;
   const call = async (url: string, init: RequestInit = {}) => {
     // The call's own headers win, in any form of HeadersInit (an object spread would turn an array into indices).
-    const merged = new Headers(headers(await token()));
+    const merged = new Headers(githubHeaders(await token(), "carrel"));
     for (const [name, value] of new Headers(init.headers)) merged.set(name, value);
     return fetcher(url, { ...init, headers: merged });
   };
@@ -202,7 +188,7 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedF
       };
       if (body.type !== "file" || body.encoding !== "base64" || body.content === undefined)
         throw new Error(`${path} is not a file GitHub returns inline.`);
-      return { source: base64ToUtf8(body.content), sha: body.sha };
+      return { source: fromBase64Text(body.content), sha: body.sha };
     },
 
     async write(path, input) {
