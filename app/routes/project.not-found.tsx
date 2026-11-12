@@ -5,13 +5,9 @@
 
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { useSearchParams } from "react-router";
-import { Banner } from "capsomer/react/banner";
-import { Empty } from "capsomer/react/empty";
+import { windowOf } from "capsomer/behavior/not-found-report";
+import { NotFoundReport } from "capsomer/react/not-found-report";
 import { PageHead } from "capsomer/react/page-head";
-import { Panel } from "capsomer/react/panel";
-import { Row, RowList } from "capsomer/react/row-list";
-import { Segmented } from "capsomer/react/segmented";
-import { Status } from "capsomer/react/status";
 
 import { ProjectTabs } from "~/components/project-tabs";
 
@@ -23,25 +19,15 @@ import type { Route } from "./+types/project.not-found";
 import { logEvent } from "@dustinedwards/site-runtime/log";
 
 /** The two windows the page offers: the last week, to see a link that just broke, and the last 30 days, the default. */
-const WINDOWS = ["7", "30"] as const;
-type Window = (typeof WINDOWS)[number];
-
-function windowOf(url: URL): Window {
-  return url.searchParams.get("days") === "7" ? "7" : "30";
-}
+const WINDOWS = [7, 30];
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `404s · ${data.project.name} · Carrel` : "Carrel" }];
 }
 
-/** "example.com 2, no referrer 1": the hosts that linked to the path, most hits first. */
-function referrers(list: { host: string; hits: number }[]): string {
-  return list.map((r) => `${r.host || "no referrer"} ${r.hits}`).join(", ");
-}
-
 export async function loader({ params, context, request }: Route.LoaderArgs) {
   const env = getEnv(context);
-  const days = Number(windowOf(new URL(request.url)));
+  const days = windowOf(new URL(request.url).searchParams.get("days"), WINDOWS);
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read");
   const head = {
     slug: project.slug,
@@ -74,7 +60,6 @@ export async function loader({ params, context, request }: Route.LoaderArgs) {
 export default function ProjectNotFound({ loaderData }: Route.ComponentProps) {
   const { project, days, rows, reason } = loaderData;
   const [, setSearchParams] = useSearchParams();
-  const choose = (value: Window) => setSearchParams(value === "30" ? {} : { days: value });
 
   return (
     <div className="app-page">
@@ -85,45 +70,13 @@ export default function ProjectNotFound({ loaderData }: Route.ComponentProps) {
 
       <ProjectTabs slug={project.slug} current="not-found" />
 
-      {reason ? (
-        <Banner tone="warn" title="The 404 report is not available">
-          {reason}
-        </Banner>
-      ) : (
-        <Panel
-          title="404s"
-          count={rows.length}
-          src={`Last ${days} days`}
-          actions={
-            <Segmented
-              legend="Period"
-              hideLegend
-              size="sm"
-              value={String(days) as Window}
-              onChange={choose}
-              options={WINDOWS.map((w) => ({ value: w, label: `${w} days` }))}
-            />
-          }
-          flush
-        >
-          {rows.length === 0 ? (
-            <Empty kind="all-clear" flush title={<Status tone="ok">All clear</Status>}>
-              No missing pages in the last {days} days.
-            </Empty>
-          ) : (
-            <RowList label="Missing paths, most hits first">
-              {rows.map((row) => (
-                <Row
-                  key={row.path}
-                  title={<code>{row.path}</code>}
-                  detail={`Linked from: ${referrers(row.referrers)}`}
-                  meta={`${row.hits} ${row.hits === 1 ? "hit" : "hits"}`}
-                />
-              ))}
-            </RowList>
-          )}
-        </Panel>
-      )}
+      <NotFoundReport
+        rows={rows}
+        days={days}
+        windows={WINDOWS}
+        onWindow={(value) => setSearchParams(value === 30 ? {} : { days: String(value) })}
+        reason={reason}
+      />
     </div>
   );
 }
