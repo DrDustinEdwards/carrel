@@ -3,6 +3,8 @@
 // person's own; the project target and deadline are keys on the title page (book.md).
 
 import { BookHead } from "~/components/book-head";
+// Names the writing-progress types in the loader's inferred type, so its declaration can refer to them (TS2742).
+import type {} from "capsomer/behavior/writing-progress";
 import { ProgressPanel } from "~/components/writing/progress-panel";
 
 import { bookHead, listFiles, requireBookProject } from "~/lib/books.server";

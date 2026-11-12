@@ -5,7 +5,7 @@
 import { useRoomEditing as useCollabRoom, type RoomEditing } from "capsomer/react/collab-editor";
 import { useRemembered } from "capsomer/react/hooks";
 
-import type { RoomViewer } from "~/lib/editor/room-protocol";
+import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 
 export function useRoomEditing(options: {
   path: string;

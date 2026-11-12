@@ -54,6 +54,7 @@
 @import "capsomer/moderation-queue.css";
 @import "capsomer/approval-queue.css";
 @import "capsomer/label-color-list.css";
+@import "capsomer/ai-engine-settings.css";
 @import "capsomer/publish-gate.css";
 @import "capsomer/share-preview.css";
 @import "capsomer/stat-tile.css";
@@ -499,22 +500,6 @@
   color: var(--muted);
 }
 
-.app-tool {
-  display: grid;
-  gap: var(--space-3);
-
-  /* A button with its one-line note beside it. */
-  &[data-inline] {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-  }
-
-  & + & {
-    padding-block-start: var(--space-4);
-    border-block-start: 1px solid var(--line);
-  }
-}
-
 /* The inspector beside the text steps back with Capsomer's chrome while someone types
    (editor-workspace.css); Capsomer's list has no inspector yet, and Inspector takes no data-cap-recede. */
 .app-editor-side {
@@ -804,25 +789,3 @@
   overflow: visible;
 }
 
-/* The AI engine's status line: each engine and whether it can work now. */
-.app-engine-status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-6);
-  margin: 0;
-
-  & > div {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  & dt {
-    color: var(--muted);
-  }
-  & dd {
-    margin: 0;
-  }
-}
-.app-engine-table td > * {
-  min-inline-size: 12rem;
-}

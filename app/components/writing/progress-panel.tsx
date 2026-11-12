@@ -30,7 +30,7 @@ import {
   type Goal,
   type Pace,
   type SaveEntry,
-} from "~/lib/writing/progress";
+} from "capsomer/behavior/writing-progress";
 import { useBrowserZone } from "capsomer/react/hooks";
 import { plural } from "@drdustinedwards/site-helpers/text";
 

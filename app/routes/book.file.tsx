@@ -41,7 +41,7 @@ import {
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { roomNames } from "~/lib/comments.server";
 import { discardDraft, readDraft, readOwnDraft } from "~/lib/content.server";
-import type { RoomViewer } from "~/lib/editor/room-protocol";
+import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 import { getEnv, getViewer } from "~/lib/context";
 import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";

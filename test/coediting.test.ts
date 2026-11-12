@@ -21,7 +21,7 @@ import {
   suggestingDispatch,
   suggestionPlugins,
 } from "capsomer/behavior/collab-editor";
-import type { RoomViewer, ServerMessage } from "~/lib/editor/room-protocol";
+import type { RoomViewer, ServerMessage } from "@dustinedwards/site-runtime/doc-room";
 import { mergeRoom, openRoom, saveRoom } from "~/lib/rooms.server";
 import { ROLE_RECHECK_MS } from "../workers/doc-room";
 

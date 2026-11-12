@@ -7,6 +7,8 @@ import { PageHead } from "capsomer/react/page-head";
 
 import { Frame, type FrameData } from "~/components/frame";
 import { getZone } from "~/lib/context";
+// Names the writing-progress types in the loader's inferred type, so its declaration can refer to them (TS2742).
+import type {} from "capsomer/behavior/writing-progress";
 import { ProgressPanel } from "~/components/writing/progress-panel";
 import { sampleProgress } from "~/lib/demo/writing-sample";
 

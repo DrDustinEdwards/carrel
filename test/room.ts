@@ -9,7 +9,8 @@ import * as syncProtocol from "y-protocols/sync";
 import * as Y from "yjs";
 
 import { patchMarkdown } from "capsomer/behavior/collab-editor";
-import { roomName, type RoomViewer, type ServerMessage } from "~/lib/editor/room-protocol";
+import { roomName } from "~/lib/editor/room-protocol";
+import type { RoomViewer, ServerMessage } from "@dustinedwards/site-runtime/doc-room";
 
 import { testEnv } from "./env";
 

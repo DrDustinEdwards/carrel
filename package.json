@@ -21,7 +21,7 @@
     "check:destructive": "devkit-destructive",
     "check:plants": "node scripts/plant-gates.mjs",
     "check:bloat": "devkit-no-bloat && npm run build && devkit-route-weight",
-    "check:roundtrip": "node scripts/check-roundtrip.mjs",
+    "check:roundtrip": "capsomer-roundtrip",
     "check:console": "devkit-console",
     "check:migrations": "devkit-migrations drizzle --min 29",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",

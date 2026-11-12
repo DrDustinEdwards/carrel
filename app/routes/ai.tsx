@@ -190,7 +190,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
         <Alert tone="crit">{actionData.problem}</Alert>
       ) : null}
 
-      <dl className="app-engine-status" aria-label="What each engine can do now">
+      <dl className="cap-ai-engine-status" aria-label="What each engine can do now">
         <div>
           <dt>Subscription</dt>
           <dd>
@@ -244,7 +244,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
             aria-labelledby="engine-caption"
             tabIndex={0}
           >
-            <table className="cap-table app-engine-table">
+            <table className="cap-table cap-ai-engine-table">
               <caption id="engine-caption" className="cap-sr-only">
                 The engine and model for each job
               </caption>

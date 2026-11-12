@@ -15,7 +15,7 @@ import {
   STREAK_HORIZON_DAYS,
   type Goal,
   type SaveEntry,
-} from "~/lib/writing/progress";
+} from "capsomer/behavior/writing-progress";
 import { cleanLabels, type ColorLabel } from "capsomer/behavior/label-color-list";
 
 import { STARTING_STATUSES } from "~/lib/writing/status";

@@ -7,14 +7,6 @@ import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 
 import { can, type Role } from "~/lib/roles";
 
-export type {
-  ClientMessage,
-  RoomComment,
-  RoomPerson,
-  RoomViewer,
-  ServerMessage,
-} from "@dustinedwards/site-runtime/doc-room";
-
 /** What a role may do in a room: change the text, only suggest, or nothing (not let in). */
 function roomAccess(role: Role | null): RoomViewer["access"] | null {
   return can(role, "edit") ? "edit" : can(role, "suggest") ? "suggest" : null;

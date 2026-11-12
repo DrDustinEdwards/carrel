@@ -82,7 +82,7 @@ import { searchItems, sitePaths } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { transitionsFor } from "capsomer/publish-transition";
 import { PageHead } from "capsomer/react/page-head";
-import type { RoomViewer } from "~/lib/editor/room-protocol";
+import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 import { can } from "~/lib/roles";
 import {
   mergeRoom,
