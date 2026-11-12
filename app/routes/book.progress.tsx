@@ -1,11 +1,13 @@
 // A book's Progress tab: today's writing against the person's own goal, the streak, the pace the
-// deadline asks for and the last seven days (components/writing/progress-panel.tsx). The goal is each
+// deadline asks for and the last seven days (Capsomer's WritingProgress). The goal is each
 // person's own; the project target and deadline are keys on the title page (book.md).
 
 import { BookHead } from "~/components/book-head";
 // Names the writing-progress types in the loader's inferred type, so its declaration can refer to them (TS2742).
 import type {} from "capsomer/behavior/writing-progress";
-import { ProgressPanel } from "~/components/writing/progress-panel";
+import { Form } from "react-router";
+import { Link } from "capsomer/react/link";
+import { WritingProgress } from "capsomer/react/writing-progress";
 
 import { bookHead, listFiles, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer, getZone } from "~/lib/context";
@@ -67,11 +69,17 @@ export default function BookProgress({ loaderData, actionData }: Route.Component
     <div className="app-page">
       <BookHead book={head} section="progress" />
       <div className="app-narrow">
-        <ProgressPanel
+        <WritingProgress
           {...progress}
           wordsNow={wordsNow}
           canEdit={canEdit}
-          titlePage={`/b/${head.slug}/f/book.md`}
+          Form={Form}
+          goalNote={
+            <>
+              The deadline and the project target are target: and deadline: in the{" "}
+              <Link to={`/b/${head.slug}/f/book.md`}>title page</Link>.
+            </>
+          }
           error={actionData?.goal.error ?? null}
           saved={actionData?.goal.saved ?? false}
         />
