@@ -48,6 +48,8 @@
 @import "capsomer/rich-editor.css";
 @import "capsomer/collab-editor.css";
 @import "capsomer/editor-workspace.css";
+@import "capsomer/ai-job-buttons.css";
+@import "capsomer/schedule-dialog.css";
 @import "capsomer/publish-gate.css";
 @import "capsomer/share-preview.css";
 @import "capsomer/stat-tile.css";
@@ -794,16 +796,6 @@
   gap: var(--space-3) var(--space-5);
 }
 
-/* A dialog whose field already says why its button refuses (the schedule dialog): the button keeps
-   its reason for a screen reader, and the footer does not say it a second time beside the button. */
-.app-reason-unseen .cap-btn-reason {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 /* Desk's status tabs with counts, and the list toolbar. */
 .app-tab-count {
   margin-inline-start: var(--space-1);

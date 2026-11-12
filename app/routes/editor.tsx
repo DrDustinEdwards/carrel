@@ -3,7 +3,7 @@
 // with comments and suggestions; the site's own render in a sandboxed preview; and the writes the
 // viewer's role allows, each sending the room's text through site-api's version check.
 
-import { AiWriteButtons } from "~/components/ai-write-buttons";
+import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useSearchParams } from "react-router";
 import { useHydrated } from "capsomer/react/hooks";
@@ -31,7 +31,7 @@ import {
   useTypingRecede,
   useWorkspaceLayout,
 } from "capsomer/react/editor-workspace";
-import { ScheduleDialog } from "~/components/editor/schedule-dialog";
+import { ScheduleDialog } from "capsomer/react/schedule-dialog";
 import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
 import { PostFields } from "~/components/editor/post-fields";
 import { SearchFields } from "~/components/editor/search-fields";
@@ -581,6 +581,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     opener: HTMLElement | null;
   }>(null);
   const writer = useFetcher<ActionResult>();
+  const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
   useTypingRecede(WRITING_SURFACES);
 
@@ -842,6 +843,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (data.pendingUpdate && data.status === "published") ask("save-live", opener);
     else void send("save");
   }
+
+  // Scheduling on a live post schedules an update; the live post stays until then.
+  const scheduleUpdate = data.status === "published";
+  const pendingAt = data.pendingUpdate?.publishAt ?? null;
 
   return (
     <div className="app-page app-editor" data-layout={layout}>
@@ -1169,8 +1174,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     />
                   ) : null}
                   {mayEdit ? (
-                    <AiWriteButtons
+                    <AiJobButtons
                       action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
+                      Form={aiJob.Form}
+                      answer={aiJob.data}
+                      pending={aiJob.state !== "idle"}
                       buttons={[
                         { job: "continue", label: "Continue my draft" },
                         { job: "edit", label: "Suggest edits" },
@@ -1368,14 +1376,26 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       />
       <ScheduleDialog
         open={asking?.kind === "schedule"}
-        noun={kindNoun(data.kind)}
-        update={data.status === "published"}
-        current={data.pendingUpdate?.publishAt ?? null}
+        title={
+          scheduleUpdate
+            ? pendingAt
+              ? "Replace the scheduled update"
+              : `Schedule an update to this ${kindNoun(data.kind)}`
+            : `Schedule this ${kindNoun(data.kind)}`
+        }
+        description={
+          scheduleUpdate
+            ? `The live ${kindNoun(data.kind)} stays as it is. The site publishes the text in the editor at the time you choose${pendingAt ? ", in place of the update scheduled now" : ""}. You can cancel it before then.`
+            : "The site publishes it at the time you choose. Revert to draft takes it back."
+        }
+        confirm={
+          scheduleUpdate ? (pendingAt ? "Replace the update" : "Schedule update") : "Schedule"
+        }
+        current={pendingAt}
         returnTo={asking?.opener}
         onClose={() => setAsking(null)}
-        schedule={async (publishAt) => {
+        onSchedule={async (publishAt) => {
           await send("schedule", { publishAt });
-          setAsking(null);
         }}
       />
     </div>

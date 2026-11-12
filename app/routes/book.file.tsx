@@ -17,7 +17,7 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
-import { AiWriteButtons } from "~/components/ai-write-buttons";
+import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { WRITING_SURFACES, WritingSurface } from "~/components/editor/writing-surface";
 import { HeaderFields } from "~/components/editor/header-fields";
@@ -328,6 +328,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const [asking, setAsking] = useState<Ask | null>(null);
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
+  const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
   useTypingRecede(WRITING_SURFACES);
   const base = `/b/${data.project.slug}`;
@@ -527,8 +528,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     </p>
                     {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
                     {data.version ? (
-                      <AiWriteButtons
+                      <AiJobButtons
                         action={`${base}/ai-write`}
+                        Form={aiJob.Form}
+                        answer={aiJob.data}
+                        pending={aiJob.state !== "idle"}
                         fields={{ path: data.path }}
                         buttons={[
                           { job: "continue", label: "Continue this file" },
