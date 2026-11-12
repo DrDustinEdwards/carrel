@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Link, routerRenderLink } from "capsomer/react/link";
 import { Row, RowList } from "capsomer/react/row-list";
+import { FlagRow } from "~/components/editor/flags-panel";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -612,27 +613,12 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       ) : (
                         <RowList label="Flags on this file" gap="xs">
                           {data.findings.map((f) => (
-                            <Row
+                            <FlagRow
                               key={f.id}
-                              size="sm"
-                              title={f.message}
-                              status={
-                                f.status === "open" ? (
-                                  <Status tone="warn">Open</Status>
-                                ) : (
-                                  <Pill variant="secondary">Dismissed</Pill>
-                                )
-                              }
+                              flag={f}
                               meta={f.line ? `${f.check} · line ${f.line}` : f.check}
-                              actions={
-                                f.status === "open" && data.canPublish ? (
-                                  <Button
-                                    size="sm"
-                                    onClick={(event) => ask("dismiss", event.currentTarget, f.id)}
-                                  >
-                                    Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                                  </Button>
-                                ) : undefined
+                              onDismiss={
+                                data.canPublish ? (button) => ask("dismiss", button, f.id) : null
                               }
                             />
                           ))}

@@ -7,6 +7,7 @@ import { Button } from "capsomer/react/button";
 import { Panel } from "capsomer/react/panel";
 import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
+import type { ReactNode } from "react";
 
 import type { AiDraftSummary, ItemFinding } from "~/lib/ai.server";
 import type { TranscriptDraftSummary } from "~/lib/transcripts.server";
@@ -19,6 +20,42 @@ type Props = {
   canPublish: boolean;
   onDismiss: (button: HTMLElement, flag: number) => void;
 };
+
+/** One flag, open or dismissed; an open one offers Dismiss to whoever may dismiss it. */
+export function FlagRow({
+  flag,
+  detail,
+  meta,
+  onDismiss,
+}: {
+  flag: { status: string; message: string };
+  detail?: ReactNode;
+  meta?: ReactNode;
+  onDismiss: ((button: HTMLElement) => void) | null;
+}) {
+  return (
+    <Row
+      size="sm"
+      title={flag.message}
+      status={
+        flag.status === "open" ? (
+          <Status tone="warn">Open</Status>
+        ) : (
+          <Pill variant="secondary">Dismissed</Pill>
+        )
+      }
+      detail={detail}
+      meta={meta}
+      actions={
+        flag.status === "open" && onDismiss ? (
+          <Button size="sm" onClick={(event) => onDismiss(event.currentTarget)}>
+            Dismiss<span className="cap-sr-only"> flag: {flag.message}</span>
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+}
 
 export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDismiss }: Props) {
   const openFlags = flags.filter((f) => f.status === "open").length;
@@ -34,25 +71,11 @@ export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDi
         {flags.length > 0 ? (
           <RowList label="Flags" gap="xs">
             {flags.map((f) => (
-              <Row
+              <FlagRow
                 key={f.id}
-                size="sm"
-                title={f.message}
-                status={
-                  f.status === "open" ? (
-                    <Status tone="warn">Open</Status>
-                  ) : (
-                    <Pill variant="secondary">Dismissed</Pill>
-                  )
-                }
+                flag={f}
                 detail={f.excerpt ? <q>{f.excerpt}</q> : undefined}
-                actions={
-                  f.status === "open" && canPublish ? (
-                    <Button size="sm" onClick={(event) => onDismiss(event.currentTarget, f.id)}>
-                      Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                    </Button>
-                  ) : undefined
-                }
+                onDismiss={canPublish ? (button) => onDismiss(button, f.id) : null}
               />
             ))}
           </RowList>
