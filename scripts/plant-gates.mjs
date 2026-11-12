@@ -54,7 +54,8 @@ const PLANTS = [
     gate: "build",
     file: "app/lib/mcp/door.ts",
     find: 'import { findAgentViewer, findViewer } from "~/lib/people.server";',
-    replace: 'import { findAgentViewer, findViewer } from "~/lib/people.server";\nimport "./no-such-module";',
+    replace:
+      'import { findAgentViewer, findViewer } from "~/lib/people.server";\nimport "./no-such-module";',
     label: "an import that does not resolve",
   },
   {
