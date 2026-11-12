@@ -4,7 +4,8 @@
 
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
-import { Row, RowList } from "capsomer/react/row-list";
+import { RowList } from "capsomer/react/row-list";
+import { FlagRow } from "~/components/editor/flags-panel";
 import { OgCardPreview, SerpPreview } from "capsomer/react/share-preview";
 import { Status } from "capsomer/react/status";
 
@@ -30,13 +31,11 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
         ) : (
           <RowList label="Search and sharing checks" gap="xs">
             {findings.map((f, i) => (
-              <Row
+              <FlagRow
                 key={i}
-                size="sm"
-                className="cap-flag"
-                title={f.message}
-                status={<Status tone="warn">{f.line ? `Line ${f.line}` : "Flag"}</Status>}
-                detail={f.excerpt ? <q>{f.excerpt}</q> : undefined}
+                flag={f}
+                status={<Status tone="warn">Flag</Status>}
+                meta={f.line ? `line ${f.line}` : undefined}
               />
             ))}
           </RowList>

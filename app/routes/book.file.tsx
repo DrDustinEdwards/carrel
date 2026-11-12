@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Link, routerRenderLink } from "capsomer/react/link";
-import { Row, RowList } from "capsomer/react/row-list";
+import { RowList } from "capsomer/react/row-list";
 import { FlagRow } from "~/components/editor/flags-panel";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -616,7 +616,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                             <FlagRow
                               key={f.id}
                               flag={f}
-                              meta={f.line ? `${f.check} · line ${f.line}` : f.check}
+                              meta={f.line ? `line ${f.line}` : undefined}
                               onDismiss={
                                 data.canPublish ? (button) => ask("dismiss", button, f.id) : null
                               }
@@ -632,13 +632,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           ) : (
                             <RowList label="This text, checked now" gap="xs">
                               {checked.map((f, i) => (
-                                <Row
+                                <FlagRow
                                   key={i}
-                                  size="sm"
-                                  className="cap-flag"
-                                  title={f.message}
+                                  flag={f}
                                   status={<Status tone="warn">Found</Status>}
-                                  meta={f.line ? `${f.check} · line ${f.line}` : f.check}
+                                  meta={f.line ? `line ${f.line}` : undefined}
                                 />
                               ))}
                             </RowList>

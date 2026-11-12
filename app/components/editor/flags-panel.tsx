@@ -23,32 +23,45 @@ type Props = {
 
 /**
  * One flag, open or dismissed; an open one offers Dismiss to whoever may dismiss it. A row of the row list
- * with Capsomer's flag row look (.cap-flag, flag-list.css), so the whole message wraps instead of clamping.
+ * with Capsomer's flag row look (.cap-flag, flag-list.css): the check that raised it as the title, and the
+ * message, with the words it quotes, as the detail, which wraps whole instead of clamping.
  */
 export function FlagRow({
   flag,
-  detail,
+  status,
   meta,
-  onDismiss,
+  onDismiss = null,
 }: {
-  flag: { status: string; message: string };
-  detail?: ReactNode;
+  flag: { check: string; message: string; excerpt?: string | null; status?: string };
+  /** The status word; by default Open or Dismissed from the flag's own status. */
+  status?: ReactNode;
   meta?: ReactNode;
-  onDismiss: ((button: HTMLElement) => void) | null;
+  onDismiss?: ((button: HTMLElement) => void) | null;
 }) {
   return (
     <Row
       size="sm"
       className="cap-flag"
-      title={flag.message}
+      title={flag.check}
       status={
-        flag.status === "open" ? (
+        status ??
+        (flag.status === "open" ? (
           <Status tone="warn">Open</Status>
         ) : (
           <Pill variant="secondary">Dismissed</Pill>
-        )
+        ))
       }
-      detail={detail}
+      detail={
+        <>
+          {flag.message}
+          {flag.excerpt ? (
+            <>
+              {" "}
+              <q>{flag.excerpt}</q>
+            </>
+          ) : null}
+        </>
+      }
       meta={meta}
       actions={
         flag.status === "open" && onDismiss ? (
@@ -78,7 +91,6 @@ export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDi
               <FlagRow
                 key={f.id}
                 flag={f}
-                detail={f.excerpt ? <q>{f.excerpt}</q> : undefined}
                 onDismiss={canPublish ? (button) => onDismiss(button, f.id) : null}
               />
             ))}
