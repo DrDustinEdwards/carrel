@@ -6,6 +6,7 @@
 import { slugify } from "@drdustinedwards/site-helpers/slug";
 
 import { headingOf } from "./docx.mjs";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 /**
  * @typedef {import("./docx.mjs").Paragraph} Paragraph
@@ -274,7 +275,7 @@ export function writeBook(book, opts) {
   const report = [
     `# Import report: ${title}`,
     "",
-    `${book.chapters.length} chapter${book.chapters.length === 1 ? "" : "s"}, ${scenes} scene${scenes === 1 ? "" : "s"}, ${words} words, ${flags.length} flag${flags.length === 1 ? "" : "s"}.`,
+    `${plural(book.chapters.length, "chapter")}, ${plural(scenes, "scene")}, ${words} words, ${plural(flags.length, "flag")}.`,
     "",
     "Each flag below is also marked in its file with an `<!-- import: ... -->` line. Fix the text or delete the line; either way, remove every marker before exporting. Scene headers are empty: point of view, date, location, characters and the beats are yours to fill.",
     "",

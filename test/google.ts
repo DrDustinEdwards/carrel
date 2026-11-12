@@ -3,7 +3,36 @@
 // key: the service account key is generated here, and the token endpoint verifies its signed JWT
 // with the matching public key, so a wrong signature, issuer, audience or scope is caught.
 
-import { exportJWK, importJWK, jwtVerify, type JWK } from "jose";
+import { fromBase64url, fromBase64urlText } from "@dustinedwards/site-runtime/encoding";
+
+type JWK = JsonWebKey;
+
+/** The claims of an RS256 JWT signed by the key, from the issuer, for the audience; throws otherwise. */
+async function verifyRs256(
+  token: string,
+  jwk: JWK,
+  expect: { issuer: string; audience: string },
+): Promise<Record<string, unknown>> {
+  const [head, body, sig] = token.split(".");
+  if (!head || !body || !sig) throw new Error("not a JWT");
+  const key = await crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["verify"],
+  );
+  const ok = await crypto.subtle.verify(
+    "RSASSA-PKCS1-v1_5",
+    key,
+    fromBase64url(sig),
+    new TextEncoder().encode(`${head}.${body}`),
+  );
+  const claims = JSON.parse(fromBase64urlText(body)) as Record<string, unknown>;
+  if (!ok || claims.iss !== expect.issuer || claims.aud !== expect.audience)
+    throw new Error("bad JWT");
+  return claims;
+}
 
 export const CLIENT_EMAIL = "carrel-reader@carrel-test.iam.gserviceaccount.com";
 export const KEY_ID = "0123456789abcdef0123456789abcdef01234567";
@@ -39,7 +68,7 @@ export async function serviceAccountKey() {
     client_id: "1234567890",
     token_uri: "https://oauth2.googleapis.com/token",
   });
-  return { json, publicJwk: (await exportJWK(pair.publicKey)) as JWK };
+  return { json, publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey) };
 }
 
 export type FakeFile = {
@@ -83,15 +112,11 @@ export function fakeGoogle(opts: {
       const grant = form.get("grant_type");
       if (grant === "urn:ietf:params:oauth:grant-type:jwt-bearer") {
         try {
-          const { payload } = await jwtVerify(
-            form.get("assertion") ?? "",
-            await importJWK(opts.publicJwk, "RS256"),
-            {
-              issuer: CLIENT_EMAIL,
-              audience: "https://oauth2.googleapis.com/token",
-            },
-          );
-          assertions.push(payload as Record<string, unknown>);
+          const payload = await verifyRs256(form.get("assertion") ?? "", opts.publicJwk, {
+            issuer: CLIENT_EMAIL,
+            audience: "https://oauth2.googleapis.com/token",
+          });
+          assertions.push(payload);
         } catch {
           return json(400, { error: "invalid_grant", error_description: "Invalid JWT Signature." });
         }
