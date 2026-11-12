@@ -56,8 +56,8 @@ describe("rendered responses through the gate", () => {
 
   beforeAll(async () => {
     const access = await stubAccess({
-      issuer: testEnv.ACCESS_TEAM_DOMAIN,
-      audience: testEnv.ACCESS_AUD,
+      issuer: testEnv.ACCESS_TEAM_DOMAIN ?? "",
+      audience: testEnv.ACCESS_AUD ?? "",
       email: "owner@test.invalid",
       install: false,
     });
