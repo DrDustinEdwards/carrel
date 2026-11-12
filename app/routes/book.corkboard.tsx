@@ -14,7 +14,7 @@ import { Link } from "capsomer/react/link";
 import { FormMenu } from "capsomer/react/menu";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
 
 import { reorderBook, chapterSources, type ReorderResult } from "~/lib/binder.server";
 import { bookHead, bookRepo, listFiles, requireBookProject } from "~/lib/books.server";
@@ -156,7 +156,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
             {c.title}
           </Link>
         </h3>
-        <StatusLabelPill labels={labels} status={c.status} />
+        <ColorLabelPill labels={labels} value={c.status} unknownNote=" (not on the status list)" />
       </header>
       <p>
         {c.summary || "No summary yet."}

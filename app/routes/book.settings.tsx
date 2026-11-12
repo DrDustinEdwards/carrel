@@ -6,20 +6,19 @@ import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Disclosure } from "capsomer/react/disclosure";
-import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
-import { Select } from "capsomer/react/select";
 
 import { BookHead } from "~/components/book-head";
 import { SharePanel } from "~/components/share-panel";
-import { StatusLabelPill } from "~/components/writing/status-label";
+import { LabelColorList } from "capsomer/react/label-color-list";
+import { LabelColorEditor } from "capsomer/react/label-color-editor";
 
 import { bookHead, bookRepo, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { shareFromForm } from "~/lib/people-admin.server";
 import { can } from "~/lib/roles";
 import { saveStatusList, statusList } from "~/lib/writing.server";
-import { COLOR_NAMES, MAX_LABELS } from "~/lib/writing/status";
+import { rowsFromForm } from "capsomer/behavior/label-color-list";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.settings";
@@ -53,12 +52,10 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   }
   if (intent !== "labels") throw new Response("Bad request", { status: 400 });
   const project = await requireBookProject(env.DB, viewer, params.project, "edit");
-  const labels = form.getAll("label").map(String);
-  const colors = form.getAll("color").map(String);
   const saved = await saveStatusList(
     env.DB,
     project,
-    labels.map((label, i) => ({ label, color: colors[i] ?? "" })),
+    rowsFromForm(form.getAll("label"), form.getAll("color")),
   );
   return saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error };
 }
@@ -69,14 +66,6 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
   const saving = navigation.state !== "idle" && navigation.formData?.get("intent") === "labels";
   const base = `/b/${head.slug}`;
   const result = actionData && "saved" in actionData ? actionData : null;
-  // Room to add labels: two empty rows under the list, up to the limit.
-  const editRows = [
-    ...labels,
-    ...Array.from({ length: Math.max(0, Math.min(2, MAX_LABELS - labels.length)) }, () => ({
-      label: "",
-      color: 0,
-    })),
-  ];
 
   return (
     <div className="app-page">
@@ -89,13 +78,7 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
           src={edited ? "This book's own" : "The starting list for books"}
         >
           <div className="cap-stack" data-gap="4">
-            <ul className="app-label-list" aria-label="Statuses, in order">
-              {labels.map((l) => (
-                <li key={l.label}>
-                  <StatusLabelPill labels={labels} status={l.label} />
-                </li>
-              ))}
-            </ul>
+            <LabelColorList labels={labels} label="Statuses, in order" />
             <p className="cap-muted app-note">
               A scene takes one with status: in its header. A status not on the list still shows, as
               written.
@@ -113,31 +96,7 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
                     In order. Clear a label to remove it; renaming one does not change the scenes
                     that carry the old word.
                   </p>
-                  <ol className="app-label-edit">
-                    {editRows.map((l, i) => (
-                      <li key={i} className="cap-inline-add">
-                        <Field label={`Label ${i + 1}`}>
-                          <input
-                            className="cap-input"
-                            name="label"
-                            defaultValue={l.label}
-                            maxLength={40}
-                            autoComplete="off"
-                          />
-                        </Field>
-                        <Field label={`Color ${i + 1}`}>
-                          <Select
-                            name="color"
-                            defaultValue={String(l.color || (i % 8) + 1)}
-                            options={COLOR_NAMES.map((c, k) => ({
-                              value: String(k + 1),
-                              label: c,
-                            }))}
-                          />
-                        </Field>
-                      </li>
-                    ))}
-                  </ol>
+                  <LabelColorEditor labels={labels} />
                   <div className="cap-cluster" data-gap="3">
                     <Button type="submit" pending={saving}>
                       Save the list

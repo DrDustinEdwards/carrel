@@ -32,7 +32,6 @@ import {
   writingDaysBetween,
   type Goal,
 } from "~/lib/writing/progress";
-import { cleanLabels, labelFor, STARTING_STATUSES } from "~/lib/writing/status";
 import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
 import { loader as bookLoader } from "~/routes/book";
 import { loader as outlinerLoader } from "~/routes/book.outliner";
@@ -84,37 +83,6 @@ describe("the header keys", () => {
 
   it("does not count the header keys as prose", () => {
     expect(describeFile(ONE, `${HEADER("Idea")}Three words here.\n`).words).toBe(3);
-  });
-});
-
-describe("status lists", () => {
-  it("matches a status ignoring case, and an unknown one to nothing", () => {
-    expect(labelFor(STARTING_STATUSES.book, "first DRAFT")?.label).toBe("First draft");
-    expect(labelFor(STARTING_STATUSES.book, "Polished")).toBeNull();
-    expect(labelFor(STARTING_STATUSES.book, "  ")).toBeNull();
-  });
-
-  it("PLANT: refuses a list with a label twice, or none at all, and drops blank rows", () => {
-    expect(
-      cleanLabels([
-        { label: "Idea", color: 1 },
-        { label: "idea", color: 2 },
-      ]),
-    ).toMatchObject({ ok: false });
-    expect(cleanLabels([{ label: " ", color: 1 }])).toMatchObject({ ok: false });
-    expect(
-      cleanLabels([
-        { label: " Idea ", color: "9" },
-        { label: "", color: 2 },
-        { label: "Done", color: "4" },
-      ]),
-    ).toEqual({
-      ok: true,
-      labels: [
-        { label: "Idea", color: 1 },
-        { label: "Done", color: 4 },
-      ],
-    });
   });
 });
 

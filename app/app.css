@@ -53,6 +53,7 @@
 @import "capsomer/not-found-report.css";
 @import "capsomer/moderation-queue.css";
 @import "capsomer/approval-queue.css";
+@import "capsomer/label-color-list.css";
 @import "capsomer/publish-gate.css";
 @import "capsomer/share-preview.css";
 @import "capsomer/stat-tile.css";
@@ -677,75 +678,6 @@
   :root:has(.cap-admin) {
     scroll-padding-bottom: 5rem;
   }
-}
-
-/* Status labels (ruling 8): the word, with the label's series color as a dot beside it. The word
-   carries the meaning; the dot repeats it, so color is never alone. */
-.app-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 1px var(--space-4) 1px var(--space-3);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-  white-space: nowrap;
-}
-
-.app-label-dot {
-  inline-size: 0.7em;
-  block-size: 0.7em;
-  border-radius: 50%;
-  background: var(--series-1);
-  flex: none;
-}
-
-.app-label[data-color="2"] .app-label-dot {
-  background: var(--series-2);
-}
-.app-label[data-color="3"] .app-label-dot {
-  background: var(--series-3);
-}
-.app-label[data-color="4"] .app-label-dot {
-  background: var(--series-4);
-}
-.app-label[data-color="5"] .app-label-dot {
-  background: var(--series-5);
-}
-.app-label[data-color="6"] .app-label-dot {
-  background: var(--series-6);
-}
-.app-label[data-color="7"] .app-label-dot {
-  background: var(--series-7);
-}
-.app-label[data-color="8"] .app-label-dot {
-  background: var(--series-8);
-}
-
-@media (forced-colors: active) {
-  .app-label-dot {
-    background: CanvasText;
-  }
-}
-
-.app-label-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.app-label-edit {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .app-outliner-chapter {

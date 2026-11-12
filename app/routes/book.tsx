@@ -15,7 +15,7 @@ import { StatTile, StatTiles } from "capsomer/react/stat-tile";
 import { Status } from "capsomer/react/status";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
 
 import {
   bookHead,
@@ -320,7 +320,11 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                           {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
                         </th>
                         <td>
-                          <StatusLabelPill labels={labels} status={s.status} />
+                          <ColorLabelPill
+                            labels={labels}
+                            value={s.status}
+                            unknownNote=" (not on the status list)"
+                          />
                         </td>
                         <td data-drop="1">{s.pov}</td>
                         <td data-drop="1">{s.date}</td>
