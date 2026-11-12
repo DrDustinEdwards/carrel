@@ -4,7 +4,7 @@
 
 import { and, eq, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
+import { base64url, fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
 
 import { googleOauthStates, googleTokens } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
@@ -27,7 +27,7 @@ async function tokenKey(raw: string | undefined): Promise<CryptoKey | null> {
   if (!raw?.trim()) return null;
   let bytes: Uint8Array<ArrayBuffer>;
   try {
-    bytes = Uint8Array.from(atob(raw.trim()), (c) => c.charCodeAt(0));
+    bytes = fromBase64(raw.trim());
   } catch {
     return null;
   }
@@ -104,7 +104,7 @@ export async function startAuth(
 ): Promise<string> {
   requireOwner(viewer);
   const { clientId } = await configured(env);
-  const state = toBase64(crypto.getRandomValues(new Uint8Array(24))).replace(/[+/=]/g, "");
+  const state = base64url(crypto.getRandomValues(new Uint8Array(24)));
   const d = drizzle(env.DB);
   await d
     .delete(googleOauthStates)

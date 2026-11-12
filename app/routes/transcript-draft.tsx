@@ -8,6 +8,7 @@ import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
+import { timecode } from "capsomer/behavior/time";
 
 import { DraftHead, draftIdParam } from "~/components/editor/draft-head";
 import { mayPublishItem } from "~/lib/content.server";
@@ -25,14 +26,6 @@ import type { Route } from "./+types/transcript-draft";
 
 export function meta() {
   return [{ title: "Transcript draft · Carrel" }];
-}
-
-/** A cue's start as the player shows it: m:ss, or h:mm:ss past an hour. */
-function clock(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = String(seconds % 60).padStart(2, "0");
-  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
 /** The episode's project, the person and the draft's id. Both steps open the project to read: publishing checks its own right. */
@@ -161,7 +154,7 @@ export default function TranscriptDraft({ loaderData, actionData }: Route.Compon
                       Was: <del>{c.before}</del>
                     </>
                   }
-                  meta={`${clock(c.at)} · cue ${c.cue}`}
+                  meta={`${timecode(c.at * 1000)} · cue ${c.cue}`}
                 />
               ))}
             </RowList>

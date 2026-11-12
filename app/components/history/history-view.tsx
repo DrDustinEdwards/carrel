@@ -5,12 +5,11 @@ import type { ReactNode } from "react";
 import { useLocation, useNavigate, useNavigation } from "react-router";
 import { Link } from "capsomer/react/link";
 import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
+import { unifiedPatch } from "capsomer/behavior/draft-compare";
 import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
-
-import { unifiedPatch } from "~/lib/patch";
 
 export type Side = { title: string; who?: string; time?: string; text: string };
 type By = "line" | "word";

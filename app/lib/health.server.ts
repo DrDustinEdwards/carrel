@@ -91,7 +91,11 @@ async function checkOwner(env: Env): Promise<CheckResult> {
           detail: "The database has no Owner, so nobody can use Carrel. Run npm run seed:owner.",
         };
   } catch (error) {
-    return { name: "owner", ok: false, detail: `The database did not answer: ${message(error)}` };
+    return {
+      name: "owner",
+      ok: false,
+      detail: `The database did not answer: ${errorMessage(error)}`,
+    };
   }
 }
 
@@ -109,7 +113,7 @@ async function checkAccessKeys(env: Env, fetcher: Fetch): Promise<CheckResult> {
     return {
       name: "access-keys",
       ok: false,
-      detail: `${url} could not be read: ${message(error)}`,
+      detail: `${url} could not be read: ${errorMessage(error)}`,
     };
   }
 }
@@ -176,7 +180,7 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
     return {
       name,
       ok: false,
-      detail: `${site} could not be checked: ${message(thrown)}`,
+      detail: `${site} could not be checked: ${errorMessage(thrown)}`,
       conformance: error("could not be checked"),
     };
   }
@@ -197,7 +201,7 @@ async function checkBackup(env: Env, now: Date): Promise<CheckResult> {
     return {
       name: "backup",
       ok: false,
-      detail: `The backup bucket could not be read: ${message(error)}`,
+      detail: `The backup bucket could not be read: ${errorMessage(error)}`,
     };
   }
 }
@@ -224,7 +228,7 @@ async function checkNovels(env: Env, fetcher: Fetch): Promise<CheckResult> {
     return {
       name: "writing",
       ok: false,
-      detail: `The GitHub App could not reach ${NOVELS_REPO}: ${message(error)}`,
+      detail: `The GitHub App could not reach ${NOVELS_REPO}: ${errorMessage(error)}`,
     };
   }
 }
@@ -255,7 +259,7 @@ async function checkAiPublishEmails(env: Env): Promise<CheckResult> {
     return {
       name: "ai-publish-email",
       ok: false,
-      detail: `The record could not be read: ${message(error)}`,
+      detail: `The record could not be read: ${errorMessage(error)}`,
     };
   }
 }
@@ -305,7 +309,7 @@ async function checkServiceAccount(env: Env, fetcher: Fetch, now: Date): Promise
     return {
       name: "google-service-account",
       ok: false,
-      detail: `Key ${id} (${key.clientEmail}) no longer works: ${message(error)} Create a new key and set GOOGLE_SA_KEY.`,
+      detail: `Key ${id} (${key.clientEmail}) no longer works: ${errorMessage(error)} Create a new key and set GOOGLE_SA_KEY.`,
     };
   }
   if (days > KEY_MAX_AGE_DAYS) {
@@ -349,7 +353,7 @@ async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
     }
     return { name: "google-drive-file", ok: true, detail: "The drive.file grant refreshes." };
   } catch (error) {
-    return { name: "google-drive-file", ok: false, detail: message(error) };
+    return { name: "google-drive-file", ok: false, detail: errorMessage(error) };
   }
 }
 
@@ -374,7 +378,7 @@ async function checkSocialTemplates(env: Env): Promise<CheckResult> {
     return {
       name: "social-templates",
       ok: false,
-      detail: `The social record could not be read: ${message(error)}`,
+      detail: `The social record could not be read: ${errorMessage(error)}`,
     };
   }
 }
@@ -433,7 +437,7 @@ export async function runHealth(
       .values({ name: "conformance", body, at })
       .onConflictDoUpdate({ target: reports.name, set: { body, at } });
   } catch (error) {
-    console.error(JSON.stringify({ health: "report-failed", error: message(error) }));
+    console.error(JSON.stringify({ health: "report-failed", error: errorMessage(error) }));
   }
 
   let previous: Map<string, boolean>;
@@ -479,7 +483,7 @@ export async function runHealth(
         });
     }
   } catch (error) {
-    console.error(JSON.stringify({ health: "record-failed", error: message(error) }));
+    console.error(JSON.stringify({ health: "record-failed", error: errorMessage(error) }));
   }
   return { results, emailed };
 }
@@ -545,8 +549,4 @@ export function healthAnswer(env: Env): Promise<Response> {
       },
     ],
   });
-}
-
-function message(error: unknown): string {
-  return errorMessage(error);
 }
