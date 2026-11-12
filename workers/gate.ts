@@ -10,6 +10,7 @@
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { applyHeaderSet } from "@dustinedwards/site-runtime/headers";
+import { textResponse } from "@dustinedwards/site-runtime/http";
 import {
   errorMessage,
   logEvent,
@@ -46,12 +47,7 @@ function refuse(request: Request, reason: string): Response {
     { door: "browser", reason, ...requestFields(request) },
     { level: "warn" },
   );
-  return withPrivateHeaders(
-    new Response("Forbidden", {
-      status: 403,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    }),
-  );
+  return textResponse("Forbidden", 403);
 }
 
 export async function gate(

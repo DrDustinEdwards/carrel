@@ -62,7 +62,6 @@
     "@tiptap/y-tiptap": "3.3.0",
     "agents": "0.32.0",
     "capsomer": "github:DrDustinEdwards/capsomer#v0.109.0",
-    "diff": "9.0.0",
     "docx": "9.7.2",
     "drizzle-orm": "0.45.2",
     "enarratio": "0.13.1",

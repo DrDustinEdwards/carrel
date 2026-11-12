@@ -48,10 +48,12 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { reports } from "~/db/schema";
+import { isAdminEmail } from "@dustinedwards/site-runtime/access";
+import { textResponse } from "@dustinedwards/site-runtime/http";
 import { agentPrincipal } from "@dustinedwards/site-runtime/agent-keys";
-import { agentClient } from "~/lib/agent-keys.server";
+import { agentEmail } from "~/lib/agent-keys.server";
 import { healthAnswer } from "~/lib/health.server";
-import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";
+import { findAgentViewer, findViewer } from "~/lib/people.server";
 import { SIGNED_IN_REPORT_NAME } from "~/lib/signed-in-crawl.server";
 
 import {
@@ -96,13 +98,6 @@ const PRIVATE_HEADERS: Record<string, string> = {
   "X-Robots-Tag": "noindex, nofollow",
 };
 
-function text(body: string, status: number): Response {
-  return new Response(body, {
-    status,
-    headers: { "Content-Type": "text/plain; charset=utf-8", ...PRIVATE_HEADERS },
-  });
-}
-
 /**
  * The door's limit, per person (an agent is a person row too), on site-runtime's limiter: it fails
  * closed, and a refused request is a row in the call log.
@@ -117,7 +112,11 @@ async function rateLimited(env: Env, personId: number, caller: string): Promise<
     caller,
     server: { name: MCP_SERVER.name, version: MCP_SERVER.version },
   });
-  const out = text(`Too many requests. Try again in ${retryAfter} seconds.`, 429);
+  const out = textResponse(
+    `Too many requests. Try again in ${retryAfter} seconds.`,
+    429,
+    PRIVATE_HEADERS,
+  );
   out.headers.set("Retry-After", String(retryAfter));
   return out;
 }
@@ -160,7 +159,7 @@ const login = loginHandler<DoorEnv>({
   audit: { name: MCP_SERVER.name, version: MCP_SERVER.version },
   // The owner page (/owner, site-runtime ./owner-page): each person lists and revokes their own grants, and only the
   // Owner reads the tool-call log, which holds everyone's calls.
-  owner: { readsLog: (env, email) => readsToolCallLog(env, email) },
+  owner: { readsLog: isAdminEmail },
 });
 
 /**
@@ -193,7 +192,11 @@ export const apiHandler = {
         { door: "ai", reason: viewer ? "person-changed" : "unknown-person" },
         { level: "warn" },
       );
-      return text("Forbidden. This grant does not belong to an active person in Carrel.", 403);
+      return textResponse(
+        "Forbidden. This grant does not belong to an active person in Carrel.",
+        403,
+        PRIVATE_HEADERS,
+      );
     }
     const throttled = await rateLimited(env, viewer.id, `access:${viewer.email}`);
     if (throttled) return throttled;
@@ -227,14 +230,18 @@ async function agentHandler(
       { door: "ai", reason: "agent-not-in-carrel", agent: name },
       { level: "warn" },
     );
-    return text("Forbidden. This agent key does not belong to an active agent in Carrel.", 403);
+    return textResponse(
+      "Forbidden. This agent key does not belong to an active agent in Carrel.",
+      403,
+      PRIVATE_HEADERS,
+    );
   }
   logEvent(OWASP_EVENTS.signInSuccess, { door: "ai", method: "agent-key", agent: name });
   const throttled = await rateLimited(env, viewer.id, `agent:${name}`);
   if (throttled) return throttled;
   return servePrivate(request, env, ctx, {
     viewer,
-    client: agentClient(name),
+    client: agentEmail(name),
     scopes: AGENT_SCOPES,
   });
 }
@@ -302,7 +309,7 @@ async function storedReport(env: Env, name: string): Promise<Response> {
     .from(reports)
     .where(eq(reports.name, name))
     .get();
-  if (!row) return text("No report yet.", 404);
+  if (!row) return textResponse("No report yet.", 404, PRIVATE_HEADERS);
   return new Response(row.body, {
     status: 200,
     headers: { "Content-Type": "application/json; charset=utf-8", ...PRIVATE_HEADERS },

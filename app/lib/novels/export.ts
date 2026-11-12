@@ -150,15 +150,6 @@ blockquote { margin: 1em 2em; font-style: italic; }
 
 // ---------- ePub 3
 
-export function slugFor(title: string): string {
-  return (
-    title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "book"
-  );
-}
-
 export function buildEpub(
   book: Assembled,
   opts: { id: string; modified: Date },
