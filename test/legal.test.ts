@@ -193,7 +193,10 @@ describe("a legal page written to the site", () => {
     );
     expect(published.ok).toBe(true);
     expect(
-      readKey(splitSource((await site.adapter.content.get("page.privacy"))!.source).front, "last_updated"),
+      readKey(
+        splitSource((await site.adapter.content.get("page.privacy"))!.source).front,
+        "last_updated",
+      ),
     ).toBe(new Date().toISOString().slice(0, 10));
   });
 

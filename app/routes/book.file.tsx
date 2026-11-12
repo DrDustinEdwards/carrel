@@ -588,7 +588,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   readOnly={readOnly || !data.canEdit}
                   legend="Header"
                   empty={
-                    <p className="app-note">This file has no header, so it has no details to set.</p>
+                    <p className="app-note">
+                      This file has no header, so it has no details to set.
+                    </p>
                   }
                 />
               ),

@@ -70,120 +70,123 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
     <fieldset className="cap-fm" id="search-fields">
       <legend className="cap-fm-legend">Search and sharing</legend>
       <div className="cap-fields cap-fm-grid">
-      {has("searchTitle") ? (
-        <div className="cap-fm-field" data-wide="">
-          <Field
-            label="Search title"
-            help="The title a search result shows. Empty: the post's title."
-          >
-            <input {...typed(title, "searchTitle")} type="text" placeholder={postTitle} />
-          </Field>
-          <SerpWidthMeter
-            label="Width in a search result"
-            text={`${title.value.trim() || postTitle}${titleSuffixOf(site)}`}
-          />
-        </div>
-      ) : null}
-      {has("description") ? (
-        <div className="cap-fm-field" data-wide="">
-          <Field
-            label="Description"
-            help="The text under the title in a search result, and on a shared link."
-          >
-            <textarea {...typed(description, "description")} rows={3} />
-          </Field>
-          <SerpWidthMeter
-            label="Width in a search result"
-            text={description.value.trim()}
-            part="description"
-          />
-        </div>
-      ) : null}
-      {has("image") ? (
-        <div className="cap-fm-field app-share-image" data-wide="">
-          <span className="cap-field-label">Share image</span>
-          <div className="app-share-image-row">
-            <div className="app-share-image-thumb">
-              {imageSrc ? (
-                <img src={imageSrc} alt={values.imageAlt} />
-              ) : (
-                <span className="cap-muted">No share image: the site's default is used</span>
-              )}
-            </div>
-            <div className="cap-stack" data-gap="4">
-              {media ? (
-                values.image ? (
-                  <p className="app-share-image-url cap-mono">{values.image}</p>
-                ) : null
-              ) : (
-                <Field label="Image address" help="A path on the site, or a full https:// address.">
-                  <input {...typed(image, "image")} type="text" />
-                </Field>
-              )}
-              {!locked ? (
-                <div className="cap-cluster" data-gap="3">
-                  {media ? (
-                    <LibraryInsert
-                      media={media}
-                      words={{
-                        ...PICK_WORDS,
-                        label: values.image ? "Choose another" : PICK_WORDS.label,
-                      }}
-                      variant="default"
-                      onPick={(pick) => write({ image: pick.url, imageAlt: pick.alt })}
-                    />
-                  ) : null}
-                  {values.image ? (
-                    <Button
-                      variant="quiet"
-                      size="sm"
-                      onClick={() => write({ image: "", imageAlt: "" })}
-                    >
-                      Remove
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-              {has("imageAlt") ? (
-                <Field
-                  label="Alt text"
-                  help="What the image shows, for someone who cannot see it. Required with a share image."
-                  error={fault("imageAlt")}
-                >
-                  <input {...typed(alt, "imageAlt")} type="text" />
-                </Field>
-              ) : null}
+        {has("searchTitle") ? (
+          <div className="cap-fm-field" data-wide="">
+            <Field
+              label="Search title"
+              help="The title a search result shows. Empty: the post's title."
+            >
+              <input {...typed(title, "searchTitle")} type="text" placeholder={postTitle} />
+            </Field>
+            <SerpWidthMeter
+              label="Width in a search result"
+              text={`${title.value.trim() || postTitle}${titleSuffixOf(site)}`}
+            />
+          </div>
+        ) : null}
+        {has("description") ? (
+          <div className="cap-fm-field" data-wide="">
+            <Field
+              label="Description"
+              help="The text under the title in a search result, and on a shared link."
+            >
+              <textarea {...typed(description, "description")} rows={3} />
+            </Field>
+            <SerpWidthMeter
+              label="Width in a search result"
+              text={description.value.trim()}
+              part="description"
+            />
+          </div>
+        ) : null}
+        {has("image") ? (
+          <div className="cap-fm-field app-share-image" data-wide="">
+            <span className="cap-field-label">Share image</span>
+            <div className="app-share-image-row">
+              <div className="app-share-image-thumb">
+                {imageSrc ? (
+                  <img src={imageSrc} alt={values.imageAlt} />
+                ) : (
+                  <span className="cap-muted">No share image: the site's default is used</span>
+                )}
+              </div>
+              <div className="cap-stack" data-gap="4">
+                {media ? (
+                  values.image ? (
+                    <p className="app-share-image-url cap-mono">{values.image}</p>
+                  ) : null
+                ) : (
+                  <Field
+                    label="Image address"
+                    help="A path on the site, or a full https:// address."
+                  >
+                    <input {...typed(image, "image")} type="text" />
+                  </Field>
+                )}
+                {!locked ? (
+                  <div className="cap-cluster" data-gap="3">
+                    {media ? (
+                      <LibraryInsert
+                        media={media}
+                        words={{
+                          ...PICK_WORDS,
+                          label: values.image ? "Choose another" : PICK_WORDS.label,
+                        }}
+                        variant="default"
+                        onPick={(pick) => write({ image: pick.url, imageAlt: pick.alt })}
+                      />
+                    ) : null}
+                    {values.image ? (
+                      <Button
+                        variant="quiet"
+                        size="sm"
+                        onClick={() => write({ image: "", imageAlt: "" })}
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {has("imageAlt") ? (
+                  <Field
+                    label="Alt text"
+                    help="What the image shows, for someone who cannot see it. Required with a share image."
+                    error={fault("imageAlt")}
+                  >
+                    <input {...typed(alt, "imageAlt")} type="text" />
+                  </Field>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
-      {has("canonical") ? (
-        <div className="cap-fm-field" data-wide="">
-          <Field
-            label="Canonical address"
-            help="Only for a post that first appeared elsewhere: the full https:// address of the original. Empty: the post's own address."
-            error={fault("canonical")}
-          >
-            <input {...typed(canonical, "canonical")} type="url" inputMode="url" />
-          </Field>
-        </div>
-      ) : null}
-      {has("noindex") ? (
-        <div className="cap-fm-field" data-wide="">
-          <Check
-            label="Hide from search engines (noindex)"
-            checked={values.noindex}
-            disabled={locked}
-            onChange={(event) => write({ noindex: event.target.checked })}
-          />
-          {values.noindex ? (
-            <Alert tone="warn">
-              This post will leave search results: search engines are asked not to list it. People
-              with the link can still read it.
-            </Alert>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
+        {has("canonical") ? (
+          <div className="cap-fm-field" data-wide="">
+            <Field
+              label="Canonical address"
+              help="Only for a post that first appeared elsewhere: the full https:// address of the original. Empty: the post's own address."
+              error={fault("canonical")}
+            >
+              <input {...typed(canonical, "canonical")} type="url" inputMode="url" />
+            </Field>
+          </div>
+        ) : null}
+        {has("noindex") ? (
+          <div className="cap-fm-field" data-wide="">
+            <Check
+              label="Hide from search engines (noindex)"
+              checked={values.noindex}
+              disabled={locked}
+              onChange={(event) => write({ noindex: event.target.checked })}
+            />
+            {values.noindex ? (
+              <Alert tone="warn">
+                This post will leave search results: search engines are asked not to list it. People
+                with the link can still read it.
+              </Alert>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </fieldset>
   );

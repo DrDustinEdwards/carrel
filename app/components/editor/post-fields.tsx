@@ -73,181 +73,184 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
     <fieldset className="cap-fm" id="post-fields">
       <legend className="cap-fm-legend">Post fields</legend>
       <div className="cap-fields cap-fm-grid">
-      {has("excerpt") ? (
-        <div className="cap-fm-field" data-wide="">
-          <Field
-            label="Excerpt"
-            help="The short text the site's lists and feeds show for this post."
-          >
-            <textarea {...typed(excerpt, "excerpt")} rows={3} />
-          </Field>
-        </div>
-      ) : null}
-      {has("authors") ? (
-        <div className="cap-fm-field" data-wide="">
-          <span className="cap-field-label" id="post-authors">
-            Authors
-          </span>
-          <p className="cap-field-help">
-            Everyone credited, in order. The first is the primary author.
-          </p>
-          {authors.length === 0 ? (
-            <p className="cap-muted">No author named: the site credits its own default.</p>
-          ) : locked ? (
-            <ol className="app-links" aria-labelledby="post-authors">
-              {authors.map((name) => (
-                <li key={name}>{name}</li>
-              ))}
-            </ol>
-          ) : (
-            <SortableList
-              items={authors}
-              getId={(name) => name}
-              getLabel={(name) => name}
-              aria-labelledby="post-authors"
-              onReorder={(order) => write({ authors: order })}
-              renderItem={(name) => (
-                <span className="app-author-row">
-                  <span className="cap-sortable-label">{name}</span>
-                  <Button
-                    size="sm"
-                    variant="quiet"
-                    aria-label={`Remove ${name}`}
-                    onClick={() => write({ authors: authors.filter((a) => a !== name) })}
-                  >
-                    Remove
-                  </Button>
-                </span>
-              )}
-            />
-          )}
-          {!locked ? (
-            <div className="app-authors-add">
-              <Field label="Add an author">
-                <input
-                  className="cap-input"
-                  type="text"
-                  value={adding}
-                  onChange={(event) => setAdding(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !isImeEnter(event.nativeEvent)) {
-                      event.preventDefault();
-                      add();
-                    }
-                  }}
-                />
-              </Field>
-              <Button size="sm" onClick={add}>
-                Add
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      {has("series") ? (
-        <div className="cap-fm-field">
-          <Field label="Series" help="The series this post belongs to. Empty: none.">
-            <input {...typed(series, "series")} type="text" />
-          </Field>
-        </div>
-      ) : null}
-      {has("seriesPart") ? (
-        <div className="cap-fm-field">
-          <Field label="Part" help="Its place in the series: 1, 2, 3.">
-            <input
-              className="cap-input"
-              type="number"
-              min={1}
-              step={1}
-              inputMode="numeric"
-              value={values.seriesPart ?? ""}
-              readOnly={locked}
-              onChange={(event) => {
-                const part = Number(event.target.value);
-                write({ seriesPart: Number.isInteger(part) && part > 0 ? part : null });
-              }}
-            />
-          </Field>
-        </div>
-      ) : null}
-      {has("featureImage") ? (
-        <div className="cap-fm-field app-share-image" data-wide="">
-          <span className="cap-field-label">Feature image</span>
-          <div className="app-share-image-row">
-            <div className="app-share-image-thumb">
-              {imageSrc ? (
-                <img src={imageSrc} alt={values.featureImageAlt} />
-              ) : (
-                <span className="cap-muted">No feature image</span>
-              )}
-            </div>
-            <div className="cap-stack" data-gap="4">
-              {media ? (
-                values.featureImage ? (
-                  <p className="app-share-image-url cap-mono">{values.featureImage}</p>
-                ) : null
-              ) : (
-                <Field label="Image address" help="A path on the site, or a full https:// address.">
-                  <input {...typed(image, "featureImage")} type="text" />
-                </Field>
-              )}
-              {!locked ? (
-                <div className="cap-cluster" data-gap="3">
-                  {media ? (
-                    <LibraryInsert
-                      media={media}
-                      words={{
-                        ...PICK_WORDS,
-                        label: values.featureImage ? "Choose another" : PICK_WORDS.label,
-                      }}
-                      variant="default"
-                      onPick={(pick) =>
-                        write({
-                          featureImage: pick.url,
-                          featureImageAlt: pick.alt,
-                          featureImageDecorative: false,
-                        })
-                      }
-                    />
-                  ) : null}
-                  {values.featureImage ? (
+        {has("excerpt") ? (
+          <div className="cap-fm-field" data-wide="">
+            <Field
+              label="Excerpt"
+              help="The short text the site's lists and feeds show for this post."
+            >
+              <textarea {...typed(excerpt, "excerpt")} rows={3} />
+            </Field>
+          </div>
+        ) : null}
+        {has("authors") ? (
+          <div className="cap-fm-field" data-wide="">
+            <span className="cap-field-label" id="post-authors">
+              Authors
+            </span>
+            <p className="cap-field-help">
+              Everyone credited, in order. The first is the primary author.
+            </p>
+            {authors.length === 0 ? (
+              <p className="cap-muted">No author named: the site credits its own default.</p>
+            ) : locked ? (
+              <ol className="app-links" aria-labelledby="post-authors">
+                {authors.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ol>
+            ) : (
+              <SortableList
+                items={authors}
+                getId={(name) => name}
+                getLabel={(name) => name}
+                aria-labelledby="post-authors"
+                onReorder={(order) => write({ authors: order })}
+                renderItem={(name) => (
+                  <span className="app-author-row">
+                    <span className="cap-sortable-label">{name}</span>
                     <Button
-                      variant="quiet"
                       size="sm"
-                      onClick={() =>
-                        write({
-                          featureImage: "",
-                          featureImageAlt: "",
-                          featureImageDecorative: false,
-                        })
-                      }
+                      variant="quiet"
+                      aria-label={`Remove ${name}`}
+                      onClick={() => write({ authors: authors.filter((a) => a !== name) })}
                     >
                       Remove
                     </Button>
-                  ) : null}
-                </div>
-              ) : null}
-              {values.featureImage ? (
-                <>
-                  <Field
-                    label="Alt text"
-                    help="What the image shows, for someone who cannot see it. Required unless it is only decoration."
-                    error={fault ? `${fault}.` : undefined}
-                  >
-                    <input {...typed(alt, "featureImageAlt")} type="text" />
-                  </Field>
-                  <Check
-                    label="Only decoration (no alt text)"
-                    checked={values.featureImageDecorative}
-                    disabled={locked}
-                    onChange={(event) => write({ featureImageDecorative: event.target.checked })}
+                  </span>
+                )}
+              />
+            )}
+            {!locked ? (
+              <div className="app-authors-add">
+                <Field label="Add an author">
+                  <input
+                    className="cap-input"
+                    type="text"
+                    value={adding}
+                    onChange={(event) => setAdding(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !isImeEnter(event.nativeEvent)) {
+                        event.preventDefault();
+                        add();
+                      }
+                    }}
                   />
-                </>
-              ) : null}
+                </Field>
+                <Button size="sm" onClick={add}>
+                  Add
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {has("series") ? (
+          <div className="cap-fm-field">
+            <Field label="Series" help="The series this post belongs to. Empty: none.">
+              <input {...typed(series, "series")} type="text" />
+            </Field>
+          </div>
+        ) : null}
+        {has("seriesPart") ? (
+          <div className="cap-fm-field">
+            <Field label="Part" help="Its place in the series: 1, 2, 3.">
+              <input
+                className="cap-input"
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                value={values.seriesPart ?? ""}
+                readOnly={locked}
+                onChange={(event) => {
+                  const part = Number(event.target.value);
+                  write({ seriesPart: Number.isInteger(part) && part > 0 ? part : null });
+                }}
+              />
+            </Field>
+          </div>
+        ) : null}
+        {has("featureImage") ? (
+          <div className="cap-fm-field app-share-image" data-wide="">
+            <span className="cap-field-label">Feature image</span>
+            <div className="app-share-image-row">
+              <div className="app-share-image-thumb">
+                {imageSrc ? (
+                  <img src={imageSrc} alt={values.featureImageAlt} />
+                ) : (
+                  <span className="cap-muted">No feature image</span>
+                )}
+              </div>
+              <div className="cap-stack" data-gap="4">
+                {media ? (
+                  values.featureImage ? (
+                    <p className="app-share-image-url cap-mono">{values.featureImage}</p>
+                  ) : null
+                ) : (
+                  <Field
+                    label="Image address"
+                    help="A path on the site, or a full https:// address."
+                  >
+                    <input {...typed(image, "featureImage")} type="text" />
+                  </Field>
+                )}
+                {!locked ? (
+                  <div className="cap-cluster" data-gap="3">
+                    {media ? (
+                      <LibraryInsert
+                        media={media}
+                        words={{
+                          ...PICK_WORDS,
+                          label: values.featureImage ? "Choose another" : PICK_WORDS.label,
+                        }}
+                        variant="default"
+                        onPick={(pick) =>
+                          write({
+                            featureImage: pick.url,
+                            featureImageAlt: pick.alt,
+                            featureImageDecorative: false,
+                          })
+                        }
+                      />
+                    ) : null}
+                    {values.featureImage ? (
+                      <Button
+                        variant="quiet"
+                        size="sm"
+                        onClick={() =>
+                          write({
+                            featureImage: "",
+                            featureImageAlt: "",
+                            featureImageDecorative: false,
+                          })
+                        }
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {values.featureImage ? (
+                  <>
+                    <Field
+                      label="Alt text"
+                      help="What the image shows, for someone who cannot see it. Required unless it is only decoration."
+                      error={fault ? `${fault}.` : undefined}
+                    >
+                      <input {...typed(alt, "featureImageAlt")} type="text" />
+                    </Field>
+                    <Check
+                      label="Only decoration (no alt text)"
+                      checked={values.featureImageDecorative}
+                      disabled={locked}
+                      onChange={(event) => write({ featureImageDecorative: event.target.checked })}
+                    />
+                  </>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
       </div>
     </fieldset>
   );

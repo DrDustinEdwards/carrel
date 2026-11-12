@@ -147,7 +147,12 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
         title="Your guide and writing"
         src={canManage ? "Yours to edit" : "The Owner edits it"}
       >
-        <Form method="post" className="cap-stack" data-gap="5" aria-label="Voice guide and own writing">
+        <Form
+          method="post"
+          className="cap-stack"
+          data-gap="5"
+          aria-label="Voice guide and own writing"
+        >
           <Field
             label="Guide"
             help="Anything a session should know about how you write here: who reads it, what you never say, how you open and close."
