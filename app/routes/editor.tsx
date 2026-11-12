@@ -38,7 +38,7 @@ import { SearchFields } from "~/components/editor/search-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { HistoryPanel } from "~/components/history/history-panel";
-import { WRITING_SURFACES, WritingSurface } from "~/components/editor/writing-surface";
+import { WritingSurface } from "~/components/editor/writing-surface";
 import { routerRenderLink } from "capsomer/react/link";
 import { SiteBinder } from "~/components/writing/binder";
 import {
@@ -583,7 +583,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const writer = useFetcher<ActionResult>();
   const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
-  useTypingRecede(WRITING_SURFACES);
+  useTypingRecede();
 
   // The item's room: one copy for everyone on the project, as they type.
   const editing = useRoomEditing({

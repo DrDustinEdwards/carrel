@@ -21,7 +21,7 @@ import { PageHead } from "capsomer/react/page-head";
 
 import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
-import { WRITING_SURFACES, WritingSurface } from "~/components/editor/writing-surface";
+import { WritingSurface } from "~/components/editor/writing-surface";
 import { FrontmatterFields } from "capsomer/react/frontmatter-fields";
 import { Inspector } from "capsomer/react/inspector";
 import { commentsTab } from "~/components/editor/comments-tab";
@@ -332,7 +332,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const checker = useFetcher<ActionResult>();
   const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
-  useTypingRecede(WRITING_SURFACES);
+  useTypingRecede();
   const base = `/b/${data.project.slug}`;
 
   // The file's room: one copy for everyone on the book, as they type.

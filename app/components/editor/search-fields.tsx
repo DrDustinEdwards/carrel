@@ -8,6 +8,7 @@
 import { Alert } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
+import { useTyped, type TypedBox } from "capsomer/react/frontmatter-fields";
 import { SerpWidthMeter } from "capsomer/react/share-preview";
 
 import { joinSource, readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
@@ -18,7 +19,7 @@ import {
   type SearchValues,
 } from "@dustinedwards/site-api/frontmatter";
 import { LibraryInsert } from "~/components/media/library-insert";
-import { typedProps, useTyped } from "~/components/editor/typed-box";
+import { typedProps } from "~/components/editor/post-fields";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
@@ -55,7 +56,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
   const write = (next: Partial<SearchValues>) =>
     onChange?.(joinSource({ ...parts, front: setSearchFields(front, next) }));
   const typed = (
-    box: ReturnType<typeof useTyped>,
+    box: TypedBox,
     field: "searchTitle" | "description" | "image" | "imageAlt" | "canonical",
   ) => typedProps(box, locked, (text) => write({ [field]: text }));
   const faults = searchFieldFaults(front, listed);

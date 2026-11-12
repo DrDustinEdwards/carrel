@@ -25,9 +25,6 @@ import { SCAFFOLDS } from "~/lib/site-markdown";
 
 export type { LinkTarget };
 
-/** The surfaces whose typing makes the chrome step back (Capsomer's useTypingRecede). */
-export const WRITING_SURFACES = ".cm-editor, .cap-rich-editor-surface";
-
 type Mode = "formatted" | "markdown";
 const MODE_KEY = "carrel:editor-mode";
 

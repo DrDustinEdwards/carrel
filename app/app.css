@@ -445,19 +445,6 @@
   color: var(--muted);
 }
 
-/* The inspector beside the text steps back with Capsomer's chrome while someone types
-   (editor-workspace.css); Capsomer's list has no inspector yet, and Inspector takes no data-cap-recede. */
-.app-editor-side {
-  html[data-cap-typing] &:not(:focus-within) {
-    opacity: 0.08;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    html[data-cap-typing] & {
-      transition: opacity var(--dur-base) var(--ease-out);
-    }
-  }
-}
-
 .app-subhead {
   margin: 0;
   font-size: var(--fs-body);
