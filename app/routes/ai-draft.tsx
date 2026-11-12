@@ -26,6 +26,7 @@ import { seoOf } from "~/lib/seo.server";
 import { checkAgainstPack, readVoicePack } from "~/lib/voice.server";
 
 import type { Route } from "./+types/ai-draft";
+import { wordCount } from "@drdustinedwards/site-helpers/text";
 
 export function meta() {
   return [{ title: "AI draft · Carrel" }];
@@ -114,7 +115,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
         <div className="app-editor-main">
           <Panel
             title="The draft"
-            src={`${draft.source.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words`}
+            src={`${wordCount(draft.source).toLocaleString()} words`}
             actions={
               <Segmented
                 legend="View"

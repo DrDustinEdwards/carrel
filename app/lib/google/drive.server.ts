@@ -21,7 +21,7 @@ import { userAccessToken } from "./oauth.server";
 import { GoogleNotConnected, saClient } from "./service-account.server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
+import { normalizeNewlines, wordCount } from "@drdustinedwards/site-helpers/text";
 
 type Fetch = typeof fetch;
 
@@ -348,5 +348,5 @@ export async function importFromDocs(
       source,
       baseVersion: current?.version ?? null,
     });
-  return { ok: true as const, words: body.split(/\s+/).filter(Boolean).length };
+  return { ok: true as const, words: wordCount(body) };
 }

@@ -8,11 +8,11 @@ import { runIntent } from "~/lib/posts.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/posts.api";
+import { jsonResponse } from "@dustinedwards/site-runtime/http";
 
 export async function action({ params, request, context }: Route.ActionArgs) {
-  if (request.method !== "POST")
-    return Response.json({ error: "Method not allowed." }, { status: 405 });
-  return Response.json(
+  if (request.method !== "POST") return jsonResponse({ error: "Method not allowed." }, 405);
+  return jsonResponse(
     await runIntent(getEnv(context), getViewer(context), params.project, await readForm(request)),
   );
 }

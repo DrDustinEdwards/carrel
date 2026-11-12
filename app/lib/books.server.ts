@@ -41,6 +41,7 @@ import { voiceExcerpts } from "@dustinedwards/site-runtime/prose";
 import { takeUntyped } from "~/lib/writing.server";
 import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 import { logEvent } from "@dustinedwards/site-runtime/log";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
 
 export type BookProject = { id: number; slug: string; name: string; book: string; role: Role };
 
@@ -774,7 +775,7 @@ export function authorshipReport(
   const lines = [
     `# Authorship record: ${project.name}`,
     "",
-    `Every change Carrel committed to ${project.book}/ in the writing repository, as of ${now.toISOString().slice(0, 10)}. Words are counted as added and removed between versions, so a changed word counts once each way.`,
+    `Every change Carrel committed to ${project.book}/ in the writing repository, as of ${isoDay(now)}. Words are counted as added and removed between versions, so a changed word counts once each way.`,
     "",
     "## By person",
     "",

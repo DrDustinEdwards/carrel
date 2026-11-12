@@ -20,6 +20,7 @@ import {
 import { LibraryInsert } from "~/components/media/library-insert";
 import { typedProps, useTyped } from "~/components/editor/typed-box";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
+import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
 const PICK_WORDS = {
   label: "Choose from library",
@@ -63,10 +64,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
     return found ? `${found.message}.` : undefined;
   };
   const postTitle = readKey(front, "title");
-  const imageSrc =
-    values.image && origin && values.image.startsWith("/")
-      ? `${origin.replace(/\/+$/, "")}${values.image}`
-      : values.image;
+  const imageSrc = values.image && origin ? absoluteUrl(origin, values.image) : values.image;
 
   return (
     <fieldset className="app-fm" id="search-fields">

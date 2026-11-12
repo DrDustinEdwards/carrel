@@ -2,6 +2,7 @@
 // a project deadline, all made up, so a live check sees the book page's progress chart without a sign-in.
 // Nothing here is read from D1 or the writing repository, and it belongs to no one.
 import type { Goal, SaveEntry } from "~/lib/writing/progress";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
 
 const DAY_MS = 86_400_000;
 // Words typed on each of the last seven days, today last.
@@ -19,6 +20,6 @@ export function sampleProgress(now = new Date()) {
     writingDays: [0, 1, 2, 3, 4, 5, 6],
     allowNegative: false,
   };
-  const deadline = new Date(now.getTime() + 60 * DAY_MS).toISOString().slice(0, 10);
+  const deadline = isoDay(now.getTime() + 60 * DAY_MS)!;
   return { entries, goal, projectTarget: 80_000, deadline, wordsNow: 52_340 };
 }

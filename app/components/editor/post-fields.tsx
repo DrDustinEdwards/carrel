@@ -21,6 +21,7 @@ import {
 import { LibraryInsert } from "~/components/media/library-insert";
 import { typedProps, useTyped } from "~/components/editor/typed-box";
 import { featureImageFault } from "~/lib/seo-checks";
+import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
 const PICK_WORDS = {
   label: "Choose from library",
@@ -66,9 +67,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
   };
   const fault = featureImageFault(front, listed);
   const imageSrc =
-    values.featureImage && origin && values.featureImage.startsWith("/")
-      ? `${origin.replace(/\/+$/, "")}${values.featureImage}`
-      : values.featureImage;
+    values.featureImage && origin ? absoluteUrl(origin, values.featureImage) : values.featureImage;
 
   return (
     <fieldset className="app-fm" id="post-fields">

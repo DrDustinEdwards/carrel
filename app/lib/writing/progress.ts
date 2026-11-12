@@ -8,6 +8,8 @@
 //
 // Pure functions only: the book page runs them in the browser, and the tests run them anywhere.
 
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
+
 export type SaveEntry = { at: string; typed: number; removed: number };
 
 export type Goal = {
@@ -66,7 +68,7 @@ function weekdayOf(day: string): number {
 function addDays(day: string, n: number): string {
   const d = new Date(`${day}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
+  return isoDay(d)!;
 }
 
 /** Words per local day: typed minus removed, held at zero unless the goal lets a day go negative. */
