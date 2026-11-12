@@ -10,6 +10,7 @@
 import { AxeBuilder } from "@axe-core/playwright";
 
 import { launch, open, SCREENS, startHarness, visit } from "./lib/harness.mjs";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 /** @type {{ name: string; width: number; height: number }[]} */
@@ -142,7 +143,7 @@ if (scans === 0) {
 }
 if (failures.length > 0) {
   console.error(
-    `check:a11y: ${failures.length} problem${failures.length === 1 ? "" : "s"} in ${scans} scans\n\n${failures.join("\n\n")}`,
+    `check:a11y: ${plural(failures.length, "problem")} in ${scans} scans\n\n${failures.join("\n\n")}`,
   );
   process.exit(1);
 }

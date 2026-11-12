@@ -26,6 +26,7 @@ import {
   writeChecked,
 } from "../app/lib/editor/markdown.mjs";
 import { editorSchema } from "../app/lib/editor/schema.mjs";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 const args = process.argv.slice(2);
 const dialect = args.includes("--plain") ? "plain" : "site";
@@ -134,12 +135,12 @@ for (const file of files) {
 
 if (loose.length > 0) {
   console.warn(
-    `check:roundtrip: ${loose.length} edited block${loose.length === 1 ? "" : "s"} of ${edits} read back differently (warning only: no other block changed)\n${loose.slice(0, 20).join("\n")}\n`,
+    `check:roundtrip: ${plural(loose.length, "edited block")} of ${edits} read back differently (warning only: no other block changed)\n${loose.slice(0, 20).join("\n")}\n`,
   );
 }
 if (problems.length > 0) {
   console.error(
-    `check:roundtrip: ${problems.length} problem${problems.length === 1 ? "" : "s"} in ${files.length} files\n\n${problems.slice(0, 40).join("\n")}`,
+    `check:roundtrip: ${plural(problems.length, "problem")} in ${files.length} files\n\n${problems.slice(0, 40).join("\n")}`,
   );
   process.exit(1);
 }

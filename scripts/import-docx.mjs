@@ -15,6 +15,7 @@ import { readDocx } from "./lib/docx.mjs";
 import { buildBook, writeBook } from "./lib/manuscript.mjs";
 
 import { errorMessage } from "@dustinedwards/site-runtime/log";
+import { plural } from "@drdustinedwards/site-helpers/text";
 const USAGE =
   'usage: npm run import:docx -- <file.docx | folder> [more...] --book <folder> --novels <path to writing clone> [--title "Title"]';
 
@@ -103,7 +104,7 @@ mkdirSync(dirname(reportPath), { recursive: true });
 writeFileSync(reportPath, book.report);
 
 const s = book.summary;
-console.log(`Imported ${files.length} file${files.length === 1 ? "" : "s"} into ${bookDir}`);
+console.log(`Imported ${plural(files.length, "file")} into ${bookDir}`);
 console.log(`${s.chapters} chapters, ${s.scenes} scenes, ${s.words} words, ${s.flags} flags.`);
 console.log(`Report (not committed; build/ is ignored): ${reportPath}`);
 if (s.flags > 0)
