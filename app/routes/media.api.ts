@@ -11,6 +11,7 @@
 // does not allow before the site hears anything.
 
 import { UPLOAD_HEADERS } from "@dustinedwards/site-runtime/headers";
+import { jsonResponse } from "@dustinedwards/site-runtime/http";
 import {
   loadMedia,
   loadMediaChanges,
@@ -52,10 +53,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       });
     }
     const since = search.get("changes");
-    if (since !== null)
-      return Response.json(await loadMediaChanges(source, since.slice(0, 500)), {
-        headers: { "cache-control": "private, no-store" },
-      });
+    if (since !== null) return jsonResponse(await loadMediaChanges(source, since.slice(0, 500)));
     const kit = await loadMedia(source, readMediaQuery(search));
     const pick = search.get("pick") ?? "";
     return Response.json(

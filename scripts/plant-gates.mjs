@@ -53,9 +53,9 @@ const PLANTS = [
   {
     gate: "build",
     file: "app/lib/mcp/door.ts",
-    find: 'import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";',
+    find: 'import { findAgentViewer, findViewer } from "~/lib/people.server";',
     replace:
-      'import { findAgentViewer, findViewer, readsToolCallLog } from "~/lib/people.server";\nimport "./no-such-module";',
+      'import { findAgentViewer, findViewer } from "~/lib/people.server";\nimport "./no-such-module";',
     label: "an import that does not resolve",
   },
   {
@@ -141,8 +141,8 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/mcp/door.ts",
-    find: "    viewer,\n    client: agentClient(name),",
-    replace: "    viewer: { ...viewer, isOwner: true },\n    client: agentClient(name),",
+    find: "    viewer,\n    client: agentEmail(name),",
+    replace: "    viewer: { ...viewer, isOwner: true },\n    client: agentEmail(name),",
     label: "an agent key acts as the Owner",
   },
   {

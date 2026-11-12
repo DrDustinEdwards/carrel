@@ -37,7 +37,7 @@ import { processSocial } from "~/lib/social/queue.server";
 import { routineConfig } from "~/lib/social/routine.server";
 
 import type { Route } from "./+types/ai";
-import { moneyInputValue, parseMoneyInput } from "@dustinedwards/site-runtime/money";
+import { formatMoney, moneyInputValue, parseMoneyInput } from "@dustinedwards/site-runtime/money";
 
 export function meta() {
   return [{ title: "AI engine · Carrel" }];
@@ -60,7 +60,8 @@ const MODELS = [
   { value: "deep", label: `Deep, ${MODEL_IDS.deep} (${price("deep")})` },
 ];
 
-const dollars = (micros: number) => `$${(micros / 1_000_000).toFixed(micros < 10_000 ? 4 : 2)}`;
+const dollars = (micros: number) =>
+  formatMoney(micros, "usd", { scale: 6, digits: micros < 10_000 ? 4 : 2 });
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = getEnv(context);

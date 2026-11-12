@@ -85,14 +85,6 @@ export async function findViewer(
 }
 
 /**
- * Whether this person reads the AI door's whole tool-call log on its owner page (site-runtime ./owner-page): the
- * Owner only, since the log holds everyone's calls. Anyone else sees only their own grants there.
- */
-export async function readsToolCallLog(env: AdminEnv, email: string): Promise<boolean> {
-  return isAdminEmail(env, email);
-}
-
-/**
  * Everyone the Desk lets in: the active people who are neither a reviewer nor an agent (an agent's row carries
  * `agent:<name>`, which Access can never present). This is the list `carrel-desk-login`'s policies must match, the
  * Owner's `carrel-admin` and the co-authors' `carrel-people` together, which the Access drift check reads hashed.
