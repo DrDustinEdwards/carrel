@@ -224,7 +224,6 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                 confirm: {
                   title: "Reject this post?",
                   lead: "It will not be posted, and it cannot be brought back. A new draft can still be written.",
-                  body: [p.text],
                   action: "Reject post",
                 },
               },
