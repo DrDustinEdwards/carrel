@@ -583,7 +583,7 @@ export const SCREENS = [
     after: async (page) => {
       await endOfText(page);
       await page.getByRole("button", { name: "Figure", exact: true }).click();
-      await page.locator(".app-src-text").last().waitFor();
+      await page.locator(".cap-rich-editor-src-text").last().waitFor();
     },
     restore: discardDraft,
   },
