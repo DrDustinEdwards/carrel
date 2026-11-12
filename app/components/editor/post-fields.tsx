@@ -70,10 +70,11 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
     values.featureImage && origin ? absoluteUrl(origin, values.featureImage) : values.featureImage;
 
   return (
-    <fieldset className="app-fm" id="post-fields">
-      <legend>Post fields</legend>
+    <fieldset className="cap-fm" id="post-fields">
+      <legend className="cap-fm-legend">Post fields</legend>
+      <div className="cap-fields cap-fm-grid">
       {has("excerpt") ? (
-        <div className="app-fm-field" data-wide="">
+        <div className="cap-fm-field" data-wide="">
           <Field
             label="Excerpt"
             help="The short text the site's lists and feeds show for this post."
@@ -83,7 +84,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
         </div>
       ) : null}
       {has("authors") ? (
-        <div className="app-fm-field" data-wide="">
+        <div className="cap-fm-field" data-wide="">
           <span className="cap-field-label" id="post-authors">
             Authors
           </span>
@@ -144,14 +145,14 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
         </div>
       ) : null}
       {has("series") ? (
-        <div className="app-fm-field">
+        <div className="cap-fm-field">
           <Field label="Series" help="The series this post belongs to. Empty: none.">
             <input {...typed(series, "series")} type="text" />
           </Field>
         </div>
       ) : null}
       {has("seriesPart") ? (
-        <div className="app-fm-field">
+        <div className="cap-fm-field">
           <Field label="Part" help="Its place in the series: 1, 2, 3.">
             <input
               className="cap-input"
@@ -170,7 +171,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
         </div>
       ) : null}
       {has("featureImage") ? (
-        <div className="app-fm-field app-share-image" data-wide="">
+        <div className="cap-fm-field app-share-image" data-wide="">
           <span className="cap-field-label">Feature image</span>
           <div className="app-share-image-row">
             <div className="app-share-image-thumb">
@@ -247,6 +248,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
           </div>
         </div>
       ) : null}
+      </div>
     </fieldset>
   );
 }

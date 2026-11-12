@@ -32,7 +32,7 @@ import {
   useWorkspaceLayout,
 } from "capsomer/react/editor-workspace";
 import { ScheduleDialog } from "capsomer/react/schedule-dialog";
-import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { ItemDetails } from "~/components/editor/item-details";
 import { PostFields } from "~/components/editor/post-fields";
 import { SearchFields } from "~/components/editor/search-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
@@ -1155,7 +1155,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               content: (
                 <div className="app-stack">
                   {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
-                  <FrontmatterFields
+                  <ItemDetails
                     source={source}
                     onChange={setSource}
                     readOnly={readOnly || !mayEdit}

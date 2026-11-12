@@ -5,7 +5,7 @@
 // editor and the tests read it the same way.
 
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { readFields, setField } from "~/lib/frontmatter";
+import { readBox, setBox } from "capsomer/behavior/frontmatter-fields";
 import { SLUG_PATTERN } from "@drdustinedwards/site-helpers/slug";
 
 export const LEGAL_TYPES = ["privacy", "terms"] as const;
@@ -88,8 +88,10 @@ export function expandShared(
 
 /** The page's own facts, from its frontmatter, for the sections that name them. */
 export function valuesOf(source: string): Partial<Record<Variable, string>> {
-  const fields = readFields(splitSource(source).front);
-  return Object.fromEntries(VARIABLES.map((v) => [v, fields[v]]));
+  const front = splitSource(source).front;
+  return Object.fromEntries(
+    VARIABLES.map((v) => [v, readBox(front, v, v === "data_held" ? "list" : "line")]),
+  );
 }
 
 export type LegalWrite = { ok: true; source: string } | { ok: false; message: string };
@@ -132,6 +134,6 @@ export function prepareLegalWrite(input: {
   let front = parts.front;
   const storedBody = input.stored === null ? null : splitSource(input.stored).body;
   if (input.public && (storedBody !== expansion.text || !input.storedPublic))
-    front = setField(front, "last_updated", input.today);
+    front = setBox(front, "last_updated", "line", input.today);
   return { ok: true, source: joinSource({ ...parts, front, body: expansion.text }) };
 }

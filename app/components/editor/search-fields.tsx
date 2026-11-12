@@ -67,10 +67,11 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
   const imageSrc = values.image && origin ? absoluteUrl(origin, values.image) : values.image;
 
   return (
-    <fieldset className="app-fm" id="search-fields">
-      <legend>Search and sharing</legend>
+    <fieldset className="cap-fm" id="search-fields">
+      <legend className="cap-fm-legend">Search and sharing</legend>
+      <div className="cap-fields cap-fm-grid">
       {has("searchTitle") ? (
-        <div className="app-fm-field" data-wide="">
+        <div className="cap-fm-field" data-wide="">
           <Field
             label="Search title"
             help="The title a search result shows. Empty: the post's title."
@@ -84,7 +85,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
         </div>
       ) : null}
       {has("description") ? (
-        <div className="app-fm-field" data-wide="">
+        <div className="cap-fm-field" data-wide="">
           <Field
             label="Description"
             help="The text under the title in a search result, and on a shared link."
@@ -99,7 +100,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
         </div>
       ) : null}
       {has("image") ? (
-        <div className="app-fm-field app-share-image" data-wide="">
+        <div className="cap-fm-field app-share-image" data-wide="">
           <span className="cap-field-label">Share image</span>
           <div className="app-share-image-row">
             <div className="app-share-image-thumb">
@@ -157,7 +158,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
         </div>
       ) : null}
       {has("canonical") ? (
-        <div className="app-fm-field" data-wide="">
+        <div className="cap-fm-field" data-wide="">
           <Field
             label="Canonical address"
             help="Only for a post that first appeared elsewhere: the full https:// address of the original. Empty: the post's own address."
@@ -168,7 +169,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
         </div>
       ) : null}
       {has("noindex") ? (
-        <div className="app-fm-field" data-wide="">
+        <div className="cap-fm-field" data-wide="">
           <Check
             label="Hide from search engines (noindex)"
             checked={values.noindex}
@@ -183,6 +184,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
           ) : null}
         </div>
       ) : null}
+      </div>
     </fieldset>
   );
 }

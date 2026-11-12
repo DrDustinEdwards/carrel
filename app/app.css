@@ -67,6 +67,7 @@
 @import "capsomer/sortable-list.css";
 @import "capsomer/card.css";
 @import "capsomer/inline-add-form.css";
+@import "capsomer/frontmatter-fields.css";
 @import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
 @import "capsomer/summary-list.css";
@@ -531,40 +532,8 @@
   min-width: 0;
 }
 
-/* A post's frontmatter as fields above the text. */
-.app-fm {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  min-width: 0;
-  margin: 0 0 var(--space-5);
-  padding: var(--pad-card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
-
-  & legend {
-    padding: 0 var(--space-2);
-    font-weight: 600;
-  }
-  & input[type="checkbox"] {
-    justify-self: start;
-    align-self: start;
-    margin: 0;
-  }
-  & .app-fm-field[data-wide] {
-    grid-column: 1 / -1;
-  }
-  & textarea {
-    resize: vertical;
-  }
-  & .app-fm-raw {
-    font-family: var(--mono);
-    font-size: var(--fs-detail);
-  }
-}
-
 /* Search and sharing: each box with its width meter under it, and the share image beside its alt text. */
-.app-fm-field:has(.cap-meter) {
+.cap-fm-field:has(.cap-meter) {
   display: grid;
   gap: var(--space-2);
 }

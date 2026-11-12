@@ -13,7 +13,7 @@ import { PreviewPane } from "capsomer/react/editor-workspace";
 import { Segmented } from "capsomer/react/segmented";
 
 import { DraftHead, draftIdParam } from "~/components/editor/draft-head";
-import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
+import { ItemDetails } from "~/components/editor/item-details";
 import { Inspector } from "capsomer/react/inspector";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 
@@ -148,7 +148,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
             {
               value: "details",
               label: "Details",
-              content: <FrontmatterFields source={draft.source} readOnly />,
+              content: <ItemDetails source={draft.source} readOnly />,
             },
             {
               value: "checks",

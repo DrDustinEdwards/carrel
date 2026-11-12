@@ -20,7 +20,7 @@ import { PageHead } from "capsomer/react/page-head";
 import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { WRITING_SURFACES, WritingSurface } from "~/components/editor/writing-surface";
-import { HeaderFields } from "~/components/editor/header-fields";
+import { FrontmatterFields } from "capsomer/react/frontmatter-fields";
 import { Inspector } from "capsomer/react/inspector";
 import { commentsTab } from "~/components/editor/comments-tab";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
@@ -581,10 +581,14 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               value: "details",
               label: "Details",
               content: (
-                <HeaderFields
+                <FrontmatterFields
                   source={source}
                   onChange={setSource}
                   readOnly={readOnly || !data.canEdit}
+                  legend="Header"
+                  empty={
+                    <p className="app-note">This file has no header, so it has no details to set.</p>
+                  }
                 />
               ),
             },

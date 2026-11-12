@@ -17,8 +17,8 @@ import { ProjectTabs } from "~/components/project-tabs";
 
 import { readDoc } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { BANNER_WORD, readFields } from "~/lib/frontmatter";
+import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { BANNER_WORD } from "~/lib/frontmatter";
 import { LEGAL_TYPES, legalItemId, sectionsUsed, type LegalType } from "~/lib/legal";
 import { deleteSection, listSections, saveSection, sectionsCurrent } from "~/lib/legal.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -46,15 +46,15 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       try {
         const doc = await readDoc(env, project, id);
         if (!doc) return { type, id, setUp: false as const };
-        const fields = readFields(splitSource(doc.source).front);
+        const front = splitSource(doc.source).front;
         return {
           type,
           id,
           setUp: true as const,
           title: doc.title || NAMES[type],
           status: doc.status,
-          lastUpdated: fields.last_updated,
-          draftBanner: fields.banner === BANNER_WORD,
+          lastUpdated: readKey(front, "last_updated"),
+          draftBanner: readKey(front, "banner") === BANNER_WORD,
           version: doc.version,
           shared: sectionsUsed(splitSource(doc.source).body),
           behind: !(await sectionsCurrent(env.DB, doc.source)),
@@ -241,7 +241,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
           <Form
             method="post"
             key={section.key}
-            className="app-fm"
+            className="cap-card"
             aria-label={`Shared section ${section.key}`}
           >
             <input type="hidden" name="key" value={section.key} />
@@ -280,7 +280,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
           </Form>
         ))}
         {canManage ? (
-          <Form method="post" className="app-fm" aria-label="Add a shared section">
+          <Form method="post" className="cap-card" aria-label="Add a shared section">
             <Field label="Name" help="Lowercase words joined by hyphens, like cloudflare-hosting.">
               <input className="cap-input" name="key" />
             </Field>
