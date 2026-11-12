@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Link, routerRenderLink } from "capsomer/react/link";
+import { Row, RowList } from "capsomer/react/row-list";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -607,30 +608,33 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       {data.findings.length === 0 ? (
                         <p>None.</p>
                       ) : (
-                        <ul className="app-flags" aria-label="Flags on this file">
+                        <RowList label="Flags on this file" gap="xs">
                           {data.findings.map((f) => (
-                            <li key={f.id}>
-                              {f.status === "open" ? (
-                                <Status tone="warn">Open</Status>
-                              ) : (
-                                <Pill variant="secondary">Dismissed</Pill>
-                              )}
-                              <span>
-                                <strong>{f.check}</strong>{" "}
-                                {f.line ? <span className="cap-muted">line {f.line}</span> : null}{" "}
-                                {f.message}
-                              </span>
-                              {f.status === "open" && data.canPublish ? (
-                                <Button
-                                  size="sm"
-                                  onClick={(event) => ask("dismiss", event.currentTarget, f.id)}
-                                >
-                                  Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                                </Button>
-                              ) : null}
-                            </li>
+                            <Row
+                              key={f.id}
+                              size="sm"
+                              title={f.message}
+                              status={
+                                f.status === "open" ? (
+                                  <Status tone="warn">Open</Status>
+                                ) : (
+                                  <Pill variant="secondary">Dismissed</Pill>
+                                )
+                              }
+                              meta={f.line ? `${f.check} · line ${f.line}` : f.check}
+                              actions={
+                                f.status === "open" && data.canPublish ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={(event) => ask("dismiss", event.currentTarget, f.id)}
+                                  >
+                                    Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
+                                  </Button>
+                                ) : undefined
+                              }
+                            />
                           ))}
-                        </ul>
+                        </RowList>
                       )}
                       {checked ? (
                         <div role="status" className="app-stack" data-tight>
@@ -638,20 +642,17 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           {checked.length === 0 ? (
                             <p>Nothing flagged.</p>
                           ) : (
-                            <ul className="app-flags">
+                            <RowList label="This text, checked now" gap="xs">
                               {checked.map((f, i) => (
-                                <li key={i}>
-                                  <Status tone="warn">Found</Status>
-                                  <span>
-                                    <strong>{f.check}</strong>{" "}
-                                    {f.line ? (
-                                      <span className="cap-muted">line {f.line}</span>
-                                    ) : null}{" "}
-                                    {f.message}
-                                  </span>
-                                </li>
+                                <Row
+                                  key={i}
+                                  size="sm"
+                                  title={f.message}
+                                  status={<Status tone="warn">Found</Status>}
+                                  meta={f.line ? `${f.check} · line ${f.line}` : f.check}
+                                />
                               ))}
-                            </ul>
+                            </RowList>
                           )}
                         </div>
                       ) : null}

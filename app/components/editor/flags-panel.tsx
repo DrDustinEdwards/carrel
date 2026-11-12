@@ -1,7 +1,8 @@
 // The editor's flags and the AI drafts kept beside the writer's own (routes/editor.tsx). Checks and
 // reviewers flag; they never decide, so a flag only asks to be read, and the Owner may dismiss it.
 
-import { Link } from "capsomer/react/link";
+import { routerRenderLink } from "capsomer/react/link";
+import { Row, RowList } from "capsomer/react/row-list";
 import { Button } from "capsomer/react/button";
 import { Panel } from "capsomer/react/panel";
 import { Pill, Status } from "capsomer/react/status";
@@ -31,61 +32,64 @@ export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDi
     >
       <div className="cap-stack" data-gap="4">
         {flags.length > 0 ? (
-          <ul className="app-flags" aria-label="Flags">
+          <RowList label="Flags" gap="xs">
             {flags.map((f) => (
-              <li key={f.id}>
-                {f.status === "open" ? (
-                  <Status tone="warn">Open</Status>
-                ) : (
-                  <Pill variant="secondary">Dismissed</Pill>
-                )}
-                <span>
-                  {f.message}
-                  {f.excerpt ? (
-                    <>
-                      {" "}
-                      <q className="cap-muted">{f.excerpt}</q>
-                    </>
-                  ) : null}
-                </span>
-                {f.status === "open" && canPublish ? (
-                  <Button size="sm" onClick={(event) => onDismiss(event.currentTarget, f.id)}>
-                    Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                  </Button>
-                ) : null}
-              </li>
+              <Row
+                key={f.id}
+                size="sm"
+                title={f.message}
+                status={
+                  f.status === "open" ? (
+                    <Status tone="warn">Open</Status>
+                  ) : (
+                    <Pill variant="secondary">Dismissed</Pill>
+                  )
+                }
+                detail={f.excerpt ? <q>{f.excerpt}</q> : undefined}
+                actions={
+                  f.status === "open" && canPublish ? (
+                    <Button size="sm" onClick={(event) => onDismiss(event.currentTarget, f.id)}>
+                      Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
+                    </Button>
+                  ) : undefined
+                }
+              />
             ))}
-          </ul>
+          </RowList>
         ) : null}
         {aiDrafts.length > 0 ? (
-          <ul className="app-flags" aria-label="AI drafts beside yours">
+          <RowList label="AI drafts beside yours" gap="xs">
             {aiDrafts.map((d) => (
-              <li key={d.id}>
-                <span>
-                  <Link to={`ai/${d.id}`}>AI draft from {d.client}</Link>{" "}
-                  <span className="cap-muted">
+              <Row
+                key={d.id}
+                size="sm"
+                title={`AI draft from ${d.client}`}
+                href={`ai/${d.id}`}
+                renderLink={routerRenderLink}
+                detail={d.note || undefined}
+                meta={
+                  <>
                     <Time at={d.createdAt} /> · {d.words} words
-                  </span>
-                  {d.note ? <span> · {d.note}</span> : null}
-                </span>
-              </li>
+                  </>
+                }
+              />
             ))}
-          </ul>
+          </RowList>
         ) : null}
         {transcriptDrafts.length > 0 ? (
-          <ul className="app-flags" aria-label="Transcript drafts">
+          <RowList label="Transcript drafts" gap="xs">
             {transcriptDrafts.map((d) => (
-              <li key={d.id}>
-                <span>
-                  <Link to={`transcript/${d.id}`}>Transcript draft from {d.client}</Link>{" "}
-                  <span className="cap-muted">
-                    <Time at={d.createdAt} />
-                  </span>
-                  {d.note ? <span> · {d.note}</span> : null}
-                </span>
-              </li>
+              <Row
+                key={d.id}
+                size="sm"
+                title={`Transcript draft from ${d.client}`}
+                href={`transcript/${d.id}`}
+                renderLink={routerRenderLink}
+                detail={d.note || undefined}
+                meta={<Time at={d.createdAt} />}
+              />
             ))}
-          </ul>
+          </RowList>
         ) : null}
       </div>
     </Panel>

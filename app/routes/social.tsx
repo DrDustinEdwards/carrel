@@ -239,7 +239,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
               Add one below. It starts off, in approval mode.
             </Empty>
           ) : (
-            <div className="app-accounts">
+            <div className="cap-stack" data-gap="5">
               {accounts.map((a) => (
                 <Form
                   key={a.id}

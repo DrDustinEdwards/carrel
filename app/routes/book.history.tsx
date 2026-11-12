@@ -5,6 +5,7 @@
 // are the site page's.
 
 import { Link, routerRenderLink } from "capsomer/react/link";
+import { Row, RowList } from "capsomer/react/row-list";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
@@ -259,15 +260,14 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
       {againstGit || aiDrafts.length > 0 ? (
         <Panel title="Your text" src="Your draft, or the saved file when you have none">
           {againstGit ? (
-            <ul className="app-flags" aria-label="Compare your draft with the saved file">
-              <li>
-                <span>
-                  <Link to={`${historyPath}?compare=git`}>
-                    Your working draft against the saved file
-                  </Link>
-                </span>
-              </li>
-            </ul>
+            <RowList label="Compare your draft with the saved file" gap="xs">
+              <Row
+                size="sm"
+                title="Your working draft against the saved file"
+                href={`${historyPath}?compare=git`}
+                renderLink={routerRenderLink}
+              />
+            </RowList>
           ) : null}
           <DraftLinks historyPath={historyPath} againstSite={false} aiDrafts={aiDrafts} />
         </Panel>

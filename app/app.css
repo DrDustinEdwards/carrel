@@ -218,15 +218,7 @@
   }
 }
 
-/* Social: the posts waiting on the Owner, and the account forms. */
-.app-accounts {
-  display: grid;
-  gap: var(--space-5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
+/* Social: the account forms. */
 .app-account {
   display: grid;
   gap: var(--space-3);
@@ -436,21 +428,6 @@
   margin: 0;
   color: var(--muted);
   min-height: 1.5em;
-}
-
-.app-flags {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  & li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-2) var(--space-3);
-  }
 }
 
 /* Search and sharing: the search result, the link card and its addresses, one under another. */
