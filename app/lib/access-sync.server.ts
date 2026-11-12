@@ -16,7 +16,7 @@ import { postAccessSync, type AccessSyncResult } from "@dustinedwards/site-runti
 import { capsidOrigin } from "@dustinedwards/site-runtime/inbox-report";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
-import { errorMessage } from "@dustinedwards/site-runtime/log";
+import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 /**
  * Who Access should let into Desk: every active person with a role on at least one project. Left out
  * are AI agents (they reach the AI door with a key, never through Access), reviewers (another
@@ -99,14 +99,9 @@ export async function syncAccess(
       .values({ id: 1, ...row })
       .onConflictDoUpdate({ target: accessSync.id, set: row });
   } catch (error) {
-    console.error(
-      JSON.stringify({
-        access: "sync-record-failed",
-        error: errorMessage(error),
-      }),
-    );
+    logEvent("access.sync-record-failed", { error: errorMessage(error) }, { level: "error" });
   }
-  if (!ok) console.error(JSON.stringify({ access: "sync-refused", refusal }));
+  if (!ok) logEvent("access.sync-refused", { refusal }, { level: "error" });
   return ok
     ? { state: "in-step", detail: `${added} added, ${dropped} dropped.` }
     : { state: "waiting", detail: refusal ?? "" };

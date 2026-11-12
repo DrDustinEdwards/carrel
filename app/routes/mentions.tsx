@@ -19,6 +19,7 @@ import { siteEntry } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/mentions";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Mentions · ${data.project.name} · Carrel` : "Carrel" }];
@@ -46,7 +47,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   } catch (error) {
     const message = unreachable(error);
     if (message === null) throw error;
-    console.error(JSON.stringify({ mentions: "list-failed", error: String(error) }));
+    logEvent("mentions.list-failed", { error: String(error) }, { level: "error" });
     return { project: head, data: null, unavailable: message };
   }
 }

@@ -20,6 +20,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { siteClient, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/project.not-found";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 /** The two windows the page offers: the last week, to see a link that just broke, and the last 30 days, the default. */
 const WINDOWS = ["7", "30"] as const;
@@ -60,7 +61,7 @@ export async function loader({ params, context, request }: Route.LoaderArgs) {
         rows: [],
         reason: "This site does not report its 404s to Carrel yet.",
       };
-    console.error(JSON.stringify({ notFound: "report-failed", error: String(error) }));
+    logEvent("notFound.report-failed", { error: String(error) }, { level: "error" });
     return {
       project: head,
       days,

@@ -8,7 +8,7 @@ import { projects } from "~/db/schema";
 import { refreshIndex, type RefreshResult } from "~/lib/index.server";
 import { isSiteId, siteConnection } from "~/lib/sites.server";
 
-import { errorMessage } from "@dustinedwards/site-runtime/log";
+import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 export async function refreshAllSites(
   env: Env,
   fetcher?: typeof fetch,
@@ -29,7 +29,7 @@ export async function refreshAllSites(
       out[row.slug] = await refreshIndex(env, { id: row.id, site: row.site }, fetcher);
     } catch (error) {
       const message = errorMessage(error);
-      console.error(JSON.stringify({ refresh: "failed", project: row.slug, error: message }));
+      logEvent("refresh.failed", { project: row.slug, error: message }, { level: "error" });
       out[row.slug] = `failed: ${message}`;
     }
   }

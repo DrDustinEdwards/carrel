@@ -31,6 +31,7 @@ import { can } from "~/lib/roles";
 import { siteClient } from "~/lib/sites.server";
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 /** The newest published posts a pack is built from: enough to show a range, few enough for one request's subrequests. */
 export const PACK_POSTS = 40;
@@ -182,7 +183,7 @@ export async function buildVoicePack(
       const prose = proseOf(doc.source);
       if (prose) texts.push(prose);
     } catch (error) {
-      console.error(JSON.stringify({ voice: "post-unreadable", itemId, error: String(error) }));
+      logEvent("voice.post-unreadable", { itemId, error: String(error) }, { level: "error" });
     }
   }
   await storeExcerpts(env.DB, project.id, texts, now);

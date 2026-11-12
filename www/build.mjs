@@ -21,6 +21,8 @@ import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isMain } from "@dustinedwards/devkit/node";
+
 import {
   ACCESSIBILITY_PATH,
   accessibilityStatement,
@@ -586,7 +588,7 @@ export async function buildSite(outDir) {
   return { files: files.sort() };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const outDir = process.argv[2] ?? join(HERE, "dist");
   const { files } = await buildSite(outDir);
   console.log(`www: ${files.length} files in ${relative(process.cwd(), outDir) || "."}`);

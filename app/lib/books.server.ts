@@ -40,6 +40,7 @@ import {
 import { voiceExcerpts } from "@dustinedwards/site-runtime/prose";
 import { takeUntyped } from "~/lib/writing.server";
 import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 export type BookProject = { id: number; slug: string; name: string; book: string; role: Role };
 
@@ -550,7 +551,7 @@ export async function saveBookFile(
           "This file changed in Git since you opened it. Your text is kept here as your draft; refresh the book to see Git's version before saving.",
       };
     }
-    console.error(JSON.stringify({ book: "save-failed", path, error: String(error) }));
+    logEvent("book.save-failed", { path, error: String(error) }, { level: "error" });
     return {
       ok: false,
       reason: "failed",

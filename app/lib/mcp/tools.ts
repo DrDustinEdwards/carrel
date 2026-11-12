@@ -70,6 +70,7 @@ import {
   saveTranscriptDraft,
   TranscriptRefusal,
 } from "~/lib/transcripts.server";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 export type ToolDeps = { fetcher?: typeof fetch; carrelOrigin: string };
 
@@ -1475,7 +1476,7 @@ export async function runTool(
     else if (error instanceof SiteApiError && error.body)
       message = `The site refused: ${error.body.message}`;
     else {
-      console.error(JSON.stringify({ mcp: "tool-failed", tool: tool.name, error: String(error) }));
+      logEvent("mcp.tool-failed", { tool: tool.name, error: String(error) }, { level: "error" });
       message = "The tool failed unexpectedly. Check the post in Carrel before trying again.";
     }
     return { content: [{ type: "text", text: message }], isError: true };

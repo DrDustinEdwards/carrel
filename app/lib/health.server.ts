@@ -47,7 +47,7 @@ import { unseenTemplates } from "~/lib/social/queue.server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { plural } from "@drdustinedwards/site-helpers/text";
 
-import { errorMessage } from "@dustinedwards/site-runtime/log";
+import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 /** A site's line in the conformance report, in the scoreboard's format (devkit live/README). */
 type SiteConformance = {
   status: "pass" | "fail" | "error";
@@ -437,7 +437,7 @@ export async function runHealth(
       .values({ name: "conformance", body, at })
       .onConflictDoUpdate({ target: reports.name, set: { body, at } });
   } catch (error) {
-    console.error(JSON.stringify({ health: "report-failed", error: errorMessage(error) }));
+    logEvent("health.report-failed", { error: errorMessage(error) }, { level: "error" });
   }
 
   let previous: Map<string, boolean>;
@@ -483,7 +483,7 @@ export async function runHealth(
         });
     }
   } catch (error) {
-    console.error(JSON.stringify({ health: "record-failed", error: errorMessage(error) }));
+    logEvent("health.record-failed", { error: errorMessage(error) }, { level: "error" });
   }
   return { results, emailed };
 }

@@ -12,6 +12,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { siteClient, siteConnection, SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/ai-draft.preview";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
@@ -32,13 +33,10 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     if (error instanceof SiteNotConnected) return previewFailure(error.detail);
     if (error instanceof SiteApiError && error.body)
       return previewFailure(`The site could not render this: ${error.body.message}`);
-    console.error(
-      JSON.stringify({
-        preview: "failed",
-        itemId: params.item,
-        aiDraft: draft.id,
-        error: String(error),
-      }),
+    logEvent(
+      "preview.failed",
+      { itemId: params.item, aiDraft: draft.id, error: String(error) },
+      { level: "error" },
     );
     return previewFailure("The site did not answer the preview request.");
   }
