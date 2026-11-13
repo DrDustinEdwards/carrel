@@ -1,7 +1,8 @@
 // Books: the books the viewer may open, each with its size and a way back in. A book's own pages (the
 // manuscript, progress, bible) open from here; a new book is the Owner's.
 
-import { Link } from "capsomer/react/link";
+import { Table } from "capsomer/react/table";
+import { Link, ButtonLink } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Pill } from "capsomer/react/status";
@@ -64,9 +65,9 @@ export default function Books({ loaderData }: Route.ComponentProps) {
         lead="Manuscripts kept in the writing repository."
         actions={
           isOwner ? (
-            <Link to="/books/new" className="cap-btn" data-variant="primary">
+            <ButtonLink to="/books/new" variant="primary">
               New book
-            </Link>
+            </ButtonLink>
           ) : null
         }
       />
@@ -75,50 +76,46 @@ export default function Books({ loaderData }: Route.ComponentProps) {
           A book appears here once it is made or shared with you.
         </Empty>
       ) : (
-        <div className="cap-table-wrap" role="region" aria-label="Books" tabIndex={0}>
-          <table className="cap-table">
-            <thead>
-              <tr>
-                <th scope="col">Book</th>
-                <th scope="col" data-drop="1">
-                  Your role
+        <Table caption="Books" captionHidden>
+          <thead>
+            <tr>
+              <th scope="col">Book</th>
+              <th scope="col" data-drop="1">
+                Your role
+              </th>
+              <th scope="col" data-num>
+                Words
+              </th>
+              <th scope="col" data-drop="2" data-num>
+                Files
+              </th>
+              <th scope="col">
+                <span className="cap-sr-only">Open</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {books.map((b) => (
+              <tr key={b.slug}>
+                <th scope="row">
+                  <Link className="cap-table-open" to={`/b/${b.slug}`}>
+                    {b.name}
+                  </Link>
                 </th>
-                <th scope="col" data-num>
-                  Words
-                </th>
-                <th scope="col" data-drop="2" data-num>
-                  Files
-                </th>
-                <th scope="col">
-                  <span className="cap-sr-only">Open</span>
-                </th>
+                <td data-drop="1">
+                  <Pill variant="outline">{b.role}</Pill>
+                </td>
+                <td data-num>{b.words.toLocaleString("en-US")}</td>
+                <td data-drop="2" data-num>
+                  {b.files}
+                </td>
+                <td>
+                  <ButtonLink to={`/b/${b.slug}`}>Continue</ButtonLink>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {books.map((b) => (
-                <tr key={b.slug}>
-                  <th scope="row">
-                    <Link className="cap-table-open" to={`/b/${b.slug}`}>
-                      {b.name}
-                    </Link>
-                  </th>
-                  <td data-drop="1">
-                    <Pill variant="outline">{b.role}</Pill>
-                  </td>
-                  <td data-num>{b.words.toLocaleString("en-US")}</td>
-                  <td data-drop="2" data-num>
-                    {b.files}
-                  </td>
-                  <td>
-                    <Link to={`/b/${b.slug}`} className="cap-btn">
-                      Continue
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
     </div>
   );

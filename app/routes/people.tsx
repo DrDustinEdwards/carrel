@@ -12,7 +12,7 @@
 // identity-providers/one-time-pin/ (Zero Trust > Integrations > Identity providers).
 
 import { Form, useNavigate, useNavigation, useSearchParams, useSubmit } from "react-router";
-import { Link } from "capsomer/react/link";
+import { ButtonLink } from "capsomer/react/link";
 import { Dialog, DialogBody, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
@@ -42,6 +42,7 @@ import { isMemberRole } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/people";
+import "capsomer/role-grid.css";
 
 export function meta() {
   return [{ title: "People · Carrel" }];
@@ -319,17 +320,17 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page."
         actions={
           <>
-            <Link to="/people?add=agent" className="cap-btn" preventScrollReset>
+            <ButtonLink to="/people?add=agent" preventScrollReset>
               Add an AI agent
-            </Link>
-            <Link
+            </ButtonLink>
+            <ButtonLink
               to="/people?add=person"
-              className="cap-btn"
-              data-variant="primary"
+
+              variant="primary"
               preventScrollReset
             >
               Add a person
-            </Link>
+            </ButtonLink>
           </>
         }
       />

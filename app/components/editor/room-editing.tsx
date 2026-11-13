@@ -6,6 +6,8 @@ import { useRoomEditing as useCollabRoom, type RoomEditing } from "capsomer/reac
 import { useRemembered } from "capsomer/react/hooks";
 
 import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
+import "capsomer/segmented.css";
+import "capsomer/avatar.css";
 
 export function useRoomEditing(options: {
   path: string;

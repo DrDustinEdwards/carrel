@@ -9,6 +9,7 @@ import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { FIELDS } from "~/lib/frontmatter";
 import { kindNoun, kindWord } from "~/lib/kind-words";
 import { legalTypeOf, marker, sectionsUsed } from "~/lib/legal";
+import "capsomer/frontmatter-fields.css";
 
 type SectionChoice = { key: string; title: string };
 
@@ -72,21 +73,26 @@ export function ItemDetails({
             label="Add a shared section"
             help="Written at the end of the text. It is filled in from the details above each time the page is saved to the site; edit its wording on the Legal tab, not here."
           >
-            <select
-              className="cap-input"
-              value=""
-              onChange={(event) => {
-                const key = event.target.value;
-                if (key) onChange(`${source.replace(/\n*$/, "")}\n\n${marker(key)}\n`);
-              }}
-            >
-              <option value="">Choose a section</option>
-              {unused.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.title}
-                </option>
-              ))}
-            </select>
+            {(control) => (
+              <div className="cap-select-wrap">
+                <select
+                  {...control}
+                  className="cap-select"
+                  value=""
+                  onChange={(event) => {
+                    const key = event.target.value;
+                    if (key) onChange(`${source.replace(/\n*$/, "")}\n\n${marker(key)}\n`);
+                  }}
+                >
+                  <option value="">Choose a section</option>
+                  {unused.map((s) => (
+                    <option key={s.key} value={s.key}>
+                      {s.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </Field>
         </div>
       ) : null}

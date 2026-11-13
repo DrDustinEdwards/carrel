@@ -36,6 +36,7 @@ import { processSocial } from "~/lib/social/queue.server";
 import { routineConfig } from "~/lib/social/routine.server";
 
 import type { Route } from "./+types/ai";
+import "capsomer/ai-engine-settings.css";
 
 export function meta() {
   return [{ title: "AI engine · Carrel" }];

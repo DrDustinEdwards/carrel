@@ -17,6 +17,8 @@ import { siteClient, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/project.not-found";
 import { logEvent } from "@dustinedwards/site-runtime/log";
+import "capsomer/segmented.css";
+import "capsomer/not-found-report.css";
 
 /** The two windows the page offers: the last week, to see a link that just broke, and the last 30 days, the default. */
 const WINDOWS = [7, 30];

@@ -29,6 +29,9 @@ import { onlyInCarrel, waitingWork } from "~/lib/waiting.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project";
+import "capsomer/segmented.css";
+import "capsomer/draft-compare.css";
+import "capsomer/content.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.project.name} · Carrel` : "Carrel" }];

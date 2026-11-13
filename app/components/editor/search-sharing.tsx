@@ -10,6 +10,7 @@ import { OgCardPreview, SerpPreview } from "capsomer/react/share-preview";
 import { Status } from "capsomer/react/status";
 
 import type { SeoCheck } from "~/lib/seo-checks";
+import "capsomer/share-preview.css";
 
 export function SearchSharingPanel({ check }: { check: SeoCheck }) {
   const { findings, preview } = check;

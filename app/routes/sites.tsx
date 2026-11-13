@@ -1,7 +1,8 @@
 // Sites: one row per site with what it holds and what waits, and the way into its pages (posts, media,
 // legal, mentions, flags, voice, 404s). The Owner's: a site's settings are not an editor's.
 
-import { Link } from "capsomer/react/link";
+import { Table } from "capsomer/react/table";
+import { Link, ButtonLink } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Pill } from "capsomer/react/status";
@@ -67,54 +68,52 @@ export default function Sites({ loaderData }: Route.ComponentProps) {
           A site appears here once its key is set.
         </Empty>
       ) : (
-        <div className="cap-table-wrap" role="region" aria-label="Sites" tabIndex={0}>
-          <table className="cap-table">
-            <thead>
-              <tr>
-                <th scope="col">Site</th>
-                <th scope="col" data-num>
-                  Published
+        <Table caption="Sites" captionHidden>
+          <thead>
+            <tr>
+              <th scope="col">Site</th>
+              <th scope="col" data-num>
+                Published
+              </th>
+              <th scope="col" data-drop="1" data-num>
+                Drafts
+              </th>
+              <th scope="col" data-drop="1" data-num>
+                Scheduled
+              </th>
+              <th scope="col" data-num>
+                Flags
+              </th>
+              <th scope="col">
+                <span className="cap-sr-only">Pages</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sites.map((s) => (
+              <tr key={s.slug}>
+                <th scope="row">
+                  <Link className="cap-table-open" to={`/p/${s.slug}`}>
+                    {s.name}
+                  </Link>
                 </th>
-                <th scope="col" data-drop="1" data-num>
-                  Drafts
-                </th>
-                <th scope="col" data-drop="1" data-num>
-                  Scheduled
-                </th>
-                <th scope="col" data-num>
-                  Flags
-                </th>
-                <th scope="col">
-                  <span className="cap-sr-only">Pages</span>
-                </th>
+                <td data-num>{s.published}</td>
+                <td data-drop="1" data-num>
+                  {s.drafts}
+                </td>
+                <td data-drop="1" data-num>
+                  {s.scheduled}
+                </td>
+                <td data-num>{s.flags > 0 ? <Pill tone="warn">{s.flags}</Pill> : 0}</td>
+                <td>
+                  <ButtonLink to={`/p/${s.slug}/settings`} size="sm">
+                    Settings<span className="cap-sr-only"> for {s.name}</span>
+                  </ButtonLink>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {sites.map((s) => (
-                <tr key={s.slug}>
-                  <th scope="row">
-                    <Link className="cap-table-open" to={`/p/${s.slug}`}>
-                      {s.name}
-                    </Link>
-                  </th>
-                  <td data-num>{s.published}</td>
-                  <td data-drop="1" data-num>
-                    {s.drafts}
-                  </td>
-                  <td data-drop="1" data-num>
-                    {s.scheduled}
-                  </td>
-                  <td data-num>{s.flags > 0 ? <Pill tone="warn">{s.flags}</Pill> : 0}</td>
-                  <td>
-                    <Link to={`/p/${s.slug}/settings`} className="cap-btn" data-size="sm">
-                      Settings<span className="cap-sr-only"> for {s.name}</span>
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
     </div>
   );

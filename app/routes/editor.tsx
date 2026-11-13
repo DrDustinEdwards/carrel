@@ -9,7 +9,7 @@ import { useFetcher, useSearchParams } from "react-router";
 import { useHydrated } from "capsomer/react/hooks";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
@@ -105,6 +105,13 @@ import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/editor";
+import "capsomer/segmented.css";
+import "capsomer/editor-workspace.css";
+import "capsomer/ai-job-buttons.css";
+import "capsomer/schedule-dialog.css";
+import "capsomer/publish-gate.css";
+import "capsomer/draft-compare.css";
+import "capsomer/inspector.css";
 
 /** The editor shows the newest revisions; the history page lists them all. */
 const HISTORY_SHOWN = 8;
@@ -565,7 +572,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const hydrated = useHydrated();
   const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
   const [layout, chooseLayout] = useWorkspaceLayout("carrel:editor-layout");
-  const [asking, setAsking] = useState<null | {
+  const asking = useConfirmAction<{
     kind:
       | "discard"
       | "drop-draft"
@@ -576,8 +583,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       | "save-live"
       | "unschedule";
     flag?: number;
-    opener: HTMLElement | null;
-  }>(null);
+  }>();
   const writer = useFetcher<ActionResult>();
   const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
@@ -834,7 +840,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       | "unschedule",
     opener: HTMLElement | null,
     flag?: number,
-  ) => setAsking({ kind, opener, flag });
+  ) => asking.ask({ kind, flag }, opener);
   // A save to a live post with an update waiting changes the live post now, and the update's own text
   // still replaces it when it runs (site-api v0.10.0), so the person is told first.
   function saveToSite(opener: HTMLElement | null) {
@@ -1288,63 +1294,61 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       </div>
 
       <PutDraftDialog
-        open={asking?.kind === "put-draft"}
-        returnTo={asking?.opener}
+        returnTo={asking.props.returnTo}
+        onClose={asking.close}
+        open={asking.subject?.kind === "put-draft"}
         perform={async () => {
           await send("use-own-draft", { confirmed: "1" });
         }}
-        onClose={() => setAsking(null)}
       />
       <DropDraftDialog
-        open={asking?.kind === "drop-draft"}
-        returnTo={asking?.opener}
+        returnTo={asking.props.returnTo}
+        onClose={asking.close}
+        open={asking.subject?.kind === "drop-draft"}
         perform={async () => {
           await send("drop-own-draft", { confirmed: "1" });
         }}
-        onClose={() => setAsking(null)}
       />
       <ConfirmDialog
-        open={asking?.kind === "discard"}
+        {...asking.props}
+        open={asking.subject?.kind === "discard"}
         title="Discard the unsaved changes?"
         lead="The text goes back to the site's version for everyone working on it, and every change since the last save is lost, suggestions too. This cannot be undone."
         body={[]}
         action="Discard unsaved changes"
-        returnTo={asking?.opener}
         perform={async () => void (await send("discard", { confirmed: "1" }))}
-        onClose={() => setAsking(null)}
       />
       <ConfirmDialog
-        open={asking?.kind === "import"}
+        {...asking.props}
+        open={asking.subject?.kind === "import"}
         title="Import from Google Docs?"
         lead="The Doc's text replaces your working draft. This cannot be undone."
         body={[]}
         action="Import and replace"
-        returnTo={asking?.opener}
         perform={async () => void (await send("import-from-docs", { confirmed: "1" }))}
-        onClose={() => setAsking(null)}
       />
       <ConfirmDialog
-        open={asking?.kind === "dismiss"}
+        {...asking.props}
+        open={asking.subject?.kind === "dismiss"}
         title="Dismiss this flag?"
         lead="A dismissed flag no longer holds publish, and it cannot be reopened."
         body={
-          asking?.flag !== undefined
-            ? [data.flags.find((f) => f.id === asking.flag)?.message ?? ""]
+          asking.subject?.flag !== undefined
+            ? [data.flags.find((f) => f.id === asking.subject?.flag)?.message ?? ""]
             : []
         }
         action="Dismiss flag"
-        returnTo={asking?.opener}
         perform={async () => {
-          if (asking?.flag !== undefined)
+          if (asking.subject?.flag !== undefined)
             await writer.submit(
-              { intent: "dismiss-flag", flag: String(asking.flag), confirmed: "1" },
+              { intent: "dismiss-flag", flag: String(asking.subject.flag), confirmed: "1" },
               { method: "post" },
             );
         }}
-        onClose={() => setAsking(null)}
       />
       <ConfirmDialog
-        open={asking?.kind === "save-live"}
+        {...asking.props}
+        open={asking.subject?.kind === "save-live"}
         title="Change the live post now?"
         lead={
           data.pendingUpdate
@@ -1353,12 +1357,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         }
         body={[]}
         action="Save to the live post"
-        returnTo={asking?.opener}
         perform={async () => void (await send("save"))}
-        onClose={() => setAsking(null)}
       />
       <ConfirmDialog
-        open={asking?.kind === "unschedule"}
+        {...asking.props}
+        open={asking.subject?.kind === "unschedule"}
         title="Cancel the scheduled update?"
         lead={
           data.pendingUpdate
@@ -1368,12 +1371,12 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         body={[]}
         action="Cancel the update"
         cancelLabel="Keep the update"
-        returnTo={asking?.opener}
         perform={async () => void (await send("unschedule"))}
-        onClose={() => setAsking(null)}
       />
       <ScheduleDialog
-        open={asking?.kind === "schedule"}
+        returnTo={asking.props.returnTo}
+        onClose={asking.close}
+        open={asking.subject?.kind === "schedule"}
         title={
           scheduleUpdate
             ? pendingAt
@@ -1390,8 +1393,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           scheduleUpdate ? (pendingAt ? "Replace the update" : "Schedule update") : "Schedule"
         }
         current={pendingAt}
-        returnTo={asking?.opener}
-        onClose={() => setAsking(null)}
         onSchedule={async (publishAt) => {
           await send("schedule", { publishAt });
         }}

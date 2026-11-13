@@ -3,7 +3,9 @@
 // words against the target or limit), filtered by status chips that are links. It reads Carrel's index
 // and stores nothing of its own. The status list itself is edited on the book's Settings tab.
 
-import { Link } from "capsomer/react/link";
+import { LinkChips } from "capsomer/react/chips";
+import { Table } from "capsomer/react/table";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Status } from "capsomer/react/status";
@@ -19,6 +21,8 @@ import { statusList } from "~/lib/writing.server";
 import { labelFor } from "capsomer/behavior/label-color-list";
 
 import type { Route } from "./+types/book.outliner";
+import "capsomer/label-color-list.css";
+import "capsomer/chips.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Outliner · ${data.head.name} · Carrel` : "Carrel" }];
@@ -121,33 +125,26 @@ export default function Outliner({ loaderData }: Route.ComponentProps) {
     <div className="app-page">
       <BookHead book={head} section="manuscript" view="outliner" />
 
-      <nav className="app-chip-filter" aria-labelledby="outliner-status-label">
-        <span id="outliner-status-label" className="cap-chips-label">
-          Status
-        </span>
-        <ul className="cap-chips">
-          {chips.map((c) => (
-            <li key={c.value || "all"}>
-              <Link
-                className="cap-chip"
-                to={
-                  c.value
-                    ? `${base}/outliner?status=${encodeURIComponent(c.value)}`
-                    : `${base}/outliner`
-                }
-                aria-current={c.value === filter ? "true" : undefined}
-              >
-                {c.label} <span className="cap-chip-count">{c.count}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+      <div className="app-chip-filter">
+        <LinkChips
+          label="Status"
+          showLabel
+          chips={chips.map((c) => ({
+            href: c.value
+              ? `${base}/outliner?status=${encodeURIComponent(c.value)}`
+              : `${base}/outliner`,
+            label: c.label,
+            count: c.count,
+            current: c.value === filter,
+          }))}
+          renderLink={routerRenderLink}
+        />
         {canEdit ? (
           <Link to={`${base}/settings`} className="app-chip-edit">
             Edit the statuses
           </Link>
         ) : null}
-      </nav>
+      </div>
 
       <Panel title="Scenes" count={rows.length} flush>
         <p className="cap-sr-only" role="status">
@@ -164,59 +161,52 @@ export default function Outliner({ loaderData }: Route.ComponentProps) {
             <Link to={base + "/outliner"}>Show every scene</Link>
           </Empty>
         ) : (
-          <div
-            className="cap-table-wrap"
-            role="region"
-            aria-labelledby="outliner-caption"
-            tabIndex={0}
+          <Table
+            caption={<>Scenes in reading order{filter ? `, with the status ${filterName}` : ""}</>}
+            captionHidden
           >
-            <table className="cap-table">
-              <caption id="outliner-caption" className="cap-sr-only">
-                Scenes in reading order{filter ? `, with the status ${filterName}` : ""}
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Scene</th>
-                  <th scope="col">Status</th>
-                  <th scope="col" data-drop="1">
-                    Summary
+            <thead>
+              <tr>
+                <th scope="col">Scene</th>
+                <th scope="col">Status</th>
+                <th scope="col" data-drop="1">
+                  Summary
+                </th>
+                <th scope="col" data-drop="2">
+                  Point of view
+                </th>
+                <th scope="col" data-num>
+                  Words
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.path}>
+                  <th scope="row">
+                    <Link className="cap-table-open" to={`${base}/f/${r.path}`}>
+                      {r.name}
+                    </Link>
+                    <span className="cap-muted app-outliner-chapter">{r.chapter}</span>
                   </th>
-                  <th scope="col" data-drop="2">
-                    Point of view
-                  </th>
-                  <th scope="col" data-num>
-                    Words
-                  </th>
+                  <td>
+                    {r.status ? (
+                      <ColorLabelPill
+                        labels={labels}
+                        value={r.status}
+                        unknownNote=" (not on the status list)"
+                      />
+                    ) : (
+                      <span className="cap-muted">None</span>
+                    )}
+                  </td>
+                  <td data-drop="1">{r.summary || <span className="cap-muted">None</span>}</td>
+                  <td data-drop="2">{r.pov}</td>
+                  <td data-num>{measure(r.words, r.target, r.limit)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.path}>
-                    <th scope="row">
-                      <Link className="cap-table-open" to={`${base}/f/${r.path}`}>
-                        {r.name}
-                      </Link>
-                      <span className="cap-muted app-outliner-chapter">{r.chapter}</span>
-                    </th>
-                    <td>
-                      {r.status ? (
-                        <ColorLabelPill
-                          labels={labels}
-                          value={r.status}
-                          unknownNote=" (not on the status list)"
-                        />
-                      ) : (
-                        <span className="cap-muted">None</span>
-                      )}
-                    </td>
-                    <td data-drop="1">{r.summary || <span className="cap-muted">None</span>}</td>
-                    <td data-drop="2">{r.pov}</td>
-                    <td data-num>{measure(r.words, r.target, r.limit)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </Table>
         )}
       </Panel>
     </div>

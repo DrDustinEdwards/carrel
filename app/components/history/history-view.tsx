@@ -3,13 +3,15 @@
 
 import type { ReactNode } from "react";
 import { useLocation, useNavigate, useNavigation } from "react-router";
-import { Link } from "capsomer/react/link";
+import { ButtonLink } from "capsomer/react/link";
 import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { unifiedPatch } from "capsomer/behavior/draft-compare";
 import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
+import "capsomer/segmented.css";
+import "capsomer/draft-compare.css";
 
 export type Side = { title: string; who?: string; time?: string; text: string };
 type By = "line" | "word";
@@ -95,20 +97,18 @@ export function SourcePanel({
         <>
           {view.current ? <Pill tone="ok">Current</Pill> : null}
           {view.previous ? (
-            <Link
-              className="cap-btn"
+            <ButtonLink
               to={`${historyPath}?from=${encodeURIComponent(view.previous)}&to=${encodeURIComponent(view.version)}`}
             >
               Changes in this {noun}
-            </Link>
+            </ButtonLink>
           ) : null}
           {view.newest ? (
-            <Link
-              className="cap-btn"
+            <ButtonLink
               to={`${historyPath}?from=${encodeURIComponent(view.version)}&to=${encodeURIComponent(view.newest)}`}
             >
               Compare with the current version
-            </Link>
+            </ButtonLink>
           ) : null}
           {restore}
         </>

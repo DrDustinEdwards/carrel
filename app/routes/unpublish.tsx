@@ -3,7 +3,7 @@
 // that changed the site could be set off by anything that fetches links (a mail client's preview).
 
 import { Form, useNavigation } from "react-router";
-import { Link, routerRenderLink } from "capsomer/react/link";
+import { ButtonLink, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Pill } from "capsomer/react/status";
@@ -110,9 +110,9 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
             </Button>
           </Form>
         ) : null}
-        <Link className="cap-btn" to={`/p/${project.slug}/e/${encodeURIComponent(item.id)}`}>
+        <ButtonLink to={`/p/${project.slug}/e/${encodeURIComponent(item.id)}`}>
           Open it in the editor
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   );

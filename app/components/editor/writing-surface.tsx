@@ -18,12 +18,36 @@ import { ChartBuilder } from "capsomer/react/chart-builder";
 import { CHART_KINDS, chartBlock } from "@drdustinedwards/site-helpers/source";
 import type { Dialect } from "capsomer/behavior/rich-editor";
 import { RichEditor, type RichEditorHandle, type RichRoom } from "capsomer/react/rich-editor";
-import { LibraryInsert } from "~/components/media/library-insert";
-import { uploadImage, type EditorMedia } from "~/components/media/upload";
+import { uploadImage } from "capsomer/behavior/media-picker";
+import { MediaPicker } from "capsomer/react/media-picker";
 import { useRemembered } from "capsomer/react/hooks";
 import { SCAFFOLDS } from "~/lib/site-markdown";
+import "capsomer/segmented.css";
+import "capsomer/markdown-editor.css";
+import "capsomer/rich-editor.css";
+// The room's carets and people (room-editing.tsx) build on the rich editor's rules, so they load with them.
+import "capsomer/collab-editor.css";
+import "capsomer/chart-frame.css";
+import "capsomer/chart-builder.css";
+import "capsomer/enarratio.css";
+import "capsomer/drop-zone.css";
+import "capsomer/media.css";
+import "capsomer/sortable-list.css";
+import "capsomer/chips.css";
+import "capsomer/content.css";
+import "capsomer/media-library.css";
 
 export type { LinkTarget };
+
+/** Carrel's media endpoint for a project, and what the editor needs to put an image in a post. */
+export type EditorMedia = {
+  /** GET lists for the picker, POST uploads. */
+  endpoint: string;
+  /** The types the site accepts, for the file chooser's `accept`. A hint, not a control: the site checks. */
+  accept: string;
+  /** The site's own Markdown for an image with its alt text, and its caption when it has one. */
+  figure: (url: string, alt: string, caption?: string) => string;
+};
 
 type Mode = "formatted" | "markdown";
 const MODE_KEY = "carrel:editor-mode";
@@ -140,8 +164,8 @@ export function WritingSurface({
           />
         ) : null}
         {images ? (
-          <LibraryInsert
-            media={images}
+          <MediaPicker
+            endpoint={images.endpoint}
             onPick={({ url, alt, caption }) => {
               const md = images.figure(url, alt, caption);
               if (mode === "formatted") rich.current?.insertMarkdown(md);
