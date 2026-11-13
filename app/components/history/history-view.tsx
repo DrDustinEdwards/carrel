@@ -10,8 +10,6 @@ import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
-import "capsomer/segmented.css";
-import "capsomer/draft-compare.css";
 
 export type Side = { title: string; who?: string; time?: string; text: string };
 type By = "line" | "word";

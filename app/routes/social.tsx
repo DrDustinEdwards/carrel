@@ -29,7 +29,6 @@ import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/social";
 import { formatMoney, moneyInputValue, parseMoneyInput } from "@dustinedwards/site-runtime/money";
-import "capsomer/approval-queue.css";
 
 export function meta() {
   return [{ title: "Social · Carrel" }];

@@ -21,8 +21,6 @@ import { statusList } from "~/lib/writing.server";
 import { labelFor } from "capsomer/behavior/label-color-list";
 
 import type { Route } from "./+types/book.outliner";
-import "capsomer/label-color-list.css";
-import "capsomer/chips.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Outliner · ${data.head.name} · Carrel` : "Carrel" }];

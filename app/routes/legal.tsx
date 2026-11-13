@@ -30,7 +30,6 @@ import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/legal";
 import "capsomer/card.css";
-import "capsomer/frontmatter-fields.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Legal · ${data.project.name} · Carrel` : "Carrel" }];

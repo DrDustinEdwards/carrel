@@ -105,12 +105,8 @@ import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/editor";
-import "capsomer/segmented.css";
 import "capsomer/editor-workspace.css";
 import "capsomer/ai-job-buttons.css";
-import "capsomer/schedule-dialog.css";
-import "capsomer/publish-gate.css";
-import "capsomer/draft-compare.css";
 import "capsomer/inspector.css";
 
 /** The editor shows the newest revisions; the history page lists them all. */

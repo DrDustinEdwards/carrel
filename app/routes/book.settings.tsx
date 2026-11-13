@@ -22,8 +22,6 @@ import { rowsFromForm } from "capsomer/behavior/label-color-list";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.settings";
-import "capsomer/label-color-list.css";
-import "capsomer/summary-list.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Settings · ${data.head.name} · Carrel` : "Carrel" }];
