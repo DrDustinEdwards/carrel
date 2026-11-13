@@ -19,7 +19,7 @@ import {
   type PostField,
   type PostValues,
 } from "@dustinedwards/site-api/frontmatter";
-import { MediaPicker } from "capsomer/react/media-picker";
+import { LibraryInsert } from "~/components/media/library-insert";
 import { featureImageFault } from "~/lib/seo-checks";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
@@ -209,8 +209,8 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
                 {!locked ? (
                   <div className="cap-cluster" data-gap="3">
                     {media ? (
-                      <MediaPicker
-                        endpoint={media.endpoint}
+                      <LibraryInsert
+                        media={media}
                         words={{
                           ...PICK_WORDS,
                           label: values.featureImage ? "Choose another" : PICK_WORDS.label,
