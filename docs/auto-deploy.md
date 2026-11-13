@@ -42,7 +42,7 @@ Secrets set with `wrangler secret put` live in the Worker and survive deploys.
 GitHub repository, Settings, Secrets and variables, Actions:
 
 - Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. devkit's workflow takes these two secrets and no others.
-- Variables: `CARREL_D1_DATABASE_ID` (07402005-1960-4bf3-9532-5e28aebacaa5), `CARREL_KV_OAUTH_ID` (16485b7142b949a1bb9e242da6b9177f), and `CARREL_ALERT_EMAIL`, the address health alerts go to. It is a variable, not a secret, because the workflow passes the guard no third secret.
+- Variables: `CARREL_D1_DATABASE_ID` (07402005-1960-4bf3-9532-5e28aebacaa5), `CARREL_KV_OAUTH_ID` (16485b7142b949a1bb9e242da6b9177f), and `CARREL_ALERT_EMAIL`, the address health alerts go to. `CARREL_MANUSCRIPTS_FOLDER_ID` is optional: the Drive folder shared with the service account, rendered as `GOOGLE_MANUSCRIPTS_FOLDER_ID` (empty leaves the manuscripts index off). They are variables, not a secret, because the workflow passes the guard no third secret.
 - The R2 bucket `carrel-backups` (binding `BACKUPS`) must exist before the first deploy that carries it: `npx wrangler r2 bucket create carrel-backups`. A missing bucket fails `wrangler deploy`, after the migrations.
 
 Token (Cloudflare dashboard, Manage Account, Account API tokens): the "Edit Cloudflare Workers" template plus Account, D1, Edit, scoped to this one account and the dustinedwards.info zone. The KV list in step 3 is covered by the template's Workers KV Storage permission, and `wrangler rollback` by Workers Scripts, Edit.

@@ -163,6 +163,7 @@ jobs:
         CARREL_D1_DATABASE_ID='${{ vars.CARREL_D1_DATABASE_ID }}'
         CARREL_KV_OAUTH_ID='${{ vars.CARREL_KV_OAUTH_ID }}'
         CARREL_ALERT_EMAIL='${{ vars.CARREL_ALERT_EMAIL }}'
+        CARREL_MANUSCRIPTS_FOLDER_ID='${{ vars.CARREL_MANUSCRIPTS_FOLDER_ID }}'
         node scripts/deploy.mjs --prepare
       sha-var: DEPLOY_SHA
     secrets:

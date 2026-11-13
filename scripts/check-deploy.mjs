@@ -15,6 +15,7 @@ const GOOD = {
   CARREL_D1_DATABASE_ID: D1,
   CARREL_KV_OAUTH_ID: KV,
   CARREL_ALERT_EMAIL: "owner@test.invalid",
+  CARREL_MANUSCRIPTS_FOLDER_ID: "1AbCdEfGhIjKlMnOpQrStUvWxYz012345",
 };
 
 const wranglerStub = `
@@ -115,6 +116,7 @@ const idx = (r, prefix) => r.calls.findIndex((c) => c.startsWith(prefix));
     r.config.includes(D1) &&
       r.config.includes(KV) &&
       r.config.includes('"ALERT_EMAIL": "owner@test.invalid"') &&
+      r.config.includes('"GOOGLE_MANUSCRIPTS_FOLDER_ID": "1AbCdEfGhIjKlMnOpQrStUvWxYz012345"') &&
       /^\s*"routes": \[/m.test(r.config) &&
       r.config.includes('"pattern": "carrel-mcp.dustinedwards.info"') &&
       // The nightly dump's bucket binding and its cron ride the same render.
@@ -163,6 +165,7 @@ const refusals = [
   ["placeholder D1 id", { ...GOOD, CARREL_D1_DATABASE_ID: "00000000-0000-0000-0000-000000000000" }],
   ["placeholder KV id", { ...GOOD, CARREL_KV_OAUTH_ID: "00000000000000000000000000000000" }],
   ["placeholder email", { ...GOOD, CARREL_ALERT_EMAIL: "alerts@example.com" }],
+  ["folder id that is not an id", { ...GOOD, CARREL_MANUSCRIPTS_FOLDER_ID: "not an id!" }],
 ];
 for (const [label, env] of refusals) {
   const r = attempt(env);
