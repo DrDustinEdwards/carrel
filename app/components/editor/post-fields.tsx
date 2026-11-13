@@ -183,20 +183,20 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
           </div>
         ) : null}
         {has("featureImage") ? (
-          <div className="cap-fm-field app-share-image" data-wide="">
+          <div className="cap-fm-field cap-image-field" data-wide="">
             <span className="cap-field-label">Feature image</span>
-            <div className="app-share-image-row">
-              <div className="app-share-image-thumb">
+            <div className="cap-image-field-row">
+              <div className="cap-image-field-thumb">
                 {imageSrc ? (
                   <img src={imageSrc} alt={values.featureImageAlt} />
                 ) : (
                   <span className="cap-muted">No feature image</span>
                 )}
               </div>
-              <div className="cap-stack" data-gap="4">
+              <div className="cap-image-field-controls">
                 {media ? (
                   values.featureImage ? (
-                    <p className="app-share-image-url cap-mono">{values.featureImage}</p>
+                    <p className="cap-image-field-url cap-mono">{values.featureImage}</p>
                   ) : null
                 ) : (
                   <Field
