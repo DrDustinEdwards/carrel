@@ -164,7 +164,7 @@
 		"GOOGLE_MANUSCRIPTS_FOLDER_ID": "",
 		// The Search Console property for dustinedwards.info, if it is not the domain property.
 		"SEARCH_CONSOLE_PROPERTY_DUSTINEDWARDS": "sc-domain:dustinedwards.info",
-		"SEARCH_CONSOLE_PROPERTY_GERMOMICS": "sc-domain:germomics.com",
+		"SEARCH_CONSOLE_PROPERTY_GERMOMICS": "https://germomics.com/",
 		"SEARCH_CONSOLE_PROPERTY_FOXHOUND": "sc-domain:foxhoundapp.com",
 		"SEARCH_CONSOLE_PROPERTY_FOXING": "sc-domain:foxing.app",
 		"SEARCH_CONSOLE_PROPERTY_TXASM": "sc-domain:txasm.org",
