@@ -19,7 +19,8 @@ import { CHART_KINDS, chartBlock } from "@drdustinedwards/site-helpers/source";
 import type { Dialect } from "capsomer/behavior/rich-editor";
 import { RichEditor, type RichEditorHandle, type RichRoom } from "capsomer/react/rich-editor";
 import { LibraryInsert } from "~/components/media/library-insert";
-import { uploadImage, type EditorMedia } from "~/components/media/upload";
+import { uploadImage } from "capsomer/behavior/media-picker";
+import type { EditorMedia } from "~/components/media/upload";
 import { useRemembered } from "capsomer/react/hooks";
 import { SCAFFOLDS } from "~/lib/site-markdown";
 
