@@ -17,6 +17,7 @@ import {
   type MouseEvent,
 } from "react";
 import { Button } from "capsomer/react/button";
+import { useConfirmAction } from "capsomer/react/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -61,8 +62,8 @@ export function LibraryInsert({
   words?: typeof INSERT;
   variant?: "quiet" | "default";
 }) {
-  const [open, setOpen] = useState(false);
-  const [opener, setOpener] = useState<HTMLElement | null>(null);
+  const dialog = useConfirmAction<true>();
+  const open = dialog.subject !== null;
   const [data, setData] = useState<MediaData | null>(null);
   const [error, setError] = useState("");
   const library = media.endpoint.replace(/\/api$/, "");
@@ -136,7 +137,7 @@ export function LibraryInsert({
   );
 
   const close = () => {
-    setOpen(false);
+    dialog.close();
     setData(null);
     setError("");
   };
@@ -147,9 +148,8 @@ export function LibraryInsert({
         variant={variant}
         size="sm"
         onClick={(event) => {
-          setOpener(event.currentTarget);
           void loadLibrary();
-          setOpen(true);
+          dialog.ask(true, event.currentTarget);
         }}
       >
         {words.label}
@@ -159,7 +159,7 @@ export function LibraryInsert({
         onOpenChange={(o) => !o && close()}
         placement="center"
         size="lg"
-        returnTo={opener}
+        returnTo={dialog.props.returnTo}
         aria-labelledby="library-title"
       >
         <DialogHeader divider>

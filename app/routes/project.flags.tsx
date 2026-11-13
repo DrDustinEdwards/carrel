@@ -3,12 +3,11 @@
 // item, a post since deleted). Anyone who can read the project sees them; only the Owner dismisses,
 // through the same function as the editor's Dismiss, so a dismissal is recorded the same way.
 
-import { useState } from "react";
 import { Form, useFetcher } from "react-router";
 import { routerRenderLink } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
@@ -72,7 +71,7 @@ type Flag = Route.ComponentProps["loaderData"]["flags"][number];
 export default function ProjectFlags({ loaderData, actionData }: Route.ComponentProps) {
   const { project, canDismiss, flags } = loaderData;
   const fetcher = useFetcher<typeof action>();
-  const [target, setTarget] = useState<{ flag: Flag; opener: HTMLElement | null } | null>(null);
+  const target = useConfirmAction<Flag>();
   const open = flags.filter((f) => f.status === "open").length;
   const dismissed = fetcher.data?.dismissed ?? actionData?.dismissed;
 
@@ -142,7 +141,7 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
                           size="sm"
                           onClick={(event) => {
                             event.preventDefault();
-                            setTarget({ flag, opener: event.currentTarget });
+                            target.ask(flag, event.currentTarget);
                           }}
                         >
                           Dismiss<span className="cap-sr-only"> flag: {flag.message}</span>
@@ -158,25 +157,24 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
       </Panel>
 
       <ConfirmDialog
-        open={target !== null}
+        {...target.props}
+        open={target.subject !== null}
         title="Dismiss this flag?"
         lead="A dismissed flag no longer holds publish, and it cannot be reopened."
-        body={target ? [target.flag.message] : []}
+        body={target.subject ? [target.subject.message] : []}
         action="Dismiss flag"
-        returnTo={target?.opener}
         perform={async () => {
-          if (!target) return;
+          if (!target.subject) return;
           await fetcher.submit(
             {
               intent: "dismiss",
-              flag: String(target.flag.id),
-              item: target.flag.itemId,
+              flag: String(target.subject.id),
+              item: target.subject.itemId,
               confirmed: "1",
             },
             { method: "post" },
           );
         }}
-        onClose={() => setTarget(null)}
       />
     </div>
   );
