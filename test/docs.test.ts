@@ -84,7 +84,7 @@ function data(result: {
     tabs: { title: string }[];
     comments: { posts: unknown[] }[];
     id: string | null;
-    labelled: boolean;
+    labeled: boolean;
     labelProblem: string;
   };
 }
@@ -127,7 +127,7 @@ describe("suggest", () => {
         ],
       }),
     );
-    expect(result.labelled).toBe(true);
+    expect(result.labeled).toBe(true);
     const doc = google.docApi.get(DOC)!;
     const first = doc.batches[0] as unknown as {
       requests: {
@@ -150,8 +150,8 @@ describe("suggest", () => {
     const labels = doc.suggestions.flatMap((s) => s.posts.map((p) => p.content));
     expect(labels).toContain("Grok Bot, through Carrel: shorter");
     expect(labels).toContain("Grok Bot, through Carrel: tighten");
-    const rows = await testEnv.DB.prepare("SELECT client, mode, labelled FROM doc_changes").all();
-    expect(rows.results).toEqual([{ client: "Grok Bot", mode: "suggest", labelled: 1 }]);
+    const rows = await testEnv.DB.prepare("SELECT client, mode, labeled FROM doc_changes").all();
+    expect(rows.results).toEqual([{ client: "Grok Bot", mode: "suggest", labeled: 1 }]);
   });
 
   it("refuses a quote that is missing, ambiguous or inside a pending suggestion, and sends nothing", async () => {
@@ -178,10 +178,10 @@ describe("suggest", () => {
         edits: [{ find: "Aims", replace: "Goals" }],
       }),
     );
-    expect(result.labelled).toBe(false);
+    expect(result.labeled).toBe(false);
     expect(result.labelProblem).toContain("labels");
-    const rows = await testEnv.DB.prepare("SELECT labelled FROM doc_changes").all();
-    expect(rows.results).toEqual([{ labelled: 0 }]);
+    const rows = await testEnv.DB.prepare("SELECT labeled FROM doc_changes").all();
+    expect(rows.results).toEqual([{ labeled: 0 }]);
   });
 
   it("PLANT: a direct change to a Doc's text, any other request, and a comment with an assignee are refused unsent", () => {

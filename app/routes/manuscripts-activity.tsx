@@ -83,7 +83,7 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
                       {WHAT[c.mode] ?? c.mode}
                       {c.mode === "suggest" ? ` (${c.changes})` : ""}
                       {c.reason ? <span className="cap-table-aside">{c.reason}</span> : null}
-                      {c.labelled ? null : <Status tone="warn">No label in the Doc</Status>}
+                      {c.labeled ? null : <Status tone="warn">No label in the Doc</Status>}
                     </td>
                     <td data-drop="1">
                       {c.link ? (

@@ -402,7 +402,7 @@ async function record(
     reason: string;
     change: unknown;
     googleIds: string[];
-    labelled: boolean;
+    labeled: boolean;
     revisionId?: string;
   },
 ): Promise<number> {
@@ -417,7 +417,7 @@ async function record(
       reason: row.reason.slice(0, MAX.reason),
       change: JSON.stringify(row.change),
       googleIds: JSON.stringify(row.googleIds),
-      labelled: row.labelled,
+      labeled: row.labeled,
       revisionId: row.revisionId ?? null,
     })
     .returning({ id: docChanges.id })
@@ -430,7 +430,7 @@ type SuggestResult = {
   suggestionIds: string[];
   edits: number;
   /** The label is on every suggestion in the Doc. When false, `labelProblem` says why; the change itself is in. */
-  labelled: boolean;
+  labeled: boolean;
   labelProblem?: string;
 };
 
@@ -528,10 +528,10 @@ export async function suggestInDoc(
     labelProblem =
       "Google saved the text changes but not their suggestion records, so they may not show as suggestions.";
   else if (ids.size === 0)
-    labelProblem = "Google returned no suggestion ids, so nothing could be labelled.";
+    labelProblem = "Google returned no suggestion ids, so nothing could be labeled.";
   else {
     try {
-      const labelled = await batch(
+      const labeled = await batch(
         env,
         docId,
         {
@@ -550,7 +550,7 @@ export async function suggestInDoc(
         },
         fetcher,
       );
-      if (labelled.commentUpdateState === "ALL_FAILED_UNKNOWN_REASON")
+      if (labeled.commentUpdateState === "ALL_FAILED_UNKNOWN_REASON")
         labelProblem = "Google did not save the labels on the suggestions.";
     } catch (error) {
       labelProblem = error instanceof AiRefusal ? error.message : "The labels could not be added.";
@@ -570,19 +570,19 @@ export async function suggestInDoc(
       reason: p.reason,
     })),
     googleIds: [...ids],
-    labelled: labelProblem === undefined,
+    labeled: labelProblem === undefined,
     revisionId: doc.revisionId,
   });
   return {
     changeId,
     suggestionIds: [...ids],
     edits: planned.length,
-    labelled: labelProblem === undefined,
+    labeled: labelProblem === undefined,
     ...(labelProblem ? { labelProblem } : {}),
   };
 }
 
-type CommentResult = { changeId: number; id: string | null; labelled: true };
+type CommentResult = { changeId: number; id: string | null; labeled: true };
 
 /**
  * A comment on quoted words, a reply to a thread (a comment's or a suggestion's), or a resolve or reopen.
@@ -655,10 +655,10 @@ export async function commentInDoc(
     reason: text,
     change: { reply_to: input.reply_to ?? null, quote: input.quote ?? null, content },
     googleIds: id ? [id] : [],
-    labelled: true,
+    labeled: true,
     revisionId,
   });
-  return { changeId, id, labelled: true };
+  return { changeId, id, labeled: true };
 }
 
 /** The latest changes AIs made in Docs, newest first, with each Doc's name: the Docs activity page. */
@@ -675,7 +675,7 @@ export async function docActivity(env: Env, viewer: Viewer, limit = 100) {
       mode: docChanges.mode,
       reason: docChanges.reason,
       googleIds: docChanges.googleIds,
-      labelled: docChanges.labelled,
+      labeled: docChanges.labeled,
       createdAt: docChanges.createdAt,
     })
     .from(docChanges)

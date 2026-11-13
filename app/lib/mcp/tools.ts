@@ -1523,7 +1523,7 @@ export const TOOLS: Tool[] = [
     },
     annotations: WRITE_GOOGLE,
     outputSchema: shape(
-      { changeId: ID, suggestionIds: LIST, edits: ID, labelled: YES },
+      { changeId: ID, suggestionIds: LIST, edits: ID, labeled: YES },
       { labelProblem: TEXT },
     ),
     outside: false,
@@ -1568,7 +1568,7 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     annotations: WRITE_GOOGLE,
-    outputSchema: shape({ changeId: ID, labelled: YES }, { id: ANY }),
+    outputSchema: shape({ changeId: ID, labeled: YES }, { id: ANY }),
     outside: false,
     run: async (args, ctx) =>
       commentInDoc(

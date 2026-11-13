@@ -440,7 +440,7 @@ export const docChanges = sqliteTable("doc_changes", {
   reason: text("reason").notNull().default(""),
   change: text("change").notNull(),
   googleIds: text("google_ids").notNull().default("[]"),
-  labelled: integer("labelled", { mode: "boolean" }).notNull().default(false),
+  labeled: integer("labeled", { mode: "boolean" }).notNull().default(false),
   revisionId: text("revision_id"),
   createdAt: text("created_at")
     .notNull()

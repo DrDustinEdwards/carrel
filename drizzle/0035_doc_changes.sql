@@ -3,7 +3,7 @@
 -- doc_changes: one row per call that changed a Doc: a batch of suggested edits, a comment, a reply, or a resolve
 -- or reopen. `client` is the AI that asked (the MCP client's name) and `model` the model it reported, if it did.
 -- `change` is the exact change as JSON (the edits as asked, with the positions Carrel resolved them to) so one
--- can be taken back later; `google_ids` are the suggestion or comment ids Google returned; `labelled` is 1 once
+-- can be taken back later; `google_ids` are the suggestion or comment ids Google returned; `labeled` is 1 once
 -- the label (which AI, and why) is on the suggestion or comment in the Doc itself.
 
 CREATE TABLE IF NOT EXISTS doc_changes (
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS doc_changes (
   reason TEXT NOT NULL DEFAULT '',
   change TEXT NOT NULL,
   google_ids TEXT NOT NULL DEFAULT '[]',
-  labelled INTEGER NOT NULL DEFAULT 0,
+  labeled INTEGER NOT NULL DEFAULT 0,
   revision_id TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
