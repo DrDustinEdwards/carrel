@@ -18,7 +18,7 @@ import {
   type SearchField,
   type SearchValues,
 } from "@dustinedwards/site-api/frontmatter";
-import { LibraryInsert } from "~/components/media/library-insert";
+import { MediaPicker } from "capsomer/react/media-picker";
 import { typedProps } from "~/components/editor/post-fields";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
@@ -127,8 +127,8 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
                 {!locked ? (
                   <div className="cap-cluster" data-gap="3">
                     {media ? (
-                      <LibraryInsert
-                        media={media}
+                      <MediaPicker
+                        endpoint={media.endpoint}
                         words={{
                           ...PICK_WORDS,
                           label: values.image ? "Choose another" : PICK_WORDS.label,
