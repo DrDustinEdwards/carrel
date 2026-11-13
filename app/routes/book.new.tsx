@@ -1,10 +1,11 @@
 // A new book is a project whose folder in the writing repository is named here. Nothing is written to
 // Git until the first file is saved; the folder appears then.
 
+import { useState } from "react";
 import { routerRenderLink } from "capsomer/react/link";
 import { Form, redirect, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
-import { Field } from "capsomer/react/field";
+import { Field, SlugField } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
 
@@ -34,6 +35,8 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 export default function NewBook({ actionData }: Route.ComponentProps) {
   const busy = useNavigation().state !== "idle";
+  const [name, setName] = useState("");
+  const [folder, setFolder] = useState("");
   return (
     <div className="app-page" data-narrow>
       <PageHead
@@ -45,25 +48,30 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
       <Panel title="The book">
         <Form method="post" className="cap-stack">
           <Field label="Name" required>
-            <input className="cap-input" name="name" required maxLength={120} autoComplete="off" />
+            <input
+              className="cap-input"
+              name="name"
+              required
+              maxLength={120}
+              autoComplete="off"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </Field>
-          <Field
+          <SlugField
             label="Folder in the writing repository"
             required
             help="Lower-case letters, digits and single hyphens, such as paluxy-portal. An existing folder is picked up at the first refresh."
             error={actionData?.error}
             announce
-          >
-            <input
-              className="cap-input"
-              name="folder"
-              required
-              pattern="[a-z0-9]+(-[a-z0-9]+)*"
-              autoComplete="off"
-              spellCheck={false}
-              data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as paluxy-portal."
-            />
-          </Field>
+            name="folder"
+            value={folder}
+            onChange={setFolder}
+            from={name}
+            max={80}
+            autoComplete="off"
+            data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as paluxy-portal."
+          />
           <div className="cap-cluster" data-gap="3">
             <Button type="submit" variant="primary" pending={busy}>
               Create the book

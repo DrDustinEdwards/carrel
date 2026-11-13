@@ -2,17 +2,16 @@
 // and templates; one folder per book with bible/, outline/, chapters/NN-name/NN-scene.md, and build/
 // ignored. Paths here are relative to the book's folder unless a name says otherwise.
 
+import { isSlug } from "@drdustinedwards/site-helpers/slug";
 import { flag, list, parseFile, text, type HeaderValue } from "./frontmatter";
-import { SLUG_PATTERN } from "@drdustinedwards/site-helpers/slug";
 
 export type FileKind = "scene" | "character" | "place" | "rule" | "outline" | "book" | "note";
 
-const SEGMENT = SLUG_PATTERN;
 const NUMBERED = /^(\d{2,3})-([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 
 /** A book folder name: lower case, digits and single hyphens, as every segment is. */
 export function isBookFolder(value: string): boolean {
-  return SEGMENT.test(value) && value !== "shared" && value.length <= 80;
+  return isSlug(value) && value !== "shared" && value.length <= 80;
 }
 
 /**
@@ -22,7 +21,7 @@ export function isBookFolder(value: string): boolean {
 export function isBookPath(path: string): boolean {
   if (!path.endsWith(".md") || path.length > 200) return false;
   const parts = path.slice(0, -3).split("/");
-  if (!parts.every((p) => SEGMENT.test(p))) return false;
+  if (!parts.every((p) => isSlug(p))) return false;
   if (parts.length === 1) return parts[0] === "book";
   const [top] = parts;
   if (top === "chapters")
