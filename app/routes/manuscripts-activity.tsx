@@ -2,7 +2,7 @@
 // (and the model it said), what it did and why, in which Doc. The Doc itself holds the suggestions and comments to
 // accept or reject; this is the record beside it. Owner only, like the manuscripts.
 
-import { Link } from "capsomer/react/link";
+import { ButtonLink } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Panel } from "capsomer/react/panel";
@@ -38,9 +38,7 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
         title="Docs activity"
         lead="What AIs changed in your Google Docs through Carrel. Accept or reject suggestions in the Doc itself."
         actions={
-          <Link to="/manuscripts" className="cap-btn">
-            Manuscripts
-          </Link>
+          <ButtonLink to="/manuscripts">Manuscripts</ButtonLink>
         }
       />
       <Panel title="Changes" count={changes.length} src="Carrel's record" flush>
