@@ -22,7 +22,6 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { isMain } from "@dustinedwards/devkit/node";
-import { inlineCss } from "capsomer/build";
 
 import {
   ACCESSIBILITY_PATH,
@@ -66,6 +65,23 @@ const INDEXNOW_KEY = "00d4cd444d72b3dbef372abe5f4cc447";
 const TITLE = "Carrel: one desk for everything you write";
 const DESCRIPTION =
   "Carrel is an open-source writing app on Cloudflare: publish posts to several websites from one place, keep books in Git, and work with AI that drafts beside you.";
+
+/**
+ * Capsomer's stylesheets import their parts; the site serves one file, so each import is read in place, wrapped in its
+ * layer when it names one.
+ *
+ * @param {string} file
+ * @returns {string}
+ */
+function inlineCss(file) {
+  return readFileSync(file, "utf8").replace(
+    /@import\s+"([^"]+)"(?:\s+layer\(([\w.-]+)\))?\s*;/g,
+    (_, path, layer) => {
+      const inner = inlineCss(join(dirname(file), path));
+      return layer ? `@layer ${layer} {\n${inner}\n}` : inner;
+    },
+  );
+}
 
 /** Source Serif 4, the one face Capsomer's fonts.css leaves to @fontsource (latin only: the site is in English). */
 const SERIF = "@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2";
