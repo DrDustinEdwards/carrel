@@ -34,6 +34,8 @@ import { readForm } from "~/lib/form.server";
 import type { Route } from "./+types/book.corkboard";
 import { plural } from "@drdustinedwards/site-helpers/text";
 import { slugify } from "@drdustinedwards/site-helpers/slug";
+import "capsomer/sortable-list.css";
+import "capsomer/card.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Corkboard · ${data.head.name} · Carrel` : "Carrel" }];

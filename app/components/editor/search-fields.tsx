@@ -21,6 +21,10 @@ import { ImageField } from "capsomer/react/media-picker";
 import { typedProps } from "~/components/editor/post-fields";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
+import "capsomer/drop-zone.css";
+import "capsomer/media.css";
+import "capsomer/sortable-list.css";
+import "capsomer/media-library.css";
 
 const PICK_WORDS = {
   label: "Choose from library",

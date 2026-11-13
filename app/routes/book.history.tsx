@@ -31,6 +31,7 @@ import { orderPair } from "~/lib/history.server";
 import { isBookPath, fileKindOf, titleFromSegment } from "~/lib/novels/layout";
 
 import type { Route } from "./+types/book.history";
+import "capsomer/history-list.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `History of ${data.label} · ${data.project.name} · Carrel` : "Carrel" }];

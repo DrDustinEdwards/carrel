@@ -65,6 +65,9 @@ import type { Route } from "./+types/book.file";
 import { normalizeNewlines, plural } from "@drdustinedwards/site-helpers/text";
 
 import { errorMessage } from "@dustinedwards/site-runtime/log";
+import "capsomer/editor-workspace.css";
+import "capsomer/ai-job-buttons.css";
+import "capsomer/inspector.css";
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel" }];
 }

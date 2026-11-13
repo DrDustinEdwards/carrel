@@ -105,6 +105,9 @@ import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/editor";
+import "capsomer/editor-workspace.css";
+import "capsomer/ai-job-buttons.css";
+import "capsomer/inspector.css";
 
 /** The editor shows the newest revisions; the history page lists them all. */
 const HISTORY_SHOWN = 8;

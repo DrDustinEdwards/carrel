@@ -1,4 +1,7 @@
-/* Carrel's look is Capsomer's: its tokens, its base and the CSS of each component Carrel uses. What is
+/* Carrel's look is Capsomer's: its tokens, its base and the CSS of the components the shell and most
+   pages draw. A component only some pages draw brings its stylesheet with the module that draws it
+   (an `import "capsomer/<name>.css"` beside the component, in the order Capsomer's files had here, since
+   the later rule wins inside a layer), so the other pages never load it. What is
    written below is only what Capsomer does not have: the page frame inside the shell, and the few
    rules the writing screens need. Carrel's own rules are unlayered, so they win over Capsomer's. */
 @import "capsomer/layers.css";
@@ -7,7 +10,6 @@
 @import "capsomer/family-olive.css";
 @import "capsomer/base.css";
 @import "capsomer/link.css";
-@import "capsomer/prose.css";
 @import "capsomer/utilities.css";
 @import "capsomer/layout.css";
 @import "capsomer/icons.css";
@@ -45,11 +47,6 @@
 @import "capsomer/site-header.css";
 @import "capsomer/admin-shell.css";
 @import "capsomer/confirm-dialog.css";
-@import "capsomer/markdown-editor.css";
-@import "capsomer/rich-editor.css";
-@import "capsomer/collab-editor.css";
-@import "capsomer/editor-workspace.css";
-@import "capsomer/ai-job-buttons.css";
 @import "capsomer/schedule-dialog.css";
 @import "capsomer/not-found-report.css";
 @import "capsomer/moderation-queue.css";
@@ -58,19 +55,8 @@
 @import "capsomer/ai-engine-settings.css";
 @import "capsomer/publish-gate.css";
 @import "capsomer/share-preview.css";
-@import "capsomer/stat-tile.css";
-@import "capsomer/chart-frame.css";
-@import "capsomer/chart-builder.css";
-/* The whole chart stylesheet: Enarratio's base, the token mapping, gridlines, series inks and color pairs. */
-@import "capsomer/enarratio.css";
-@import "capsomer/drop-zone.css";
-@import "capsomer/media.css";
-@import "capsomer/tree.css";
-@import "capsomer/sortable-list.css";
-@import "capsomer/card.css";
 @import "capsomer/inline-add-form.css";
 @import "capsomer/frontmatter-fields.css";
-@import "capsomer/flag-list.css";
 @import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
 @import "capsomer/summary-list.css";
@@ -79,14 +65,9 @@
 @import "capsomer/command-menu.css";
 @import "capsomer/shortcuts.css";
 @import "capsomer/content.css";
-@import "capsomer/media-library.css";
 @import "capsomer/menu.css";
 @import "capsomer/mentions-list.css";
-@import "capsomer/inspector.css";
-@import "capsomer/attention-list.css";
 @import "capsomer/role-grid.css";
-@import "capsomer/history-list.css";
-@import "capsomer/writing-progress.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */
