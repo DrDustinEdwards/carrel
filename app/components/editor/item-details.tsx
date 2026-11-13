@@ -9,7 +9,6 @@ import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { FIELDS } from "~/lib/frontmatter";
 import { kindNoun, kindWord } from "~/lib/kind-words";
 import { legalTypeOf, marker, sectionsUsed } from "~/lib/legal";
-import "capsomer/frontmatter-fields.css";
 
 type SectionChoice = { key: string; title: string };
 

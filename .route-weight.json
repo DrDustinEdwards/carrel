@@ -1,6 +1,6 @@
 {
   "enforce": true,
-  "budget_bytes": 577000,
+  "budget_bytes": 570000,
   "baseline": {
     "measured_at": "75b3992",
     "routes": {
@@ -10,7 +10,7 @@
       "routes/book.progress": 240375,
       "routes/demos.progress": 236136,
       "routes/book": 228271,
-      "routes/ai-draft": 225761,
+      "routes/ai-draft": 224220,
       "routes/project": 222607,
       "routes/book.history": 220812,
       "routes/history": 220719,

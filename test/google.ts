@@ -326,6 +326,30 @@ export function fakeGoogle(opts: {
             error: { code: 400, message: "The document was changed since it was read." },
           });
         const suggest = body.writeControl?.writeMode === "SUGGEST";
+        // A direct change to the text, a decision on a suggestion and a deleted thread change the fake Doc itself.
+        let changed = false;
+        for (const r of body.requests) {
+          if (!suggest && (r.insertText || r.deleteContentRange)) {
+            applyDirect(doc, r);
+            changed = true;
+          }
+          const decided = (r.acceptSuggestion ?? r.rejectSuggestion ?? r.deleteSuggestion) as
+            | { suggestionId?: string }
+            | undefined;
+          if (decided) {
+            const thread = doc.suggestions.find((t) => t.suggestionId === decided.suggestionId);
+            if (!thread || thread.status !== "OPEN")
+              return json(400, { error: { code: 400, message: "No such open suggestion." } });
+            thread.status = r.acceptSuggestion ? "ACCEPTED" : "REJECTED";
+            if (r.deleteSuggestion) doc.suggestions.splice(doc.suggestions.indexOf(thread), 1);
+            changed = true;
+          }
+          if (r.deleteComment) {
+            const id = (r.deleteComment as { commentId?: string }).commentId;
+            doc.comments = doc.comments.filter((c) => c.commentId !== id);
+          }
+        }
+        if (changed) doc.revisionId = `${doc.revisionId}+`;
         let failed = false;
         const suggestionResponses = body.requests.map(() => ({
           createdSuggestionIds: [] as string[],
@@ -375,6 +399,35 @@ export function fakeGoogle(opts: {
 
     throw new Error(`the tests reach only the fake Google, not ${request.method} ${request.url}`);
   }) as typeof globalThis.fetch;
+
+  /** A direct insert or delete, at Google's positions, inside one paragraph (each paragraph is its text and a newline). */
+  function applyDirect(doc: FakeDoc, r: Record<string, Record<string, unknown>>) {
+    let at = 1;
+    const spans = doc.paragraphs.map((p) => {
+      const text = p.segs.map((seg) => seg.t).join("");
+      const span = { p, start: at, text };
+      at += text.length + 1;
+      return span;
+    });
+    const where = (index: number) => {
+      const span = spans.find((x) => index >= x.start && index <= x.start + x.text.length);
+      if (!span) throw new Error(`the fake Doc has no position ${index}`);
+      return span;
+    };
+    if (r.insertText) {
+      const { text, location } = r.insertText as { text: string; location: { index: number } };
+      const span = where(location.index);
+      const off = location.index - span.start;
+      span.p.segs = [{ t: span.text.slice(0, off) + text + span.text.slice(off) }];
+    } else {
+      const { range } = r.deleteContentRange as { range: { startIndex: number; endIndex: number } };
+      const span = where(range.startIndex);
+      const off = range.startIndex - span.start;
+      span.p.segs = [
+        { t: span.text.slice(0, off) + span.text.slice(off + range.endIndex - range.startIndex) },
+      ];
+    }
+  }
 
   /** A Doc in the folder: the fake Drive lists it, and the fake Docs API serves and changes it. */
   function addDoc(

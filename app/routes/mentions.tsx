@@ -20,9 +20,6 @@ import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/mentions";
 import { logEvent } from "@dustinedwards/site-runtime/log";
-import "capsomer/avatar.css";
-import "capsomer/content.css";
-import "capsomer/mentions-list.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Mentions · ${data.project.name} · Carrel` : "Carrel" }];

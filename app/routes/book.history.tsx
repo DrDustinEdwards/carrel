@@ -31,7 +31,6 @@ import { orderPair } from "~/lib/history.server";
 import { isBookPath, fileKindOf, titleFromSegment } from "~/lib/novels/layout";
 
 import type { Route } from "./+types/book.history";
-import "capsomer/avatar.css";
 import "capsomer/history-list.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {

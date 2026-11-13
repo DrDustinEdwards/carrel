@@ -17,7 +17,8 @@ export type JobName =
   | "backup"
   | "prune-404"
   | "signed-in-crawl"
-  | "tool-call-log-export";
+  | "tool-call-log-export"
+  | "docs-email";
 
 // `backup` marks the jobs Capsid Admin's back up now runs (site-runtime runJobTool's `{ backup: true }`).
 export type ScheduledJob = {
@@ -51,6 +52,8 @@ export const CRON_JOBS: Record<string, ScheduledJob[]> = {
     { name: "prune-404", everyMinutes: 1440, timeoutMs: 1 * MINUTE },
     // The AI door's tool-call log copied to R2 and its copied rows past 90 days pruned (site-runtime's exportAuditLog, L6-L7).
     { name: "tool-call-log-export", everyMinutes: 1440, timeoutMs: 2 * MINUTE },
+    // The daily summary of AIs' direct writes in Google Docs, when that is Dustin's Docs email setting (docs.server.ts).
+    { name: "docs-email", everyMinutes: 1440, timeoutMs: 1 * MINUTE },
   ],
 };
 

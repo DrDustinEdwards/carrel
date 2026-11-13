@@ -58,7 +58,9 @@
       "social.tsx:reject": "A decision recorded on the post, whose row is kept with its status; the text is not deleted.",
       "social.tsx:by-hand": "A decision recorded on the post, whose row is kept.",
       "social.tsx:acknowledge": "A decision recorded on the post, whose row is kept.",
-      "social.tsx:edit": "The person edits a queued post's text before it goes out; nothing is removed."
+      "social.tsx:edit": "The person edits a queued post's text before it goes out; nothing is removed.",
+      "manuscripts.tsx:lock": "Sets or clears one Doc's AI lock in Carrel; choosing the old lock again restores it, and nothing in the Doc changes.",
+      "manuscripts.tsx:docs-email": "Changes how Carrel emails about direct writes; choosing the old setting again restores it."
     }
   },
   "sources": ["app", "workers"],
