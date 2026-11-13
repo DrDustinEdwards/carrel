@@ -142,6 +142,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
                     value={adding}
                     onChange={(event) => setAdding(event.target.value)}
                     onKeyDown={(event) => {
+                      // legacy-scan:keep isImeEnter (Capsomer shortcuts.ts) checks isComposing and keyCode 229; the scanner cannot follow it.
                       if (event.key === "Enter" && !isImeEnter(event.nativeEvent)) {
                         event.preventDefault();
                         add();
