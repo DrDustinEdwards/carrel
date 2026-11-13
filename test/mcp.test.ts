@@ -11,7 +11,7 @@ import { autosave, readDraft } from "~/lib/content.server";
 import { runHealth } from "~/lib/health.server";
 import { requireSiteProject } from "~/lib/projects.server";
 
-import { addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { addPerson, addProject, mailbox, resetDb, share, testEnv } from "./env";
 import {
   connectAs,
   legacyRequest,
@@ -25,20 +25,6 @@ import { connectedEnv, fakeSite, viewerFor } from "./site";
 
 const SLUG = "de-info";
 const CARREL = "https://carrel.test";
-
-type Sent = { from: string; to: string; subject: string; text: string };
-
-function mailbox(fail = false) {
-  const sent: Sent[] = [];
-  const EMAIL = {
-    async send(message: Sent) {
-      if (fail) throw new Error("send failed");
-      sent.push(message);
-      return { messageId: `m${sent.length}` };
-    },
-  } as unknown as SendEmail;
-  return { sent, EMAIL };
-}
 
 let site: ReturnType<typeof fakeSite>;
 let box: ReturnType<typeof mailbox>;
@@ -107,7 +93,7 @@ describe("the protocol", () => {
       deps: { fetcher: site.fetch, carrelOrigin: CARREL },
       era: "legacy",
     });
-    expect((await legacy.list()).length).toBe(27);
+    expect((await legacy.list()).length).toBe(29);
     expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({
       projects: [{ slug: SLUG, role: "reader" }],
     });

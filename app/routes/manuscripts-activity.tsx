@@ -1,6 +1,7 @@
-// Docs activity (the Docs plan, slice 2): every change an AI made in a Google Doc through Carrel, newest first: which AI
-// (and the model it said), what it did and why, in which Doc. The Doc itself holds the suggestions and comments to
-// accept or reject; this is the record beside it. Owner only, like the manuscripts.
+// Docs activity (the Docs plan, slices 2 and 3): every change an AI made in a Google Doc through Carrel, newest first:
+// which AI (and the model it said), what it did and why, in which Doc, and the id any AI takes to undo it. The Doc
+// itself holds the suggestions and comments to accept or reject; this is the record beside it. Owner only, like the
+// manuscripts.
 
 import { ButtonLink } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
@@ -28,7 +29,15 @@ const WHAT: Record<string, string> = {
   reply: "Replied",
   resolve: "Resolved a comment",
   reopen: "Reopened a comment",
+  write: "Wrote directly",
+  accept: "Accepted suggestions",
+  reject: "Rejected suggestions",
+  withdraw: "Withdrew its suggestions",
+  undo: "Took a change back",
 };
+
+/** A comment or a post on a thread is one thing; the rest count their edits or suggestions. */
+const THREAD = new Set(["comment", "reply", "resolve", "reopen"]);
 
 export default function DocsActivity({ loaderData }: Route.ComponentProps) {
   const { changes } = loaderData;
@@ -36,7 +45,7 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
     <div className="app-page">
       <PageHead
         title="Docs activity"
-        lead="What AIs changed in your Google Docs through Carrel. Accept or reject suggestions in the Doc itself."
+        lead="What AIs changed in your Google Docs through Carrel. Accept or reject suggestions in the Doc itself; to take a change back, ask any AI to undo it by its id."
         actions={<ButtonLink to="/manuscripts">Manuscripts</ButtonLink>}
       />
       <Panel title="Changes" count={changes.length} src="Carrel's record" flush>
@@ -67,7 +76,7 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
               </thead>
               <tbody>
                 {changes.map((c) => (
-                  <tr key={c.id}>
+                  <tr key={c.ref}>
                     <th scope="row">
                       <Time at={c.createdAt} />
                     </th>
@@ -77,9 +86,11 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
                     </td>
                     <td>
                       {WHAT[c.mode] ?? c.mode}
-                      {c.mode === "suggest" ? ` (${c.changes})` : ""}
+                      {THREAD.has(c.mode) ? "" : ` (${c.changes})`}
+                      <span className="cap-table-aside">{c.ref}</span>
                       {c.reason ? <span className="cap-table-aside">{c.reason}</span> : null}
                       {c.labeled ? null : <Status tone="warn">No label in the Doc</Status>}
+                      {c.undoneAt ? <Status tone="nodata">Taken back</Status> : null}
                     </td>
                     <td data-drop="1">
                       {c.link ? (
