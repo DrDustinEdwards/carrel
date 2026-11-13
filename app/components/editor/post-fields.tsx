@@ -193,7 +193,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
                   <span className="cap-muted">No feature image</span>
                 )}
               </div>
-              <div className="cap-stack" data-gap="4">
+              <div className="cap-image-field-controls">
                 {media ? (
                   values.featureImage ? (
                     <p className="cap-image-field-url cap-mono">{values.featureImage}</p>

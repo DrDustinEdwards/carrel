@@ -47,7 +47,7 @@
     "@drdustinedwards/site-helpers": "github:DrDustinEdwards/prelum#v0.56.0",
     "@dustinedwards/d1-dump": "github:DrDustinEdwards/d1-dump#v0.16.0",
     "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.39.0",
-    "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#v0.150.0",
+    "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#v0.152.0",
     "@fontsource-variable/source-serif-4": "5.3.0",
     "@handlewithcare/prosemirror-suggest-changes": "0.1.8",
     "@lezer/highlight": "1.2.3",
@@ -111,13 +111,7 @@
     "wrangler": "4.156.1"
   },
   "overrides": {
-    "@cloudflare/workers-types": "5.20261031.1",
-    "@drdustinedwards/site-helpers": {
-      "enarratio": "$enarratio"
-    },
-    "capsomer": {
-      "@drdustinedwards/site-helpers": "$@drdustinedwards/site-helpers"
-    }
+    "@cloudflare/workers-types": "5.20261110.1"
   },
   "engines": {
     "node": ">=26.11.1"

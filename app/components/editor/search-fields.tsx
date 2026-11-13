@@ -111,7 +111,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
                   <span className="cap-muted">No share image: the site's default is used</span>
                 )}
               </div>
-              <div className="cap-stack" data-gap="4">
+              <div className="cap-image-field-controls">
                 {media ? (
                   values.image ? (
                     <p className="cap-image-field-url cap-mono">{values.image}</p>

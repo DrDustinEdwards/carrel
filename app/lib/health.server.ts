@@ -17,9 +17,8 @@ import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
+import { deployedAt, deployedSha } from "@dustinedwards/site-runtime/deploy";
 import {
-  deployedAt,
-  deployedSha,
   durableObjectCheck,
   emailCheck,
   healthResponse,

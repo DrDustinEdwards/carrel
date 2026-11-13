@@ -3,7 +3,8 @@
 // search. Open goes to Google Docs; Carrel never edits a manuscript and never holds its text.
 
 import { Form, useNavigation } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Table } from "capsomer/react/table";
+import { ButtonLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
@@ -129,9 +130,9 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
             }
             actions={
               google.configured ? (
-                <a href="/auth/google/start" className="cap-btn">
+                <ButtonLink href="/auth/google/start">
                   {google.connected ? "Connect again" : "Connect Google"}
-                </a>
+                </ButtonLink>
               ) : undefined
             }
           />
@@ -179,11 +180,7 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
               <Button type="submit" variant="primary">
                 Search
               </Button>
-              {q ? (
-                <Link to="." className="cap-btn">
-                  Clear
-                </Link>
-              ) : null}
+              {q ? <ButtonLink to=".">Clear</ButtonLink> : null}
             </div>
           </Form>
         </div>
@@ -192,63 +189,47 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
             kind={q ? "no-match" : "nothing-yet"}
             flush
             title={q ? "No manuscript matches" : "No manuscripts in the index yet"}
-            action={
-              q ? (
-                <Link to="." className="cap-btn">
-                  Clear the search
-                </Link>
-              ) : undefined
-            }
+            action={q ? <ButtonLink to=".">Clear the search</ButtonLink> : undefined}
           >
             {q
               ? "Try other words, or fewer of them."
               : "Refresh from Drive to read the shared folder."}
           </Empty>
         ) : (
-          <div
-            className="cap-table-wrap"
-            role="region"
-            aria-labelledby="manuscripts-caption"
-            tabIndex={0}
-          >
-            <table className="cap-table">
-              <caption id="manuscripts-caption" className="cap-sr-only">
-                Manuscripts
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Title</th>
-                  <th scope="col" data-drop="1">
-                    People
+          <Table caption="Manuscripts" captionHidden>
+            <thead>
+              <tr>
+                <th scope="col">Title</th>
+                <th scope="col" data-drop="1">
+                  People
+                </th>
+                <th scope="col">Changed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {files.map((f) => (
+                <tr key={f.fileId}>
+                  <th scope="row">
+                    <a
+                      className="cap-table-open"
+                      href={f.webViewLink}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {f.name}
+                      <span className="cap-sr-only"> (opens in a new tab)</span>
+                    </a>
+                    <span className="cap-table-aside">
+                      {KIND[f.mimeType] ?? f.mimeType}
+                      {f.folder ? ` · ${f.folder}` : ""}
+                    </span>
                   </th>
-                  <th scope="col">Changed</th>
+                  <td data-drop="1">{f.people.join(", ")}</td>
+                  <td>{f.modifiedTime ? <Time at={f.modifiedTime} /> : null}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {files.map((f) => (
-                  <tr key={f.fileId}>
-                    <th scope="row">
-                      <a
-                        className="cap-table-open"
-                        href={f.webViewLink}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {f.name}
-                        <span className="cap-sr-only"> (opens in a new tab)</span>
-                      </a>
-                      <span className="cap-table-aside">
-                        {KIND[f.mimeType] ?? f.mimeType}
-                        {f.folder ? ` · ${f.folder}` : ""}
-                      </span>
-                    </th>
-                    <td data-drop="1">{f.people.join(", ")}</td>
-                    <td>{f.modifiedTime ? <Time at={f.modifiedTime} /> : null}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </Table>
         )}
       </Panel>
     </div>

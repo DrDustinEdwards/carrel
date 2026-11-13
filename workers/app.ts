@@ -3,7 +3,7 @@ import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { exportAuditLog } from "@dustinedwards/site-runtime/audit-log";
 import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
-import { deployedSha } from "@dustinedwards/site-runtime/health";
+import { deployedSha } from "@dustinedwards/site-runtime/deploy";
 import { maintenanceOn, maintenanceResponse } from "@dustinedwards/site-runtime/maintenance";
 import { logEvent, routeNamer, withRequestLog } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";

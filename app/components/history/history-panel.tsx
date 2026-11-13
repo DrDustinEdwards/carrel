@@ -1,7 +1,7 @@
 // The editor's History panel (routes/editor.tsx): the newest revisions on the site, and links to compare
 // the drafts kept in Carrel. The history page lists every revision.
 
-import { Link } from "capsomer/react/link";
+import { ButtonLink } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Panel } from "capsomer/react/panel";
 
@@ -37,9 +37,9 @@ export function HistoryPanel({
       src="Saves and publishes on the site"
       actions={
         revisionCount > 0 ? (
-          <Link className="cap-btn" data-size="sm" to={historyPath}>
+          <ButtonLink size="sm" to={historyPath}>
             All revisions
-          </Link>
+          </ButtonLink>
         ) : undefined
       }
     >

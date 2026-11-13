@@ -2,8 +2,8 @@
 // two-text comparison, the line or word switch, and the panels that show one version or a comparison.
 
 import type { ReactNode } from "react";
-import { useParamChoice } from "capsomer/react/route-hooks";
-import { Link } from "capsomer/react/link";
+import { useLocation, useNavigate, useNavigation } from "react-router";
+import { ButtonLink } from "capsomer/react/link";
 import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
 import { unifiedPatch } from "capsomer/behavior/draft-compare";
 import { Panel } from "capsomer/react/panel";
@@ -54,6 +54,24 @@ export function sides(
   return { kind: "compare", heading, lead, patch, before: null, after: null };
 }
 
+/** The switch moves at once, while the other view loads; the loader's answer confirms it. */
+function useCompareBy(by: By, first: By, other: By): [By, (next: By) => void] {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const pending = useNavigation().location;
+  const shown = pending
+    ? new URLSearchParams(pending.search).get("by") === other
+      ? other
+      : first
+    : by;
+  const setBy = (next: By) => {
+    const params = new URLSearchParams(location.search);
+    params.set("by", next);
+    void navigate(`${location.pathname}?${params.toString()}`, { preventScrollReset: true });
+  };
+  return [shown, setBy];
+}
+
 export function SourcePanel({
   view,
   historyPath,
@@ -77,20 +95,18 @@ export function SourcePanel({
         <>
           {view.current ? <Pill tone="ok">Current</Pill> : null}
           {view.previous ? (
-            <Link
-              className="cap-btn"
+            <ButtonLink
               to={`${historyPath}?from=${encodeURIComponent(view.previous)}&to=${encodeURIComponent(view.version)}`}
             >
               Changes in this {noun}
-            </Link>
+            </ButtonLink>
           ) : null}
           {view.newest ? (
-            <Link
-              className="cap-btn"
+            <ButtonLink
               to={`${historyPath}?from=${encodeURIComponent(view.version)}&to=${encodeURIComponent(view.newest)}`}
             >
               Compare with the current version
-            </Link>
+            </ButtonLink>
           ) : null}
           {restore}
         </>
@@ -118,7 +134,7 @@ export function ComparePanel({
   options: [{ value: By; label: string }, { value: By; label: string }];
   id: string;
 }) {
-  const [shown, setBy] = useParamChoice("by", by, [options[0].value, options[1].value]);
+  const [shown, setBy] = useCompareBy(by, options[0].value, options[1].value);
   return (
     <Panel
       title={view.heading}

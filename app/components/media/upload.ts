@@ -1,5 +1,5 @@
-// What the editor needs to place an image. The upload itself is Capsomer's uploadImage (capsomer/behavior/media-picker),
-// which posts one file to Carrel's per-project media endpoint; that endpoint hands it to the site through the site API.
+// What the editor needs of Carrel's per-project media endpoint. The upload itself is Capsomer's
+// (capsomer/behavior/media-picker uploadImage).
 
 export type EditorMedia = {
   /** Carrel's media endpoint for this project: GET lists for the picker, POST uploads. */

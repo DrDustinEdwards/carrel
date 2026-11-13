@@ -5,6 +5,7 @@
 
 import { Form, redirect } from "react-router";
 import { Link, routerRenderLink } from "capsomer/react/link";
+import { Table } from "capsomer/react/table";
 import { Alert, Banner } from "capsomer/react/banner";
 import { InlineAddForm } from "capsomer/react/inline-add-form";
 import { Empty } from "capsomer/react/empty";
@@ -282,59 +283,49 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                 <span className="cap-muted">{chapter.words.toLocaleString()} words</span>
                 {chapter.flags ? <Status tone="warn">{chapter.flags} flagged</Status> : null}
               </h3>
-              <div
-                className="cap-table-wrap"
-                role="region"
-                aria-labelledby={`scenes-${chapter.slug}`}
-                tabIndex={0}
-              >
-                <table className="cap-table">
-                  <caption id={`scenes-${chapter.slug}`} className="cap-sr-only">
-                    Scenes in {chapter.title}
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Scene</th>
-                      <th scope="col">Status</th>
-                      <th scope="col" data-drop="1">
-                        Point of view
+              <Table caption={<>Scenes in {chapter.title}</>} captionHidden>
+                <thead>
+                  <tr>
+                    <th scope="col">Scene</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" data-drop="1">
+                      Point of view
+                    </th>
+                    <th scope="col" data-drop="1">
+                      Date
+                    </th>
+                    <th scope="col" data-drop="2">
+                      Location
+                    </th>
+                    <th scope="col" data-num>
+                      Words
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {chapter.scenes.map((s) => (
+                    <tr key={s.path}>
+                      <th scope="row">
+                        <Link className="cap-table-open" to={file(s.path)}>
+                          {s.name}
+                        </Link>
+                        {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
                       </th>
-                      <th scope="col" data-drop="1">
-                        Date
-                      </th>
-                      <th scope="col" data-drop="2">
-                        Location
-                      </th>
-                      <th scope="col" data-num>
-                        Words
-                      </th>
+                      <td>
+                        <ColorLabelPill
+                          labels={labels}
+                          value={s.status}
+                          unknownNote=" (not on the status list)"
+                        />
+                      </td>
+                      <td data-drop="1">{s.pov}</td>
+                      <td data-drop="1">{s.date}</td>
+                      <td data-drop="2">{s.location}</td>
+                      <td data-num>{s.words.toLocaleString()}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {chapter.scenes.map((s) => (
-                      <tr key={s.path}>
-                        <th scope="row">
-                          <Link className="cap-table-open" to={file(s.path)}>
-                            {s.name}
-                          </Link>
-                          {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
-                        </th>
-                        <td>
-                          <ColorLabelPill
-                            labels={labels}
-                            value={s.status}
-                            unknownNote=" (not on the status list)"
-                          />
-                        </td>
-                        <td data-drop="1">{s.pov}</td>
-                        <td data-drop="1">{s.date}</td>
-                        <td data-drop="2">{s.location}</td>
-                        <td data-num>{s.words.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </Table>
             </section>
           ))
         )}
