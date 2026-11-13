@@ -1,13 +1,17 @@
 // The head of a page that shows one draft kept beside the person's own (routes/ai-draft.tsx, routes/transcript-draft.tsx):
 // where it sits, who saved it and when, and the one step that uses it, asked once in a confirm before the form posts.
+// The confirm loads when the step is first pointed at or focused: most visits only read the draft, and it was the
+// largest part of these pages' first load.
 
 import { routerRenderLink } from "capsomer/react/link";
-import { useRef, useState, type ReactNode } from "react";
+import { Suspense, lazy, useRef, useState, type ReactNode } from "react";
 import { Form, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
 import { PageHead } from "capsomer/react/page-head";
 import { Time } from "capsomer/react/time";
+
+const loadConfirm = () => import("capsomer/react/confirm-dialog");
+const ConfirmDialog = lazy(() => loadConfirm().then((m) => ({ default: m.ConfirmDialog })));
 
 /** A draft's id from the route, or a 404: ids are positive whole numbers. */
 export function draftIdParam(value: string | undefined): number {
@@ -37,6 +41,8 @@ export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const busy = useNavigation().state !== "idle";
   const [asking, setAsking] = useState<HTMLElement | null>(null);
+  // Mounted from the first ask on, so it stays for its closing and the next ask.
+  const [asked, setAsked] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   return (
     <>
@@ -62,8 +68,11 @@ export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
                   type="submit"
                   variant="primary"
                   pending={busy}
+                  onPointerEnter={() => void loadConfirm()}
+                  onFocus={() => void loadConfirm()}
                   onClick={(event) => {
                     event.preventDefault();
+                    setAsked(true);
                     setAsking(event.currentTarget);
                   }}
                 >
@@ -75,20 +84,22 @@ export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
           </>
         }
       />
-      {use ? (
-        <ConfirmDialog
-          open={asking !== null}
-          title={use.title}
-          lead={use.lead}
-          body={[]}
-          action={use.action}
-          returnTo={asking}
-          perform={async () => {
-            // Submitting the form itself does not press the button again, so it does not ask twice.
-            form.current?.requestSubmit();
-          }}
-          onClose={() => setAsking(null)}
-        />
+      {use && asked ? (
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open={asking !== null}
+            title={use.title}
+            lead={use.lead}
+            body={[]}
+            action={use.action}
+            returnTo={asking}
+            perform={async () => {
+              // Submitting the form itself does not press the button again, so it does not ask twice.
+              form.current?.requestSubmit();
+            }}
+            onClose={() => setAsking(null)}
+          />
+        </Suspense>
       ) : null}
     </>
   );
