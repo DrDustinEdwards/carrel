@@ -9,6 +9,7 @@
 @import "capsomer/link.css";
 @import "capsomer/prose.css";
 @import "capsomer/utilities.css";
+@import "capsomer/layout.css";
 @import "capsomer/icons.css";
 
 /* Shared building blocks first, then the components built on them. */
@@ -83,7 +84,7 @@
 @import "capsomer/mentions-list.css";
 @import "capsomer/inspector.css";
 @import "capsomer/attention-list.css";
-@import "capsomer/people-roles.css";
+@import "capsomer/role-grid.css";
 @import "capsomer/history-list.css";
 @import "capsomer/writing-progress.css";
 
