@@ -16,6 +16,9 @@
       "clones": 0,
       "lines": 0
     },
+    "legacy": {
+      "ime-safe-enter-submit": 1
+    },
     "tests": {
       "files": 49,
       "cases": 464
