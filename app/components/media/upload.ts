@@ -1,6 +1,5 @@
-import { errorMessage } from "@dustinedwards/site-runtime/log";
-// The editor's image upload: one file to Carrel's per-project media endpoint, which hands it to the site
-// through the site API. Never rejects with anything but an Error that says why, so the editor shows it.
+// What the editor needs to place an image. The upload itself is Capsomer's uploadImage (capsomer/behavior/media-picker),
+// which posts one file to Carrel's per-project media endpoint; that endpoint hands it to the site through the site API.
 
 export type EditorMedia = {
   /** Carrel's media endpoint for this project: GET lists for the picker, POST uploads. */
@@ -10,40 +9,3 @@ export type EditorMedia = {
   /** The site's own Markdown for an image with its alt text, and its caption when it has one. */
   figure: (url: string, alt: string, caption?: string) => string;
 };
-
-export type Uploaded = {
-  /** What the Markdown carries: the site's own address for the file. */
-  url: string;
-  /** Where Carrel's page loads it from, since Carrel is a different host. */
-  src: string;
-};
-
-/**
- * Sends the file with what the person said about it: alt text, or decorative. site-api 0.19+ refuses an upload with
- * neither, and the site checks the alt itself (not the file's name, not "image"), so its refusal is the error shown.
- */
-export async function uploadImage(
-  endpoint: string,
-  file: File,
-  image: { alt: string; decorative: boolean },
-  signal?: AbortSignal,
-): Promise<Uploaded> {
-  let response: Response;
-  try {
-    const form = new FormData();
-    form.set("file", file);
-    if (image.decorative) form.set("decorative", "yes");
-    else form.set("alt", image.alt);
-    response = await fetch(endpoint, { method: "POST", body: form, signal });
-  } catch (error) {
-    throw new Error(`Upload failed: ${errorMessage(error)}`);
-  }
-  const body = (await response.json().catch(() => ({}))) as {
-    url?: string;
-    src?: string;
-    error?: string;
-  };
-  if (!response.ok || !body.url)
-    throw new Error(body.error ?? `Upload failed (${response.status}).`);
-  return { url: body.url, src: body.src ?? body.url };
-}
