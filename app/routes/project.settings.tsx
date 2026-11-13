@@ -22,7 +22,6 @@ import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.settings";
 import { plural } from "@drdustinedwards/site-helpers/text";
-import "capsomer/summary-list.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Share and connection · ${data.project.name} · Carrel` : "Carrel" }];

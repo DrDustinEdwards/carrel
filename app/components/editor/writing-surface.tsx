@@ -22,19 +22,14 @@ import { uploadImage } from "capsomer/behavior/media-picker";
 import { MediaPicker } from "capsomer/react/media-picker";
 import { useRemembered } from "capsomer/react/hooks";
 import { SCAFFOLDS } from "~/lib/site-markdown";
-import "capsomer/segmented.css";
 import "capsomer/markdown-editor.css";
 import "capsomer/rich-editor.css";
 // The room's carets and people (room-editing.tsx) build on the rich editor's rules, so they load with them.
 import "capsomer/collab-editor.css";
-import "capsomer/chart-frame.css";
 import "capsomer/chart-builder.css";
-import "capsomer/enarratio.css";
 import "capsomer/drop-zone.css";
 import "capsomer/media.css";
 import "capsomer/sortable-list.css";
-import "capsomer/chips.css";
-import "capsomer/content.css";
 import "capsomer/media-library.css";
 
 export type { LinkTarget };

@@ -5,7 +5,6 @@
 
 import { messageSummary } from "capsomer/behavior/history-list";
 import { HistoryList } from "capsomer/react/history-list";
-import "capsomer/avatar.css";
 import "capsomer/history-list.css";
 
 export type RevisionRow = { version: string; at: string; author: string; message: string };

@@ -24,9 +24,12 @@
 @import "capsomer/button.css";
 @import "capsomer/field.css";
 @import "capsomer/select.css";
+@import "capsomer/scope-chip.css";
+@import "capsomer/segmented.css";
 @import "capsomer/switch.css";
 @import "capsomer/status.css";
 @import "capsomer/time.css";
+@import "capsomer/avatar.css";
 @import "capsomer/banner.css";
 @import "capsomer/message.css";
 @import "capsomer/empty.css";
@@ -44,12 +47,27 @@
 @import "capsomer/site-header.css";
 @import "capsomer/admin-shell.css";
 @import "capsomer/confirm-dialog.css";
+@import "capsomer/schedule-dialog.css";
+@import "capsomer/not-found-report.css";
 @import "capsomer/moderation-queue.css";
+@import "capsomer/approval-queue.css";
+@import "capsomer/label-color-list.css";
+@import "capsomer/ai-engine-settings.css";
+@import "capsomer/publish-gate.css";
+@import "capsomer/share-preview.css";
+@import "capsomer/inline-add-form.css";
+@import "capsomer/frontmatter-fields.css";
+@import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
-/* The whole chart stylesheet: Enarratio's base, the token mapping, gridlines, series inks and color pairs. */
+@import "capsomer/summary-list.css";
+@import "capsomer/detail-panel.css";
+@import "capsomer/chips.css";
 @import "capsomer/command-menu.css";
 @import "capsomer/shortcuts.css";
+@import "capsomer/content.css";
 @import "capsomer/menu.css";
+@import "capsomer/mentions-list.css";
+@import "capsomer/role-grid.css";
 
 /* The page inside the shell: the same frame as Capsomer's own site. A title, one line saying what the
    page is for, the page's actions at the right, then panels. */
