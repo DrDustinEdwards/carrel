@@ -8,23 +8,9 @@ import { runBackup } from "~/lib/backup.server";
 import { healthAnswer, runHealth } from "~/lib/health.server";
 import { aiDoor } from "~/lib/mcp/door";
 import { clearTokenCache } from "~/lib/novels/repo.server";
-import { addPerson, resetDb, testEnv } from "./env";
+import { addPerson, mailbox, resetDb, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
 import { connectedEnv, fakeSite, SITE_ORIGIN } from "./site";
-
-type Sent = { subject: string; text: string; to: string };
-
-function mailbox(fail = false) {
-  const sent: Sent[] = [];
-  const EMAIL = {
-    async send(message: Sent) {
-      if (fail) throw new Error("send failed");
-      sent.push(message);
-      return { messageId: `m${sent.length}` };
-    },
-  } as unknown as SendEmail;
-  return { sent, EMAIL };
-}
 
 const certsOk = async () => Response.json({ keys: [{ kid: "k" }] });
 const certsDown = async () => new Response("down", { status: 503 });

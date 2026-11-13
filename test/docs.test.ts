@@ -1,11 +1,12 @@
-// The Docs tools (the Docs plan, slices 1 and 2): read a Doc, lay suggestions and comments in it, for every AI
-// alike, against the fake Google's Docs API. Planted: a change to a Doc's text that is not a suggestion, and a
-// comment with an assignee, are refused in code before anything is sent; a Doc outside the manuscripts index and
-// a person who is not the Owner reach nothing.
+// The Docs tools (the Docs plan, slices 1 to 3): read a Doc, lay suggestions and comments in it, write directly on
+// the Owner's ask, decide suggestions and take changes back, for every AI alike, against the fake Google's Docs API.
+// Planted: a change to a Doc's text that is not a suggestion or marked as the Owner's ask, and a comment with an
+// assignee, are refused in code before anything is sent; a Doc outside the manuscripts index, a person who is not
+// the Owner, and a Doc locked against AI reach nothing.
 
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { docActivity } from "~/lib/google/docs.server";
+import { docActivity, saveDocsEmail, setDocLock } from "~/lib/google/docs.server";
 import { refreshManuscripts } from "~/lib/google/drive.server";
 import {
   clearSaTokenCache,
@@ -13,7 +14,7 @@ import {
   ServiceAccountRefused,
 } from "~/lib/google/service-account.server";
 
-import { addPerson, resetDb, testEnv } from "./env";
+import { addPerson, mailbox, resetDb, testEnv } from "./env";
 import { fakeGoogle, serviceAccountKey } from "./google";
 import { connectAs } from "./mcp-client";
 import { connectedEnv, viewerFor } from "./site";
@@ -29,6 +30,7 @@ beforeAll(async () => {
 
 let google: ReturnType<typeof fakeGoogle>;
 let env: Env;
+let box: ReturnType<typeof mailbox>;
 
 beforeEach(async () => {
   clearSaTokenCache();
@@ -61,8 +63,10 @@ beforeEach(async () => {
     title: "Elsewhere",
     paragraphs: [{ segs: [{ t: "Not indexed." }] }],
   });
+  box = mailbox();
   env = {
     ...connectedEnv(),
+    EMAIL: box.EMAIL,
     GOOGLE_SA_KEY: key.json,
     GOOGLE_MANUSCRIPTS_FOLDER_ID: FOLDER,
   } as Env;
@@ -72,6 +76,16 @@ beforeEach(async () => {
 
 const connect = (email = "owner@test.invalid", client = "Claude") =>
   connectAs(email, client, { env, deps: { fetcher: google.fetch } });
+
+/** Each call is refused, and none of them reached the Docs API. */
+async function refusedUnsent(
+  c: Awaited<ReturnType<typeof connect>>,
+  calls: readonly (readonly [string, Record<string, unknown>])[],
+) {
+  for (const [tool, args] of calls)
+    expect((await c.call(tool, { doc: DOC, ...args })).isError, tool).toBe(true);
+  expect(google.requests.filter((r) => r.includes("docs.googleapis.com"))).toEqual([]);
+}
 
 function data(result: {
   content: { text: string }[];
@@ -106,11 +120,10 @@ describe("read", () => {
     const owner = await connect();
     const outside = await owner.call("carrel_read_doc", { doc: "docElsewhere1" });
     expect(outside.isError).toBe(true);
-    for (const tool of ["carrel_list_docs", "carrel_read_doc"]) {
-      const result = await (await connect("editor@test.invalid")).call(tool, { doc: DOC });
-      expect(result.isError, tool).toBe(true);
-    }
-    expect(google.requests.filter((r) => r.includes("docs.googleapis.com"))).toEqual([]);
+    await refusedUnsent(await connect("editor@test.invalid"), [
+      ["carrel_list_docs", {}],
+      ["carrel_read_doc", {}],
+    ]);
   });
 });
 
@@ -220,6 +233,23 @@ describe("suggest", () => {
     expect(() =>
       assertAllowed("POST", url, { requests: [insert], writeControl: { writeMode: "SUGGEST" } }),
     ).not.toThrow();
+    // The Owner's own ask lets a direct write and an accept through, and nothing wider.
+    const direct = { direct: true };
+    expect(() => assertAllowed("POST", url, { requests: [insert] }, direct)).not.toThrow();
+    expect(() =>
+      assertAllowed(
+        "POST",
+        url,
+        { requests: [{ acceptSuggestion: { suggestionId: "s" } }] },
+        direct,
+      ),
+    ).not.toThrow();
+    for (const body of [
+      { requests: [{ replaceAllText: {} }] },
+      { requests: [insert, { acceptSuggestion: { suggestionId: "s" } }] },
+      { requests: [insert], writeControl: { writeMode: "SUGGEST" } },
+    ])
+      expect(() => assertAllowed("POST", url, body, direct)).toThrow(ServiceAccountRefused);
   });
 });
 
@@ -254,6 +284,122 @@ describe("comment", () => {
     ).call("carrel_comment_doc", { doc: DOC, quote: "Aims", text: "x" });
     expect(other.isError).toBe(true);
     expect(google.docApi.get(DOC)!.batches).toEqual([]);
+  });
+});
+
+describe("write, review, undo and locks", () => {
+  const textOf = (id = DOC) =>
+    google.docApi
+      .get(id)!
+      .paragraphs.map((p) => p.segs.map((seg) => seg.t).join(""))
+      .join("\n");
+
+  it("writes directly only when asked, emails, and undo puts the old text back", async () => {
+    const c = await connect("owner@test.invalid", "Grok Bot");
+    const written = data(
+      await c.call("carrel_change_doc", {
+        doc: DOC,
+        mode: "write",
+        reason: "Dustin asked for it",
+        edits: [{ find: "wide and the water was cold", replace: "wide and cold" }],
+      }),
+    ) as unknown as { mode: string; undo: string; emailed: boolean };
+    expect(written).toMatchObject({ mode: "write", emailed: true });
+    expect(textOf()).toContain("The river was wide and cold.");
+    const batch = google.docApi.get(DOC)!.batches[0] as { writeControl: Record<string, string> };
+    expect(batch.writeControl.writeMode).toBeUndefined();
+    expect(box.sent[0]!.subject).toBe('Carrel: Grok Bot wrote directly in "Chapter draft"');
+    expect(box.sent[0]!.text).toContain("before: wide and the water was cold");
+
+    const undone = data(await c.call("carrel_undo_doc", { doc: DOC, change: written.undo }));
+    expect(undone).toMatchObject({ mode: "write" });
+    expect(textOf()).toContain("The river was wide and the water was cold.");
+    const again = await c.call("carrel_undo_doc", { doc: DOC, change: written.undo });
+    expect(again.isError).toBe(true);
+    const list = data(await c.call("carrel_undo_doc", { doc: DOC })) as unknown as {
+      changes: { undo: string; what: string; undoneAt: string | null }[];
+    };
+    expect(list.changes.map((x) => [x.what, Boolean(x.undoneAt)])).toEqual([
+      ["undo", false],
+      ["write", true],
+    ]);
+  });
+
+  it("does not undo a write whose text was edited since, and says what it was", async () => {
+    await saveDocsEmail(testEnv.DB, await viewerFor("owner@test.invalid"), "off");
+    const c = await connect();
+    const written = data(
+      await c.call("carrel_change_doc", {
+        doc: DOC,
+        mode: "write",
+        reason: "asked",
+        edits: [{ find: "Then it left", replace: "Then it flew" }],
+      }),
+    ) as unknown as { undo: string; emailed: string };
+    expect(written.emailed).toBe("off");
+    expect(box.sent).toEqual([]);
+    google.docApi.get(DOC)!.paragraphs[2]!.segs = [{ t: "Rewritten by Dustin." }];
+    const refused = await c.call("carrel_undo_doc", { doc: DOC, change: written.undo });
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]!.text).toContain('it replaced "Then it left"');
+  });
+
+  it("accepts and rejects by id or by AI, and withdraws only the calling AI's own", async () => {
+    const claude = await connect("owner@test.invalid", "Claude");
+    const grok = await connect("owner@test.invalid", "Grok Bot");
+    const mine = data(
+      await claude.call("carrel_change_doc", {
+        doc: DOC,
+        reason: "r",
+        edits: [{ find: "Aims", replace: "Goals" }],
+      }),
+    ) as unknown as { suggestionIds: string[]; undo: string };
+    await grok.call("carrel_change_doc", {
+      doc: DOC,
+      reason: "r",
+      edits: [{ find: "Cold again", replace: "Again cold" }],
+    });
+    const notOwn = await grok.call("carrel_review_doc", {
+      doc: DOC,
+      action: "withdraw",
+      suggestions: mine.suggestionIds,
+    });
+    expect(notOwn.isError).toBe(true);
+    const rejected = data(
+      await claude.call("carrel_review_doc", { doc: DOC, action: "reject", by: "Grok Bot" }),
+    ) as unknown as { suggestionIds: string[] };
+    expect(rejected.suggestionIds).toHaveLength(2);
+    const accepted = await claude.call("carrel_review_doc", {
+      doc: DOC,
+      action: "accept",
+      suggestions: [mine.suggestionIds[0]],
+    });
+    expect(accepted.isError).toBeFalsy();
+    const statuses = google.docApi.get(DOC)!.suggestions.map((t) => t.status);
+    expect(statuses).toEqual(["ACCEPTED", "OPEN", "REJECTED", "REJECTED"]);
+    // Undo of a suggestion withdraws whatever of it is still open.
+    const undone = data(await claude.call("carrel_undo_doc", { doc: DOC, change: mine.undo }));
+    expect(undone).toMatchObject({ mode: "withdraw", undone: [mine.suggestionIds[1]] });
+  });
+
+  it("PLANT: suggest only refuses a direct write and an accept; no AI refuses every tool; nothing is sent", async () => {
+    const owner = await viewerFor("owner@test.invalid");
+    const c = await connect();
+    await setDocLock(testEnv.DB, owner, DOC, "suggest-only");
+    await refusedUnsent(c, [
+      [
+        "carrel_change_doc",
+        { mode: "write", reason: "r", edits: [{ find: "Aims", replace: "Goals" }] },
+      ],
+      ["carrel_review_doc", { action: "accept", suggestions: ["suggest.pending"] }],
+    ]);
+    await setDocLock(testEnv.DB, owner, DOC, "no-ai");
+    await refusedUnsent(c, [
+      ["carrel_read_doc", {}],
+      ["carrel_change_doc", { reason: "r", edits: [{ find: "Aims", replace: "Goals" }] }],
+      ["carrel_comment_doc", { quote: "Aims", text: "x" }],
+      ["carrel_undo_doc", {}],
+    ]);
   });
 });
 

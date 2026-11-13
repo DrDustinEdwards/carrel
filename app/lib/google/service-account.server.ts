@@ -1,9 +1,9 @@
 // The Google service account (design decision 6): it reads the manuscripts folder's metadata and
-// Search Console, and, for the Docs tools (the Docs plan, slices 1 and 2), reads Docs and lays suggestions
-// and comments in them. It cannot do anything else. Two walls: Google lets it reach only what is shared with
-// it, and every request it makes passes an allowlist here, so anything outside the list, and any change to a
-// Doc that is not a suggestion or a comment, is refused in code before anything is sent, whatever the scopes
-// would allow.
+// Search Console, and, for the Docs tools (the Docs plan, slices 1 to 3), reads Docs, lays suggestions and comments in
+// them, and on the Owner's own ask writes directly or accepts. It cannot do anything else. Two walls: Google lets it
+// reach only what is shared with it, and every request it makes passes an allowlist here, so anything outside the
+// list, and any direct change to a Doc's text the caller did not mark as the Owner's ask, is refused in code before
+// anything is sent, whatever the scopes would allow.
 
 import {
   clearServiceAccountTokens,
@@ -83,13 +83,27 @@ const ALLOWED: { method: string; url: RegExp }[] = [
   },
 ];
 
-// The only changes the service account may make in a Doc. Text requests are allowed only as suggestions
-// (writeMode SUGGEST), so a call that would change a Doc's text directly never leaves Carrel; comments and replies
-// are allowed alone, and never with an assignee, which sends an email to another person.
+// The only changes the service account may make in a Doc, in four kinds that never share a batch:
+// - text: allowed as suggestions (writeMode SUGGEST); without it only when the caller marks the batch `direct`,
+//   which docs.server.ts does for the Owner's own ask on a Doc that is not locked;
+// - comments and replies, never with an assignee, which sends an email to another person;
+// - decisions on suggestions: rejecting or withdrawing one, and accepting one only when `direct`;
+// - deleting a comment thread (undo of Carrel's own comment; Google allows it only to the thread's author).
 const DOC_TEXT_REQUESTS = ["insertText", "deleteContentRange"];
 const DOC_COMMENT_REQUESTS = ["insertComment", "addCommentReply"];
+const DOC_REVIEW_REQUESTS = ["acceptSuggestion", "rejectSuggestion", "deleteSuggestion"];
+const DOC_DELETE_REQUESTS = ["deleteComment"];
+const DOC_KINDS = [
+  DOC_TEXT_REQUESTS,
+  DOC_COMMENT_REQUESTS,
+  DOC_REVIEW_REQUESTS,
+  DOC_DELETE_REQUESTS,
+];
 
-function docBatchProblem(body: unknown): string | null {
+/** `direct` is the Owner's own ask, checked by the caller: a text change or an accept that is not a suggestion. */
+export type DocWrite = { direct?: boolean };
+
+function docBatchProblem(body: unknown, opts: DocWrite = {}): string | null {
   const batch = body as {
     requests?: Record<string, unknown>[];
     writeControl?: { writeMode?: string };
@@ -99,20 +113,30 @@ function docBatchProblem(body: unknown): string | null {
   const kinds = batch.requests.map((r) => Object.keys(r ?? {}));
   if (kinds.some((k) => k.length !== 1)) return "each Doc request names exactly one change";
   const names = kinds.map((k) => k[0]!);
-  const text = names.filter((n) => DOC_TEXT_REQUESTS.includes(n)).length;
-  const comment = names.filter((n) => DOC_COMMENT_REQUESTS.includes(n)).length;
-  if (text + comment !== names.length || (text > 0 && comment > 0))
-    return `only ${[...DOC_TEXT_REQUESTS, ...DOC_COMMENT_REQUESTS].join(", ")} are allowed, and text and comments are not mixed`;
-  if (text > 0 && batch.writeControl?.writeMode !== "SUGGEST")
-    return "a change to a Doc's text goes only as a suggestion (writeMode SUGGEST)";
-  if (comment > 0 && batch.writeControl?.writeMode === "SUGGEST")
-    return "comments do not go in suggest mode";
+  const used = DOC_KINDS.filter((kind) => names.some((n) => kind.includes(n)));
+  if (names.some((n) => !DOC_KINDS.flat().includes(n)) || used.length !== 1)
+    return `only ${DOC_KINDS.flat().join(", ")} are allowed, and the kinds are not mixed`;
+  const suggest = batch.writeControl?.writeMode === "SUGGEST";
+  if (used[0] === DOC_TEXT_REQUESTS) {
+    if (!suggest && !opts.direct)
+      return "a change to a Doc's text goes only as a suggestion (writeMode SUGGEST), unless it is the Owner's own ask";
+    if (suggest && opts.direct) return "a direct write does not go in suggest mode";
+    return null;
+  }
+  if (suggest) return "only text changes go in suggest mode";
+  if (names.includes("acceptSuggestion") && !opts.direct)
+    return "accepting a suggestion is the Owner's own ask";
   const assigns = JSON.stringify(batch.requests).match(/"assignee(Email(Address)?)?"/);
   return assigns ? "a comment never names an assignee: that emails someone" : null;
 }
 
 /** Throws ServiceAccountRefused unless the request is on the allowlist (and, for a Doc batch, passes the wall). */
-export function assertAllowed(method: string, url: string, body?: unknown): void {
+export function assertAllowed(
+  method: string,
+  url: string,
+  body?: unknown,
+  opts: DocWrite = {},
+): void {
   const m = method.toUpperCase();
   // alt=media asks for content instead of metadata, wherever it appears.
   const media =
@@ -120,7 +144,7 @@ export function assertAllowed(method: string, url: string, body?: unknown): void
   if (media || !ALLOWED.some((a) => a.method === m && a.url.test(url)))
     throw new ServiceAccountRefused(m, url);
   if (url.endsWith(":batchUpdate")) {
-    const problem = docBatchProblem(body);
+    const problem = docBatchProblem(body, opts);
     if (problem) throw new ServiceAccountRefused(m, url, problem);
   }
 }
@@ -146,8 +170,13 @@ export function saClient(env: Env, fetcher: Fetch = timedFetch) {
   if (connection.state !== "connected") throw new GoogleNotConnected(connection.detail);
   return {
     key: connection.key,
-    async request(method: string, url: string, body?: unknown): Promise<Response> {
-      assertAllowed(method, url, body);
+    async request(
+      method: string,
+      url: string,
+      body?: unknown,
+      opts: DocWrite = {},
+    ): Promise<Response> {
+      assertAllowed(method, url, body, opts);
       const token = await saAccessToken(connection.key, fetcher);
       return fetcher(url, {
         method,

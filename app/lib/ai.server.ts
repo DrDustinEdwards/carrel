@@ -402,26 +402,32 @@ async function recordAiPublication(
     client: session.client,
     version: outcome.version,
   });
-  try {
-    const sent = await sendEmail(env.EMAIL, { from: env.ALERT_FROM, to: env.ALERT_EMAIL, ...mail });
-    if (!sent.sent) throw new Error(sent.error);
+  const error = await emailDustin(env, mail);
+  if (error) {
+    logEvent("aiPublish.email-failed", { changeId: outcome.changeId, error }, { level: "error" });
     await d
       .update(aiPublications)
-      .set({ emailedAt: new Date().toISOString() })
-      .where(eq(aiPublications.changeId, outcome.changeId));
-    return true;
-  } catch (error) {
-    const message = errorMessage(error);
-    logEvent(
-      "aiPublish.email-failed",
-      { changeId: outcome.changeId, error: message },
-      { level: "error" },
-    );
-    await d
-      .update(aiPublications)
-      .set({ emailError: message })
+      .set({ emailError: error })
       .where(eq(aiPublications.changeId, outcome.changeId));
     return false;
+  }
+  await d
+    .update(aiPublications)
+    .set({ emailedAt: new Date().toISOString() })
+    .where(eq(aiPublications.changeId, outcome.changeId));
+  return true;
+}
+
+/** Emails Dustin (the alert address) about something an AI did; answers the error when it could not, else null. */
+export async function emailDustin(
+  env: Env,
+  mail: { subject: string; text: string },
+): Promise<string | null> {
+  try {
+    const sent = await sendEmail(env.EMAIL, { from: env.ALERT_FROM, to: env.ALERT_EMAIL, ...mail });
+    return sent.sent ? null : sent.error;
+  } catch (error) {
+    return errorMessage(error);
   }
 }
 
