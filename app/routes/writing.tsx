@@ -19,6 +19,7 @@ import { BulkBar } from "capsomer/react/bulk-bar";
 import { ConfirmPage } from "capsomer/react/confirm-dialog";
 import { DetailPanel, DetailSection } from "capsomer/react/detail-panel";
 import { Banner } from "capsomer/react/banner";
+import { Button } from "capsomer/react/button";
 import { useState } from "react";
 import { Form, useNavigate } from "react-router";
 
@@ -198,9 +199,7 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
             placeholder="Search titles"
           />
         </label>
-        <button className="cap-btn" type="submit">
-          Search
-        </button>
+        <Button type="submit">Search</Button>
         {waitingAi ? (
           <Pill variant="secondary">
             With AI drafts waiting · <Link to={href({ status })}>Clear</Link>
@@ -213,9 +212,7 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
             <Form method="post">
               <input type="hidden" name="intent" value="undo" />
               <input type="hidden" name="plan" value={result.undo.plan} />
-              <button className="cap-btn" type="submit">
-                Undo
-              </button>
+              <Button type="submit">Undo</Button>
             </Form>
           ) : null}
         </Banner>
