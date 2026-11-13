@@ -15,40 +15,28 @@ import { seoCheck, type SeoCheck } from "~/lib/seo-checks";
 import { siteClient, siteConnection } from "~/lib/sites.server";
 import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
-/**
- * The search fields the site renders (capabilities.searchFields), asked only when the source sets one, so a
- * post without them costs no request. A site that does not answer lists none.
- */
-export async function listedSearchFields(
-  env: Env,
-  project: SiteProject,
-  source: string,
-  fetcher?: typeof fetch,
-): Promise<SearchField[]> {
-  const set = Object.values(searchFieldsOf(splitSource(normalizeNewlines(source)).front)).some(
-    Boolean,
-  );
-  if (!set) return [];
-  try {
-    return (await siteClient(env, project.site, fetcher).meta()).capabilities.searchFields ?? [];
-  } catch {
-    return [];
-  }
-}
+type Listed = { searchFields: SearchField[]; postFields: PostField[] };
 
-/** The post fields the site renders (capabilities.postFields), asked only when the source has a feature image, the one a publish checks. */
-export async function listedPostFields(
+/**
+ * The search fields or post fields the site renders (its capabilities), asked only when the source sets one
+ * (any search field; for post fields, a feature image, the one a publish checks), so a post without them
+ * costs no request. A site that does not report the capability lists none; a request that fails throws.
+ */
+export async function listedFields<F extends keyof Listed>(
   env: Env,
   project: SiteProject,
   source: string,
+  field: F,
   fetcher?: typeof fetch,
-): Promise<PostField[]> {
-  if (!postFieldsOf(splitSource(normalizeNewlines(source)).front).featureImage) return [];
-  try {
-    return (await siteClient(env, project.site, fetcher).meta()).capabilities.postFields ?? [];
-  } catch {
-    return [];
-  }
+): Promise<Listed[F]> {
+  const front = splitSource(normalizeNewlines(source)).front;
+  const asked =
+    field === "searchFields"
+      ? Object.values(searchFieldsOf(front)).some(Boolean)
+      : postFieldsOf(front).featureImage;
+  if (!asked) return [] as Listed[F];
+  const { capabilities } = await siteClient(env, project.site, fetcher).meta();
+  return (capabilities[field] ?? []) as Listed[F];
 }
 
 /**
@@ -71,7 +59,7 @@ export async function seoOf(
   const kind =
     item.kind !== undefined ? item.kind : (indexed.find((i) => i.itemId === item.id)?.kind ?? null);
   const path = item.path || (item.id ? (sitePaths(indexed).get(item.id) ?? null) : null);
-  const searchFields = await listedSearchFields(env, project, source, fetcher);
+  const searchFields = await listedFields(env, project, source, "searchFields", fetcher);
   return seoCheck(project.site, source, {
     kind,
     origin: connection.state === "connected" ? connection.origin : null,

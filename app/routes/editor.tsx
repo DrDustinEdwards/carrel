@@ -143,9 +143,7 @@ async function mergeOf(
   room: { markdown: string; version: string | null },
   site: { source: string; version: string },
 ) {
-  const base = room.version
-    ? await readRevision(env, project, itemId, room.version).catch(() => null)
-    : null;
+  const base = room.version ? await readRevision(env, project, itemId, room.version) : null;
   return {
     plan: mergePlan(room.markdown, site.source, base),
     from: await sha256Hex(room.markdown),
