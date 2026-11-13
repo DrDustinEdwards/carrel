@@ -6,7 +6,6 @@
 // publish are seo-checks' searchFieldFaults, shown here on their boxes and in the publish gate.
 
 import { Alert } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
 import { useTyped, type TypedBox } from "capsomer/react/frontmatter-fields";
 import { SerpWidthMeter } from "capsomer/react/share-preview";
@@ -18,7 +17,7 @@ import {
   type SearchField,
   type SearchValues,
 } from "@dustinedwards/site-api/frontmatter";
-import { LibraryInsert } from "~/components/media/library-insert";
+import { ImageField } from "capsomer/react/media-picker";
 import { typedProps } from "~/components/editor/post-fields";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
@@ -101,64 +100,33 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
           </div>
         ) : null}
         {has("image") ? (
-          <div className="cap-fm-field cap-image-field" data-wide="">
-            <span className="cap-field-label">Share image</span>
-            <div className="cap-image-field-row">
-              <div className="cap-image-field-thumb">
-                {imageSrc ? (
-                  <img src={imageSrc} alt={values.imageAlt} />
-                ) : (
-                  <span className="cap-muted">No share image: the site's default is used</span>
-                )}
-              </div>
-              <div className="cap-image-field-controls">
-                {media ? (
-                  values.image ? (
-                    <p className="cap-image-field-url cap-mono">{values.image}</p>
-                  ) : null
-                ) : (
-                  <Field
-                    label="Image address"
-                    help="A path on the site, or a full https:// address."
-                  >
-                    <input {...typed(image, "image")} type="text" />
-                  </Field>
-                )}
-                {!locked ? (
-                  <div className="cap-cluster" data-gap="3">
-                    {media ? (
-                      <LibraryInsert
-                        media={media}
-                        words={{
-                          ...PICK_WORDS,
-                          label: values.image ? "Choose another" : PICK_WORDS.label,
-                        }}
-                        variant="default"
-                        onPick={(pick) => write({ image: pick.url, imageAlt: pick.alt })}
-                      />
-                    ) : null}
-                    {values.image ? (
-                      <Button
-                        variant="quiet"
-                        size="sm"
-                        onClick={() => write({ image: "", imageAlt: "" })}
-                      >
-                        Remove
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
-                {has("imageAlt") ? (
-                  <Field
-                    label="Alt text"
-                    help="What the image shows, for someone who cannot see it. Required with a share image."
-                    error={fault("imageAlt")}
-                  >
-                    <input {...typed(alt, "imageAlt")} type="text" />
-                  </Field>
-                ) : null}
-              </div>
-            </div>
+          <div className="cap-fm-field" data-wide="">
+            <ImageField
+              label="Share image"
+              value={values.image}
+              src={imageSrc}
+              alt={values.imageAlt}
+              none="No share image: the site's default is used"
+              picker={media ? { ...media, words: PICK_WORDS } : undefined}
+              locked={locked}
+              onPick={(pick) => write({ image: pick.url, imageAlt: pick.alt })}
+              onRemove={() => write({ image: "", imageAlt: "" })}
+            >
+              {media ? null : (
+                <Field label="Image address" help="A path on the site, or a full https:// address.">
+                  <input {...typed(image, "image")} type="text" />
+                </Field>
+              )}
+              {has("imageAlt") ? (
+                <Field
+                  label="Alt text"
+                  help="What the image shows, for someone who cannot see it. Required with a share image."
+                  error={fault("imageAlt")}
+                >
+                  <input {...typed(alt, "imageAlt")} type="text" />
+                </Field>
+              ) : null}
+            </ImageField>
           </div>
         ) : null}
         {has("canonical") ? (

@@ -19,7 +19,7 @@ import {
   type PostField,
   type PostValues,
 } from "@dustinedwards/site-api/frontmatter";
-import { LibraryInsert } from "~/components/media/library-insert";
+import { ImageField } from "capsomer/react/media-picker";
 import { featureImageFault } from "~/lib/seo-checks";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
@@ -183,84 +183,49 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
           </div>
         ) : null}
         {has("featureImage") ? (
-          <div className="cap-fm-field cap-image-field" data-wide="">
-            <span className="cap-field-label">Feature image</span>
-            <div className="cap-image-field-row">
-              <div className="cap-image-field-thumb">
-                {imageSrc ? (
-                  <img src={imageSrc} alt={values.featureImageAlt} />
-                ) : (
-                  <span className="cap-muted">No feature image</span>
-                )}
-              </div>
-              <div className="cap-image-field-controls">
-                {media ? (
-                  values.featureImage ? (
-                    <p className="cap-image-field-url cap-mono">{values.featureImage}</p>
-                  ) : null
-                ) : (
+          <div className="cap-fm-field" data-wide="">
+            <ImageField
+              label="Feature image"
+              value={values.featureImage}
+              src={imageSrc}
+              alt={values.featureImageAlt}
+              none="No feature image"
+              picker={media ? { ...media, words: PICK_WORDS } : undefined}
+              locked={locked}
+              onPick={(pick) =>
+                write({
+                  featureImage: pick.url,
+                  featureImageAlt: pick.alt,
+                  featureImageDecorative: false,
+                })
+              }
+              onRemove={() =>
+                write({ featureImage: "", featureImageAlt: "", featureImageDecorative: false })
+              }
+            >
+              {media ? null : (
+                <Field label="Image address" help="A path on the site, or a full https:// address.">
+                  <input {...typed(image, "featureImage")} type="text" />
+                </Field>
+              )}
+              {values.featureImage ? (
+                <>
                   <Field
-                    label="Image address"
-                    help="A path on the site, or a full https:// address."
+                    label="Alt text"
+                    help="What the image shows, for someone who cannot see it. Required unless it is only decoration."
+                    error={fault ? `${fault}.` : undefined}
                   >
-                    <input {...typed(image, "featureImage")} type="text" />
+                    <input {...typed(alt, "featureImageAlt")} type="text" />
                   </Field>
-                )}
-                {!locked ? (
-                  <div className="cap-cluster" data-gap="3">
-                    {media ? (
-                      <LibraryInsert
-                        media={media}
-                        words={{
-                          ...PICK_WORDS,
-                          label: values.featureImage ? "Choose another" : PICK_WORDS.label,
-                        }}
-                        variant="default"
-                        onPick={(pick) =>
-                          write({
-                            featureImage: pick.url,
-                            featureImageAlt: pick.alt,
-                            featureImageDecorative: false,
-                          })
-                        }
-                      />
-                    ) : null}
-                    {values.featureImage ? (
-                      <Button
-                        variant="quiet"
-                        size="sm"
-                        onClick={() =>
-                          write({
-                            featureImage: "",
-                            featureImageAlt: "",
-                            featureImageDecorative: false,
-                          })
-                        }
-                      >
-                        Remove
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
-                {values.featureImage ? (
-                  <>
-                    <Field
-                      label="Alt text"
-                      help="What the image shows, for someone who cannot see it. Required unless it is only decoration."
-                      error={fault ? `${fault}.` : undefined}
-                    >
-                      <input {...typed(alt, "featureImageAlt")} type="text" />
-                    </Field>
-                    <Check
-                      label="Only decoration (no alt text)"
-                      checked={values.featureImageDecorative}
-                      disabled={locked}
-                      onChange={(event) => write({ featureImageDecorative: event.target.checked })}
-                    />
-                  </>
-                ) : null}
-              </div>
-            </div>
+                  <Check
+                    label="Only decoration (no alt text)"
+                    checked={values.featureImageDecorative}
+                    disabled={locked}
+                    onChange={(event) => write({ featureImageDecorative: event.target.checked })}
+                  />
+                </>
+              ) : null}
+            </ImageField>
           </div>
         ) : null}
       </div>
