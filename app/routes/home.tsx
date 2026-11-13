@@ -13,7 +13,7 @@ import { Await, useSubmit } from "react-router";
 import { NeedsList, type NeedLinkProps } from "capsomer/react/attention-list";
 import { laterUntil } from "capsomer/behavior/time";
 import { useRouterRowForm } from "capsomer/react/router";
-import { Link } from "capsomer/react/link";
+import { Link, ButtonLink } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
@@ -151,13 +151,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         actions={
           hasProjects ? (
             <>
-              <Link to="/writing" className="cap-btn">
-                Writing
-              </Link>
+              <ButtonLink to="/writing">Writing</ButtonLink>
               {isOwner ? (
-                <Link to="/books/new" className="cap-btn" data-variant="primary">
+                <ButtonLink to="/books/new" variant="primary">
                   New book
-                </Link>
+                </ButtonLink>
               ) : null}
             </>
           ) : null

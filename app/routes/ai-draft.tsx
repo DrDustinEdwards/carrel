@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { redirect, useSearchParams } from "react-router";
-import { Link } from "capsomer/react/link";
+import { ButtonLink } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
@@ -97,12 +97,10 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
         }
         links={
           <>
-            <Link to={`${editor}/history?compare=ai&ai=${draft.id}`} className="cap-btn">
+            <ButtonLink to={`${editor}/history?compare=ai&ai=${draft.id}`}>
               Compare with my draft
-            </Link>
-            <Link to={editor} className="cap-btn">
-              Back to my draft
-            </Link>
+            </ButtonLink>
+            <ButtonLink to={editor}>Back to my draft</ButtonLink>
           </>
         }
       />

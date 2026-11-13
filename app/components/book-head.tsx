@@ -3,7 +3,7 @@
 // views of the same scenes (List, Outliner, Corkboard), each its own address, as a second row of links.
 
 import { Form, useNavigation } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, ButtonLink } from "capsomer/react/link";
 import { Button, ButtonGroup } from "capsomer/react/button";
 import { PageHead } from "capsomer/react/page-head";
 import { TabsNav } from "capsomer/react/tabs";
@@ -62,20 +62,11 @@ export function BookHead({
             {book.canPublish ? (
               book.exportReady ? (
                 <ButtonGroup label="Export">
-                  <a className="cap-btn" href={`${base}/export/epub`}>
-                    ePub
-                  </a>
-                  <a className="cap-btn" href={`${base}/export/docx`}>
-                    Word
-                  </a>
-                  <a
-                    className="cap-btn"
-                    href={`${base}/export/print`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <ButtonLink href={`${base}/export/epub`}>ePub</ButtonLink>
+                  <ButtonLink href={`${base}/export/docx`}>Word</ButtonLink>
+                  <ButtonLink href={`${base}/export/print`} newTab>
                     Print or PDF<span className="cap-sr-only"> (opens in a new tab)</span>
-                  </a>
+                  </ButtonLink>
                 </ButtonGroup>
               ) : (
                 <Button disabledReason="Export waits until every flag is fixed or dismissed.">
