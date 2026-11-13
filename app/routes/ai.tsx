@@ -17,10 +17,11 @@ import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
 
 import {
+  EFFORTS,
   FEATURES,
   apiKeyMissing,
   monthSpendMicros,
-  readAiModels,
+  readAiChoices,
   readAiSettings,
   saveAiSettings,
   usageThisMonth,
@@ -51,13 +52,20 @@ const MODELS = [
   { value: "standard", label: `Standard, ${MODEL_IDS.standard} (${price("standard")})` },
   { value: "deep", label: `Deep, ${MODEL_IDS.deep} (${price("deep")})` },
 ];
+const EFFORT_WORDS: Record<(typeof EFFORTS)[number], string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  xhigh: "Extra high",
+  max: "Max",
+};
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = getEnv(context);
   if (!getViewer(context).isOwner) throw new Response("Not found", { status: 404 });
-  const [settings, models, spent, usage] = await Promise.all([
+  const [settings, choices, spent, usage] = await Promise.all([
     readAiSettings(env.DB),
-    readAiModels(env.DB),
+    readAiChoices(env.DB),
     monthSpendMicros(env.DB),
     usageThisMonth(env.DB),
   ]);
@@ -71,10 +79,19 @@ export async function loader({ context }: Route.LoaderArgs) {
   return {
     sites: sites.map((p) => ({ value: p.slug, label: p.name })),
     settings,
-    models,
+    ...choices,
+    // Built here: EFFORTS lives in a server module the page's own code cannot import.
+    effortOptions: [
+      { value: "", label: "The job's own default" },
+      ...EFFORTS.map((e) => ({ value: e, label: EFFORT_WORDS[e] })),
+    ],
     spent,
     usage,
-    features: FEATURES.map((f) => ({ ...f })),
+    // Each job's note says what its own default is, so "The job's own default" is never a guess.
+    features: FEATURES.map((f) => ({
+      ...f,
+      note: `${f.note} Its own default: ${f.tier[0]!.toUpperCase()}${f.tier.slice(1)}, ${EFFORT_WORDS[f.effort].toLowerCase()} effort.`,
+    })),
     // What each engine can do right now, so a setting that cannot work says so.
     routineMissing: "missing" in routine,
     apiKeyMissing: apiKeyMissing(env),
@@ -122,7 +139,7 @@ export async function action({ request, context }: Route.ActionArgs) {
         : null;
     await saveAiSettings(env.DB, viewer, {
       ...current,
-      models: await readAiModels(env.DB),
+      ...(await readAiChoices(env.DB)),
       override,
     });
     return {
@@ -139,8 +156,18 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
-  const { sites, settings, models, spent, usage, features, routineMissing, apiKeyMissing } =
-    loaderData;
+  const {
+    sites,
+    settings,
+    models,
+    efforts,
+    effortOptions,
+    spent,
+    usage,
+    features,
+    routineMissing,
+    apiKeyMissing,
+  } = loaderData;
   const busy = useNavigation().state !== "idle";
   return (
     <div className="app-page">
@@ -172,6 +199,8 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
         models={models}
         jobs={features}
         modelOptions={MODELS}
+        efforts={efforts}
+        effortOptions={effortOptions}
         ready={{ subscription: !routineMissing, api: !apiKeyMissing }}
         readyNote={
           <>
@@ -183,9 +212,14 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
           </>
         }
         spentMicros={spent}
-        usage={usage.map((u) => ({ job: u.feature, calls: u.calls, micros: u.micros }))}
+        usage={usage.map((u) => ({
+          job: u.feature,
+          effort: u.effort,
+          calls: u.calls,
+          micros: u.micros,
+        }))}
         capHelp="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then. Saved with the table."
-        costNote="Costs are Anthropic's list prices times the tokens each call used. The subscription has no meter Carrel can read; claude.ai/settings/usage shows it."
+        costNote="Costs are Anthropic's list prices times the tokens each call used. A higher effort spends more tokens for the same job, so the spend is split by effort. The subscription has no meter Carrel can read; claude.ai/settings/usage shows it."
         Form={Form}
         pending={busy}
       />

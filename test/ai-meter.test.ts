@@ -12,7 +12,7 @@ import { resetDb, testEnv } from "./env";
 beforeEach(resetDb);
 
 it("PLANT: prompt size counts input, cache reads, and both five-minute and one-hour cache writes", async () => {
-  const options = meteredOptions(testEnv, "social");
+  const options = meteredOptions(testEnv, "social", "high");
   await options.onResult?.({
     model: "claude-opus-5-5",
     ok: true,
@@ -23,5 +23,5 @@ it("PLANT: prompt size counts input, cache reads, and both five-minute and one-h
     cacheWrite1h: 3000,
   } as Parameters<NonNullable<typeof options.onResult>>[0]);
   const rows = await drizzle(testEnv.DB).select().from(aiUsage);
-  expect(rows.map((r) => [r.promptSize, r.answerSize])).toEqual([[4300, 50]]);
+  expect(rows.map((r) => [r.promptSize, r.answerSize, r.effort])).toEqual([[4300, 50, "high"]]);
 });
