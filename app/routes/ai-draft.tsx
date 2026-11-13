@@ -27,6 +27,9 @@ import { checkAgainstPack, readVoicePack } from "~/lib/voice.server";
 
 import type { Route } from "./+types/ai-draft";
 import { wordCount } from "@drdustinedwards/site-helpers/text";
+import "capsomer/segmented.css";
+import "capsomer/editor-workspace.css";
+import "capsomer/inspector.css";
 
 export function meta() {
   return [{ title: "AI draft · Carrel" }];

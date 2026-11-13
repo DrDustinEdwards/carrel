@@ -33,6 +33,10 @@ import { can } from "~/lib/roles";
 import { waitingWork } from "~/lib/waiting.server";
 
 import type { Route } from "./+types/writing";
+import "capsomer/scope-chip.css";
+import "capsomer/publish-gate.css";
+import "capsomer/summary-list.css";
+import "capsomer/detail-panel.css";
 
 export function meta() {
   return [{ title: "Writing · Carrel" }];
