@@ -158,22 +158,6 @@
   max-width: 44rem;
 }
 
-/* A select and its button on one line (a role on People). The select keeps the width of its
-   longest choice, so the button never sits over it. */
-.app-inline {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-
-  & > :is(.cap-select-wrap, select) {
-    flex: 1 1 auto;
-    min-inline-size: 8.5rem;
-  }
-  & > .cap-btn {
-    flex: none;
-  }
-}
-
 /* The steps after adding a person: a long list inside an alert, kept readable. */
 .app-steps {
   display: grid;
@@ -524,10 +508,6 @@
   display: block;
   font-size: 12px;
   font-weight: 400;
-}
-
-.app-filter {
-  max-width: 32rem;
 }
 
 /* Desk's status tabs with counts, and the list toolbar. */
