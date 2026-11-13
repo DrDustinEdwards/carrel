@@ -40,6 +40,10 @@ import type { Route } from "./+types/book";
 import { plural } from "@drdustinedwards/site-helpers/text";
 
 import { errorMessage } from "@dustinedwards/site-runtime/log";
+import "capsomer/label-color-list.css";
+import "capsomer/stat-tile.css";
+import "capsomer/enarratio.css";
+import "capsomer/inline-add-form.css";
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.head.name} · Carrel` : "Carrel" }];
 }

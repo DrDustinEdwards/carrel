@@ -23,6 +23,8 @@ import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.chapter";
 import { plural } from "@drdustinedwards/site-helpers/text";
+import "capsomer/prose.css";
+import "capsomer/inline-add-form.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.chapter.title} · ${data.project.name} · Carrel` : "Carrel" }];

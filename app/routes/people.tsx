@@ -42,6 +42,7 @@ import { isMemberRole } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/people";
+import "capsomer/role-grid.css";
 
 export function meta() {
   return [{ title: "People · Carrel" }];

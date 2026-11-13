@@ -17,6 +17,8 @@ import {
   type BinderNode,
   type Rename,
 } from "~/lib/writing/binder";
+import "capsomer/tree.css";
+import "capsomer/sortable-list.css";
 
 type ReorderAnswer = { reorder?: { ok: true; renames: Rename[] } | { ok: false; message: string } };
 
