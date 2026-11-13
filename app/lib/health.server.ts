@@ -341,7 +341,7 @@ async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
     return {
       name: "google-drive-file",
       ok: true,
-      detail: "Not connected: no one has connected Google for Send to Docs yet.",
+      detail: "Not connected: no one has connected Google for new Docs yet.",
     };
   try {
     for (const g of grants) {

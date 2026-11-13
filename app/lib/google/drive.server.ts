@@ -3,8 +3,12 @@
 // - The manuscripts index, through the service account: the shared folder's files and their
 //   metadata (name, type, dates, owners and last editor), refreshed so files added later appear.
 //   Manuscript text never enters Carrel; search asks Drive's own full-text search each time.
-// - Send to Docs and Import, through Dustin's drive.file grant: a post's body goes out as a new Doc,
-//   and comes back as a new draft, never over one.
+// - New Docs, through Dustin's drive.file grant: Send to Docs (a post's body goes out as a new Doc, and
+//   Import brings it back as a new draft, never over one) and carrel_create_google_doc. A service account
+//   has no Drive storage of its own, so it cannot own a new file; Dustin's grant can. drive.file cannot
+//   add a file to a folder Carrel did not make, such as the manuscripts folder, so every new Doc goes in
+//   Carrel's own folder, DOCS_FOLDER. Dustin moves that folder into the manuscripts folder once, and the
+//   index then lists each new Doc.
 
 import { notInList } from "@dustinedwards/site-runtime/d1";
 import { and, asc, desc, eq } from "drizzle-orm";
@@ -222,6 +226,85 @@ function requireSend(project: SiteProject) {
   if (!can(project.role, "send_external")) throw new Response("Forbidden", { status: 403 });
 }
 
+/** Carrel's own folder for new Docs. Carrel makes it, so drive.file reaches it wherever Dustin moves it. */
+export const DOCS_FOLDER = "From Carrel";
+
+type NewDoc = { ok: true; docId: string; url: string } | { ok: false; message: string };
+
+/** Carrel's folder: found by name among the files drive.file reaches (only Carrel's own), or made once. */
+async function docsFolder(token: string, fetcher: Fetch): Promise<string | null> {
+  const auth = { Authorization: `Bearer ${token}` };
+  const q = `name = ${quote(DOCS_FOLDER)} and mimeType = ${quote(FOLDER)} and trashed = false`;
+  const found = await fetcher(`${DRIVE}?${new URLSearchParams({ q, fields: "files(id)" })}`, {
+    headers: auth,
+  });
+  if (!found.ok) return null;
+  const id = ((await found.json()) as { files: { id: string }[] }).files[0]?.id;
+  if (id) return id;
+  const made = await fetcher(`${DRIVE}?fields=id`, {
+    method: "POST",
+    headers: { ...auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ name: DOCS_FOLDER, mimeType: FOLDER }),
+  });
+  return made.ok ? ((await made.json()) as { id: string }).id : null;
+}
+
+/** A new Google Doc from Markdown, which Drive converts, in Carrel's folder in Dustin's Drive. */
+async function createDoc(
+  env: Env,
+  viewer: Viewer,
+  name: string,
+  markdown: string,
+  fetcher: Fetch,
+): Promise<NewDoc> {
+  const token = await userAccessToken(env, viewer.id, fetcher);
+  const folder = await docsFolder(token, fetcher);
+  if (!folder)
+    return { ok: false, message: `Google Drive did not find or make the ${DOCS_FOLDER} folder.` };
+  const boundary = `carrel-${crypto.randomUUID()}`;
+  const multipart = [
+    `--${boundary}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    JSON.stringify({ name, mimeType: "application/vnd.google-apps.document", parents: [folder] }),
+    `--${boundary}`,
+    "Content-Type: text/markdown; charset=UTF-8",
+    "",
+    markdown,
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+  const res = await fetcher(`${UPLOAD}?uploadType=multipart&fields=id,webViewLink`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`,
+    },
+    body: multipart,
+  });
+  if (!res.ok)
+    return { ok: false, message: `Google Docs did not accept the text (${res.status}).` };
+  const created = (await res.json()) as { id: string; webViewLink?: string };
+  return {
+    ok: true,
+    docId: created.id,
+    url: created.webViewLink ?? `https://docs.google.com/document/d/${created.id}/edit`,
+  };
+}
+
+/** A new Doc that Dustin asked for, from an AI session or the Desk: his Drive is his alone. */
+export async function newGoogleDoc(
+  env: Env,
+  viewer: Viewer,
+  doc: { title: string; markdown: string },
+  fetcher: Fetch = timedFetch,
+): Promise<NewDoc> {
+  requireOwner(viewer);
+  const title = doc.title.trim();
+  if (!title) return { ok: false, message: "A new Doc needs a title." };
+  return createDoc(env, viewer, title, normalizeNewlines(doc.markdown), fetcher);
+}
+
 /**
  * Copies a post into a new Google Doc in Dustin's Drive: his working draft if he has one, else the
  * site's text. Only the body goes; the frontmatter stays in Carrel for Import to put back.
@@ -241,44 +324,17 @@ export async function sendToDocs(
   const { frontmatter, body } = splitFrontmatter(source);
   const title = /^title:\s*"?(.*?)"?\s*$/m.exec(frontmatter)?.[1] || doc?.title || itemId;
 
-  const token = await userAccessToken(env, viewer.id, fetcher);
-  const boundary = `carrel-${crypto.randomUUID()}`;
-  const multipart = [
-    `--${boundary}`,
-    "Content-Type: application/json; charset=UTF-8",
-    "",
-    JSON.stringify({
-      name: `${title} (from Carrel)`,
-      mimeType: "application/vnd.google-apps.document",
-    }),
-    `--${boundary}`,
-    "Content-Type: text/markdown; charset=UTF-8",
-    "",
-    body,
-    `--${boundary}--`,
-    "",
-  ].join("\r\n");
-  const res = await fetcher(`${UPLOAD}?uploadType=multipart&fields=id,webViewLink`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": `multipart/related; boundary=${boundary}`,
-    },
-    body: multipart,
-  });
-  if (!res.ok)
-    return { ok: false as const, message: `Google Docs did not accept the post (${res.status}).` };
-  const created = (await res.json()) as { id: string; webViewLink?: string };
-  const url = created.webViewLink ?? `https://docs.google.com/document/d/${created.id}/edit`;
+  const created = await createDoc(env, viewer, `${title} (from Carrel)`, body, fetcher);
+  if (!created.ok) return created;
   await drizzle(env.DB).insert(sentDocs).values({
     projectId: project.id,
     itemId,
     personId: viewer.id,
-    docId: created.id,
-    docUrl: url,
+    docId: created.docId,
+    docUrl: created.url,
     frontmatter,
   });
-  return { ok: true as const, docId: created.id, url };
+  return { ok: true as const, docId: created.docId, url: created.url };
 }
 
 export async function lastSentDoc(db: D1Database, project: SiteProject, itemId: string) {

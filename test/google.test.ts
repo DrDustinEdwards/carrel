@@ -7,8 +7,10 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { finishAuth, oauthConnection, startAuth } from "~/lib/google/oauth.server";
 import {
+  DOCS_FOLDER,
   importFromDocs,
   listManuscripts,
+  newGoogleDoc,
   refreshManuscripts,
   searchManuscripts,
   sendToDocs,
@@ -413,7 +415,37 @@ describe("Send to Docs and Import", () => {
     expect(google.docs.get("doc1")).toEqual({
       name: "Post one (from Carrel)",
       content: "The body, with *emphasis*.\n",
+      parent: "folder1",
     });
+  });
+
+  it("puts every new Doc in Carrel's own folder, made once and found after", async () => {
+    const { owner } = await seeded();
+    const first = await newGoogleDoc(
+      env,
+      owner,
+      { title: "Notes", markdown: "# Aims\r\n" },
+      both(),
+    );
+    const second = await newGoogleDoc(env, owner, { title: "More", markdown: "" }, both());
+    expect(first).toMatchObject({ ok: true, docId: "doc1" });
+    expect(second).toMatchObject({ ok: true, docId: "doc2" });
+    expect(google.userFolders).toEqual([{ id: "folder1", name: DOCS_FOLDER }]);
+    expect(google.docs.get("doc1")).toEqual({
+      name: "Notes",
+      content: "# Aims\n",
+      parent: "folder1",
+    });
+    expect(google.docs.get("doc2")?.parent).toBe("folder1");
+  });
+
+  it("PLANT: only the Owner makes a new Doc", async () => {
+    await seeded();
+    const editor = await viewerFor("editor@test.invalid");
+    await expect(
+      newGoogleDoc(env, editor, { title: "Notes", markdown: "x" }, both()),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(google.docs.size).toBe(0);
   });
 
   it("imports the Doc's text as a new draft under the post's frontmatter, leaving the site alone", async () => {
@@ -467,7 +499,7 @@ describe("Send to Docs and Import", () => {
     const owner = await viewerFor("owner@test.invalid");
     const project = await requireSiteProject(testEnv.DB, owner, SLUG, "read");
     await expect(sendToDocs(env, project, owner, "post-one", both())).rejects.toThrow(
-      "Google is not connected for Send to Docs yet.",
+      "Google is not connected for new Docs yet.",
     );
     expect(google.docs.size).toBe(0);
   });

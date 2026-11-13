@@ -1,5 +1,5 @@
 // Dustin's own Google grant (design decision 6): drive.file only, which reaches only files Carrel
-// itself created or he opened with it, used for Send to Docs and Import. The refresh token is kept in
+// itself created or he opened with it, used for new Docs (Send to Docs, carrel_create_google_doc) and Import. The refresh token is kept in
 // D1 sealed with site-runtime's secret-box under GOOGLE_TOKEN_KEY from `wrangler secret`, so the
 // database alone cannot use it. The sealed value names its key, so the key rotates (secret-box's
 // keyringFromEnv: GOOGLE_TOKEN_KEY_ID names the active key, GOOGLE_TOKEN_KEYS_OLD holds the old ones).
@@ -33,7 +33,7 @@ export async function oauthConnection(env: Env): Promise<OauthConnection> {
     return {
       state: "not-configured",
       detail:
-        "Google sign-in for Send to Docs is not set up yet (GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_TOKEN_KEY).",
+        "Google sign-in for new Docs is not set up yet (GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_TOKEN_KEY).",
     };
   }
   if (!clientId || !clientSecret)
@@ -211,7 +211,7 @@ export async function userAccessToken(
   const row = await d.select().from(googleTokens).where(eq(googleTokens.personId, personId)).get();
   if (!row)
     throw new GoogleNotConnected(
-      "Google is not connected for Send to Docs yet. Connect it from the home page.",
+      "Google is not connected for new Docs yet. Connect it on the Manuscripts page.",
     );
   const refresh = await open(ring, row.refreshToken);
   const res = await fetcher(GOOGLE_TOKEN_URL, {
@@ -226,7 +226,7 @@ export async function userAccessToken(
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
-    const message = `Google refused the drive.file grant (${res.status} ${body.error ?? ""}). Connect Google again from the home page.`;
+    const message = `Google refused the drive.file grant (${res.status} ${body.error ?? ""}). Connect Google again on the Manuscripts page.`;
     await d
       .update(googleTokens)
       .set({ lastError: message })

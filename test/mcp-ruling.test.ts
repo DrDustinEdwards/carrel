@@ -60,6 +60,7 @@ describe("names and hints", () => {
       "carrel_save_book_draft",
       "carrel_add_book_finding",
       "carrel_draft_social_post",
+      "carrel_create_google_doc",
     ];
     for (const tool of tools)
       expect(hints[tool.name]!.readOnlyHint, tool.name).toBe(!writes.includes(tool.name));
@@ -83,10 +84,18 @@ describe("names and hints", () => {
       idempotentHint: true,
       openWorldHint: true,
     });
+    // A new Doc lands in Dustin's Google Drive: open world, and it changes nothing that exists.
+    expect(hints.carrel_create_google_doc).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
     // Nothing else destroys or reaches past Carrel and the site's drafts.
     for (const tool of tools.filter(
       (t) =>
         ![
+          "carrel_create_google_doc",
           "carrel_publish_item",
           "carrel_delete_media",
           "carrel_import_media",

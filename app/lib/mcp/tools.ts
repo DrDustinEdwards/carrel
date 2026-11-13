@@ -40,6 +40,8 @@ import {
   saveBookAiDraft,
 } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
+import { DOCS_FOLDER, newGoogleDoc } from "~/lib/google/drive.server";
+import { GoogleNotConnected } from "~/lib/google/service-account.server";
 import { keyMomentProblems } from "~/lib/transcript";
 import { readMentions, runIntent as runMentionsIntent } from "~/lib/mentions.server";
 import {
@@ -140,6 +142,7 @@ const MAX = {
   excerpt: 1000,
   note: 500,
   path: 200,
+  title: 200,
   sources: 20,
 } as const;
 
@@ -1443,6 +1446,47 @@ export const TOOLS: Tool[] = [
       };
     },
   },
+  // ---------- Google Docs (app/lib/google/drive.server.ts)
+
+  {
+    name: "carrel_create_google_doc",
+    title: "Create a Google Doc",
+    scope: "write",
+    description: `Creates a new Google Doc in Dustin's Google Drive, in Carrel's "From Carrel" folder, from Markdown: headings, lists, links, emphasis and tables become Docs formatting. Only when Dustin asked for a new Doc in this conversation, and with the text he asked for: his own words as he gave them, or a draft he asked you to write. It never changes a Doc that exists. The answer is the new Doc's link. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", minLength: 1, description: "The Doc's name in Drive." },
+        text: {
+          type: "string",
+          description: "The Doc's text in Markdown. An empty string makes an empty Doc.",
+        },
+      },
+      required: ["title", "text"],
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+    outputSchema: shape({ created: YES, docId: TEXT, url: TEXT, folder: TEXT }),
+    outside: false,
+    run: async (args, ctx) => {
+      if (typeof args.text !== "string") throw new AiRefusal("text must be a string.");
+      if (args.text.length > MAX.source)
+        throw new AiRefusal(`text is longer than ${MAX.source} characters.`);
+      const created = await newGoogleDoc(
+        ctx.env,
+        ctx.session.viewer,
+        { title: str(args, "title", { max: MAX.title }), markdown: args.text },
+        ctx.deps.fetcher,
+      );
+      if (!created.ok) throw new AiRefusal(created.message);
+      return { created: true, docId: created.docId, url: created.url, folder: DOCS_FOLDER };
+    },
+  },
 ];
 
 /**
@@ -1473,6 +1517,7 @@ export async function runTool(
           : "Forbidden: this person's role does not allow that.";
     else if (error instanceof SiteNotConnected)
       message = `The site is not connected: ${error.detail}`;
+    else if (error instanceof GoogleNotConnected) message = error.detail;
     else if (error instanceof SiteApiError && error.body)
       message = `The site refused: ${error.body.message}`;
     else {

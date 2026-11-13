@@ -86,7 +86,9 @@ export function fakeGoogle(opts: {
   scRows?: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[];
 }) {
   const files = [...(opts.files ?? [])];
-  const docs = new Map<string, { name: string; content: string }>();
+  const docs = new Map<string, { name: string; content: string; parent?: string }>();
+  /** Folders Carrel made through Dustin's grant: the only ones drive.file lets it see. */
+  const userFolders: { id: string; name: string }[] = [];
   const requests: string[] = [];
   const assertions: Record<string, unknown>[] = [];
   const state = {
@@ -153,6 +155,29 @@ export function fakeGoogle(opts: {
     if (
       url.origin === "https://www.googleapis.com" &&
       url.pathname === "/drive/v3/files" &&
+      auth === `Bearer ${USER_TOKEN}`
+    ) {
+      if (request.method === "POST") {
+        const meta = (await request.json()) as { name: string; mimeType: string };
+        if (meta.mimeType !== "application/vnd.google-apps.folder")
+          return json(400, { error: "expected a folder" });
+        const folder = { id: `folder${userFolders.length + 1}`, name: meta.name };
+        userFolders.push(folder);
+        return json(200, { id: folder.id });
+      }
+      const name =
+        /^name = '((?:[^'\\]|\\.)*)' and mimeType = 'application\/vnd\.google-apps\.folder' and trashed = false$/.exec(
+          url.searchParams.get("q") ?? "",
+        )?.[1];
+      if (name === undefined) return json(400, { error: "unexpected query" });
+      return json(200, {
+        files: userFolders.filter((f) => f.name === name).map((f) => ({ id: f.id })),
+      });
+    }
+
+    if (
+      url.origin === "https://www.googleapis.com" &&
+      url.pathname === "/drive/v3/files" &&
       request.method === "GET"
     ) {
       if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
@@ -199,12 +224,18 @@ export function fakeGoogle(opts: {
         .split(`--${boundary}`)
         .slice(1, -1)
         .map((p) => p.replace(/^\r\n/, "").split("\r\n\r\n"));
-      const meta = JSON.parse(parts[0]![1]!.trim()) as { name: string; mimeType: string };
+      const meta = JSON.parse(parts[0]![1]!.trim()) as {
+        name: string;
+        mimeType: string;
+        parents?: string[];
+      };
+      if (!meta.parents?.every((id) => userFolders.some((f) => f.id === id)))
+        return json(404, { error: { code: 404, message: "File not found." } });
       if (meta.mimeType !== "application/vnd.google-apps.document")
         return json(400, { error: "expected a Doc" });
       const content = parts[1]!.slice(1).join("\r\n\r\n").replace(/\r\n$/, "");
       const id = `doc${docs.size + 1}`;
-      docs.set(id, { name: meta.name, content });
+      docs.set(id, { name: meta.name, content, parent: meta.parents?.[0] });
       return json(200, { id, webViewLink: `https://docs.google.com/document/d/${id}/edit` });
     }
 
@@ -234,5 +265,5 @@ export function fakeGoogle(opts: {
     throw new Error(`the tests reach only the fake Google, not ${request.method} ${request.url}`);
   }) as typeof globalThis.fetch;
 
-  return { fetch, files, docs, requests, assertions, state };
+  return { fetch, files, docs, userFolders, requests, assertions, state };
 }
