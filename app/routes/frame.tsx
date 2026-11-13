@@ -3,6 +3,7 @@
 // still gets Home, and only the Owner is offered the Owner's views.
 
 import { isRouteErrorResponse, Outlet, useRouteError, useRouteLoaderData } from "react-router";
+import { ButtonLink } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
 
 import { Frame, type FrameData } from "~/components/frame";
@@ -55,11 +56,7 @@ export function ErrorBoundary() {
         <Empty
           kind="failed"
           title={status ? `${status}: ${title}` : title}
-          action={
-            <a className="cap-btn" href="/">
-              Go to Home
-            </a>
-          }
+          action={<ButtonLink href="/">Go to Home</ButtonLink>}
         >
           {detail}
         </Empty>

@@ -101,20 +101,20 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
           </div>
         ) : null}
         {has("image") ? (
-          <div className="cap-fm-field app-share-image" data-wide="">
+          <div className="cap-fm-field cap-image-field" data-wide="">
             <span className="cap-field-label">Share image</span>
-            <div className="app-share-image-row">
-              <div className="app-share-image-thumb">
+            <div className="cap-image-field-row">
+              <div className="cap-image-field-thumb">
                 {imageSrc ? (
                   <img src={imageSrc} alt={values.imageAlt} />
                 ) : (
                   <span className="cap-muted">No share image: the site's default is used</span>
                 )}
               </div>
-              <div className="cap-stack" data-gap="4">
+              <div className="cap-image-field-controls">
                 {media ? (
                   values.image ? (
-                    <p className="app-share-image-url cap-mono">{values.image}</p>
+                    <p className="cap-image-field-url cap-mono">{values.image}</p>
                   ) : null
                 ) : (
                   <Field
