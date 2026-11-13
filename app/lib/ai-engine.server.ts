@@ -29,6 +29,7 @@ import { desc, eq, gte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { aiSettings, aiUsage } from "~/db/schema";
+import { readDocsEmail } from "~/lib/google/docs.server";
 import { saveAiDraft } from "~/lib/ai.server";
 import { placeChapters, parseTranscript } from "~/lib/transcript";
 import { readDoc, readDraft } from "~/lib/content.server";
@@ -165,8 +166,13 @@ export async function saveAiSettings(
 ): Promise<EngineSettings> {
   if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
   const settings = normalizeSettings(input) as EngineSettings;
-  // The model per job rides in the same row; site-runtime's settings do not know it.
-  const json = JSON.stringify({ ...settings, models: modelsOf(input) });
+  // The model per job rides in the same row; site-runtime's settings do not know it. So does the Docs email setting
+  // (docs.server.ts), which is saved on its own page and kept as it is here.
+  const json = JSON.stringify({
+    ...settings,
+    models: modelsOf(input),
+    docsEmail: await readDocsEmail(db),
+  });
   await drizzle(db)
     .insert(aiSettings)
     .values({ id: 1, json })
