@@ -524,7 +524,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
             <>
               {data.canEdit ? (
                 <Panel title="This file" src={data.version ? "In Git" : "Only in Carrel so far"}>
-                  <div className="app-stack" data-tight>
+                  <div className="cap-stack" data-gap="4">
                     <p role="status" className="app-savestate">
                       {saveState}
                     </p>
@@ -542,7 +542,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         ]}
                       />
                     ) : null}
-                    <div className="app-actions">
+                    <div className="cap-cluster" data-gap="3">
                       <Button
                         variant="primary"
                         pending={busy}
@@ -601,9 +601,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Checks",
               count: openFlags,
               content: (
-                <div className="app-stack">
+                <div className="cap-stack" data-gap="6">
                   <Panel title="Flags" count={openFlags} src="From the last save" id="flags">
-                    <div className="app-stack" data-tight>
+                    <div className="cap-stack" data-gap="4">
                       <p className="cap-muted app-note">
                         A flag never stops a save; it holds export until it is fixed or the Owner
                         dismisses it.
@@ -625,7 +625,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         </RowList>
                       )}
                       {checked ? (
-                        <div role="status" className="app-stack" data-tight>
+                        <div role="status" className="cap-stack" data-gap="4">
                           <h3 className="app-subhead">This text, checked now</h3>
                           {checked.length === 0 ? (
                             <p>Nothing flagged.</p>
@@ -651,7 +651,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       count={data.aiDrafts.length}
                       src="None has touched the text or Git"
                     >
-                      <div className="app-stack" data-tight>
+                      <div className="cap-stack" data-gap="4">
                         {data.aiDrafts.map((d) => (
                           <Disclosure
                             key={d.id}
@@ -666,7 +666,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           >
                             {d.note ? <p>{d.note}</p> : null}
                             <p className="app-bible-body">{d.source}</p>
-                            <div className="app-actions">
+                            <div className="cap-cluster" data-gap="3">
                               <Link
                                 className="cap-btn"
                                 data-size="sm"
@@ -698,13 +698,13 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Bible",
               content:
                 data.kind !== "scene" ? null : (
-                  <div className="app-stack">
+                  <div className="cap-stack" data-gap="6">
                     {data.kind === "scene" ? (
                       <Panel title="From the bible" count={data.bible.length}>
                         {data.bible.length === 0 ? (
                           <p className="cap-muted">No entries match this scene's header.</p>
                         ) : (
-                          <div className="app-stack" data-tight>
+                          <div className="cap-stack" data-gap="4">
                             {data.bible.map((b) => (
                               <Disclosure
                                 key={b.path}

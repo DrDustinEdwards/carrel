@@ -210,7 +210,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
   const hydrated = useHydrated();
   const navigate = useNavigate();
   const person = (
-    <Form method="post" action="/people" className="app-form">
+    <Form method="post" action="/people" className="cap-stack" data-gap="5">
       <div className="cap-fields">
         <Field label="Email" required>
           <input className="cap-input" type="email" name="email" required autoComplete="off" />
@@ -237,7 +237,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
           />
         </div>
       </fieldset>
-      <div className="app-actions">
+      <div className="cap-cluster" data-gap="3">
         <Button type="submit" name="intent" value="add" variant="primary" pending={busy}>
           Add
         </Button>
@@ -245,7 +245,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
     </Form>
   );
   const agent = (
-    <Form method="post" action="/people" className="app-form">
+    <Form method="post" action="/people" className="cap-stack" data-gap="5">
       <p className="cap-muted app-note">
         For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never
         as you.
@@ -265,7 +265,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
           <input className="cap-input" type="text" name="label" autoComplete="off" />
         </Field>
       </div>
-      <div className="app-actions">
+      <div className="cap-cluster" data-gap="3">
         <Button type="submit" name="intent" value="add-agent" variant="primary" pending={busy}>
           Add agent
         </Button>
