@@ -3,36 +3,43 @@
 // with comments and suggestions; the site's own render in a sandboxed preview; and the writes the
 // viewer's role allows, each sending the room's text through site-api's version check.
 
-import { AiWriteButtons } from "~/components/ai-write-buttons";
+import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useFetcher } from "react-router";
-import { useHydrated } from "~/lib/hydrated";
+import { useFetcher, useSearchParams } from "react-router";
+import { useHydrated } from "capsomer/react/hooks";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import { PublishGate, type GateCheck, type GateSite } from "capsomer/react/publish-gate";
-import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { exact, parse } from "capsomer/behavior/time";
 
 import { FlagsPanel } from "~/components/editor/flags-panel";
-import { commentsTab, Inspector } from "~/components/editor/inspector";
-import { useEditorLayout } from "~/components/editor/layout";
-import { ScheduleDialog } from "~/components/editor/schedule-dialog";
-import { FrontmatterFields } from "~/components/editor/frontmatter-fields";
-import { MergeView } from "~/components/editor/merge-view";
+import { Inspector } from "capsomer/react/inspector";
+import { commentsTab } from "~/components/editor/comments-tab";
+import {
+  EditorWorkspace,
+  LayoutSwitch,
+  PreviewPane,
+  previewUrl,
+  usePausedStamp,
+  useSaveShortcut,
+  useTypingRecede,
+  useWorkspaceLayout,
+} from "capsomer/react/editor-workspace";
+import { ScheduleDialog } from "capsomer/react/schedule-dialog";
+import { ItemDetails } from "~/components/editor/item-details";
 import { PostFields } from "~/components/editor/post-fields";
 import { SearchFields } from "~/components/editor/search-fields";
 import { SearchSharingPanel } from "~/components/editor/search-sharing";
 import { useRoomEditing } from "~/components/editor/room-editing";
-import { useSaveShortcut } from "~/components/editor/save-keys";
 import { HistoryPanel } from "~/components/history/history-panel";
 import { WritingSurface } from "~/components/editor/writing-surface";
-import { useTypingRecede } from "~/components/editor/typing";
-import { RouterLink } from "~/components/frame";
+import { routerRenderLink } from "capsomer/react/link";
 import { SiteBinder } from "~/components/writing/binder";
 import {
   dismissItemFinding,
@@ -54,8 +61,13 @@ import {
 } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { listRevisions, readRevision } from "~/lib/history.server";
-import { choicesOf, merged, type Pick } from "~/lib/merge";
-import { mergePlan } from "~/lib/merge.server";
+import {
+  choicesOf,
+  merged,
+  mergePlan,
+  type MergePick as Pick,
+} from "capsomer/behavior/draft-compare";
+import { DraftMerge, mergeCountsText } from "capsomer/react/draft-compare";
 import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { type PostField, type SearchField } from "@dustinedwards/site-api/frontmatter";
@@ -70,7 +82,7 @@ import { searchItems, sitePaths } from "~/lib/index.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { transitionsFor } from "capsomer/publish-transition";
 import { PageHead } from "capsomer/react/page-head";
-import type { RoomViewer } from "~/lib/editor/room-protocol";
+import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 import { can } from "~/lib/roles";
 import {
   mergeRoom,
@@ -86,15 +98,27 @@ import {
 } from "~/lib/rooms.server";
 import type { ChartFinding } from "~/lib/chart-check.client";
 import { featureImageFault, imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
-import { figureMarkup } from "~/lib/site-markdown";
+import { siteFigureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/editor";
 
 /** The editor shows the newest revisions; the history page lists them all. */
 const HISTORY_SHOWN = 8;
+
+/** The merge view's words: the room's text is Carrel's, the newer copy is the site's. */
+const MERGE_LABELS = {
+  mine: "In Carrel",
+  theirs: "On the site",
+  keepMine: "Keep Carrel's",
+  keepTheirs: "Take the site's",
+  notInMine: "Not in Carrel's text",
+  notInTheirs: "Not on the site",
+  withoutBase: "Carrel could not read the version both started from, so each starts on Carrel's.",
+};
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.title || data.itemId} · Carrel` : "Carrel" }];
@@ -170,8 +194,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const roomViewer: RoomViewer = {
     id: viewer.id,
     name: viewer.name || viewer.email,
-    role: project.role,
     access: can(project.role, "edit") ? "edit" : "suggest",
+    ...(project.role === "owner" ? { deletesAny: true } : {}),
   };
 
   // The site's revisions of this item, for the History panel. A site that does not answer leaves the
@@ -205,7 +229,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   // update to a live post only on a site that keeps it live meanwhile. A site that does not answer
   // leaves the editor without them rather than failing the page.
   let mediaAccept: string | null = null;
-  let scheduledUpdates = false;
+  let canScheduleUpdate = false;
   // The search fields the site renders (site-api v0.17.0), one box each in the editor.
   let searchFields: SearchField[] = [];
   // The post fields the site renders (site-api v0.17.0, v0.22.0): only those get a box.
@@ -226,7 +250,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
         can(project.role, "edit") && capabilities.media
           ? (capabilities.mediaUpload?.types.join(",") ?? null)
           : null;
-      scheduledUpdates = capabilities.scheduledUpdates === true;
+      canScheduleUpdate = capabilities.scheduledUpdates === true;
       searchFields = capabilities.searchFields ?? [];
       postFields = capabilities.postFields ?? [];
     } catch {
@@ -259,7 +283,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     canPublish,
     // Dismissing a flag clears it for publish on any post, so it stays the Owner's.
     canDismiss: can(project.role, "publish"),
-    scheduledUpdates,
+    canScheduleUpdate,
     searchFields,
     postFields,
     pendingUpdate,
@@ -376,6 +400,7 @@ export async function action({
 
   switch (intent) {
     case "discard": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       // Everyone in the room goes back to the site's text.
       const current = await readDoc(env, project, itemId);
       if (!current)
@@ -387,6 +412,7 @@ export async function action({
       return { intent, discarded: true };
     }
     case "use-own-draft": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       // The person's own draft from before live editing, put in the room for everyone.
       const own = await readOwnDraft(env.DB, project, viewer, itemId);
       if (!own) throw new Response("That draft is gone.", { status: 404 });
@@ -440,9 +466,11 @@ export async function action({
         : moved;
     }
     case "drop-own-draft":
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       await discardDraft(env.DB, project, viewer, itemId);
       return { intent: "discard", discarded: true };
     case "dismiss-flag": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       const id = Number(form.get("flag"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       await dismissItemFinding(env.DB, project, viewer, itemId, id);
@@ -450,6 +478,9 @@ export async function action({
     }
     case "send-to-docs":
     case "import-from-docs": {
+      if (intent === "import-from-docs") {
+        if (!confirmationSatisfied(form)) throw confirmationRequired();
+      }
       try {
         if (intent === "send-to-docs") {
           const sent = await sendToDocs(env, project, viewer, itemId);
@@ -530,16 +561,27 @@ export default function EditorRoute({ loaderData }: Route.ComponentProps) {
 }
 
 function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
+  // `?tab=checks` opens the inspector on that tab (a link from Home's flags lands on the checks).
+  const [params] = useSearchParams();
   // A time in a string prop is in UTC until hydrated, as Capsomer's Time draws one.
   const hydrated = useHydrated();
   const exactTime = (iso: string) => exact(parse(iso), hydrated ? undefined : "UTC");
-  const [layout, chooseLayout] = useEditorLayout();
+  const [layout, chooseLayout] = useWorkspaceLayout("carrel:editor-layout");
   const [asking, setAsking] = useState<null | {
-    kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule";
+    kind:
+      | "discard"
+      | "drop-draft"
+      | "put-draft"
+      | "import"
+      | "schedule"
+      | "dismiss"
+      | "save-live"
+      | "unschedule";
     flag?: number;
     opener: HTMLElement | null;
   }>(null);
   const writer = useFetcher<ActionResult>();
+  const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
   useTypingRecede();
 
@@ -548,7 +590,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     path: data.room?.path ?? "",
     initial: data.source,
     unsaved: data.unsaved,
-    viewer: data.room?.viewer ?? { id: 0, name: "", role: "reader", access: "suggest" },
+    viewer: data.room?.viewer ?? { id: 0, name: "", access: "suggest" },
     names: data.room?.names ?? {},
     hideFrontMatter: true,
   });
@@ -573,14 +615,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const outcome = writer.data?.intent === "write" ? writer.data.outcome : null;
 
   // The preview reads the room's copy, which the room keeps a second behind the typing.
-  const [previewAt, setPreviewAt] = useState(data.baseVersion ?? "");
-  useEffect(() => {
-    const timer = window.setTimeout(
-      () => setPreviewAt(String(source.length) + ":" + Date.now().toString(36)),
-      2000,
-    );
-    return () => window.clearTimeout(timer);
-  }, [source]);
+  const previewAt = usePausedStamp(source, 2000, data.baseVersion ?? "");
 
   const waiting = useRef<((result: ActionResult) => void) | null>(null);
   const viaGate = useRef(false);
@@ -652,7 +687,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           : "";
   // Absolute, not relative: from /p/x/e/item a bare "preview" would resolve to /p/x/e/preview.
   const previewBase = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview`;
-  const previewSrc = `${previewBase}?at=${encodeURIComponent(previewAt)}`;
+  const previewSrc = previewUrl(previewBase, previewAt);
   const failure = outcome && !outcome.ok && !viaGate.current ? outcome : null;
   const google = writer.data?.intent === "google" && !busy ? writer.data : null;
 
@@ -790,7 +825,15 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
   const historyPath = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/history`;
   const ask = (
-    kind: "discard" | "import" | "schedule" | "dismiss" | "save-live" | "unschedule",
+    kind:
+      | "discard"
+      | "drop-draft"
+      | "put-draft"
+      | "import"
+      | "schedule"
+      | "dismiss"
+      | "save-live"
+      | "unschedule",
     opener: HTMLElement | null,
     flag?: number,
   ) => setAsking({ kind, opener, flag });
@@ -801,10 +844,14 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     else void send("save");
   }
 
+  // Scheduling on a live post schedules an update; the live post stays until then.
+  const scheduleUpdate = data.status === "published";
+  const pendingAt = data.pendingUpdate?.publishAt ?? null;
+
   return (
     <div className="app-page app-editor" data-layout={layout}>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: data.project.name, href: `/p/${data.project.slug}` },
           { label: kindWord(data.kind) },
@@ -824,23 +871,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             {data.path ? <span className="cap-mono">{data.path}</span> : null}
           </>
         }
-        actions={
-          <Segmented
-            legend="Layout"
-            hideLegend
-            size="sm"
-            value={layout}
-            onChange={chooseLayout}
-            options={[
-              { value: "write", label: "Write" },
-              { value: "split", label: "Split" },
-              { value: "preview", label: "Preview" },
-            ]}
-          />
-        }
+        actions={<LayoutSwitch value={layout} onChange={chooseLayout} />}
       />
 
-      <div className="app-notices">
+      <div className="app-notices" data-cap-recede="">
         {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="The site's copy changed">
@@ -850,21 +884,28 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </Banner>
         ) : null}
         {data.merge && mayEdit && !readOnly ? (
-          <MergeView
-            key={`${data.merge.from}:${data.merge.siteVersion}`}
-            plan={data.merge.plan}
-            busy={busy}
-            apply={(picks) =>
-              void send("merge", {
-                picks: JSON.stringify(picks),
-                from: data.merge!.from,
-                fromVersion: data.merge!.fromVersion,
-                siteVersion: data.merge!.siteVersion,
-              }).then((result) => {
-                if (result.intent === "merge") say(result.message);
-              })
-            }
-          />
+          <Panel
+            title="Merge Carrel's text with the site's"
+            id="merge"
+            src={mergeCountsText(data.merge.plan)}
+          >
+            <DraftMerge
+              key={`${data.merge.from}:${data.merge.siteVersion}`}
+              plan={data.merge.plan}
+              pending={busy}
+              labels={MERGE_LABELS}
+              onApply={(picks) =>
+                void send("merge", {
+                  picks: JSON.stringify(picks),
+                  from: data.merge!.from,
+                  fromVersion: data.merge!.fromVersion,
+                  siteVersion: data.merge!.siteVersion,
+                }).then((result) => {
+                  if (result.intent === "merge") say(result.message);
+                })
+              }
+            />
+          </Panel>
         ) : null}
         {data.ownDraft && mayEdit ? (
           <Banner
@@ -872,14 +913,18 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             title="You have a draft of your own from before shared editing"
             actions={
               <>
-                <Button size="sm" pending={busy} onClick={() => void send("use-own-draft")}>
+                <Button
+                  size="sm"
+                  pending={busy}
+                  onClick={(event) => ask("put-draft", event.currentTarget)}
+                >
                   Put it in for everyone
                 </Button>
                 <Button
                   size="sm"
                   variant="quiet"
                   pending={busy}
-                  onClick={() => void send("drop-own-draft")}
+                  onClick={(event) => ask("drop-draft", event.currentTarget)}
                 >
                   Delete it
                 </Button>
@@ -937,9 +982,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
       <div className="app-editor-grid">
         <div className="app-editor-main">
-          <div className="app-editor-body" data-layout={layout}>
-            {layout !== "preview" ? (
-              <section className="app-editor-pane" id="write" aria-label="Write">
+          <EditorWorkspace
+            layout={layout}
+            write={
+              <>
                 {data.room ? editing.bar : null}
                 <WritingSurface
                   label={kindWord(data.kind)}
@@ -963,7 +1009,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       ? {
                           ...data.media,
                           figure: (url: string, alt: string, caption?: string) =>
-                            figureMarkup(data.project.siteId, url, alt, caption),
+                            siteFigureMarkup(data.project.siteId, url, alt, caption),
                         }
                       : null
                   }
@@ -972,22 +1018,20 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     source: (block) => joinSource({ ...splitSource(source), body: block }),
                   }}
                 />
-              </section>
-            ) : null}
-            {layout !== "write" ? (
-              <section className="app-preview-pane" aria-label="Preview">
-                {/* Sandboxed with no permissions: the site's page runs no script and has an opaque origin. */}
-                <iframe
-                  title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`}
-                  src={previewSrc}
-                  sandbox=""
-                />
-              </section>
-            ) : null}
-          </div>
+              </>
+            }
+            preview={
+              <PreviewPane
+                title={`Preview of ${data.title || data.itemId} as ${data.project.site} renders it`}
+                src={previewSrc}
+              />
+            }
+          />
         </div>
 
         <Inspector
+          className="app-editor-side"
+          initialTab={params.get("tab")}
           label={`About this ${kindNoun(data.kind)}`}
           head={
             <>
@@ -1044,7 +1088,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           onClick={(event) => saveToSite(event.currentTarget)}
                         >
                           {/* Beside a scheduled update, plain "Update" could mean either; this one changes the live post now. */}
-                          {data.status === "published" && data.scheduledUpdates && data.canPublish
+                          {data.status === "published" && data.canScheduleUpdate && data.canPublish
                             ? "Update the live post now"
                             : saveTransition.label}
                         </Button>
@@ -1062,7 +1106,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       {onSite &&
                       data.canPublish &&
                       data.status === "published" &&
-                      data.scheduledUpdates ? (
+                      data.canScheduleUpdate ? (
                         <Button onClick={(event) => ask("schedule", event.currentTarget)}>
                           {data.pendingUpdate
                             ? "Replace the scheduled update"
@@ -1111,7 +1155,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               content: (
                 <div className="app-stack">
                   {/* The front matter is not something a suggestion can mark, so only someone who may edit changes it. */}
-                  <FrontmatterFields
+                  <ItemDetails
                     source={source}
                     onChange={setSource}
                     readOnly={readOnly || !mayEdit}
@@ -1130,8 +1174,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     />
                   ) : null}
                   {mayEdit ? (
-                    <AiWriteButtons
+                    <AiJobButtons
                       action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
+                      Form={aiJob.Form}
+                      answer={aiJob.data}
+                      pending={aiJob.state !== "idle"}
                       buttons={[
                         { job: "continue", label: "Continue my draft" },
                         { job: "edit", label: "Suggest edits" },
@@ -1242,6 +1289,22 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         />
       </div>
 
+      <PutDraftDialog
+        open={asking?.kind === "put-draft"}
+        returnTo={asking?.opener}
+        perform={async () => {
+          await send("use-own-draft", { confirmed: "1" });
+        }}
+        onClose={() => setAsking(null)}
+      />
+      <DropDraftDialog
+        open={asking?.kind === "drop-draft"}
+        returnTo={asking?.opener}
+        perform={async () => {
+          await send("drop-own-draft", { confirmed: "1" });
+        }}
+        onClose={() => setAsking(null)}
+      />
       <ConfirmDialog
         open={asking?.kind === "discard"}
         title="Discard the unsaved changes?"
@@ -1249,7 +1312,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         body={[]}
         action="Discard unsaved changes"
         returnTo={asking?.opener}
-        perform={async () => void (await send("discard"))}
+        perform={async () => void (await send("discard", { confirmed: "1" }))}
         onClose={() => setAsking(null)}
       />
       <ConfirmDialog
@@ -1259,7 +1322,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         body={[]}
         action="Import and replace"
         returnTo={asking?.opener}
-        perform={async () => void (await send("import-from-docs"))}
+        perform={async () => void (await send("import-from-docs", { confirmed: "1" }))}
         onClose={() => setAsking(null)}
       />
       <ConfirmDialog
@@ -1276,7 +1339,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         perform={async () => {
           if (asking?.flag !== undefined)
             await writer.submit(
-              { intent: "dismiss-flag", flag: String(asking.flag) },
+              { intent: "dismiss-flag", flag: String(asking.flag), confirmed: "1" },
               { method: "post" },
             );
         }}
@@ -1313,14 +1376,26 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       />
       <ScheduleDialog
         open={asking?.kind === "schedule"}
-        noun={kindNoun(data.kind)}
-        update={data.status === "published"}
-        current={data.pendingUpdate?.publishAt ?? null}
+        title={
+          scheduleUpdate
+            ? pendingAt
+              ? "Replace the scheduled update"
+              : `Schedule an update to this ${kindNoun(data.kind)}`
+            : `Schedule this ${kindNoun(data.kind)}`
+        }
+        description={
+          scheduleUpdate
+            ? `The live ${kindNoun(data.kind)} stays as it is. The site publishes the text in the editor at the time you choose${pendingAt ? ", in place of the update scheduled now" : ""}. You can cancel it before then.`
+            : "The site publishes it at the time you choose. Revert to draft takes it back."
+        }
+        confirm={
+          scheduleUpdate ? (pendingAt ? "Replace the update" : "Schedule update") : "Schedule"
+        }
+        current={pendingAt}
         returnTo={asking?.opener}
         onClose={() => setAsking(null)}
-        schedule={async (publishAt) => {
+        onSchedule={async (publishAt) => {
           await send("schedule", { publishAt });
-          setAsking(null);
         }}
       />
     </div>

@@ -7,7 +7,7 @@
 // "By word" sets the same two texts against each other sentence by sentence.
 
 import { Form } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Empty } from "capsomer/react/empty";
@@ -20,11 +20,11 @@ import {
   type Side,
   SourcePanel,
   sides,
-  utc,
   type View,
 } from "~/components/history/history-view";
+import { utc } from "capsomer/behavior/time";
 import { RevisionPicker } from "~/components/history/revision-picker";
-import { RouterLink } from "~/components/frame";
+import { comparePicks } from "capsomer/behavior/history-list";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, readDraft, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -71,7 +71,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
 
   const noun = kindNoun(doc?.kind);
   const list = revisions ?? [];
-  const picks = query.getAll("v");
+  // Two picks, older first: `?from=&to=` from the Compare link, or `?compare=` twice from the form.
+  const atOf = (version: string) =>
+    Date.parse(list.find((r) => r.version === version)?.at ?? "") || 0;
+  const picks = comparePicks(query, atOf) ?? query.getAll("compare");
   let view: View = { kind: "none" };
   let picked: string[] = [];
 
@@ -182,7 +185,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       picked = picks;
     } else {
       picked = [pair.from.version, pair.to.version];
-      const heading = `${utc(pair.from.at)} to ${utc(pair.to.at)}`;
+      const heading = `${utc(Date.parse(pair.from.at))} to ${utc(Date.parse(pair.to.at))}`;
       const lead = `What changed on the site between the revision by ${pair.from.author} and the one by ${pair.to.author}.`;
       if (by === "line") {
         const patch = await revisionPatch(env, project, itemId, pair.from.version, pair.to.version);
@@ -318,7 +321,7 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
   return (
     <div className="app-page">
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: project.name, href: `/p/${project.slug}` },
           { label: title || itemId, href: editor },

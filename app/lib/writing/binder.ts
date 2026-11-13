@@ -11,6 +11,7 @@ import {
   titleFromSegment,
   type Meta,
 } from "~/lib/novels/layout";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 /** A row of the binder as the loader sends it; the page turns `meta` into the row's muted note. */
 export type BinderNode = {
@@ -45,7 +46,7 @@ const entryName = (meta: Meta) =>
   meta.kind === "character" || meta.kind === "place" || meta.kind === "rule" ? meta.entry.name : "";
 
 const fileName = (path: string) => path.split("/").pop()!.replace(/\.md$/, "");
-const words = (n: number) => `${n.toLocaleString("en-US")} word${n === 1 ? "" : "s"}`;
+const words = (n: number) => `${plural(n, "word", undefined, { grouped: true })}`;
 
 /** The book as the binder shows it: title page, chapters and their scenes, bible, outline, notes. */
 export function binderTree(files: IndexedLike[], base: string): BinderNode[] {

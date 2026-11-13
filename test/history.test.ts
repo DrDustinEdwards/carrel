@@ -9,7 +9,6 @@ import { saveAiDraft } from "~/lib/ai.server";
 import { autosave, writeToSite } from "~/lib/content.server";
 import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
 import { orderPair } from "~/lib/history.server";
-import { hasChanges, unifiedPatch } from "~/lib/patch";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as historyAction, loader as historyLoader } from "~/routes/history";
 
@@ -140,7 +139,7 @@ describe("restoring a revision", () => {
 
 describe("comparing revisions", () => {
   it("sets the older revision against the newer whichever was picked first, from the site's own patch", async () => {
-    const data = await load("reader@test.invalid", `?v=${versions[2]}&v=${versions[0]}`);
+    const data = await load("reader@test.invalid", `?from=${versions[2]}&to=${versions[0]}`);
     expect(data.picked).toEqual([versions[0], versions[2]]);
     expect(data.view.kind).toBe("compare");
     const patch = (data.view as { patch: string }).patch;
@@ -151,7 +150,10 @@ describe("comparing revisions", () => {
   });
 
   it("by word, hands the two revisions' texts to the word compare, older as Before", async () => {
-    const data = await load("reader@test.invalid", `?v=${versions[0]}&v=${versions[1]}&by=word`);
+    const data = await load(
+      "reader@test.invalid",
+      `?compare=${versions[0]}&compare=${versions[1]}&by=word`,
+    );
     expect(data.view).toMatchObject({
       kind: "compare",
       patch: null,
@@ -162,9 +164,9 @@ describe("comparing revisions", () => {
 
   it("refuses one pick, the same pick twice and a pick the site does not hold, in words", async () => {
     for (const search of [
-      `?v=${versions[0]}`,
-      `?v=${versions[0]}&v=${versions[0]}`,
-      `?v=${versions[0]}&v=nope`,
+      `?compare=${versions[0]}`,
+      `?compare=${versions[0]}&compare=${versions[0]}`,
+      `?compare=${versions[0]}&compare=nope`,
     ]) {
       const data = await load("reader@test.invalid", search);
       expect(data.view, search).toMatchObject({
@@ -235,25 +237,5 @@ describe("comparing the working draft", () => {
     expect(view.patch).toContain("-First words, revised.\n");
     expect(view.patch).toContain("+First words, tightened.\n");
     expect(await refusal(load("reader@test.invalid", `?compare=ai&ai=${saved.id}`))).toBe(404);
-  });
-});
-
-describe("the local patch", () => {
-  it("names both sides but one file, shows only the changed lines with context, and says nothing changed when nothing did", () => {
-    const patch = unifiedPatch(
-      "post-one.md",
-      { text: "a\nb\nc\nd\ne\nf\ng\nh\n", label: "On the site" },
-      { text: "a\nb\nc\nD\ne\nf\ng\nh\n", label: "Your draft" },
-    );
-    expect(patch).toContain("--- post-one.md\tOn the site");
-    expect(patch).toContain("+++ post-one.md\tYour draft");
-    expect(patch).toContain("-d\n+D\n");
-    expect(hasChanges(patch)).toBe(true);
-    const same = unifiedPatch(
-      "post-one.md",
-      { text: "same\n", label: "a" },
-      { text: "same\n", label: "b" },
-    );
-    expect(hasChanges(same)).toBe(false);
   });
 });

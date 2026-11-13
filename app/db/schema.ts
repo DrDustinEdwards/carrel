@@ -396,8 +396,8 @@ export const googleTokens = sqliteTable("google_tokens", {
   personId: integer("person_id")
     .primaryKey()
     .references(() => people.id, { onDelete: "cascade" }),
+  /** Sealed by site-runtime's secret-box (`v1:keyId:ivHex:cipherHex`) under GOOGLE_TOKEN_KEY. */
   refreshToken: text("refresh_token").notNull(),
-  iv: text("iv").notNull(),
   scope: text("scope").notNull(),
   connectedAt: text("connected_at")
     .notNull()

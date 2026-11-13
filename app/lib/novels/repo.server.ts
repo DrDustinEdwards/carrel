@@ -4,13 +4,17 @@
 // that renames several files is one commit made through Git's data API (commitMany), and a file's
 // history is the commits that touched its path.
 
-import { fromBase64, toBase64 } from "@dustinedwards/site-runtime/encoding";
-import { SignJWT } from "jose";
+import { fromBase64Text, toBase64 } from "@dustinedwards/site-runtime/encoding";
+import {
+  GITHUB_API,
+  githubHeaders,
+  installationToken as installationTokenFor,
+} from "@dustinedwards/site-runtime/github";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 export const NOVELS_REPO = "DrDustinEdwards/writing";
 const NOVELS_BRANCH = "main";
-const API = "https://api.github.com";
+const API = GITHUB_API;
 
 type RepoFile = { source: string; sha: string };
 
@@ -96,65 +100,9 @@ export function novelsConnection(env: Env): NovelsConnection {
   return { state: "connected", appId, privateKey: key };
 }
 
-// ---------- GitHub App authentication
-
-function derLength(n: number): number[] {
-  if (n < 0x80) return [n];
-  const bytes: number[] = [];
-  for (let v = n; v > 0; v >>= 8) bytes.unshift(v & 0xff);
-  return [0x80 | bytes.length, ...bytes];
-}
-
-function der(tag: number, content: Uint8Array | number[]): number[] {
-  const body = Array.from(content);
-  return [tag, ...derLength(body.length), ...body];
-}
-
-/**
- * GitHub hands out App keys as PKCS#1 ("BEGIN RSA PRIVATE KEY"); WebCrypto imports PKCS#8 only. The
- * PKCS#8 form is the PKCS#1 key wrapped with the rsaEncryption algorithm id, so Dustin can paste the
- * downloaded file as it is.
- */
-export function pkcs8FromPem(pem: string): Uint8Array<ArrayBuffer> {
-  const body = pem.replace(/-----(BEGIN|END) [A-Z ]+-----/g, "");
-  const bytes = fromBase64(body);
-  if (!/BEGIN RSA PRIVATE KEY/.test(pem)) return bytes;
-  const version = der(0x02, [0x00]);
-  // SEQUENCE { OID 1.2.840.113549.1.1.1, NULL }
-  const algorithm = der(
-    0x30,
-    [0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00],
-  );
-  return new Uint8Array(der(0x30, [...version, ...algorithm, ...der(0x04, bytes)]));
-}
-
-export async function appJwt(appId: string, pem: string, now = Date.now()): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pkcs8FromPem(pem),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const iat = Math.floor(now / 1000) - 60; // GitHub allows for clock drift this way.
-  return new SignJWT({})
-    .setProtectedHeader({ alg: "RS256" })
-    .setIssuer(appId)
-    .setIssuedAt(iat)
-    .setExpirationTime(iat + 540)
-    .sign(key);
-}
+// ---------- GitHub App authentication (site-runtime ./github installationToken)
 
 type Fetch = typeof fetch;
-
-function headers(token: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "carrel",
-  };
-}
 
 /** Installation tokens last an hour; one per isolate, renewed five minutes early. */
 const tokenCache = new Map<string, { token: string; expires: number }>();
@@ -167,26 +115,21 @@ export async function installationToken(
 ): Promise<string> {
   const cached = tokenCache.get(appId);
   if (cached && cached.expires - 5 * 60_000 > now) return cached.token;
-  const jwt = await appJwt(appId, pem, now);
-  const inst = await fetcher(`${API}/repos/${NOVELS_REPO}/installation`, { headers: headers(jwt) });
-  if (!inst.ok)
-    throw new Error(
-      `GitHub did not find the App's installation on ${NOVELS_REPO} (${inst.status}).`,
-    );
-  const { id } = (await inst.json()) as { id: number };
+  const [owner, repo] = NOVELS_REPO.split("/") as [string, string];
   // Narrowed to the one repository and to contents, whatever the installation allows.
-  const res = await fetcher(`${API}/app/installations/${id}/access_tokens`, {
-    method: "POST",
-    headers: headers(jwt),
-    body: JSON.stringify({
-      repositories: [NOVELS_REPO.split("/")[1]],
-      permissions: { contents: "write" },
-    }),
+  const minted = await installationTokenFor({
+    appId,
+    privateKey: pem,
+    userAgent: "carrel",
+    owner,
+    repo,
+    repositories: [repo],
+    permissions: { contents: "write" },
+    fetcher,
+    now,
   });
-  if (!res.ok) throw new Error(`GitHub refused an installation token (${res.status}).`);
-  const body = (await res.json()) as { token: string; expires_at: string };
-  tokenCache.set(appId, { token: body.token, expires: Date.parse(body.expires_at) });
-  return body.token;
+  tokenCache.set(appId, { token: minted.token, expires: minted.expiresAt });
+  return minted.token;
 }
 
 export function clearTokenCache(): void {
@@ -199,15 +142,11 @@ function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
-function base64ToUtf8(b64: string): string {
-  return new TextDecoder().decode(fromBase64(b64));
-}
-
 export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedFetch): NovelsRepo {
   const repoUrl = `${API}/repos/${NOVELS_REPO}`;
   const call = async (url: string, init: RequestInit = {}) => {
     // The call's own headers win, in any form of HeadersInit (an object spread would turn an array into indices).
-    const merged = new Headers(headers(await token()));
+    const merged = new Headers(githubHeaders(await token(), "carrel"));
     for (const [name, value] of new Headers(init.headers)) merged.set(name, value);
     return fetcher(url, { ...init, headers: merged });
   };
@@ -249,7 +188,7 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedF
       };
       if (body.type !== "file" || body.encoding !== "base64" || body.content === undefined)
         throw new Error(`${path} is not a file GitHub returns inline.`);
-      return { source: base64ToUtf8(body.content), sha: body.sha };
+      return { source: fromBase64Text(body.content), sha: body.sha };
     },
 
     async write(path, input) {

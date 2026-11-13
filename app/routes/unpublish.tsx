@@ -3,14 +3,12 @@
 // that changed the site could be set off by anything that fetches links (a mail client's preview).
 
 import { Form, useNavigation } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
-
-import { RouterLink } from "~/components/frame";
 
 import { lastAiPublication, publishedByLine } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, writeToSite } from "~/lib/content.server";
@@ -74,7 +72,7 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
   return (
     <div className="app-page" data-narrow>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: item.title }]}
         title={item.title}
         lead={
@@ -103,7 +101,7 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
           <Alert tone="crit">{actionData.message}</Alert>
         )
       ) : null}
-      <div className="app-actions">
+      <div className="cap-cluster" data-gap="3">
         {!done && item.status !== "draft" ? (
           <Form method="post">
             {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- the page exists only to confirm this one action, so focus starts on it */}

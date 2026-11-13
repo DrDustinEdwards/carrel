@@ -17,6 +17,7 @@ import type { SiteProject } from "~/lib/projects.server";
 import { can, mayPublish, type Action, type Role } from "~/lib/roles";
 import { siteClient, siteConnection } from "~/lib/sites.server";
 import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
 
@@ -358,8 +359,10 @@ export async function writeToSite(
     ) {
       return { ok: false, reason: "refused", message: error.body.message };
     }
-    console.error(
-      JSON.stringify({ write: "failed", itemId, action: request.action, error: String(error) }),
+    logEvent(
+      "write.failed",
+      { itemId, action: request.action, error: String(error) },
+      { level: "error" },
     );
     return {
       ok: false,
@@ -413,7 +416,7 @@ export async function writeToSite(
       });
     }
   } catch (error) {
-    console.error(JSON.stringify({ index: "after-write-failed", itemId, error: String(error) }));
+    logEvent("index.after-write-failed", { itemId, error: String(error) }, { level: "error" });
   }
 
   return {

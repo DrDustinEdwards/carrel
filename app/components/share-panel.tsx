@@ -35,9 +35,9 @@ export function SharePanel({ site }: { site: boolean }) {
               : "They cannot sign in until their email is allowed in Cloudflare Access by hand. The People page says where."}
         </Banner>
       ) : null}
-      <fetcher.Form method="post" className="app-form">
+      <fetcher.Form method="post" className="cap-stack">
         <input type="hidden" name="intent" value="share" />
-        <div className="app-fields">
+        <div className="cap-fields">
           <Field label="Email" required>
             <input className="cap-input" type="email" name="email" required autoComplete="off" />
           </Field>
@@ -62,7 +62,7 @@ export function SharePanel({ site }: { site: boolean }) {
             />
           </Field>
         </div>
-        <div className="app-actions">
+        <div className="cap-cluster" data-gap="3">
           <Button type="submit" variant="primary" pending={fetcher.state !== "idle"}>
             Share
           </Button>

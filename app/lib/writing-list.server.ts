@@ -14,6 +14,7 @@ import { runIntent } from "~/lib/posts.server";
 import { can } from "~/lib/roles";
 import { siteConnection, isSiteId } from "~/lib/sites.server";
 import { waitingWork } from "~/lib/waiting.server";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 /** The intents Writing offers across sites. Each site still decides for its own posts. */
 const WRITING_INTENTS = ["tag-add", "tag-remove", "unpublish", "trash"] as const;
@@ -153,8 +154,6 @@ const DONE: Record<string, string> = {
   trash: "Moved to the Trash",
   undo: "Undid",
 };
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function formOf(fields: Record<string, string | string[]>): FormData {
   const form = new FormData();

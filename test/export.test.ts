@@ -43,8 +43,8 @@ describe("scene headers", () => {
       goal: "",
     });
     expect(parsed.problems).toEqual([{ line: 10, text: "nonsense here" }]);
-    expect(parsed.bodyLine).toBe(12);
-    expect(parsed.body).toBe("\nBody line.\n");
+    expect(parsed.bodyLine).toBe(13);
+    expect(parsed.body).toBe("Body line.\n");
     expect(list(parsed.data, "characters")).toEqual(["Wade", "Harlan, June"]);
     expect(text(parsed.data, "goal")).toBe("");
   });

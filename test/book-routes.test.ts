@@ -272,12 +272,17 @@ describe("the file editor", () => {
       (
         (await filePost("editor@test.invalid", SCENE, {
           intent: "dismiss",
+          confirmed: "1",
           finding: String(flag.id),
         })) as Response
       ).status,
     ).toBe(403);
     expect(
-      await filePost("owner@test.invalid", SCENE, { intent: "dismiss", finding: String(flag.id) }),
+      await filePost("owner@test.invalid", SCENE, {
+        intent: "dismiss",
+        confirmed: "1",
+        finding: String(flag.id),
+      }),
     ).toEqual({ intent: "dismiss", dismissed: flag.id });
   });
 });

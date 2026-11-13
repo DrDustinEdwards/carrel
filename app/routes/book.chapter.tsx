@@ -1,18 +1,16 @@
 // One chapter: its scenes in order with their headers and Dustin's beats, and the chapter's text read
 // straight through, as the index last had it from Git.
 
-import type { ReactNode } from "react";
 import { Form, redirect } from "react-router";
-import { Link } from "capsomer/react/link";
+import { markup } from "capsomer/behavior/trusted-html";
+import { routerRenderLink } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
+import { InlineAddForm } from "capsomer/react/inline-add-form";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Status } from "capsomer/react/status";
 import { PageHead } from "capsomer/react/page-head";
-
-import { RouterLink } from "~/components/frame";
 
 import { indexedFile, listFiles, listFindings, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -24,6 +22,7 @@ import { can } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.chapter";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.chapter.title} · ${data.project.name} · Carrel` : "Carrel" }];
@@ -114,16 +113,13 @@ function SceneFacts({ header }: { header: Header }) {
 export default function Chapter({ loaderData, actionData }: Route.ComponentProps) {
   const { project, chapter, canEdit, scenes } = loaderData;
   const base = `/b/${project.slug}`;
-  const link = ({ href, children }: { href: string; children: ReactNode }) => (
-    <Link to={href}>{children}</Link>
-  );
   return (
     <div className="app-page">
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[{ label: project.name, href: base }, { label: chapter.title }]}
         title={chapter.title}
-        lead={`${scenes.length} scene${scenes.length === 1 ? "" : "s"}, ${scenes.reduce((n, s) => n + s.words, 0).toLocaleString()} words.`}
+        lead={`${plural(scenes.length, "scene")}, ${scenes.reduce((n, s) => n + s.words, 0).toLocaleString()} words.`}
       />
 
       {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
@@ -135,7 +131,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
           flush
           footer={
             canEdit ? (
-              <Form method="post" className="app-inline-form">
+              <InlineAddForm Form={Form} submit="Start it">
                 <Field label="New scene">
                   <input
                     className="cap-input"
@@ -145,8 +141,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                     autoComplete="off"
                   />
                 </Field>
-                <Button type="submit">Start it</Button>
-              </Form>
+              </InlineAddForm>
             ) : undefined
           }
         >
@@ -156,7 +151,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                 key={s.path}
                 title={s.name}
                 href={`${base}/f/${s.path}`}
-                renderLink={link}
+                renderLink={routerRenderLink}
                 status={s.flags ? <Status tone="warn">{s.flags} flagged</Status> : undefined}
                 detail={s.header ? <SceneFacts header={s.header} /> : undefined}
                 meta={<span className="cap-num">{s.words.toLocaleString()} words</span>}
@@ -174,7 +169,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
                     * * *
                   </p>
                 ) : null}
-                <div dangerouslySetInnerHTML={{ __html: s.html }} />
+                <div dangerouslySetInnerHTML={markup(s.html)} />
               </div>
             ))}
           </div>

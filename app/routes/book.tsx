@@ -3,11 +3,10 @@
 // Refresh (in the head of every tab) posts here and reads Git again. Progress, the bible and notes and
 // the settings are tabs of their own (book.progress.tsx, book.bible.tsx, book.settings.tsx).
 
-import type { ReactNode } from "react";
 import { Form, redirect } from "react-router";
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
+import { InlineAddForm } from "capsomer/react/inline-add-form";
 import { Empty } from "capsomer/react/empty";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
@@ -16,7 +15,7 @@ import { StatTile, StatTiles } from "capsomer/react/stat-tile";
 import { Status } from "capsomer/react/status";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
 
 import {
   bookHead,
@@ -37,7 +36,9 @@ import { statusList } from "~/lib/writing.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.head.name} · Carrel` : "Carrel" }];
 }
@@ -146,7 +147,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     try {
       return { refreshed: await refreshBook(env.DB, repo, project), error: null };
     } catch (error) {
-      return { refreshed: null, error: error instanceof Error ? error.message : String(error) };
+      return { refreshed: null, error: errorMessage(error) };
     }
   }
 
@@ -172,9 +173,6 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
   const { head, canEdit, connectionDetail, chapters, words, open, unsaved, labels } = loaderData;
   const base = `/b/${head.slug}`;
   const file = (path: string) => `${base}/f/${path}`;
-  const link = ({ href, children }: { href: string; children: ReactNode }) => (
-    <Link to={href}>{children}</Link>
-  );
 
   return (
     <div className="app-page">
@@ -184,7 +182,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         <StatTile
           label="Words in scenes"
           figure={words.toLocaleString()}
-          detail={`${chapters.length} chapter${chapters.length === 1 ? "" : "s"}`}
+          detail={`${plural(chapters.length, "chapter")}`}
         />
         {open === 0 ? (
           <StatTile
@@ -230,7 +228,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                 key={p}
                 title={<span className="cap-mono">{p}</span>}
                 href={file(p)}
-                renderLink={link}
+                renderLink={routerRenderLink}
                 detail="Started here; nothing is in Git until the first Save."
               />
             ))}
@@ -244,8 +242,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
         flush
         footer={
           canEdit ? (
-            <Form method="post" className="app-inline-form">
-              <input type="hidden" name="intent" value="new-chapter" />
+            <InlineAddForm Form={Form} hidden={{ intent: "new-chapter" }} submit="Start it">
               <Field label="New chapter">
                 <input
                   className="cap-input"
@@ -263,8 +260,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                   autoComplete="off"
                 />
               </Field>
-              <Button type="submit">Start it</Button>
-            </Form>
+            </InlineAddForm>
           ) : undefined
         }
       >
@@ -324,7 +320,11 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                           {s.flags ? <Status tone="warn">{s.flags} flagged</Status> : null}
                         </th>
                         <td>
-                          <StatusLabelPill labels={labels} status={s.status} />
+                          <ColorLabelPill
+                            labels={labels}
+                            value={s.status}
+                            unknownNote=" (not on the status list)"
+                          />
                         </td>
                         <td data-drop="1">{s.pov}</td>
                         <td data-drop="1">{s.date}</td>

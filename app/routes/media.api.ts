@@ -11,6 +11,7 @@
 // does not allow before the site hears anything.
 
 import { UPLOAD_HEADERS } from "@dustinedwards/site-runtime/headers";
+import { jsonResponse } from "@dustinedwards/site-runtime/http";
 import {
   loadMedia,
   loadMediaChanges,
@@ -22,10 +23,10 @@ import { mediaDataOfKit, readMediaView } from "capsomer/behavior/media-library";
 import { getEnv, getViewer } from "~/lib/context";
 import { mediaBytes, mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { absoluteMediaUrl } from "~/lib/sites.server";
 import { readForm, UPLOAD_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/media.api";
+import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
@@ -38,9 +39,9 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     if (bytesOf) {
       const file = await mediaBytes(source, bytesOf);
       if (!file)
-        return Response.json(
+        return jsonResponse(
           { error: "The site has no image by that id that Carrel can open." },
-          { status: 404 },
+          404,
         );
       return new Response(file.bytes, {
         headers: {
@@ -52,13 +53,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       });
     }
     const since = search.get("changes");
-    if (since !== null)
-      return Response.json(await loadMediaChanges(source, since.slice(0, 500)), {
-        headers: { "cache-control": "private, no-store" },
-      });
+    if (since !== null) return jsonResponse(await loadMediaChanges(source, since.slice(0, 500)));
     const kit = await loadMedia(source, readMediaQuery(search));
     const pick = search.get("pick") ?? "";
-    return Response.json(
+    return jsonResponse(
       mediaDataOfKit(kit, {
         usedHref: (use) => usageHref(project.slug, use),
         view: { ...readMediaView(search), ...(pick ? { pick } : {}) },
@@ -67,17 +65,16 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   } catch (error) {
     const message = unreachable(error);
     if (message === null) throw error;
-    return Response.json({ error: message }, { status: 502 });
+    return jsonResponse({ error: message }, 502);
   }
 }
 
 export async function action({ params, request, context }: Route.ActionArgs) {
-  if (request.method !== "POST")
-    return Response.json({ error: "Method not allowed." }, { status: 405 });
+  if (request.method !== "POST") return jsonResponse({ error: "Method not allowed." }, 405);
   const env = getEnv(context);
   const viewer = getViewer(context);
   const form = await readForm(request, UPLOAD_MAX_BYTES);
-  if (form.get("intent")) return Response.json(await runIntent(env, viewer, params.project, form));
+  if (form.get("intent")) return jsonResponse(await runIntent(env, viewer, params.project, form));
   // The editor's upload: refused on the role before the site is asked anything.
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
   form.set("intent", "upload");
@@ -85,15 +82,12 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     const source = mediaSource(env, project, viewer);
     const uploaded = await runMediaIntent(source, form);
     const id = uploaded.ok ? uploaded.outcomes?.[0]?.id : undefined;
-    if (!id) return Response.json({ error: uploaded.message }, { status: 422 });
+    if (!id) return jsonResponse({ error: uploaded.message }, 422);
     const item = await source.client.media.get(id);
-    return Response.json(
-      { id, url: item.url, src: absoluteMediaUrl(source.site.origin, item.url) },
-      { status: 201 },
-    );
+    return jsonResponse({ id, url: item.url, src: absoluteUrl(source.site.origin, item.url) }, 201);
   } catch (error) {
     const message = unreachable(error);
     if (message === null) throw error;
-    return Response.json({ error: message }, { status: 502 });
+    return jsonResponse({ error: message }, 502);
   }
 }

@@ -4,7 +4,8 @@
 // through the file's old names, since GitHub's history of a path stops where it was renamed. Any
 // version's text is read from Git at its commit. Read-only, and a Reader may read all of it.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { inList } from "@dustinedwards/site-runtime/d1";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { authorship, people } from "~/db/schema";
@@ -13,7 +14,9 @@ import type { BookProject } from "~/lib/books.server";
 import type { NovelsRepo } from "~/lib/novels/repo.server";
 import { can } from "~/lib/roles";
 import { coauthorsOf, withOthers } from "~/lib/rooms.server";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export type BookVersion = {
   /** The commit that made this version. */
   version: string;
@@ -53,7 +56,7 @@ export async function bookVersions(
     })
     .from(authorship)
     .innerJoin(people, eq(people.id, authorship.personId))
-    .where(and(eq(authorship.projectId, project.id), inArray(authorship.path, paths)))
+    .where(and(eq(authorship.projectId, project.id), inList(authorship.path, paths)))
     .all();
   const moves = await movesOf(db, project.id, paths);
   const movers = moves.length
@@ -62,7 +65,7 @@ export async function bookVersions(
           await d
             .select({ id: people.id, name: people.name, email: people.email })
             .from(people)
-            .where(inArray(people.id, [...new Set(moves.map((m) => m.personId))]))
+            .where(inList(people.id, [...new Set(moves.map((m) => m.personId))]))
             .all()
         ).map((p) => [p.id, p.name || p.email]),
       )
@@ -81,7 +84,7 @@ export async function bookVersions(
       path: s.path,
       at: s.at,
       author: s.client ? `${s.client} (AI, for ${who})` : who,
-      message: `Saved in Carrel: ${s.added} word${s.added === 1 ? "" : "s"} added, ${s.removed} removed`,
+      message: `Saved in Carrel: ${plural(s.added, "word")} added, ${s.removed} removed`,
       kind: "carrel",
     });
   }
@@ -114,7 +117,7 @@ export async function bookVersions(
         }
       }
     } catch (error) {
-      gitError = `Git did not answer (${error instanceof Error ? error.message : String(error)}), so only the versions Carrel recorded are listed.`;
+      gitError = `Git did not answer (${errorMessage(error)}), so only the versions Carrel recorded are listed.`;
     }
   }
   const versions = [...byCommit.values()].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));

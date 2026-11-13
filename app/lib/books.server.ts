@@ -3,6 +3,7 @@
 // every save, their findings, and the authorship record. Roles are checked here, not only in the
 // routes, so every door (the UI now, MCP tools in stage 5) is held to the same rule.
 
+import { inList } from "@dustinedwards/site-runtime/d1";
 import { and, asc, desc, eq, inArray, like, notInArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -38,6 +39,9 @@ import {
 } from "~/lib/novels/repo.server";
 import { voiceExcerpts } from "@dustinedwards/site-runtime/prose";
 import { takeUntyped } from "~/lib/writing.server";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
+import { logEvent } from "@dustinedwards/site-runtime/log";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
 
 export type BookProject = { id: number; slug: string; name: string; book: string; role: Role };
 
@@ -286,7 +290,7 @@ async function recordFindings(db: D1Database, projectId: number, byPath: Map<str
           and(
             eq(findings.projectId, projectId),
             eq(findings.path, path),
-            inArray(findings.fingerprint, gone),
+            inList(findings.fingerprint, gone),
           ),
         );
     }
@@ -316,7 +320,7 @@ export async function recheck(db: D1Database, projectId: number, paths: string[]
     .where(
       paths === "all"
         ? eq(bookFiles.projectId, projectId)
-        : and(eq(bookFiles.projectId, projectId), inArray(bookFiles.path, paths)),
+        : and(eq(bookFiles.projectId, projectId), inList(bookFiles.path, paths)),
     )
     .all();
   const byPath = new Map<string, Finding[]>();
@@ -425,10 +429,10 @@ export async function refreshBook(
   if (removed.length > 0) {
     await d
       .delete(bookFiles)
-      .where(and(eq(bookFiles.projectId, project.id), inArray(bookFiles.path, removed)));
+      .where(and(eq(bookFiles.projectId, project.id), inList(bookFiles.path, removed)));
     await d
       .delete(findings)
-      .where(and(eq(findings.projectId, project.id), inArray(findings.path, removed)));
+      .where(and(eq(findings.projectId, project.id), inList(findings.path, removed)));
   }
 
   // shared/voice/, which every book's voice check reads.
@@ -457,7 +461,7 @@ export async function refreshBook(
   const sharedPresent = new Set(sharedWanted.map((f) => f.path));
   const sharedGone = [...sharedKnown.keys()].filter((p) => !sharedPresent.has(p));
   if (sharedGone.length > 0)
-    await d.delete(novelsShared).where(inArray(novelsShared.path, sharedGone));
+    await d.delete(novelsShared).where(inList(novelsShared.path, sharedGone));
 
   if (batch.length > 0 || removed.length > 0 || sharedRead > 0 || sharedGone.length > 0)
     await recheck(db, project.id, "all");
@@ -548,7 +552,7 @@ export async function saveBookFile(
           "This file changed in Git since you opened it. Your text is kept here as your draft; refresh the book to see Git's version before saving.",
       };
     }
-    console.error(JSON.stringify({ book: "save-failed", path, error: String(error) }));
+    logEvent("book.save-failed", { path, error: String(error) }, { level: "error" });
     return {
       ok: false,
       reason: "failed",
@@ -771,7 +775,7 @@ export function authorshipReport(
   const lines = [
     `# Authorship record: ${project.name}`,
     "",
-    `Every change Carrel committed to ${project.book}/ in the writing repository, as of ${now.toISOString().slice(0, 10)}. Words are counted as added and removed between versions, so a changed word counts once each way.`,
+    `Every change Carrel committed to ${project.book}/ in the writing repository, as of ${isoDay(now)}. Words are counted as added and removed between versions, so a changed word counts once each way.`,
     "",
     "## By person",
     "",
@@ -831,7 +835,7 @@ export async function saveBookAiDraft(
       itemId: path,
       personId: session.viewer.id,
       client: session.client,
-      source: input.source.replace(/\r\n/g, "\n"),
+      source: normalizeNewlines(input.source),
       baseVersion: base?.sha ?? null,
       note: (input.note ?? "").trim().slice(0, 500),
     })

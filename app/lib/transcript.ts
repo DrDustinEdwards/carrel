@@ -2,26 +2,23 @@
 // asked for seconds it gave times past the end of the episode, and when it chose from time markers it drifted up to a
 // minute late. It quotes the words a chapter opens with, and the time is the start of the cue that says them.
 
-const CUE = /(\d{2}):(\d{2}):(\d{2})\.\d{3} --> (\d{2}):(\d{2}):(\d{2})\.\d{3}/;
+import { parseVtt, transcriptDuration, transcriptText } from "@drdustinedwards/site-helpers/vtt";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 type Cue = { start: number; text: string };
 type ParsedTranscript = { text: string; duration: number; cues: Cue[] };
 
-/** The transcript's cues as running text, with each cue's start in seconds. */
+/**
+ * The transcript's cues as running text (Prelum's WebVTT reader), with each cue's start in whole seconds, as the
+ * episode's chapters and keyMoments write them.
+ */
 export function parseTranscript(vtt: string): ParsedTranscript {
-  const lines = vtt.replace(/\r\n/g, "\n").split("\n");
-  const cues: Cue[] = [];
-  let duration = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const m = CUE.exec(lines[i]!);
-    if (!m) continue;
-    const start = +m[1]! * 3600 + +m[2]! * 60 + +m[3]!;
-    duration = Math.max(duration, +m[4]! * 3600 + +m[5]! * 60 + +m[6]!);
-    const text: string[] = [];
-    while (i + 1 < lines.length && lines[i + 1]!.trim() !== "") text.push(lines[++i]!.trim());
-    cues.push({ start, text: text.join(" ") });
-  }
-  return { text: cues.map((c) => c.text).join(" "), duration, cues };
+  const cues = parseVtt(vtt);
+  return {
+    text: transcriptText(cues),
+    duration: Math.floor(transcriptDuration(cues)),
+    cues: cues.map((c) => ({ start: Math.floor(c.start), text: c.text })),
+  };
 }
 
 const words = (s: string) =>
@@ -115,7 +112,7 @@ type WrittenCue = { timing: string; start: number; text: string };
 const TIMING = /^((\d{2,}):)?(\d{2}):(\d{2})\.(\d{3}) --> \S+/;
 
 function writtenCues(vtt: string): WrittenCue[] {
-  const lines = vtt.replace(/\r\n/g, "\n").split("\n");
+  const lines = normalizeNewlines(vtt).split("\n");
   const cues: WrittenCue[] = [];
   for (let i = 0; i < lines.length; i++) {
     const m = TIMING.exec(lines[i]!.trim());

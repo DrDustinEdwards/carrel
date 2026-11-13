@@ -61,6 +61,8 @@ jobs:
       - run: npm run check:mcp-roles
       # The MCP door against the protocol's conformance suite, on two local Workers (about 15 s).
       - run: npm run check:conformance
+      - run: npm run check:secrets
+      - run: npm run check:destructive
 
   # THE ACCESSIBILITY SCAN, check:a11y: axe on every Desk screen as the real app renders it, both themes, desktop and
   # phone, and any script error or hydration mismatch on the way. It is the browser check for flows that must never
@@ -97,9 +99,11 @@ jobs:
           cache: npm
       - if: steps.scope.outputs.run == 'true'
         run: npm ci
+      # Chromium only: ubuntu-latest already carries the libraries it needs (it ships Google Chrome), so the
+      # scan does not wait on the Ubuntu apt mirrors, which runners could not resolve on 2026-11-11.
       - name: Install Chromium for the accessibility scan
         if: steps.scope.outputs.run == 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - if: steps.scope.outputs.run == 'true'
         run: npm run check:a11y
 
@@ -143,7 +147,7 @@ jobs:
   deploy:
     needs: [check]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@250d737c13b6f4c74987652818d262cb1d1c9cf7 # v0.27.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@33c4651984133498e49380b1cfea0894fe7f1bae # v0.43.0
     with:
       worker-name: carrel-desk
       # site-runtime withAdminIdle's key and audit-log's signing key (0.85), minted once by the deploy and never shown (devkit "generated-secrets").
@@ -173,7 +177,7 @@ jobs:
   deploy-www:
     needs: [check]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@250d737c13b6f4c74987652818d262cb1d1c9cf7 # v0.27.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@33c4651984133498e49380b1cfea0894fe7f1bae # v0.43.0
     with:
       worker-name: carrel
       health-url: https://carrel.dustinedwards.info/health

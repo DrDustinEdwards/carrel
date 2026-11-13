@@ -20,6 +20,8 @@ import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
 
 export type StoredSection = SharedSection & { updatedAt: string };
 
@@ -48,7 +50,7 @@ export async function saveSection(
   if (!can(project.role, "manage")) throw new Response("Forbidden", { status: 403 });
   const key = input.key.trim();
   const title = input.title.trim();
-  const body = input.body.replace(/\r\n/g, "\n").trim();
+  const body = normalizeNewlines(input.body).trim();
   if (!isSlug(key))
     return {
       ok: false,
@@ -129,7 +131,7 @@ export async function checkLegalWrite(
     storedPublic: current !== null && current.status !== "draft",
     sections: await listSections(db),
     public: live,
-    today: now.toISOString().slice(0, 10),
+    today: isoDay(now)!,
   });
   return prepared.ok ? { ok: true, source: prepared.source } : prepared;
 }

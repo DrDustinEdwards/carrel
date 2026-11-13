@@ -15,8 +15,10 @@ import {
   STREAK_HORIZON_DAYS,
   type Goal,
   type SaveEntry,
-} from "~/lib/writing/progress";
-import { cleanLabels, STARTING_STATUSES, type StatusLabel } from "~/lib/writing/status";
+} from "capsomer/behavior/writing-progress";
+import { cleanLabels, type ColorLabel } from "capsomer/behavior/label-color-list";
+
+import { STARTING_STATUSES } from "~/lib/writing/status";
 
 function forbid(): never {
   throw new Response("Forbidden", { status: 403 });
@@ -28,7 +30,7 @@ function forbid(): never {
 export async function statusList(
   db: D1Database,
   project: BookProject,
-): Promise<{ labels: StatusLabel[]; edited: boolean }> {
+): Promise<{ labels: ColorLabel[]; edited: boolean }> {
   if (!can(project.role, "read")) forbid();
   const rows = await drizzle(db)
     .select({ label: statusLabels.label, color: statusLabels.color })

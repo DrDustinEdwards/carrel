@@ -4,7 +4,8 @@
 // draft saved beside it. Read-only, and it works for a Reader. The compare components and the patch
 // are the site page's.
 
-import { Link } from "capsomer/react/link";
+import { Link, routerRenderLink } from "capsomer/react/link";
+import { Row, RowList } from "capsomer/react/row-list";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
@@ -16,11 +17,11 @@ import {
   type Side,
   SourcePanel,
   sides,
-  utc,
   type View,
 } from "~/components/history/history-view";
-import { RevisionPicker, revisionLabel } from "~/components/history/revision-picker";
-import { RouterLink } from "~/components/frame";
+import { utc } from "capsomer/behavior/time";
+import { RevisionPicker } from "~/components/history/revision-picker";
+import { comparePicks, messageSummary } from "capsomer/behavior/history-list";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { bookVersions, readVersion } from "~/lib/book-history.server";
 import { bookRepo, indexedFile, requireBookProject } from "~/lib/books.server";
@@ -74,7 +75,10 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     ? null
     : `${detail} Without Git, only the versions Carrel recorded are listed, and their text cannot be opened.`;
 
-  const picks = query.getAll("v");
+  // Two picks, older first: `?from=&to=` from the Compare link, or `?compare=` twice from the form.
+  const atOf = (version: string) =>
+    Date.parse(versions.find((r) => r.version === version)?.at ?? "") || 0;
+  const picks = comparePicks(query, atOf) ?? query.getAll("compare");
   let view: View = { kind: "none" };
   let picked: string[] = [];
   const read = async (v: (typeof versions)[number]) =>
@@ -172,7 +176,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
               message: unread ?? "Git does not hold the file at one of those versions.",
             }
           : sides(
-              `${utc(pair.from.at)} to ${utc(pair.to.at)}`,
+              `${utc(Date.parse(pair.from.at))} to ${utc(Date.parse(pair.to.at))}`,
               `What changed between the version by ${pair.from.author} and the one by ${pair.to.author}.`,
               fileName,
               { title: "Earlier version", who: pair.from.author, time: pair.from.at, text: before },
@@ -214,7 +218,7 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
   return (
     <div className="app-page">
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: project.name, href: base },
           { label, href: editor },
@@ -256,15 +260,14 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
       {againstGit || aiDrafts.length > 0 ? (
         <Panel title="Your text" src="Your draft, or the saved file when you have none">
           {againstGit ? (
-            <ul className="app-flags" aria-label="Compare your draft with the saved file">
-              <li>
-                <span>
-                  <Link to={`${historyPath}?compare=git`}>
-                    Your working draft against the saved file
-                  </Link>
-                </span>
-              </li>
-            </ul>
+            <RowList label="Compare your draft with the saved file" gap="xs">
+              <Row
+                size="sm"
+                title="Your working draft against the saved file"
+                href={`${historyPath}?compare=git`}
+                renderLink={routerRenderLink}
+              />
+            </RowList>
           ) : null}
           <DraftLinks historyPath={historyPath} againstSite={false} aiDrafts={aiDrafts} />
         </Panel>
@@ -285,7 +288,7 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
               ...v,
               message:
                 v.kind === "outside"
-                  ? `${revisionLabel(v.message, `${project.book}/${v.path}`)} outside Carrel`
+                  ? `${messageSummary(v.message, `${project.book}/${v.path}`)} outside Carrel`
                   : v.message,
             }))}
             historyPath={historyPath}

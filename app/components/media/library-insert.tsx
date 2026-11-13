@@ -6,6 +6,8 @@
 // sharing fields use the same picker for the share image, with their own words and their own onPick.
 
 import {
+  lazy,
+  Suspense,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -25,7 +27,20 @@ import {
   DialogTitle,
 } from "capsomer/react/dialog";
 import { Empty } from "capsomer/react/empty";
-import { MediaLibrary, type FormComponent, type MediaData } from "capsomer/react/media-library";
+import type { FormComponent, MediaData } from "capsomer/react/media-library";
+
+import { errorMessage } from "@dustinedwards/site-runtime/log";
+// The grid loads when the dialog first opens, not with the editor: it is never on the server's page
+// (it waits for the library's answer) and most edits never open it. Opening starts the fetch and the
+// import together.
+const loadLibrary = () => import("capsomer/react/media-library");
+const MediaLibrary = lazy(() => loadLibrary().then((m) => ({ default: m.MediaLibrary })));
+
+const LOADING = (
+  <p className="cap-muted" role="status">
+    Loading media...
+  </p>
+);
 
 type LibraryPick = { url: string; alt: string; caption: string };
 
@@ -65,7 +80,7 @@ export function LibraryInsert({
       if (body && "rows" in body) setData(body);
       else setError((body && body.error) || `The library answered ${response.status}.`);
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : String(thrown));
+      setError(errorMessage(thrown));
     }
   };
 
@@ -133,6 +148,7 @@ export function LibraryInsert({
         size="sm"
         onClick={(event) => {
           setOpener(event.currentTarget);
+          void loadLibrary();
           setOpen(true);
         }}
       >
@@ -157,21 +173,21 @@ export function LibraryInsert({
                 {error}
               </Empty>
             ) : data ? (
-              <MediaLibrary
-                data={data}
-                action={library}
-                Form={PickerForm}
-                mode="picker"
-                onPick={({ id, url, alt }) => {
-                  const caption = data.rows.find((r) => r.key === id)?.caption ?? "";
-                  onPick({ url, alt, caption });
-                  close();
-                }}
-              />
+              <Suspense fallback={LOADING}>
+                <MediaLibrary
+                  data={data}
+                  action={library}
+                  Form={PickerForm}
+                  mode="picker"
+                  onPick={({ id, url, alt }) => {
+                    const caption = data.rows.find((r) => r.key === id)?.caption ?? "";
+                    onPick({ url, alt, caption });
+                    close();
+                  }}
+                />
+              </Suspense>
             ) : (
-              <p className="cap-muted" role="status">
-                Loading media...
-              </p>
+              LOADING
             )}
           </div>
         </DialogBody>

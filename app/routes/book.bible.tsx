@@ -5,7 +5,7 @@
 import { Form, redirect } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert } from "capsomer/react/banner";
-import { Button } from "capsomer/react/button";
+import { InlineAddForm } from "capsomer/react/inline-add-form";
 import { Field } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { Select } from "capsomer/react/select";
@@ -91,9 +91,8 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
           count={bible.length}
           footer={
             canEdit ? (
-              <Form method="post" className="app-inline-form">
-                <input type="hidden" name="intent" value="new-bible" />
-                <Field label="New entry">
+              <InlineAddForm Form={Form} hidden={{ intent: "new-bible" }} submit="Start it">
+                <Field label="New entry" size="short">
                   <Select
                     name="kind"
                     defaultValue="character"
@@ -113,8 +112,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
                     autoComplete="off"
                   />
                 </Field>
-                <Button type="submit">Start it</Button>
-              </Form>
+              </InlineAddForm>
             ) : undefined
           }
         >
@@ -149,8 +147,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
           count={others.length}
           footer={
             canEdit ? (
-              <Form method="post" className="app-inline-form">
-                <input type="hidden" name="intent" value="new-outline" />
+              <InlineAddForm Form={Form} hidden={{ intent: "new-outline" }} submit="Start it">
                 <Field label="New outline file">
                   <input
                     className="cap-input"
@@ -160,8 +157,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
                     autoComplete="off"
                   />
                 </Field>
-                <Button type="submit">Start it</Button>
-              </Form>
+              </InlineAddForm>
             ) : undefined
           }
         >

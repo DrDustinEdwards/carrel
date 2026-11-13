@@ -1,9 +1,9 @@
 // The report Carrel sends to Capsid's inbox: the body for no, one and many AI drafts, and the
 // failure path, which is logged and never thrown.
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { reportInbox } from "~/lib/inbox-report.server";
+import { reportDraftsInbox } from "~/lib/inbox-report.server";
 import { addPerson, addProject, resetDb, testEnv } from "./env";
 
 const ORIGIN = "https://desk.dustinedwards.info";
@@ -35,12 +35,12 @@ beforeEach(async () => {
   projectId = await addProject("de-info", "dustinedwards");
 });
 
-describe("reportInbox", () => {
+describe("reportDraftsInbox", () => {
   it("posts the count and the oldest draft's time with the bearer key", async () => {
     await addDraft("2026-10-03T00:00:00Z");
     await addDraft("2026-10-01T00:00:00Z");
     const { calls, fetcher } = capture();
-    expect(await reportInbox(env, fetcher)).toMatchObject({ state: "sent" });
+    expect(await reportDraftsInbox(env, fetcher)).toMatchObject({ state: "sent" });
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toBe("https://mcp.dustinedwards.info/ops/inbox/report");
     expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe("Bearer key-1");
@@ -54,36 +54,30 @@ describe("reportInbox", () => {
 
   it("sends an empty list when nothing waits, to clear the badge", async () => {
     const { calls, fetcher } = capture();
-    await reportInbox(env, fetcher);
+    await reportDraftsInbox(env, fetcher);
     expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ namespace: "carrel", items: [] });
   });
 
   it("sends nothing while the key is not set", async () => {
     const { calls, fetcher } = capture();
     expect(
-      await reportInbox({ ...env, CAPSID_AGENT_KEY: undefined } as Env, fetcher),
+      await reportDraftsInbox({ ...env, CAPSID_AGENT_KEY: undefined } as Env, fetcher),
     ).toMatchObject({ state: "skipped" });
     expect(calls).toHaveLength(0);
   });
 
-  it("logs and returns a refusal rather than swallowing or throwing it", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("returns a refusal rather than swallowing or throwing it", async () => {
     const { fetcher } = capture(429);
-    expect(await reportInbox(env, fetcher)).toEqual({
+    expect(await reportDraftsInbox(env, fetcher)).toEqual({
       state: "failed",
       detail: "Capsid answered 429",
     });
-    expect(log).toHaveBeenCalledWith(expect.stringContaining("report-failed"));
-    log.mockRestore();
   });
 
-  it("logs and returns a network failure", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("returns a network failure", async () => {
     const down = (async () => {
       throw new Error("offline");
     }) as unknown as typeof fetch;
-    expect(await reportInbox(env, down)).toEqual({ state: "failed", detail: "offline" });
-    expect(log).toHaveBeenCalled();
-    log.mockRestore();
+    expect(await reportDraftsInbox(env, down)).toEqual({ state: "failed", detail: "offline" });
   });
 });

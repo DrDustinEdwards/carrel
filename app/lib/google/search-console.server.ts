@@ -10,6 +10,7 @@ import type { SiteProject } from "~/lib/projects.server";
 import { siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 
 import { saClient } from "./service-account.server";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
 
 type Fetch = typeof fetch;
 
@@ -21,10 +22,6 @@ const WINDOW_DAYS = 28;
 /** The Search Console property for a site: a domain property unless a var says otherwise. */
 function propertyFor(env: Env, site: SiteId): string {
   return siteEntry(site).searchConsoleProperty(env);
-}
-
-function day(d: Date): string {
-  return d.toISOString().slice(0, 10);
 }
 
 export type ScRefresh = { pages: number; skipped: boolean; start: string; end: string };
@@ -41,8 +38,8 @@ export async function refreshSearchConsole(
     .from(searchConsolePages)
     .where(eq(searchConsolePages.projectId, project.id))
     .get();
-  const end = day(new Date(now.getTime() - LAG_DAYS * DAY));
-  const start = day(new Date(now.getTime() - (LAG_DAYS + WINDOW_DAYS - 1) * DAY));
+  const end = isoDay(new Date(now.getTime() - LAG_DAYS * DAY))!;
+  const start = isoDay(new Date(now.getTime() - (LAG_DAYS + WINDOW_DAYS - 1) * DAY))!;
   if (last && now.getTime() - Date.parse(last.fetchedAt) < DAY)
     return { pages: 0, skipped: true, start, end };
 

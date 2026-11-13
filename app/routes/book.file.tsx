@@ -4,11 +4,14 @@
 // from. Beside a scene: its flags and the bible entries it names.
 
 import { useEffect, useRef, useState } from "react";
-import { useFetcher, type ShouldRevalidateFunctionArgs } from "react-router";
-import { Link } from "capsomer/react/link";
+import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
+import { Link, routerRenderLink } from "capsomer/react/link";
+import { RowList } from "capsomer/react/row-list";
+import { FlagRow } from "~/components/editor/flags-panel";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { Disclosure } from "capsomer/react/disclosure";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
@@ -16,15 +19,14 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
-import { AiWriteButtons } from "~/components/ai-write-buttons";
+import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
 import { useRoomEditing } from "~/components/editor/room-editing";
 import { WritingSurface } from "~/components/editor/writing-surface";
-import { HeaderFields } from "~/components/editor/header-fields";
-import { commentsTab, Inspector } from "~/components/editor/inspector";
+import { FrontmatterFields } from "capsomer/react/frontmatter-fields";
+import { Inspector } from "capsomer/react/inspector";
+import { commentsTab } from "~/components/editor/comments-tab";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { useSaveShortcut } from "~/components/editor/save-keys";
-import { useTypingRecede } from "~/components/editor/typing";
-import { RouterLink } from "~/components/frame";
+import { useSaveShortcut, useTypingRecede } from "capsomer/react/editor-workspace";
 import { Binder } from "~/components/writing/binder";
 
 import {
@@ -41,7 +43,7 @@ import {
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { roomNames } from "~/lib/comments.server";
 import { discardDraft, readDraft, readOwnDraft } from "~/lib/content.server";
-import type { RoomViewer } from "~/lib/editor/room-protocol";
+import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
 import { getEnv, getViewer } from "~/lib/context";
 import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
@@ -56,10 +58,13 @@ import { can } from "~/lib/roles";
 import { openRoom, replaceRoom, roomPath, roomVersion, saveRoom } from "~/lib/rooms.server";
 import { addUntyped, clearUntyped, untypedField } from "~/lib/writing.server";
 import { binderTree } from "~/lib/writing/binder";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.file";
+import { normalizeNewlines, plural } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel" }];
 }
@@ -97,7 +102,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     try {
       git = await repo.read(`${project.book}/${path}`);
     } catch (error) {
-      gitError = `Git did not answer (${error instanceof Error ? error.message : String(error)}), so this shows Carrel's index.`;
+      gitError = `Git did not answer (${errorMessage(error)}), so this shows Carrel's index.`;
     }
   }
   // Without Git, the index's copy stands in, read-only for saving but fine for reading.
@@ -116,8 +121,8 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const roomViewer: RoomViewer = {
     id: viewer.id,
     name: viewer.name || viewer.email,
-    role: project.role,
     access: canEdit ? "edit" : "suggest",
+    ...(project.role === "owner" ? { deletesAny: true } : {}),
   };
 
   const kind = fileKindOf(path);
@@ -209,10 +214,11 @@ export async function action({
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
   const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
-  const source = String(form.get("source") ?? "").replace(/\r\n/g, "\n");
+  const source = normalizeNewlines(String(form.get("source") ?? ""));
 
   switch (intent) {
     case "discard": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       // Everyone in the room goes back to Git's text.
       const { repo } = bookRepo(env);
       const git = repo ? await repo.read(`${project.book}/${path}`).catch(() => null) : null;
@@ -224,6 +230,7 @@ export async function action({
       return { intent, discarded: true };
     }
     case "use-own-draft": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       const own = await readOwnDraft(env.DB, project, viewer, path);
       if (!own) throw new Response("That draft is gone.", { status: 404 });
       await replaceRoom(env, project, viewer, path, {
@@ -235,17 +242,20 @@ export async function action({
       return { intent: "discard", discarded: true };
     }
     case "drop-own-draft":
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       await discardDraft(env.DB, project, viewer, path);
       return { intent: "discard", discarded: true };
     case "check":
       return { intent, findings: await checkDraft(env.DB, project, path, source) };
     case "dismiss": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       const id = Number(form.get("finding"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
       await dismissFinding(env.DB, project, viewer, id);
       return { intent, dismissed: id };
     }
     case "use-ai-draft": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
       // The person's decision: the AI draft's text becomes the working copy in the room, to edit and save.
       const id = Number(form.get("draft"));
       if (!Number.isInteger(id)) throw new Response("Bad request", { status: 400 });
@@ -308,12 +318,19 @@ export default function BookFileRoute({ loaderData }: Route.ComponentProps) {
   return <BookFile key={`${loaderData.project.slug}/${loaderData.path}`} data={loaderData} />;
 }
 
-type Ask = { kind: "discard" | "dismiss" | "use-ai"; id?: number; opener: HTMLElement | null };
+type Ask = {
+  kind: "discard" | "drop-draft" | "put-draft" | "dismiss" | "use-ai";
+  id?: number;
+  opener: HTMLElement | null;
+};
 
 function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
+  // `?tab=checks` opens the inspector on that tab (a link from Home's flags lands on the checks).
+  const [params] = useSearchParams();
   const [asking, setAsking] = useState<Ask | null>(null);
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
+  const aiJob = useFetcher<AiJobAnswer>();
   const { say } = useMessage();
   useTypingRecede();
   const base = `/b/${data.project.slug}`;
@@ -323,7 +340,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     path: data.room?.path ?? "",
     initial: data.source,
     unsaved: data.unsaved,
-    viewer: data.room?.viewer ?? { id: 0, name: "", role: "reader", access: "suggest" },
+    viewer: data.room?.viewer ?? { id: 0, name: "", access: "suggest" },
     names: data.room?.names ?? {},
     hideFrontMatter: true,
   });
@@ -367,7 +384,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     if (!outcome?.ok || writer.state !== "idle" || said.current === outcome) return;
     said.current = outcome;
     say(
-      `Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${outcome.findings.length} flag${outcome.findings.length === 1 ? "" : "s"}; see the list.`}`,
+      `Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${plural(outcome.findings.length, "flag")}; see the list.`}`,
     );
   }, [outcome, writer.state, say]);
 
@@ -410,7 +427,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   return (
     <div className="app-page app-editor">
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={crumbs}
         title={data.label}
         lead={
@@ -430,7 +447,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         }
       />
 
-      <div className="app-notices">
+      <div className="app-notices" data-cap-recede="">
         {data.connectionDetail ? <Banner tone="warn">{data.connectionDetail}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="Git moved on">
@@ -444,14 +461,18 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
             title="You have a draft of your own from before shared editing"
             actions={
               <>
-                <Button size="sm" pending={busy} onClick={() => void send("use-own-draft")}>
+                <Button
+                  size="sm"
+                  pending={busy}
+                  onClick={(event) => ask("put-draft", event.currentTarget)}
+                >
                   Put it in for everyone
                 </Button>
                 <Button
                   size="sm"
                   variant="quiet"
                   pending={busy}
-                  onClick={() => void send("drop-own-draft")}
+                  onClick={(event) => ask("drop-draft", event.currentTarget)}
                 >
                   Delete it
                 </Button>
@@ -473,7 +494,6 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       <div className="app-editor-grid">
         <div className="app-editor-main">
           <section
-            className="app-editor-pane"
             aria-label="Write"
             onPasteCapture={(event) => countUntyped(event.clipboardData?.getData("text/plain"))}
             onDropCapture={(event) => countUntyped(event.dataTransfer?.getData("text/plain"))}
@@ -497,6 +517,8 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         </div>
 
         <Inspector
+          className="app-editor-side"
+          initialTab={params.get("tab")}
           label={data.kind === "scene" ? "About this scene" : "About this file"}
           head={
             <>
@@ -508,8 +530,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     </p>
                     {outcome && !outcome.ok ? <Alert tone="crit">{outcome.message}</Alert> : null}
                     {data.version ? (
-                      <AiWriteButtons
+                      <AiJobButtons
                         action={`${base}/ai-write`}
+                        Form={aiJob.Form}
+                        answer={aiJob.data}
+                        pending={aiJob.state !== "idle"}
                         fields={{ path: data.path }}
                         buttons={[
                           { job: "continue", label: "Continue this file" },
@@ -558,10 +583,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               value: "details",
               label: "Details",
               content: (
-                <HeaderFields
+                <FrontmatterFields
                   source={source}
                   onChange={setSource}
                   readOnly={readOnly || !data.canEdit}
+                  legend="Header"
+                  empty={
+                    <p className="app-note">
+                      This file has no header, so it has no details to set.
+                    </p>
+                  }
                 />
               ),
             },
@@ -580,30 +611,18 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       {data.findings.length === 0 ? (
                         <p>None.</p>
                       ) : (
-                        <ul className="app-flags" aria-label="Flags on this file">
+                        <RowList label="Flags on this file" gap="xs">
                           {data.findings.map((f) => (
-                            <li key={f.id}>
-                              {f.status === "open" ? (
-                                <Status tone="warn">Open</Status>
-                              ) : (
-                                <Pill variant="secondary">Dismissed</Pill>
-                              )}
-                              <span>
-                                <strong>{f.check}</strong>{" "}
-                                {f.line ? <span className="cap-muted">line {f.line}</span> : null}{" "}
-                                {f.message}
-                              </span>
-                              {f.status === "open" && data.canPublish ? (
-                                <Button
-                                  size="sm"
-                                  onClick={(event) => ask("dismiss", event.currentTarget, f.id)}
-                                >
-                                  Dismiss<span className="cap-sr-only"> flag: {f.message}</span>
-                                </Button>
-                              ) : null}
-                            </li>
+                            <FlagRow
+                              key={f.id}
+                              flag={f}
+                              meta={f.line ? `line ${f.line}` : undefined}
+                              onDismiss={
+                                data.canPublish ? (button) => ask("dismiss", button, f.id) : null
+                              }
+                            />
                           ))}
-                        </ul>
+                        </RowList>
                       )}
                       {checked ? (
                         <div role="status" className="app-stack" data-tight>
@@ -611,20 +630,16 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           {checked.length === 0 ? (
                             <p>Nothing flagged.</p>
                           ) : (
-                            <ul className="app-flags">
+                            <RowList label="This text, checked now" gap="xs">
                               {checked.map((f, i) => (
-                                <li key={i}>
-                                  <Status tone="warn">Found</Status>
-                                  <span>
-                                    <strong>{f.check}</strong>{" "}
-                                    {f.line ? (
-                                      <span className="cap-muted">line {f.line}</span>
-                                    ) : null}{" "}
-                                    {f.message}
-                                  </span>
-                                </li>
+                                <FlagRow
+                                  key={i}
+                                  flag={f}
+                                  status={<Status tone="warn">Found</Status>}
+                                  meta={f.line ? `line ${f.line}` : undefined}
+                                />
                               ))}
-                            </ul>
+                            </RowList>
                           )}
                         </div>
                       ) : null}
@@ -728,6 +743,22 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         />
       </div>
 
+      <PutDraftDialog
+        open={asking?.kind === "put-draft"}
+        returnTo={asking?.opener}
+        perform={async () => {
+          await send("use-own-draft", { confirmed: "1" });
+        }}
+        onClose={() => setAsking(null)}
+      />
+      <DropDraftDialog
+        open={asking?.kind === "drop-draft"}
+        returnTo={asking?.opener}
+        perform={async () => {
+          await send("drop-own-draft", { confirmed: "1" });
+        }}
+        onClose={() => setAsking(null)}
+      />
       <ConfirmDialog
         open={asking?.kind === "discard"}
         title="Discard the unsaved changes?"
@@ -736,7 +767,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         action="Discard unsaved changes"
         returnTo={asking?.opener}
         perform={async () => {
-          await send("discard");
+          await send("discard", { confirmed: "1" });
         }}
         onClose={() => setAsking(null)}
       />
@@ -754,7 +785,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         perform={async () => {
           if (asking?.id !== undefined)
             await writer.submit(
-              { intent: "dismiss", finding: String(asking.id) },
+              { intent: "dismiss", finding: String(asking.id), confirmed: "1" },
               { method: "post" },
             );
         }}
@@ -770,7 +801,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         perform={async () => {
           if (asking?.id !== undefined)
             await writer.submit(
-              { intent: "use-ai-draft", draft: String(asking.id) },
+              { intent: "use-ai-draft", draft: String(asking.id), confirmed: "1" },
               { method: "post" },
             );
         }}

@@ -23,7 +23,9 @@ import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
 import { draftForEvent, draftSocialPost } from "~/lib/social/queue.server";
 import { publishTranscriptDraft, TranscriptRefusal } from "~/lib/transcripts.server";
+import { normalizeNewlines, wordCount } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 /**
  * An AI client acting for a person, known by the door it came through: the person the OAuth grant
  * belongs to, and the client that holds the grant (its CIMD name), credited on every change.
@@ -202,7 +204,7 @@ export async function saveAiDraft(
       itemId,
       personId: session.viewer.id,
       client: session.client,
-      source: input.source.replace(/\r\n/g, "\n"),
+      source: normalizeNewlines(input.source),
       baseVersion,
       note: (input.note ?? "").trim().slice(0, 500),
       sources: JSON.stringify(input.sources ?? []),
@@ -249,7 +251,7 @@ export async function listAiDrafts(
     .all();
   return rows.map(({ source, ...r }) => ({
     ...r,
-    words: source.split(/\s+/).filter(Boolean).length,
+    words: wordCount(source),
   }));
 }
 
@@ -409,9 +411,11 @@ async function recordAiPublication(
       .where(eq(aiPublications.changeId, outcome.changeId));
     return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(
-      JSON.stringify({ aiPublish: "email-failed", changeId: outcome.changeId, error: message }),
+    const message = errorMessage(error);
+    logEvent(
+      "aiPublish.email-failed",
+      { changeId: outcome.changeId, error: message },
+      { level: "error" },
     );
     await d
       .update(aiPublications)

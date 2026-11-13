@@ -3,9 +3,9 @@
 // item, a post since deleted). Anyone who can read the project sees them; only the Owner dismisses,
 // through the same function as the editor's Dismiss, so a dismissal is recorded the same way.
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Form, useFetcher } from "react-router";
-import { Link } from "capsomer/react/link";
+import { routerRenderLink } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog } from "capsomer/react/confirm-dialog";
@@ -21,6 +21,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 import { siteEntry } from "~/lib/sites.server";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.flags";
@@ -51,6 +52,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const project = await requireSiteProject(env.DB, viewer, params.project, "publish");
   const form = await readForm(request);
   if (form.get("intent") !== "dismiss") throw new Response("Bad request", { status: 400 });
+  if (!confirmationSatisfied(form)) throw confirmationRequired();
   const id = Number(form.get("flag"));
   const item = String(form.get("item") ?? "");
   if (!Number.isInteger(id) || !item) throw new Response("Bad request", { status: 400 });
@@ -73,9 +75,6 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
   const [target, setTarget] = useState<{ flag: Flag; opener: HTMLElement | null } | null>(null);
   const open = flags.filter((f) => f.status === "open").length;
   const dismissed = fetcher.data?.dismissed ?? actionData?.dismissed;
-  const link = ({ href, children }: { href: string; children: ReactNode }) => (
-    <Link to={href}>{children}</Link>
-  );
 
   return (
     <div className="app-page">
@@ -116,7 +115,7 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
                       ? `/p/${project.slug}/e/${encodeURIComponent(flag.itemId)}`
                       : undefined
                   }
-                  renderLink={link}
+                  renderLink={routerRenderLink}
                   detail={
                     <>
                       {source(flag.check)} on{" "}
@@ -168,7 +167,12 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
         perform={async () => {
           if (!target) return;
           await fetcher.submit(
-            { intent: "dismiss", flag: String(target.flag.id), item: target.flag.itemId },
+            {
+              intent: "dismiss",
+              flag: String(target.flag.id),
+              item: target.flag.itemId,
+              confirmed: "1",
+            },
             { method: "post" },
           );
         }}

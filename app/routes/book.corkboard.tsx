@@ -3,19 +3,18 @@
 // and cards move by dragging a grip, by the keyboard, or by Move up and Move down; a card's menu also
 // moves it to another chapter. Every move is renames of numbered files in one commit
 // (lib/binder.server.ts). It works with no script: the lists sit in forms whose buttons post the move,
-// and the card menu is a native disclosure of submit buttons (Capsomer's form menu look).
+// and the card menu is Capsomer's form menu, a native disclosure of submit buttons.
 
-import { useEffect, useRef } from "react";
 import { Form, useFetcher } from "react-router";
-import { enhance } from "capsomer/behavior/menu";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { SortableList, moveId } from "capsomer/react/sortable-list";
 import { Link } from "capsomer/react/link";
+import { FormMenu } from "capsomer/react/menu";
 
 import { BookHead } from "~/components/book-head";
-import { StatusLabelPill } from "~/components/writing/status-label";
+import { ColorLabelPill } from "capsomer/react/label-color-list";
 
 import { reorderBook, chapterSources, type ReorderResult } from "~/lib/binder.server";
 import { bookHead, bookRepo, listFiles, requireBookProject } from "~/lib/books.server";
@@ -33,6 +32,8 @@ import { statusList } from "~/lib/writing.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.corkboard";
+import { plural } from "@drdustinedwards/site-helpers/text";
+import { slugify } from "@drdustinedwards/site-helpers/slug";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Corkboard · ${data.head.name} · Carrel` : "Carrel" }];
@@ -129,48 +130,6 @@ export async function action({
 
 type Card = Route.ComponentProps["loaderData"]["chapters"][number]["cards"][number];
 
-/** A card's menu: Move to each other chapter. Its buttons submit the card's own form (the form
- * attribute), since the card sits inside its chapter's list form and forms do not nest. */
-function CardMenu({
-  title,
-  form,
-  chapters,
-}: {
-  title: string;
-  form: string;
-  chapters: { slug: string; title: string }[];
-}) {
-  const ref = useRef<HTMLDetailsElement>(null);
-  useEffect(() => (ref.current?.parentNode ? enhance(ref.current.parentNode) : undefined), []);
-  return (
-    <details className="cap-menu-form app-card-menu" data-cap="menu-form" ref={ref}>
-      <summary className="cap-btn cap-menu-trigger" data-size="sm">
-        Move to<span className="cap-sr-only"> another chapter: {title}</span>
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-          <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-      </summary>
-      <div className="cap-popover cap-menu">
-        {chapters.map((c) => (
-          <button
-            key={c.slug}
-            type="submit"
-            form={form}
-            name="target"
-            value={c.slug}
-            className="cap-option cap-menu-item"
-            onClick={() => {
-              if (ref.current) ref.current.open = false;
-            }}
-          >
-            <span className="cap-option-label">{c.title}</span>
-          </button>
-        ))}
-      </div>
-    </details>
-  );
-}
-
 export default function Corkboard({ loaderData, actionData }: Route.ComponentProps) {
   const { head, canMove, labels, chapters } = loaderData;
   const mover = useFetcher<typeof action>();
@@ -185,41 +144,56 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
 
   // A card's "Move to" sits inside the list's form, so its buttons belong to a form of their own
   // placed after the list (the form attribute), never a form nested in another.
-  const moveForm = (c: Card) => `move-${c.path.replace(/[^a-z0-9]+/g, "-")}`;
+  const moveForm = (c: Card) => `move-${slugify(c.path)}`;
+  // Capsomer's card (card.css): the title is its heading link, stretched over the card, with the
+  // status beside it; the summary is its content; the facts and Move to are its footer. In the
+  // sortable list the item is the card's box, so the card keeps only its regions.
   const card = (c: Card, chapter: string) => (
-    <div className="app-card">
-      <div className="app-card-head">
-        <Link to={`${base}/f/${c.path}`} className="app-card-title">
-          {c.title}
-        </Link>
-        <StatusLabelPill labels={labels} status={c.status} />
-      </div>
-      <p className={c.fromText ? "app-card-summary cap-muted" : "app-card-summary"}>
+    <article className="cap-card">
+      <header>
+        <h3>
+          <Link to={`${base}/f/${c.path}`} className="cap-card-link">
+            {c.title}
+          </Link>
+        </h3>
+        <ColorLabelPill labels={labels} value={c.status} unknownNote=" (not on the status list)" />
+      </header>
+      <p>
         {c.summary || "No summary yet."}
         {c.fromText && c.summary ? (
           <span className="cap-sr-only"> (the scene's first sentence; it has no summary)</span>
         ) : null}
       </p>
-      <div className="app-card-foot">
-        <p className="app-card-facts cap-muted">
+      <footer>
+        <span>
           {c.pov ? <>{c.pov}, </> : null}
           {c.words.toLocaleString("en-US")} words
-        </p>
+        </span>
         {canMove && chapters.length > 1 ? (
-          <CardMenu
-            title={c.title}
+          // Move to each other chapter. Its buttons submit the card's own form (`form`), since the
+          // card sits inside its chapter's list form and forms do not nest.
+          <FormMenu
+            label={
+              <>
+                Move to<span className="cap-sr-only"> another chapter: {c.title}</span>
+              </>
+            }
             form={moveForm(c)}
-            chapters={chapters.filter((x) => x.slug !== chapter)}
+            size="sm"
+            name="target"
+            items={chapters
+              .filter((x) => x.slug !== chapter)
+              .map((x) => ({ label: x.title, value: x.slug }))}
           />
         ) : null}
-      </div>
-    </div>
+      </footer>
+    </article>
   );
 
   return (
     <div className="app-page">
       <BookHead book={head} section="manuscript" view="corkboard" />
-      <div className="app-stack" data-tight>
+      <div className="cap-stack" data-gap="4">
         <p className="cap-muted app-note">
           Each chapter's scenes as cards, in reading order. Moving a card or a chapter renumbers the
           files after it, in one commit.
@@ -231,7 +205,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
             : result?.ok
               ? result.renames.length === 0
                 ? "Nothing to move."
-                : `Moved. ${result.renames.length} file${result.renames.length === 1 ? "" : "s"} renumbered in one commit.`
+                : `Moved. ${plural(result.renames.length, "file")} renumbered in one commit.`
               : ""}
         </p>
       </div>
@@ -261,9 +235,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
                   renderItem={(c) => (
                     <>
                       <span className="cap-sortable-label">{c.title}</span>
-                      <span className="cap-sortable-detail">
-                        {c.cards.length} scene{c.cards.length === 1 ? "" : "s"}
-                      </span>
+                      <span className="cap-sortable-detail">{plural(c.cards.length, "scene")}</span>
                     </>
                   )}
                   onReorder={(order) => send({ intent: "chapters", order })}
@@ -327,11 +299,16 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
                   ))
                 : null}
               {canMove ? null : (
-                <ol className="app-cards" aria-labelledby={`cork-${chapter.slug}`}>
-                  {chapter.cards.map((c) => (
-                    <li key={c.path}>{card(c, chapter.slug)}</li>
-                  ))}
-                </ol>
+                <SortableList
+                  items={chapter.cards}
+                  getId={(c) => c.path}
+                  getLabel={(c) => c.title}
+                  layout="cards"
+                  readOnly
+                  aria-labelledby={`cork-${chapter.slug}`}
+                  renderItem={(c) => card(c, chapter.slug)}
+                  onReorder={() => {}}
+                />
               )}
             </Panel>
           ))}

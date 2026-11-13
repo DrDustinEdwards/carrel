@@ -1,3 +1,4 @@
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 // The editor's image upload: one file to Carrel's per-project media endpoint, which hands it to the site
 // through the site API. Never rejects with anything but an Error that says why, so the editor shows it.
 
@@ -35,7 +36,7 @@ export async function uploadImage(
     else form.set("alt", image.alt);
     response = await fetch(endpoint, { method: "POST", body: form, signal });
   } catch (error) {
-    throw new Error(`Upload failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Upload failed: ${errorMessage(error)}`);
   }
   const body = (await response.json().catch(() => ({}))) as {
     url?: string;

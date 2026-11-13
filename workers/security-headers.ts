@@ -8,6 +8,7 @@ import { CSP_REPORT_PATH } from "@dustinedwards/site-runtime/csp";
 import { buildSecurityHeaders } from "@dustinedwards/site-runtime/headers";
 import { pageSecurity } from "@dustinedwards/site-runtime/page-headers";
 import { carrelDesk, carrelMcp } from "@dustinedwards/site-runtime/sites";
+import { TRUSTED_TYPES_NAMES } from "@dustinedwards/site-runtime/trusted-types";
 
 import { mcpOrigin } from "~/lib/mcp/door";
 import { siteOrigins } from "~/lib/sites.server";
@@ -42,8 +43,10 @@ export const { withSecurityHeaders, nonceFor } = pageSecurity<Env>({
     styleAttributesInline: true,
     // Carrel's hosts are excluded from Web Analytics, and HTML is sent no-transform, so the beacon is never injected.
     cloudflareWebAnalytics: false,
+    // Trusted Types is enforced (site-runtime 0.132.0): only the named policies may hand a sink markup or script text.
+    trustedTypes: TRUSTED_TYPES_NAMES,
   }),
-  staged: { denyUnlisted: true, trustedTypes: true },
+  staged: { denyUnlisted: true },
   reportPath: CSP_REPORT_PATH,
   reportOrigin: ({ env }) => (env ? mcpOrigin(env) : undefined),
 });

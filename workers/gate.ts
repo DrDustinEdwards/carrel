@@ -10,7 +10,13 @@
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import { applyHeaderSet } from "@dustinedwards/site-runtime/headers";
-import { logEvent, OWASP_EVENTS, requestFields } from "@dustinedwards/site-runtime/log";
+import { textResponse } from "@dustinedwards/site-runtime/http";
+import {
+  errorMessage,
+  logEvent,
+  OWASP_EVENTS,
+  requestFields,
+} from "@dustinedwards/site-runtime/log";
 import { isolationVerdict, refuseCrossSite } from "@dustinedwards/site-runtime/origin";
 
 import { verifyAccess } from "~/lib/access.server";
@@ -41,12 +47,7 @@ function refuse(request: Request, reason: string): Response {
     { door: "browser", reason, ...requestFields(request) },
     { level: "warn" },
   );
-  return withPrivateHeaders(
-    new Response("Forbidden", {
-      status: 403,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    }),
-  );
+  return textResponse("Forbidden", 403);
 }
 
 export async function gate(
@@ -68,7 +69,7 @@ export async function gate(
     if (!access.ok) return refuse(request, access.reason);
     viewer = await findViewer(env.DB, env, access.email);
   } catch (error) {
-    return refuse(request, `error: ${error instanceof Error ? error.message : String(error)}`);
+    return refuse(request, `error: ${errorMessage(error)}`);
   }
   if (!viewer) return refuse(request, "unknown-person");
   return admit(request, viewer, render);

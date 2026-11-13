@@ -3,6 +3,7 @@
 // (the index of each site's posts, the drafts, the flags, the social queue); only the mention counts ask
 // the sites, and they are separate so a slow site never holds the page.
 
+import { inList } from "@dustinedwards/site-runtime/d1";
 import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -21,24 +22,12 @@ import type { Viewer, VisibleProject } from "~/lib/people.server";
 import { can } from "~/lib/roles";
 import { loadMentions } from "@dustinedwards/site-api/admin";
 import { isSiteId, siteConnection } from "~/lib/sites.server";
-import { knownZone } from "~/lib/writing/progress";
+import type { Need as QueueNeed } from "capsomer/behavior/attention-list";
 
 export type NeedGroup = "ai" | "due" | "flags" | "mentions" | "approvals";
-type Urgency = "blocking" | "waiting";
-
-export type Need = {
-  id: string;
-  group: NeedGroup;
-  /** Blocking: something is stuck until the person acts. Waiting: the work is theirs to pick up. */
-  urgency: Urgency;
-  title: string;
-  detail: string;
-  /** The one main action, as a link. */
-  action: { label: string; href: string };
-  at: string | null;
-  /** Set aside with Later: when it comes back. Such a need is off Home's list and out of the header's count. */
-  later?: string;
-};
+/** One row of Home's work queue: Capsomer's Need (attention-list), grouped by Carrel's kinds. Set aside with
+ * Later, a need is off Home's list and out of the header's count until it comes back. */
+export type Need = QueueNeed<NeedGroup> & { detail: string };
 
 const postHref = (slug: string, itemId: string) =>
   `/p/${encodeURIComponent(slug)}/e/${encodeURIComponent(itemId)}`;
@@ -73,7 +62,7 @@ export async function needsYou(
         first: min(aiDrafts.id),
       })
       .from(aiDrafts)
-      .where(and(eq(aiDrafts.personId, viewer.id), inArray(aiDrafts.projectId, ids)))
+      .where(and(eq(aiDrafts.personId, viewer.id), inList(aiDrafts.projectId, ids)))
       .groupBy(aiDrafts.projectId)
       .all(),
     d
@@ -86,7 +75,7 @@ export async function needsYou(
       .from(siteItems)
       .where(
         and(
-          inArray(siteItems.projectId, ids),
+          inList(siteItems.projectId, ids),
           eq(siteItems.status, "scheduled"),
           isNotNull(siteItems.publishAt),
           lte(siteItems.publishAt, soon),
@@ -98,7 +87,7 @@ export async function needsYou(
     d
       .select({ projectId: findings.projectId, n: count(), since: min(findings.createdAt) })
       .from(findings)
-      .where(and(eq(findings.status, "open"), inArray(findings.projectId, ids)))
+      .where(and(eq(findings.status, "open"), inList(findings.projectId, ids)))
       .groupBy(findings.projectId)
       .all(),
     viewer.isOwner
@@ -241,38 +230,6 @@ function markLater(needs: Need[], marks: Map<string, LaterMark>): Need[] {
     const mark = marks.get(n.id);
     return mark && mark.title === n.title ? { ...n, later: mark.until } : n;
   });
-}
-
-/** The hour of the morning a row set aside comes back. */
-const LATER_HOUR = 8;
-
-/**
- * When Later brings a row back: 8 am on the next calendar day in the person's time zone (UTC if the zone is
- * unknown). The wall-clock time is found by correcting a first guess by the zone's offset, twice, so a change
- * to or from daylight time overnight lands on 8 am too.
- */
-export function laterUntil(now: Date, zone: string | undefined): string {
-  const timeZone = knownZone(zone);
-  const format = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-  });
-  const wall = (at: number) => {
-    const p = new Map(format.formatToParts(at).map((x) => [x.type, Number(x.value)]));
-    const part = (type: Intl.DateTimeFormatPartTypes) => p.get(type) ?? 0;
-    const [y, m, d] = [part("year"), part("month"), part("day")];
-    return { y, m, d, ms: Date.UTC(y, m - 1, d, part("hour"), part("minute")) };
-  };
-  const today = wall(now.getTime());
-  const want = Date.UTC(today.y, today.m - 1, today.d + 1, LATER_HOUR);
-  let at = want;
-  for (let i = 0; i < 2; i++) at += want - wall(at).ms;
-  return new Date(at).toISOString();
 }
 
 const MAX_NEED_ID = 200;
@@ -419,7 +376,7 @@ export async function writingRows(
   const ids = scoped.map((p) => p.id);
   const words = (query.q?.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).slice(0, 6);
   const filters = [
-    inArray(siteItems.projectId, ids),
+    inList(siteItems.projectId, ids),
     sql`not (${siteItems.status} = 'published' and ${siteItems.path} is null)`,
     ...(query.kind ? [eq(siteItems.kind, query.kind)] : []),
     ...words.map(

@@ -18,6 +18,8 @@ import { accessIssuer } from "@dustinedwards/site-runtime/access";
 import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
 import {
+  deployedAt,
+  deployedSha,
   durableObjectCheck,
   emailCheck,
   healthResponse,
@@ -37,14 +39,15 @@ import {
 } from "~/db/schema";
 import { backupStatus } from "~/lib/backup.server";
 import { ALL_JOBS } from "~/lib/cron-schedule";
-import { deployedSha } from "~/lib/deployed";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
 import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 import { unseenTemplates } from "~/lib/social/queue.server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
+import { plural } from "@drdustinedwards/site-helpers/text";
 
+import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 /** A site's line in the conformance report, in the scoreboard's format (devkit live/README). */
 type SiteConformance = {
   status: "pass" | "fail" | "error";
@@ -88,7 +91,11 @@ async function checkOwner(env: Env): Promise<CheckResult> {
           detail: "The database has no Owner, so nobody can use Carrel. Run npm run seed:owner.",
         };
   } catch (error) {
-    return { name: "owner", ok: false, detail: `The database did not answer: ${message(error)}` };
+    return {
+      name: "owner",
+      ok: false,
+      detail: `The database did not answer: ${errorMessage(error)}`,
+    };
   }
 }
 
@@ -106,7 +113,7 @@ async function checkAccessKeys(env: Env, fetcher: Fetch): Promise<CheckResult> {
     return {
       name: "access-keys",
       ok: false,
-      detail: `${url} could not be read: ${message(error)}`,
+      detail: `${url} could not be read: ${errorMessage(error)}`,
     };
   }
 }
@@ -173,7 +180,7 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
     return {
       name,
       ok: false,
-      detail: `${site} could not be checked: ${message(thrown)}`,
+      detail: `${site} could not be checked: ${errorMessage(thrown)}`,
       conformance: error("could not be checked"),
     };
   }
@@ -194,7 +201,7 @@ async function checkBackup(env: Env, now: Date): Promise<CheckResult> {
     return {
       name: "backup",
       ok: false,
-      detail: `The backup bucket could not be read: ${message(error)}`,
+      detail: `The backup bucket could not be read: ${errorMessage(error)}`,
     };
   }
 }
@@ -221,7 +228,7 @@ async function checkNovels(env: Env, fetcher: Fetch): Promise<CheckResult> {
     return {
       name: "writing",
       ok: false,
-      detail: `The GitHub App could not reach ${NOVELS_REPO}: ${message(error)}`,
+      detail: `The GitHub App could not reach ${NOVELS_REPO}: ${errorMessage(error)}`,
     };
   }
 }
@@ -252,7 +259,7 @@ async function checkAiPublishEmails(env: Env): Promise<CheckResult> {
     return {
       name: "ai-publish-email",
       ok: false,
-      detail: `The record could not be read: ${message(error)}`,
+      detail: `The record could not be read: ${errorMessage(error)}`,
     };
   }
 }
@@ -302,7 +309,7 @@ async function checkServiceAccount(env: Env, fetcher: Fetch, now: Date): Promise
     return {
       name: "google-service-account",
       ok: false,
-      detail: `Key ${id} (${key.clientEmail}) no longer works: ${message(error)} Create a new key and set GOOGLE_SA_KEY.`,
+      detail: `Key ${id} (${key.clientEmail}) no longer works: ${errorMessage(error)} Create a new key and set GOOGLE_SA_KEY.`,
     };
   }
   if (days > KEY_MAX_AGE_DAYS) {
@@ -346,7 +353,7 @@ async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
     }
     return { name: "google-drive-file", ok: true, detail: "The drive.file grant refreshes." };
   } catch (error) {
-    return { name: "google-drive-file", ok: false, detail: message(error) };
+    return { name: "google-drive-file", ok: false, detail: errorMessage(error) };
   }
 }
 
@@ -363,7 +370,7 @@ async function checkSocialTemplates(env: Env): Promise<CheckResult> {
     return {
       name: "social-templates",
       ok: false,
-      detail: `${unseen.length} template post${unseen.length === 1 ? "" : "s"} went out because the routine did not draft ${unseen.length === 1 ? "it" : "them"}: ${unseen
+      detail: `${plural(unseen.length, "template post")} went out because the routine did not draft ${unseen.length === 1 ? "it" : "them"}: ${unseen
         .map((u) => `${u.accountKey}: "${u.text}"`)
         .join("; ")}. Mark ${unseen.length === 1 ? "it" : "them"} seen in Carrel's social page.`,
     };
@@ -371,7 +378,7 @@ async function checkSocialTemplates(env: Env): Promise<CheckResult> {
     return {
       name: "social-templates",
       ok: false,
-      detail: `The social record could not be read: ${message(error)}`,
+      detail: `The social record could not be read: ${errorMessage(error)}`,
     };
   }
 }
@@ -430,7 +437,7 @@ export async function runHealth(
       .values({ name: "conformance", body, at })
       .onConflictDoUpdate({ target: reports.name, set: { body, at } });
   } catch (error) {
-    console.error(JSON.stringify({ health: "report-failed", error: message(error) }));
+    logEvent("health.report-failed", { error: errorMessage(error) }, { level: "error" });
   }
 
   let previous: Map<string, boolean>;
@@ -457,7 +464,7 @@ export async function runHealth(
       subject:
         failing.length === 0
           ? "Carrel: all checks pass"
-          : `Carrel: ${failing.length} check${failing.length === 1 ? "" : "s"} failing`,
+          : `Carrel: ${plural(failing.length, "check")} failing`,
       text: results.map((r) => `${r.ok ? "ok  " : "FAIL"} ${r.name}: ${r.detail}`).join("\n"),
     });
     if (!sent.sent) return { results, emailed: false };
@@ -476,7 +483,7 @@ export async function runHealth(
         });
     }
   } catch (error) {
-    console.error(JSON.stringify({ health: "record-failed", error: message(error) }));
+    logEvent("health.record-failed", { error: errorMessage(error) }, { level: "error" });
   }
   return { results, emailed };
 }
@@ -506,7 +513,7 @@ export function healthAnswer(env: Env): Promise<Response> {
   return healthResponse({
     ping: () => env.DB.prepare("SELECT 1").first(),
     backup: () => backupStatus(env),
-    sha: deployedSha(env),
+    sha: deployedSha(env, { fallback: "unknown" }),
     checks: [
       { ...kvCheck("oauth-kv", env.OAUTH_KV), level: "warn" },
       durableObjectCheck("doc-room", env.DOC_ROOM),
@@ -542,16 +549,4 @@ export function healthAnswer(env: Env): Promise<Response> {
       },
     ],
   });
-}
-
-/** When this version was deployed, from the CF_VERSION_METADATA binding; read loosely, since an older config has none. */
-function deployedAt(env: Env): Date | undefined {
-  const timestamp = (env as { CF_VERSION_METADATA?: { timestamp?: string } }).CF_VERSION_METADATA
-    ?.timestamp;
-  const at = timestamp ? new Date(timestamp) : undefined;
-  return at && !Number.isNaN(at.getTime()) ? at : undefined;
-}
-
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

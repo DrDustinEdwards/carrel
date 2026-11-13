@@ -4,6 +4,8 @@
 
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
+import { RowList } from "capsomer/react/row-list";
+import { FlagRow } from "~/components/editor/flags-panel";
 import { OgCardPreview, SerpPreview } from "capsomer/react/share-preview";
 import { Status } from "capsomer/react/status";
 
@@ -20,29 +22,23 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
       count={findings.length}
       src="As a search result and a shared link"
     >
-      <div className="app-stack">
+      <div className="cap-stack" data-gap="6">
         {findings.length === 0 ? (
           <Empty kind="all-clear" flush title="Nothing flagged">
             The title and description fit a search result, every image has alt text, and the post
             has a card image.
           </Empty>
         ) : (
-          <ul className="app-flags" aria-label="Search and sharing checks">
+          <RowList label="Search and sharing checks" gap="xs">
             {findings.map((f, i) => (
-              <li key={i}>
-                <Status tone="warn">{f.line ? `Line ${f.line}` : "Flag"}</Status>
-                <span>
-                  {f.message}
-                  {f.excerpt ? (
-                    <>
-                      {" "}
-                      <q className="cap-muted">{f.excerpt}</q>
-                    </>
-                  ) : null}
-                </span>
-              </li>
+              <FlagRow
+                key={i}
+                flag={f}
+                status={<Status tone="warn">Flag</Status>}
+                meta={f.line ? `line ${f.line}` : undefined}
+              />
             ))}
-          </ul>
+          </RowList>
         )}
         <div className="app-share-previews">
           <SerpPreview

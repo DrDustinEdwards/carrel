@@ -1,12 +1,10 @@
 // Secrets are not in wrangler.jsonc, so `wrangler types` cannot see them. Declared here instead, on
 // both the global Env and Cloudflare.Env, because the generated global does not extend the other.
-interface CarrelSecrets {
-  /** "1" or "true" puts the site in maintenance: every path but /health answers the 503 page (site-runtime ./maintenance). Set in the dashboard. */
-  MAINTENANCE?: string;
-  /** The AUD tag of the Worker's Access application. Set with `wrangler secret put ACCESS_AUD`. */
-  ACCESS_AUD: string;
-  /** Keys site-runtime's admin idle cookie (withAdminIdle `secret`). Minted by the deploy (devkit worker-deploy `generated-secrets`), never shown; unset, the admin paths fail (site-runtime 0.82 requires it). */
-  ADMIN_IDLE_SECRET: string;
+// The secrets every site has (MAINTENANCE, ADMIN_EMAIL, CO_OWNER_EMAILS, the Access settings, ADMIN_IDLE_SECRET,
+// OPERATOR_TOKEN, ANTHROPIC_API_KEY...) are site-runtime's SiteSecrets; this keeps only Carrel's own.
+type SiteSecrets = import("@dustinedwards/site-runtime/worker").SiteSecrets;
+
+interface CarrelSecrets extends SiteSecrets {
   /**
    * dustinedwards.info's Carrel key, the same value the site holds. Absent until the site is
    * connected (setup step 10). Set with `Get-Clipboard | npx wrangler secret put SITE_DUSTINEDWARDS_KEY`.
@@ -52,18 +50,12 @@ interface CarrelSecrets {
   /** The Web OAuth client for Dustin's drive.file grant (Send to Docs, Import). */
   GOOGLE_OAUTH_CLIENT_ID?: string;
   GOOGLE_OAUTH_CLIENT_SECRET?: string;
-  /** 32 random bytes, base64, that encrypt the drive.file refresh token in D1. */
+  /** 32 random bytes, base64 or hex, that seal the drive.file refresh token in D1 (site-runtime secret-box). */
   GOOGLE_TOKEN_KEY?: string;
   /**
    * The Claude Code routine that drafts brand posts (design decision 5): its API trigger's /fire URL
    * and the token generated for it, which can fire that one routine and read nothing.
    */
-  /**
-   * The Anthropic API key for the API engine (AI switch, /ai): social drafts and search descriptions. Inert until the
-   * secret exists; without it the API engine reports a missing key and Subscription still works.
-   * `npx wrangler secret put ANTHROPIC_API_KEY`.
-   */
-  ANTHROPIC_API_KEY?: string;
   SOCIAL_ROUTINE_URL?: string;
   SOCIAL_ROUTINE_TOKEN?: string;
   /**
@@ -80,15 +72,6 @@ interface CarrelSecrets {
    * `Get-Clipboard | npx wrangler secret put CAPSID_AGENT_KEY`.
    */
   CAPSID_AGENT_KEY?: string;
-  /**
-   * The operator API's bearer (workers/app.ts, /api/operator on the AI door's host): Capsid Admin's run a job now. Set
-   * by Capsid Admin's site key control, never shown; unset, the route answers 503.
-   */
-  OPERATOR_TOKEN?: string;
-  /** The main admin, the Owner (site-runtime ./access, the one admin model of every site). Unset: nobody is Owner. Set with `wrangler secret put ADMIN_EMAIL`. */
-  ADMIN_EMAIL: string;
-  /** Co-owners, comma-separated: the Owner's full use of Carrel, no say over who is admin. Optional. */
-  CO_OWNER_EMAILS?: string;
 }
 
 interface Env extends CarrelSecrets {}

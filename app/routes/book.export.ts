@@ -3,6 +3,9 @@
 // export is what Git holds, and the checks have seen it.
 
 import { buildPolicy } from "@dustinedwards/site-runtime/csp";
+import { textResponse } from "@dustinedwards/site-runtime/http";
+import { attachmentResponse } from "@dustinedwards/site-runtime/r2-object";
+import { slugify } from "@drdustinedwards/site-helpers/slug";
 
 import {
   assembleBook,
@@ -12,17 +15,15 @@ import {
   requireBookProject,
 } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { buildDocx, buildEpub, printHtml, slugFor } from "~/lib/novels/export";
+import { buildDocx, buildEpub, printHtml } from "~/lib/novels/export";
 
 import type { Route } from "./+types/book.export";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 const FORMATS = ["epub", "docx", "print"] as const;
 
 function held(message: string, slug: string): Response {
-  return new Response(`${message}\n\nOpen /b/${slug} to see the flags.\n`, {
-    status: 409,
-    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-  });
+  return textResponse(`${message}\n\nOpen /b/${slug} to see the flags.\n`, 409);
 }
 
 export async function loader({ params, context }: Route.LoaderArgs) {
@@ -37,12 +38,9 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     try {
       await refreshBook(env.DB, repo, project);
     } catch (error) {
-      return new Response(
-        `Git could not be read, so there is nothing current to export: ${error instanceof Error ? error.message : String(error)}\n`,
-        {
-          status: 502,
-          headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-        },
+      return textResponse(
+        `Git could not be read, so there is nothing current to export: ${errorMessage(error)}\n`,
+        502,
       );
     }
   }
@@ -50,15 +48,9 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   if (!gate.ok) return held(gate.message, project.slug);
 
   const book = await assembleBook(env.DB, project, viewer);
-  const name = slugFor(book.title);
+  const name = slugify(book.title) || "book";
   const download = (body: BodyInit, type: string, ext: string) =>
-    new Response(body, {
-      headers: {
-        "Content-Type": type,
-        "Content-Disposition": `attachment; filename="${name}.${ext}"`,
-        "Cache-Control": "no-store",
-      },
-    });
+    attachmentResponse(body, { filename: `${name}.${ext}`, type });
 
   switch (format) {
     case "epub":

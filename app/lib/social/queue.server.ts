@@ -13,7 +13,7 @@
 // loop over accounts, the daily cap, the gap between posts and the record of every post are carried
 // over from legacy Recova's social-poster cron.
 
-import { isSlug } from "@drdustinedwards/site-helpers/slug";
+import { inList } from "@dustinedwards/site-runtime/d1";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -28,7 +28,12 @@ import { draftPostViaApi, monthSpendMicros, readAiSettings } from "~/lib/ai-engi
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { formatMoney } from "@dustinedwards/site-runtime/money";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
+import { isSlug } from "@drdustinedwards/site-helpers/slug";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
+import { monthKey } from "@dustinedwards/site-runtime/time";
 type Fetch = typeof fetch;
 
 /** How long published items gather before one routine run takes them all. */
@@ -47,11 +52,11 @@ function requireOwner(viewer: Viewer) {
 }
 
 function dayStart(now: Date): string {
-  return `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+  return `${isoDay(now)}T00:00:00.000Z`;
 }
 
 function monthStart(now: Date): string {
-  return `${now.toISOString().slice(0, 7)}-01T00:00:00.000Z`;
+  return `${monthKey(now)}-01T00:00:00.000Z`;
 }
 
 // ---------- accounts and switches
@@ -384,7 +389,7 @@ async function sendQueued(
       await d
         .update(socialPosts)
         .set({
-          error: `Held: it would pass this month's X budget ($${(account.monthlyBudgetMills / 1000).toFixed(2)}).`,
+          error: `Held: it would pass this month's X budget (${formatMoney(account.monthlyBudgetMills, "usd", { scale: 3 })}).`,
         })
         .where(eq(socialPosts.id, post.id));
       result.waitingOnCaps++;
@@ -415,7 +420,7 @@ async function sendQueued(
       last = now.getTime();
       result.sent++;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       await d
         .update(socialPosts)
         .set({ status: "failed", error: message })
@@ -459,7 +464,7 @@ export async function processSocial(
       and(
         eq(socialPosts.status, "drafted"),
         isNotNull(socialEvents.publishedAt),
-        inArray(socialPosts.accountId, ids),
+        inList(socialPosts.accountId, ids),
       ),
     )
     .all();
@@ -476,7 +481,7 @@ export async function processSocial(
     .where(
       and(
         eq(socialEvents.state, "routine"),
-        inArray(socialEvents.accountId, ids),
+        inList(socialEvents.accountId, ids),
         lte(socialRoutineRuns.requestedAt, new Date(now.getTime() - ROUTINE_WAIT_MS).toISOString()),
       ),
     )
@@ -497,7 +502,7 @@ export async function processSocial(
         and(
           eq(socialEvents.state, "waiting"),
           isNotNull(socialEvents.publishedAt),
-          inArray(socialEvents.accountId, ids),
+          inList(socialEvents.accountId, ids),
         ),
       )
       .all()
@@ -540,7 +545,7 @@ export async function processSocial(
             .set({ state: "routine", routineRunId: run!.id })
             .where(
               and(
-                inArray(
+                inList(
                   socialEvents.id,
                   waiting.map((e) => e.id),
                 ),

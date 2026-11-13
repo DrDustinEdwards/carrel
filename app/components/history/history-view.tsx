@@ -5,12 +5,11 @@ import type { ReactNode } from "react";
 import { useLocation, useNavigate, useNavigation } from "react-router";
 import { Link } from "capsomer/react/link";
 import { DraftCompare, DraftPatch } from "capsomer/react/draft-compare";
+import { unifiedPatch } from "capsomer/behavior/draft-compare";
 import { Panel } from "capsomer/react/panel";
 import { Segmented } from "capsomer/react/segmented";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
-
-import { unifiedPatch } from "~/lib/patch";
 
 export type Side = { title: string; who?: string; time?: string; text: string };
 type By = "line" | "word";
@@ -36,8 +35,6 @@ export type View =
       before: Side | null;
       after: Side | null;
     };
-
-export const utc = (iso: string) => `${iso.slice(0, 16).replace("T", " ")} UTC`;
 
 /** Both texts are in Carrel: line by line is a patch built here, word by word the two texts side by side. */
 export function sides(
@@ -100,7 +97,7 @@ export function SourcePanel({
           {view.previous ? (
             <Link
               className="cap-btn"
-              to={`${historyPath}?v=${encodeURIComponent(view.previous)}&v=${encodeURIComponent(view.version)}`}
+              to={`${historyPath}?from=${encodeURIComponent(view.previous)}&to=${encodeURIComponent(view.version)}`}
             >
               Changes in this {noun}
             </Link>
@@ -108,7 +105,7 @@ export function SourcePanel({
           {view.newest ? (
             <Link
               className="cap-btn"
-              to={`${historyPath}?v=${encodeURIComponent(view.version)}&v=${encodeURIComponent(view.newest)}`}
+              to={`${historyPath}?from=${encodeURIComponent(view.version)}&to=${encodeURIComponent(view.newest)}`}
             >
               Compare with the current version
             </Link>

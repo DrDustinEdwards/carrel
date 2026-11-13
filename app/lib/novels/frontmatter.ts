@@ -1,6 +1,9 @@
-// The header at the top of a book file: a narrow YAML subset, enough for scene headers and bible
-// entries and small enough to test completely. Keys hold a string, a boolean, or a list of strings
-// (inline `[a, b]` or one `- item` per line). Anything else is reported, never guessed at.
+// The header at the top of a book file, read with Prelum's frontmatter reader (splitSource, readKey,
+// readList): enough for scene headers and bible entries. Keys hold a string, a boolean, or a list of
+// strings (inline `[a, b]` or one `- item` per line). A line it cannot read is reported, never guessed at.
+
+import { readKey, readList, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 export type HeaderValue = string | boolean | string[];
 
@@ -13,89 +16,54 @@ export type Parsed = {
   problems: { line: number; text: string }[];
 };
 
-const KEY = /^([A-Za-z][A-Za-z0-9_-]*):(?:\s+(.*))?$/;
+const KEY = /^([A-Za-z_][\w-]*):(.*)$/;
+const ITEM = /^\s*-\s+/;
 
-function unquote(value: string): string {
-  const v = value.trim();
-  if (
-    v.length >= 2 &&
-    ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))
-  ) {
-    return v.slice(1, -1);
+/** One key's value: a list where it holds one, `true` or `false` as a boolean, else its text. */
+function valueOf(front: string, key: string, after: string): HeaderValue {
+  const v = after.trim();
+  if (v === "" || v.startsWith("[")) {
+    const items = readList(front, key);
+    return items.length || v.startsWith("[") ? items : "";
   }
-  return v;
+  if (/^(true|false)(\s+#.*)?$/.test(v)) return v.startsWith("true");
+  return readKey(front, key);
 }
 
-/** Splits `a, "b, c", d` on the commas outside quotes. */
-function splitList(inner: string): string[] {
-  const items: string[] = [];
-  let current = "";
-  let quote: string | null = null;
-  for (const ch of inner) {
-    if (quote) {
-      if (ch === quote) quote = null;
-      current += ch;
-    } else if (ch === '"' || ch === "'") {
-      quote = ch;
-      current += ch;
-    } else if (ch === ",") {
-      items.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  items.push(current);
-  return items.map(unquote).filter((item) => item.length > 0);
-}
-
-function scalar(raw: string): HeaderValue {
-  const v = raw.trim();
-  if (v.startsWith("[") && v.endsWith("]")) return splitList(v.slice(1, -1));
-  if (v === "true") return true;
-  if (v === "false") return false;
-  return unquote(v);
-}
-
+/** The header read with Prelum's block reader, keeping the booleans, the body's line and the lines it cannot read. */
 export function parseFile(source: string): Parsed {
-  const lines = source.replace(/\r\n/g, "\n").split("\n");
-  if (lines[0]?.trim() !== "---")
-    return { data: {}, body: lines.join("\n"), bodyLine: 1, problems: [] };
-  const end = lines.findIndex((line, i) => i > 0 && line.trim() === "---");
-  if (end === -1) {
+  const normal = normalizeNewlines(source);
+  const split = splitSource(normal);
+  if (split.front === null) {
+    const open = normal.split("\n", 1)[0]?.trim() === "---";
     return {
       data: {},
-      body: lines.join("\n"),
+      body: normal,
       bodyLine: 1,
-      problems: [{ line: 1, text: "The header opens with --- and never closes." }],
+      problems: open ? [{ line: 1, text: "The header opens with --- and never closes." }] : [],
     };
   }
-
+  const front = split.front;
   const data: Record<string, HeaderValue> = {};
   const problems: Parsed["problems"] = [];
-  // A key with nothing after it is an empty value until a `- item` line makes it a list.
-  let listKey: string | null = null;
-  for (let i = 1; i < end; i++) {
-    const line = lines[i]!;
-    if (line.trim() === "" || line.trim().startsWith("#")) continue;
-    const item = /^\s*-\s+(.*)$/.exec(line);
-    if (item && listKey) {
-      const current = data[listKey];
-      data[listKey] = [...(Array.isArray(current) ? current : []), unquote(item[1]!)];
-      continue;
-    }
+  // A `- item` line belongs to the key above it only when that key has nothing after its colon.
+  let listKey = false;
+  front.split("\n").forEach((line, i) => {
+    const trimmed = line.trim();
+    if (trimmed === "" || trimmed.startsWith("#")) return;
+    if (listKey && ITEM.test(line)) return;
     const match = KEY.exec(line);
     if (!match) {
-      problems.push({ line: i + 1, text: line });
-      listKey = null;
-      continue;
+      problems.push({ line: i + 2, text: line });
+      listKey = false;
+      return;
     }
-    const [, key, value] = match;
-    const empty = value === undefined || value.trim() === "";
-    data[key!] = empty ? "" : scalar(value);
-    listKey = empty ? key! : null;
-  }
-  return { data, body: lines.slice(end + 1).join("\n"), bodyLine: end + 2, problems };
+    const [, key = "", after = ""] = match;
+    data[key] = valueOf(front, key, after);
+    listKey = after.trim() === "";
+  });
+  const bodyLine = (split.open + front + split.close).split("\n").length;
+  return { data, body: split.body, bodyLine, problems };
 }
 
 export function text(data: Record<string, HeaderValue>, key: string): string {
@@ -108,7 +76,11 @@ export function text(data: Record<string, HeaderValue>, key: string): string {
 export function list(data: Record<string, HeaderValue>, key: string): string[] {
   const value = data[key];
   if (Array.isArray(value)) return value.map((v) => v.trim()).filter(Boolean);
-  if (typeof value === "string" && value.trim()) return splitList(value);
+  if (typeof value === "string")
+    return value
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
   return [];
 }
 

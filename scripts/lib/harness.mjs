@@ -47,7 +47,7 @@ async function endOfText(/** @type {import("playwright").Page} */ page) {
   await page.evaluate(() => {
     // In the page: its own globals, which this file's Node types do not describe.
     const w = /** @type {any} */ (globalThis);
-    const surface = w.document.querySelector(".app-rich-surface");
+    const surface = w.document.querySelector(".cap-rich-editor-surface");
     const last = [...surface.querySelectorAll(":scope > p")].at(-1) ?? surface;
     surface.focus();
     const range = w.document.createRange();
@@ -74,7 +74,7 @@ async function searchFor(
  * Sets Home's first row aside with its l key, as a keyboard user would, and waits for the message that offers Undo.
  */
 async function laterFirstRow(/** @type {import("playwright").Page} */ page) {
-  await page.locator(".app-need-row .cap-row-title a").first().focus();
+  await page.locator(".cap-need-row .cap-row-title a").first().focus();
   await page.keyboard.press("l");
   await page.getByText("Set for later, until tomorrow morning").waitFor();
   // The header's count follows once Home's loaders have run again.
@@ -142,16 +142,25 @@ export const SCREENS = [
   { name: "legal", viewer: "owner", path: `/p/${SITE}/legal` },
   { name: "legal-editor", viewer: "editor", path: `/p/${SITE}/legal` },
   {
+    name: "legal-remove",
+    viewer: "owner",
+    path: `/p/${SITE}/legal`,
+    after: async (page) => {
+      await page.getByRole("button", { name: "Remove", exact: true }).first().click();
+      await page.getByRole("alertdialog").waitFor();
+    },
+  },
+  {
     name: "legal-page",
     viewer: "owner",
     path: `/p/${SITE}/e/page.privacy`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "kind-roster",
     viewer: "owner",
     path: `/p/${SITE}/e/roster.2017`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   { name: "site-kind", viewer: "owner", path: `/p/${SITE}?kind=phage` },
   { name: "media", viewer: "owner", path: `/p/${SITE}/media` },
@@ -268,11 +277,7 @@ export const SCREENS = [
     name: "book-history-compare",
     viewer: "owner",
     path: `/b/${BOOK}/h/chapters/01-arrival/01-the-gate.md`,
-    after: async (page) => {
-      for (const box of await page.getByRole("checkbox").all()) await box.check();
-      await page.getByRole("button", { name: "Compare the two picked" }).click();
-      await page.locator(".cap-compare, .cap-patch").first().waitFor();
-    },
+    after: (page) => compareOutermost(page, ".cap-compare, .cap-patch"),
   },
   {
     name: "book-history-ai",
@@ -283,44 +288,44 @@ export const SCREENS = [
     name: "book-scene",
     viewer: "owner",
     path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "book-scene-flagged",
     viewer: "owner",
     path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md?tab=checks`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "book-bible",
     viewer: "owner",
     path: `/b/${BOOK}/f/bible/characters/nell.md`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "book-scene-editor",
     viewer: "editor",
     path: `/b/${BOOK}/f/chapters/01-arrival/01-the-gate.md`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "post-live",
     viewer: "owner",
     path: `/p/${SITE}/e/alerts-wait`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "post-draft",
     viewer: "owner",
     path: `/p/${SITE}/e/counting-what-the-build-skips`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   // The insert-chart dialog with data pasted: the type, the columns, the drafted finding and the chart check.
   {
     name: "post-chart-insert",
     viewer: "owner",
     path: `/p/${SITE}/e/counting-what-the-build-skips`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: async (page) => {
       await page.getByRole("button", { name: "Insert chart", exact: true }).click();
       await page
@@ -333,38 +338,38 @@ export const SCREENS = [
     name: "post-working-copy",
     viewer: "owner",
     path: `/p/${SITE}/e/what-a-carrel-is-for`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   // The site changed under unsaved text in Carrel: the merge view, each difference with its pick.
   {
     name: "post-merge",
     viewer: "owner",
     path: `/p/${SITE}/e/a-post-that-moved`,
-    wait: ".app-merge",
+    wait: ".cap-merge",
   },
   {
     name: "post-scheduled",
     viewer: "owner",
     path: `/p/${SITE}/e/getting-started`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "post-editor-live",
     viewer: "editor",
     path: `/p/${SITE}/e/alerts-wait`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "post-reader",
     viewer: "reader",
     path: `/p/${SITE}/e/alerts-wait`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   {
     name: "post-checks",
     viewer: "owner",
     path: `/p/${SITE}/e/alerts-wait?tab=checks`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
   { name: "transcript-draft", viewer: "owner", path: `/p/${SITE}/e/alerts-wait/transcript/1` },
@@ -372,7 +377,7 @@ export const SCREENS = [
     name: "post-history",
     viewer: "owner",
     path: `/p/${SITE}/e/${REFRESH}`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
   },
   { name: "history", viewer: "owner", path: `/p/${SITE}/e/${REFRESH}/history` },
   { name: "history-reader", viewer: "reader", path: `/p/${SITE}/e/${REFRESH}/history` },
@@ -508,37 +513,37 @@ export const SCREENS = [
     name: "post-discard",
     viewer: "owner",
     path: `/p/${SITE}/e/what-a-carrel-is-for`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: (page) => press(page, "button", /^Discard unsaved changes/, "alertdialog"),
   },
   {
     name: "post-schedule",
     viewer: "owner",
     path: `/p/${SITE}/e/counting-what-the-build-skips`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: (page) => press(page, "button", /^Schedule/, "dialog"),
   },
   {
     name: "post-first-publish",
     viewer: "owner",
     path: `/p/${SITE}/e/counting-what-the-build-skips?tab=checks`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: (page) => press(page, "button", /^Publish$/, "alertdialog"),
   },
   {
     name: "post-library",
     viewer: "owner",
     path: `/p/${SITE}/e/alerts-wait`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: (page) => press(page, "button", /^Insert from library/, "dialog"),
   },
   {
     name: "post-link-palette",
     viewer: "owner",
     path: `/p/${SITE}/e/alerts-wait`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: async (page) => {
-      await page.locator(".app-rich-surface").click();
+      await page.locator(".cap-rich-editor-surface").click();
       await page.keyboard.press("Control+K");
       await page.getByRole("combobox").first().waitFor();
     },
@@ -547,7 +552,7 @@ export const SCREENS = [
     name: "post-slash-menu",
     viewer: "owner",
     path: `/p/${SITE}/e/what-a-carrel-is-for`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: async (page) => {
       await endOfText(page);
       await page.keyboard.type("\n\n/");
@@ -562,7 +567,7 @@ export const SCREENS = [
     name: "post-markdown-mode",
     viewer: "owner",
     path: `/p/${SITE}/e/alerts-wait`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: (page) =>
       page
         .getByRole("radio", { name: "Markdown" })
@@ -574,11 +579,11 @@ export const SCREENS = [
     name: "post-source-block",
     viewer: "owner",
     path: `/p/${SITE}/e/what-a-carrel-is-for`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: async (page) => {
       await endOfText(page);
       await page.getByRole("button", { name: "Figure", exact: true }).click();
-      await page.locator(".app-src-text").last().waitFor();
+      await page.locator(".cap-rich-editor-src-text").last().waitFor();
     },
     restore: discardDraft,
   },
@@ -586,7 +591,7 @@ export const SCREENS = [
     name: "post-split",
     viewer: "owner",
     path: `/p/${SITE}/e/alerts-wait`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: (page) =>
       page
         .getByRole("radio", { name: "Split" })
@@ -603,7 +608,7 @@ export const SCREENS = [
     name: "book-dismiss",
     viewer: "owner",
     path: `/b/${BOOK}/f/chapters/02-the-crossing/01-the-chain.md?tab=checks`,
-    wait: ".app-rich-surface",
+    wait: ".cap-rich-editor-surface",
     after: (page) => press(page, "button", /^Dismiss/, "alertdialog"),
   },
   {
@@ -706,10 +711,7 @@ async function pressUntilOpen(page, name, opens) {
  * @param {Page} page
  */
 async function openOldestSource(page) {
-  await page
-    .getByRole("link", { name: /open its source/ })
-    .last()
-    .click();
+  await page.locator(".cap-hist .cap-row-title a").last().click();
   await page.getByLabel("Source of this revision").waitFor();
 }
 
@@ -739,10 +741,10 @@ async function chooseByWord(page) {
  * @param {string} ready
  */
 async function compareOutermost(page, ready) {
-  const boxes = page.getByRole("checkbox", { name: /^Compare the revision/ });
+  const boxes = page.getByRole("checkbox", { name: /^Compare this version/ });
   await boxes.first().check();
   await boxes.last().check();
-  await page.getByRole("button", { name: /^Compare the two picked/ }).click();
+  await page.getByRole("link", { name: "Compare 2 versions" }).click();
   await page.waitForSelector(ready, { timeout: 30_000 });
   await page.waitForTimeout(400);
 }

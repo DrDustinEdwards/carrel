@@ -20,6 +20,7 @@ import {
 } from "@dustinedwards/site-api/admin";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { bareType, CROPPABLE } from "capsomer/behavior/media";
+import { chunked, rowsPerInsert } from "@dustinedwards/site-runtime/d1";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changes } from "~/db/schema";
@@ -27,6 +28,7 @@ import type { Viewer } from "~/lib/people.server";
 import { answer, kitBase } from "~/lib/kit.server";
 import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
 import { siteClient, siteUnreachable } from "~/lib/sites.server";
+import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
 /** The authorship record's action for each kind the kit records (migration 0007 and later; site-api v0.13's in 0024). */
 const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
@@ -73,17 +75,21 @@ export function mediaSource(
     async record({ kind, ids, changeId }) {
       const action = ACTIONS[kind];
       if (!action) return;
-      await drizzle(env.DB)
-        .insert(changes)
-        .values(
-          ids.map((itemId) => ({
+      // A bulk action names any number of items; D1 binds at most 100 values a statement, five a row here,
+      // so the rows go in slices, all in one batch (one transaction).
+      const db = drizzle(env.DB);
+      const inserts = chunked(ids, rowsPerInsert(5)).map((part) =>
+        db.insert(changes).values(
+          part.map((itemId) => ({
             id: ids.length === 1 ? changeId : `${changeId}:${itemId}`,
             projectId: project.id,
             itemId,
             personId: viewer.id,
             action,
           })),
-        );
+        ),
+      );
+      if (inserts.length) await db.batch(inserts as [(typeof inserts)[0], ...typeof inserts]);
     },
   };
 }
@@ -109,9 +115,7 @@ export async function mediaBytes(
   const detail = capabilities.media ? await source.client.media.get(id).catch(() => null) : null;
   if (!detail || !CROPPABLE.includes(bareType(detail.contentType)) || detail.bytes > limit)
     return null;
-  const src = detail.url.startsWith("/")
-    ? `${source.site.origin.replace(/\/+$/, "")}${detail.url}`
-    : detail.url;
+  const src = absoluteUrl(source.site.origin, detail.url);
   const response = await fetcher(src);
   if (!response.ok) return null;
   const bytes = await response.arrayBuffer();
@@ -249,7 +253,7 @@ export async function listMediaFiles(
           alt: item.alt,
           decorative: item.decorative === true,
           caption: item.caption ?? "",
-          url: item.url.startsWith("/") ? `${origin}${item.url}` : item.url,
+          url: absoluteUrl(origin, item.url),
           version: item.version ?? detail?.version ?? null,
           usedBy: (detail?.usedBy ?? []).map((use) => ({
             type: use.type,

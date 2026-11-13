@@ -21,7 +21,7 @@ import { Banner } from "capsomer/react/banner";
 import { useState } from "react";
 import { Form, useNavigate } from "react-router";
 
-import { ScopeChip } from "~/components/scope-chip";
+import { ScopeChip } from "capsomer/react/scope-chip";
 import { getEnv, getViewer } from "~/lib/context";
 import { writingRows } from "~/lib/desk.server";
 import { readForm } from "~/lib/form.server";
@@ -151,8 +151,12 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
         actions={
           <>
             <ScopeChip
-              sites={sites}
+              options={sites.map((s) => ({ value: s.slug, label: s.name }))}
               value={site}
+              label="Show posts from"
+              all="All sites"
+              name="site"
+              renderForm={(props) => <Form {...props} />}
               keep={{
                 q,
                 status: status === "all" ? undefined : status,

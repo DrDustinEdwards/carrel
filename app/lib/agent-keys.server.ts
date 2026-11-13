@@ -21,8 +21,3 @@ export function isAgentName(name: string): boolean {
 export function agentEmail(name: string): string {
   return `agent:${name}`;
 }
-
-/** What the audit trail credits an agent's writes to: the same text as its person row's email. */
-export function agentClient(name: string): string {
-  return agentEmail(name);
-}

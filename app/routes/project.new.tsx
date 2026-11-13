@@ -2,15 +2,13 @@
 // site until the first Save, which sends it with expectedVersion null: the site refuses it if the
 // slug was taken in the meantime.
 
-import { isSlug } from "@drdustinedwards/site-helpers/slug";
 import { useState } from "react";
+import { routerRenderLink } from "capsomer/react/link";
 import { Form, redirect, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
 import { SlugField } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
-
-import { RouterLink } from "~/components/frame";
 
 import { autosave, readDoc } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -19,6 +17,8 @@ import { siteEntry, type SiteId } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.new";
+import { isSlug, SLUG_MAX_LENGTH } from "@drdustinedwards/site-helpers/slug";
+import { isoDay } from "@drdustinedwards/site-helpers/xml";
 
 /** A site with a fixed set of items refuses a new one, so Carrel has no New post for it. */
 function newSourceFor(site: SiteId) {
@@ -29,9 +29,6 @@ function newSourceFor(site: SiteId) {
     });
   return newSource;
 }
-
-/** Stricter than the contract's id: lower case, digits and single hyphens, as the site's slugs are. */
-const SLUG_MAX = 120;
 
 export function meta() {
   return [{ title: "New post · Carrel" }];
@@ -50,13 +47,13 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const project = await requireSiteProject(env.DB, viewer, params.project, "edit");
   const newSource = newSourceFor(project.site);
   const slug = String((await readForm(request)).get("slug") ?? "").trim();
-  if (!isSlug(slug, { max: SLUG_MAX })) {
+  if (!isSlug(slug, { max: SLUG_MAX_LENGTH })) {
     return { error: "Use lower-case letters, digits and single hyphens, such as my-new-post." };
   }
   if (await readDoc(env, project, slug)) {
     return { error: `The site already has a post at ${slug}. Open it from the list instead.` };
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = isoDay(new Date())!;
   await autosave(env.DB, project, viewer, slug, {
     source: newSource(slug, today),
     baseVersion: null,
@@ -70,7 +67,7 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
   return (
     <div className="app-page" data-narrow>
       <PageHead
-        renderLink={RouterLink}
+        renderLink={routerRenderLink}
         crumbs={[
           { label: loaderData.project.name, href: `/p/${loaderData.project.slug}` },
           { label: "New post" },
@@ -79,7 +76,7 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
         lead="A new post starts as a draft in Carrel, under the address you give it."
       />
       <Panel title="Address">
-        <Form method="post" className="app-form">
+        <Form method="post" className="cap-stack">
           <SlugField
             label="Slug, the post's address on the site"
             required
@@ -89,11 +86,11 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
             name="slug"
             value={slug}
             onChange={setSlug}
-            max={SLUG_MAX}
+            max={SLUG_MAX_LENGTH}
             autoComplete="off"
             data-error-pattern-mismatch="Use lower-case letters, digits and single hyphens, such as my-new-post."
           />
-          <div className="app-actions">
+          <div className="cap-cluster" data-gap="3">
             <Button type="submit" variant="primary" pending={busy}>
               Start writing
             </Button>

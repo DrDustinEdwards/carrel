@@ -12,8 +12,9 @@ import { directiveFromMarkdown } from "mdast-util-directive";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { directive } from "micromark-extension-directive";
 
-import { chartBlocks } from "~/lib/chart-block";
+import { chartBlocks } from "@drdustinedwards/site-helpers/source";
 
+import { errorMessage } from "@dustinedwards/site-runtime/log";
 export type ChartFinding = {
   /** The line the block starts on, in the text given. */
   line: number;
@@ -46,9 +47,7 @@ function run(block: string, strict: boolean): Run {
   } catch (error) {
     // Prelum's ContentError names the file and the block first; the editor names the line instead.
     return {
-      refused: unprefixed(
-        (error instanceof Error ? error.message : String(error)).replace(/^chart: /, ""),
-      ),
+      refused: unprefixed(errorMessage(error).replace(/^chart: /, "")),
       warnings,
       summary: null,
     };

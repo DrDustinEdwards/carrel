@@ -23,6 +23,7 @@ import {
   transcriptChanges as changesOf,
   transcriptRefusal,
 } from "~/lib/transcript";
+import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
 
 /** A transcript save or publish refused, said in words for the person or the session. */
 export class TranscriptRefusal extends Error {
@@ -84,10 +85,10 @@ export async function saveTranscriptDraft(
     if (!edited.ok) throw new TranscriptRefusal(edited.why);
     transcript = edited.transcript;
     replaced = edited.replaced;
-  } else transcript = input.transcript!.replace(/\r\n/g, "\n");
+  } else transcript = normalizeNewlines(input.transcript!);
   const refusal = transcriptRefusal(transcript);
   if (refusal) throw new TranscriptRefusal(refusal);
-  if (transcript === site.transcript.replace(/\r\n/g, "\n"))
+  if (transcript === normalizeNewlines(site.transcript))
     throw new TranscriptRefusal(
       "The draft is the site's transcript as it stands: nothing to save.",
     );

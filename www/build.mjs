@@ -21,6 +21,8 @@ import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isMain } from "@dustinedwards/devkit/node";
+
 import {
   ACCESSIBILITY_PATH,
   accessibilityStatement,
@@ -112,17 +114,21 @@ function writeStyles(outDir) {
   writeFileSync(join(outDir, "site.css"), css);
 }
 
-/** The sites Carrel publishes to on Dustin's Desk (app/lib/sites.server.ts). */
+/** The sites Carrel publishes to on Dustin's Desk, read from app/lib/sites.server.ts at build time so the page
+ *  cannot fall behind it (it said 6 when the Desk had 7). */
 const SITES = [
-  "dustinedwards.info",
-  "Germomics",
-  "Foxhound",
-  "Foxing",
-  "Texas Branch ASM",
-  "julieedwards.info",
-];
-/** The tools Carrel's MCP server gives an AI client (app/lib/mcp/tools.ts). */
-const TOOL_COUNT = 16;
+  ...readFileSync(join(HERE, "..", "app", "lib", "sites.server.ts"), "utf8").matchAll(
+    /^    name: "([^"]+)",$/gm,
+  ),
+].map((m) => /** @type {string} */ (m[1]));
+/** The tools Carrel's MCP server gives an AI client, counted in app/lib/mcp/tools.ts (it said 16 when there were 23). */
+const TOOL_COUNT = [
+  ...readFileSync(join(HERE, "..", "app", "lib", "mcp", "tools.ts"), "utf8").matchAll(
+    /^    name: "carrel_[a-z_]+",$/gm,
+  ),
+].length;
+if (SITES.length === 0 || TOOL_COUNT === 0)
+  throw new Error("www/build.mjs: could not read the sites or the tools");
 
 /** A feature with no section of its own on the page has no href and shows its name unlinked. @param {{ name: string, href?: string, kind: string, note: string }} item */
 const checklistItem = ({ name, href, kind, note }) =>
@@ -389,6 +395,7 @@ const documentHtml = (
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="text-scale" content="scale">
 ${headHtml([...head({ path, title, fullTitle: true, description, noindex: !index }), ...(index && path === "/" ? [jsonLd(SCHEMA)] : [])])}
 ${ICON_LINKS}
 <link rel="stylesheet" href="/site.css">
@@ -419,6 +426,9 @@ async function bundle(file, format) {
       write: false,
       minify: true,
       lib: { entry: join(HERE, "browser", file), formats: [format], name: "carrel" },
+      // One file per script: site-runtime's startPage() loads INP reporting with a dynamic
+      // import on `load`, which would otherwise split into a second chunk.
+      rollupOptions: { output: { inlineDynamicImports: true } },
     },
   });
   const [{ output }] = /** @type {import("vite").Rolldown.RolldownOutput[]} */ (
@@ -578,7 +588,7 @@ export async function buildSite(outDir) {
   return { files: files.sort() };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const outDir = process.argv[2] ?? join(HERE, "dist");
   const { files } = await buildSite(outDir);
   console.log(`www: ${files.length} files in ${relative(process.cwd(), outDir) || "."}`);

@@ -13,9 +13,10 @@ import { drizzle } from "drizzle-orm/d1";
 import { accessSync, people, projectMembers } from "~/db/schema";
 import { agentEmail } from "~/lib/agent-keys.server";
 import { postAccessSync, type AccessSyncResult } from "@dustinedwards/site-runtime/access-sync";
-import { capsidOrigin } from "~/lib/inbox-report.server";
+import { capsidOrigin } from "@dustinedwards/site-runtime/inbox-report";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
+import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 /**
  * Who Access should let into Desk: every active person with a role on at least one project. Left out
  * are AI agents (they reach the AI door with a key, never through Access), reviewers (another
@@ -85,7 +86,7 @@ export async function syncAccess(
       fetch: fetcher,
     });
   } catch (error) {
-    result = { ok: false, refusal: error instanceof Error ? error.message : String(error) };
+    result = { ok: false, refusal: errorMessage(error) };
   }
   const ok = result.ok;
   const refusal = result.ok ? null : result.refusal.slice(0, 1000);
@@ -98,14 +99,9 @@ export async function syncAccess(
       .values({ id: 1, ...row })
       .onConflictDoUpdate({ target: accessSync.id, set: row });
   } catch (error) {
-    console.error(
-      JSON.stringify({
-        access: "sync-record-failed",
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    logEvent("access.sync-record-failed", { error: errorMessage(error) }, { level: "error" });
   }
-  if (!ok) console.error(JSON.stringify({ access: "sync-refused", refusal }));
+  if (!ok) logEvent("access.sync-refused", { refusal }, { level: "error" });
   return ok
     ? { state: "in-step", detail: `${added} added, ${dropped} dropped.` }
     : { state: "waiting", detail: refusal ?? "" };
