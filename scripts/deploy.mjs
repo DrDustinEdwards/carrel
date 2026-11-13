@@ -9,6 +9,7 @@
 //   CARREL_KV_OAUTH_ID      id of the KV namespace titled `carrel-desk-oauth` (bound as OAUTH_KV); during the
 //                           rename its old title `carrel-oauth` is accepted too
 //   CARREL_ALERT_EMAIL      the address health alerts go to
+//   CARREL_MANUSCRIPTS_FOLDER_ID   optional: the Drive folder shared with the service account (the id in its URL)
 //   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   read by wrangler itself
 //
 // Order, and every step stops the run on a nonzero exit: render, check the ids against the names in
@@ -91,6 +92,7 @@ function must(label, entry, args, opts) {
 const d1Id = process.env.CARREL_D1_DATABASE_ID ?? "";
 const kvId = process.env.CARREL_KV_OAUTH_ID ?? "";
 const alertEmail = process.env.CARREL_ALERT_EMAIL ?? "";
+const manuscriptsFolder = (process.env.CARREL_MANUSCRIPTS_FOLDER_ID ?? "").trim();
 if (
   !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(d1Id) ||
   d1Id === ZERO_D1
@@ -104,6 +106,9 @@ if (!/^[0-9a-f]{32}$/.test(kvId) || kvId === ZERO_KV) {
 }
 if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(alertEmail) || /@example\.com$/i.test(alertEmail)) {
   fail("CARREL_ALERT_EMAIL is missing or the placeholder. Refusing to deploy.");
+}
+if (manuscriptsFolder && !/^[A-Za-z0-9_-]{10,}$/.test(manuscriptsFolder)) {
+  fail("CARREL_MANUSCRIPTS_FOLDER_ID is not a Drive folder id. Refusing to deploy.");
 }
 
 // 2. Render wrangler.jsonc from the example.
@@ -132,6 +137,11 @@ rendered = replaceOnce(
   rendered,
   `"ALERT_EMAIL": "alerts@example.com"`,
   `"ALERT_EMAIL": ${JSON.stringify(alertEmail)}`,
+);
+rendered = replaceOnce(
+  rendered,
+  `"GOOGLE_MANUSCRIPTS_FOLDER_ID": ""`,
+  `"GOOGLE_MANUSCRIPTS_FOLDER_ID": ${JSON.stringify(manuscriptsFolder)}`,
 );
 // The routes block: the lines from `// "routes": [` to `// ],`, with their comment marker removed.
 const lines = rendered.split("\n");
