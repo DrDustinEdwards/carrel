@@ -218,6 +218,7 @@ export const SCREENS = [
   { name: "people", viewer: "owner", path: "/people" },
   { name: "manuscripts", viewer: "owner", path: "/manuscripts" },
   { name: "manuscripts-search", viewer: "owner", path: "/manuscripts?q=paluxy" },
+  { name: "docs-activity", viewer: "owner", path: "/manuscripts/activity" },
   { name: "social", viewer: "owner", path: "/social" },
   { name: "social-accounts", viewer: "owner", path: "/social?tab=accounts" },
   { name: "social-posts", viewer: "owner", path: "/social?tab=posts" },

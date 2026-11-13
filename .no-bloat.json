@@ -4,12 +4,12 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "b7bb13f",
+    "measured_at": "74a5862",
     "knip": {},
     "jscpd": {
-      "clones": 67,
-      "lines": 648,
-      "percentage": 1.36,
+      "clones": 66,
+      "lines": 637,
+      "percentage": 1.3,
       "unread": 0
     },
     "shared copies": {
@@ -17,13 +17,13 @@
       "lines": 0
     },
     "tests": {
-      "files": 48,
-      "cases": 455
+      "files": 49,
+      "cases": 464
     },
     "comments": {
-      "lines": 3534,
-      "code": 41403,
-      "percentage": 7.86
+      "lines": 3587,
+      "code": 42575,
+      "percentage": 7.77
     }
   }
 }

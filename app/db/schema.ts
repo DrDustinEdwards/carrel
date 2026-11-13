@@ -427,6 +427,26 @@ export const manuscripts = sqliteTable("manuscripts", {
   syncedAt: text("synced_at").notNull(),
 });
 
+// Every change an AI made in a Google Doc through Carrel (migration 0035): which AI, why, and the exact change.
+export const docChanges = sqliteTable("doc_changes", {
+  id: integer("id").primaryKey(),
+  fileId: text("file_id").notNull(),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
+  client: text("client").notNull(),
+  model: text("model"),
+  mode: text("mode", { enum: ["suggest", "comment", "reply", "resolve", "reopen"] }).notNull(),
+  reason: text("reason").notNull().default(""),
+  change: text("change").notNull(),
+  googleIds: text("google_ids").notNull().default("[]"),
+  labeled: integer("labeled", { mode: "boolean" }).notNull().default(false),
+  revisionId: text("revision_id"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
 export const sentDocs = sqliteTable("sent_docs", {
   id: integer("id").primaryKey(),
   projectId: integer("project_id")
