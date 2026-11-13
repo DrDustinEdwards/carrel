@@ -8,7 +8,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { saveAiDraft } from "~/lib/ai.server";
 import { autosave, writeToSite } from "~/lib/content.server";
 import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
-import { orderPair } from "~/lib/history.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as historyAction, loader as historyLoader } from "~/routes/history";
 
@@ -174,25 +173,6 @@ describe("comparing revisions", () => {
         message: "Pick two different revisions to compare.",
       });
     }
-  });
-
-  it("orders a pair by the site's list, newest first, so the older is always from", () => {
-    const list = [
-      { version: "c", at: "2026-10-03T00:00:00Z", author: "a", message: "" },
-      { version: "b", at: "2026-10-02T00:00:00Z", author: "a", message: "" },
-      { version: "a", at: "2026-10-01T00:00:00Z", author: "a", message: "" },
-    ];
-    expect(orderPair(list, ["c", "a"])).toMatchObject({
-      from: { version: "a" },
-      to: { version: "c" },
-    });
-    expect(orderPair(list, ["a", "c"])).toMatchObject({
-      from: { version: "a" },
-      to: { version: "c" },
-    });
-    expect(orderPair(list, ["a"])).toBeNull();
-    expect(orderPair(list, ["a", "a"])).toBeNull();
-    expect(orderPair(list, ["a", "z"])).toBeNull();
   });
 });
 

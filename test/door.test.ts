@@ -346,6 +346,7 @@ describe("the AI door's OAuth surface", () => {
     expect(meta.client_id_metadata_document_supported).toBe(true);
     expect(meta.registration_endpoint).toBe(`${DOOR}/register`);
     expect(meta.scopes_supported).toEqual(["carrel.read", "carrel.write"]);
+    expect(String(meta.issuer).replace(/\/+$/, "")).toBe(DOOR);
   });
 
   // The deploy's live gate (devkit's worker-deploy.yml) polls this until it names the commit it shipped. It is
@@ -375,13 +376,6 @@ describe("the AI door's OAuth surface", () => {
         await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: "<script>" } as Env)
       ).json(),
     ).toMatchObject({ sha: "unknown" });
-  });
-
-  it("names itself as the issuer in its OAuth metadata", async () => {
-    const meta = (await (
-      await door(new Request(`${DOOR}/.well-known/oauth-authorization-server`))
-    ).json()) as Record<string, unknown>;
-    expect(String(meta.issuer).replace(/\/+$/, "")).toBe(DOOR);
   });
 
   it("PLANT: never serves Carrel's pages", async () => {
