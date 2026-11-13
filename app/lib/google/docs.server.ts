@@ -10,7 +10,7 @@
 // An AI names text by quoting it. Carrel turns the quote into Google's positions from a fresh read, so no AI does
 // position arithmetic, and a quote that is not found exactly once is refused rather than guessed at.
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { docChanges, manuscripts } from "~/db/schema";
@@ -659,4 +659,29 @@ export async function commentInDoc(
     revisionId,
   });
   return { changeId, id, labelled: true };
+}
+
+/** The latest changes AIs made in Docs, newest first, with each Doc's name: the Docs activity page. */
+export async function docActivity(env: Env, viewer: Viewer, limit = 100) {
+  requireOwner(viewer);
+  const rows = await drizzle(env.DB)
+    .select({
+      id: docChanges.id,
+      fileId: docChanges.fileId,
+      name: manuscripts.name,
+      link: manuscripts.webViewLink,
+      client: docChanges.client,
+      model: docChanges.model,
+      mode: docChanges.mode,
+      reason: docChanges.reason,
+      googleIds: docChanges.googleIds,
+      labelled: docChanges.labelled,
+      createdAt: docChanges.createdAt,
+    })
+    .from(docChanges)
+    .leftJoin(manuscripts, eq(manuscripts.fileId, docChanges.fileId))
+    .orderBy(desc(docChanges.id))
+    .limit(limit)
+    .all();
+  return rows.map((r) => ({ ...r, changes: (JSON.parse(r.googleIds) as string[]).length }));
 }

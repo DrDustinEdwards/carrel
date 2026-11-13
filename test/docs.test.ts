@@ -5,6 +5,7 @@
 
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { docActivity } from "~/lib/google/docs.server";
 import { refreshManuscripts } from "~/lib/google/drive.server";
 import {
   clearSaTokenCache,
@@ -15,7 +16,7 @@ import {
 import { addPerson, resetDb, testEnv } from "./env";
 import { fakeGoogle, serviceAccountKey } from "./google";
 import { connectAs } from "./mcp-client";
-import { connectedEnv } from "./site";
+import { connectedEnv, viewerFor } from "./site";
 
 const FOLDER = "folderRoot1";
 const DOC = "docTestAAAA1";
@@ -253,5 +254,31 @@ describe("comment", () => {
     ).call("carrel_comment_doc", { doc: DOC, quote: "Aims", text: "x" });
     expect(other.isError).toBe(true);
     expect(google.docApi.get(DOC)!.batches).toEqual([]);
+  });
+});
+
+describe("Docs activity", () => {
+  it("lists what each AI did in which Doc, newest first, to the Owner alone", async () => {
+    const c = await connect();
+    await c.call("carrel_change_doc", {
+      doc: DOC,
+      reason: "r",
+      edits: [{ find: "Aims", replace: "Goals" }],
+    });
+    await (
+      await connect("owner@test.invalid", "Grok Bot")
+    ).call("carrel_comment_doc", {
+      doc: DOC,
+      quote: "Cold again",
+      text: "Cut?",
+    });
+    const rows = await docActivity(env, await viewerFor("owner@test.invalid"));
+    expect(rows.map((r) => [r.client, r.mode, r.name])).toEqual([
+      ["Grok Bot", "comment", "Chapter draft"],
+      ["Claude", "suggest", "Chapter draft"],
+    ]);
+    await expect(docActivity(env, await viewerFor("editor@test.invalid"))).rejects.toMatchObject({
+      status: 404,
+    });
   });
 });
