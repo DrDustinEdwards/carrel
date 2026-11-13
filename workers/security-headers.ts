@@ -41,7 +41,7 @@ export const { withSecurityHeaders, nonceFor } = pageSecurity<Env>({
     },
     // The editor's palettes are placed with style attributes, which nonces do not cover.
     styleAttributesInline: true,
-    // Carrel's hosts are excluded from Web Analytics, and HTML is sent no-transform, so the beacon is never injected.
+    // Desk's HTML is sent no-transform (site-runtime PRIVATE_PAGE_HEADERS, workers/gate.ts), so the beacon is never injected.
     cloudflareWebAnalytics: false,
     // Trusted Types is enforced (site-runtime 0.132.0): only the named policies may hand a sink markup or script text.
     trustedTypes: TRUSTED_TYPES_NAMES,

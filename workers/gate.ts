@@ -9,6 +9,11 @@
 // Access like every other.
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
+import {
+  compressUntransformed,
+  PRIVATE_PAGE_HEADERS,
+  UNCACHED,
+} from "@dustinedwards/site-runtime/edge-cache";
 import { applyHeaderSet } from "@dustinedwards/site-runtime/headers";
 import { textResponse } from "@dustinedwards/site-runtime/http";
 import {
@@ -27,17 +32,16 @@ export type Render = (request: Request, viewer: Viewer) => Promise<Response>;
 
 // Caching only. The security headers (HSTS, framing, nosniff, Referrer-Policy and the rest) are
 // workers/security-headers.ts's, applied by app.ts to everything this returns, refusals included.
-const PRIVATE_CACHE = "private, no-store";
-
-function withPrivateHeaders(response: Response): Response {
-  // An HTML page is left as it is: Cloudflare does not touch a response that says no-transform, which
-  // keeps the Web Analytics beacon out of private pages (a dashboard exclusion needs the Pro plan).
-  // Scripts, styles and fonts stay compressible. One Cache-Control header, never two. applyHeaderSet hands a live
-  // editor's WebSocket (101) back as it is.
+function withPrivateHeaders(response: Response, request: Request): Response {
+  // Every page here is private, so an HTML page is site-runtime's PRIVATE_PAGE_HEADERS: no-transform keeps the Web
+  // Analytics beacon out, and the Worker compresses it, since the edge then does not. Scripts, styles and fonts keep
+  // the edge's compression. One Cache-Control header, never two. applyHeaderSet hands a live editor's WebSocket (101)
+  // back as it is.
   const html = response.headers.get("Content-Type")?.toLowerCase().startsWith("text/html");
-  return applyHeaderSet(response, {
-    "Cache-Control": html ? `${PRIVATE_CACHE}, no-transform` : PRIVATE_CACHE,
-  });
+  return compressUntransformed(
+    applyHeaderSet(response, html ? PRIVATE_PAGE_HEADERS : { "Cache-Control": UNCACHED }),
+    request,
+  );
 }
 
 /** The same bare 403 for every refusal, so a caller learns nothing about why. The reason is logged. */
@@ -92,5 +96,5 @@ export async function admit(request: Request, viewer: Viewer, render: Render): P
   // signed-in response with the viewer's Access cookie.
   if (!isolationVerdict(request).ok) return refuse(request, "cross-site-resource");
   const response = await render(request, viewer);
-  return withPrivateHeaders(response);
+  return withPrivateHeaders(response, request);
 }
