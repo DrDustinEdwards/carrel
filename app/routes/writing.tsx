@@ -8,7 +8,8 @@
 // ticked posts and the intent post here, each site's share runs through that site's own posts intent
 // (writing.server.ts), and the page comes back with one outcome per post, the Undo and any confirm.
 
-import { Link } from "capsomer/react/link";
+import { Table } from "capsomer/react/table";
+import { Link, ButtonLink } from "capsomer/react/link";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Pill } from "capsomer/react/status";
@@ -164,9 +165,9 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
               }}
             />
             {newHref ? (
-              <Link to={newHref} className="cap-btn" data-variant="primary">
+              <ButtonLink to={newHref} variant="primary">
                 New post
-              </Link>
+              </ButtonLink>
             ) : null}
           </>
         }
@@ -251,85 +252,77 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
             : "A post appears here once a site you can open lists it."}
         </Empty>
       ) : (
-        <div
-          className="cap-table-wrap app-writing-wrap"
-          data-reflow=""
-          role="region"
-          aria-label="Posts"
-          tabIndex={0}
-        >
-          <table className="cap-table">
-            <thead>
-              <tr>
+        <Table caption="Posts" captionHidden className="app-writing-wrap" reflow>
+          <thead>
+            <tr>
+              {selectable ? (
+                <th scope="col" className="app-check-col">
+                  <span className="cap-sr-only">Select</span>
+                </th>
+              ) : null}
+              <th scope="col">Title</th>
+              <th scope="col">Status</th>
+              <th scope="col" data-drop="2" data-num>
+                Updated
+              </th>
+              <th scope="col">
+                <span className="cap-sr-only">Open</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.key}
+                data-selected={selected.includes(r.key) ? "" : undefined}
+                data-current={r.key === inspect ? "" : undefined}
+              >
                 {selectable ? (
-                  <th scope="col" className="app-check-col">
-                    <span className="cap-sr-only">Select</span>
-                  </th>
+                  <td className="app-check-col">
+                    {r.selectable ? (
+                      <label className="cap-check">
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={r.key}
+                          form="writing-bulk"
+                          checked={selected.includes(r.key)}
+                          onChange={(e) => toggle(r.key, e.target.checked)}
+                        />
+                        <span className="cap-sr-only">Select {r.title}</span>
+                      </label>
+                    ) : null}
+                  </td>
                 ) : null}
-                <th scope="col">Title</th>
-                <th scope="col">Status</th>
-                <th scope="col" data-drop="2" data-num>
-                  Updated
+                <th scope="row">
+                  <Link
+                    className="cap-table-open"
+                    to={href({ status, inspect: r.key })}
+                    preventScrollReset
+                  >
+                    {r.title}
+                  </Link>
+                  <span className="cap-table-aside">
+                    {r.site} · {r.kind}
+                  </span>
                 </th>
-                <th scope="col">
-                  <span className="cap-sr-only">Open</span>
-                </th>
+                <td>
+                  <Pill variant={TONE[r.status]}>
+                    {LABEL[r.status === "draft" ? "draft" : r.status].replace(/s$/, "")}
+                  </Pill>
+                </td>
+                <td data-drop="2" data-num>
+                  {r.at ? <Time at={r.at} /> : null}
+                </td>
+                <td>
+                  <ButtonLink size="sm" to={r.href}>
+                    Open<span className="cap-sr-only"> {r.title}</span>
+                  </ButtonLink>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr
-                  key={r.key}
-                  data-selected={selected.includes(r.key) ? "" : undefined}
-                  data-current={r.key === inspect ? "" : undefined}
-                >
-                  {selectable ? (
-                    <td className="app-check-col">
-                      {r.selectable ? (
-                        <label className="cap-check">
-                          <input
-                            type="checkbox"
-                            name="ids"
-                            value={r.key}
-                            form="writing-bulk"
-                            checked={selected.includes(r.key)}
-                            onChange={(e) => toggle(r.key, e.target.checked)}
-                          />
-                          <span className="cap-sr-only">Select {r.title}</span>
-                        </label>
-                      ) : null}
-                    </td>
-                  ) : null}
-                  <th scope="row">
-                    <Link
-                      className="cap-table-open"
-                      to={href({ status, inspect: r.key })}
-                      preventScrollReset
-                    >
-                      {r.title}
-                    </Link>
-                    <span className="cap-table-aside">
-                      {r.site} · {r.kind}
-                    </span>
-                  </th>
-                  <td>
-                    <Pill variant={TONE[r.status]}>
-                      {LABEL[r.status === "draft" ? "draft" : r.status].replace(/s$/, "")}
-                    </Pill>
-                  </td>
-                  <td data-drop="2" data-num>
-                    {r.at ? <Time at={r.at} /> : null}
-                  </td>
-                  <td>
-                    <Link className="cap-btn" data-size="sm" to={r.href}>
-                      Open<span className="cap-sr-only"> {r.title}</span>
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
       {peek ? (
         <DetailPanel
@@ -345,17 +338,15 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
         >
           <DetailSection title="Open it">
             <div className="cap-detail-controls">
-              <Link className="cap-btn" data-variant="primary" to={peek.editHref}>
+              <ButtonLink variant="primary" to={peek.editHref}>
                 Open in the editor
-              </Link>
+              </ButtonLink>
               {peek.liveUrl ? (
-                <a className="cap-btn" href={peek.liveUrl} target="_blank" rel="noreferrer">
+                <ButtonLink href={peek.liveUrl} away newTab>
                   View on the site
-                </a>
+                </ButtonLink>
               ) : null}
-              <Link className="cap-btn" to={peek.historyHref}>
-                History
-              </Link>
+              <ButtonLink to={peek.historyHref}>History</ButtonLink>
             </div>
           </DetailSection>
           {peek.aiDrafts > 0 || peek.ownDraft || peek.flags > 0 ? (

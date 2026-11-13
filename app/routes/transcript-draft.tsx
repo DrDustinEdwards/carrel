@@ -3,7 +3,7 @@
 // may publish the episode; the transcript it replaces is kept as a draft of its own, so a publish can be put back.
 
 import { redirect, useSearchParams } from "react-router";
-import { Link } from "capsomer/react/link";
+import { ButtonLink } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
@@ -99,11 +99,7 @@ export default function TranscriptDraft({ loaderData, actionData }: Route.Compon
               }
             : null
         }
-        links={
-          <Link to={editor} className="cap-btn">
-            Back to the episode
-          </Link>
-        }
+        links={<ButtonLink to={editor}>Back to the episode</ButtonLink>}
       />
       {published ? (
         <Banner tone="ok">

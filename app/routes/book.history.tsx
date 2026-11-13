@@ -4,7 +4,7 @@
 // draft saved beside it. Read-only, and it works for a Reader. The compare components and the patch
 // are the site page's.
 
-import { Link, routerRenderLink } from "capsomer/react/link";
+import { ButtonLink, routerRenderLink } from "capsomer/react/link";
 import { Row, RowList } from "capsomer/react/row-list";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
@@ -231,11 +231,7 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
             {moved ? ", followed back through its moves" : ""}. Looking here changes nothing.
           </>
         }
-        actions={
-          <Link to={editor} className="cap-btn">
-            Back to the editor
-          </Link>
-        }
+        actions={<ButtonLink to={editor}>Back to the editor</ButtonLink>}
       />
 
       {notice ? <Banner tone="warn">{notice}</Banner> : null}
