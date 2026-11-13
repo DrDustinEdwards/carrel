@@ -917,6 +917,25 @@ async function build(base: Env): Promise<World> {
 
   // Manuscripts, Google, social.
   await refreshManuscripts(env, google.fetch);
+  // What AIs did in a Doc through Carrel (the Docs activity page).
+  for (const [client, model, mode, reason, ids, labeled] of [
+    [
+      "Claude",
+      "Opus 5.5",
+      "suggest",
+      "Tightened the opening paragraph for length",
+      ["suggest.1", "suggest.2"],
+      1,
+    ],
+    ["Grok Bot", null, "comment", "The flood date here differs from chapter 2", ["c.1"], 1],
+    ["Claude", null, "suggest", "Fixed two typos", ["suggest.3"], 0],
+  ] as const) {
+    await env.DB.prepare(
+      "INSERT INTO doc_changes (file_id, person_id, client, model, mode, reason, change, google_ids, labeled) VALUES ('m1', ?, ?, ?, ?, ?, '[]', ?, ?)",
+    )
+      .bind(owner.id, client, model, mode, reason, JSON.stringify(ids), labeled)
+      .run();
+  }
   const start = new URL(await startAuth(env, owner, "https://carrel.test"));
   await finishAuth(
     env,
