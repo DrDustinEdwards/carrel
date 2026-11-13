@@ -6,6 +6,8 @@
 /* Desk wears the public page's olive (Dustin: "match the theme of the site"). */
 @import "capsomer/family-olive.css";
 @import "capsomer/base.css";
+@import "capsomer/layout.css";
+@import "capsomer/text.css";
 @import "capsomer/link.css";
 @import "capsomer/prose.css";
 @import "capsomer/utilities.css";
@@ -83,7 +85,7 @@
 @import "capsomer/mentions-list.css";
 @import "capsomer/inspector.css";
 @import "capsomer/attention-list.css";
-@import "capsomer/people-roles.css";
+@import "capsomer/role-grid.css";
 @import "capsomer/history-list.css";
 @import "capsomer/writing-progress.css";
 
