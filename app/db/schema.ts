@@ -736,6 +736,8 @@ export const aiSettings = sqliteTable("ai_settings", {
 export const aiUsage = sqliteTable("ai_usage", {
   id: integer("id").primaryKey(),
   feature: text("feature").notNull(),
+  // The effort the call ran at; null before 0037 and on calls another service metered.
+  effort: text("effort"),
   model: text("model").notNull(),
   micros: integer("micros").notNull(),
   promptSize: integer("prompt_size").notNull(),

@@ -48,12 +48,16 @@ export function apiKeyMissing(env: Pick<Env, "ANTHROPIC_API_KEY">): boolean {
 
 /**
  * The jobs that can run on either engine. `subscription` says whether a routine can do it; `engine` is the setting the job
- * starts with until Dustin changes it. Background jobs nobody waits on start on the API (it answers at once and is
+ * starts with until Dustin changes it; `tier` and `effort` are what the API uses for it until he picks others. Each
+ * effort is the API's own default for the job's tier (high on Sonnet 5.5, medium on Opus 5.5), so sending it always
+ * changed nothing until he chose. Background jobs nobody waits on start on the API (it answers at once and is
  * metered); long writing he steers himself starts on Automatic, the subscription first.
  */
 export const FEATURES = [
   {
     key: "social",
+    tier: "standard",
+    effort: "high",
     label: "Social post drafts",
     subscription: true,
     engine: "api",
@@ -61,6 +65,8 @@ export const FEATURES = [
   },
   {
     key: "episode",
+    tier: "standard",
+    effort: "high",
     label: "Germomics episode summaries and chapters",
     subscription: true,
     engine: "api",
@@ -68,6 +74,8 @@ export const FEATURES = [
   },
   {
     key: "seo",
+    tier: "standard",
+    effort: "high",
     label: "Search title and description",
     subscription: true,
     engine: "api",
@@ -75,6 +83,8 @@ export const FEATURES = [
   },
   {
     key: "alt",
+    tier: "fast",
+    effort: "medium",
     label: "Alt text for pictures without it",
     subscription: true,
     engine: "api",
@@ -82,6 +92,8 @@ export const FEATURES = [
   },
   {
     key: "continue",
+    tier: "deep",
+    effort: "medium",
     label: "Continue my draft (posts and book files)",
     subscription: true,
     engine: "auto",
@@ -89,6 +101,8 @@ export const FEATURES = [
   },
   {
     key: "edit",
+    tier: "deep",
+    effort: "medium",
     label: "Suggest edits (posts and book files)",
     subscription: true,
     engine: "auto",
@@ -134,29 +148,45 @@ export async function readAiSettings(db: D1Database): Promise<EngineSettings> {
 
 const TIERS = ["fast", "standard", "deep"] as const;
 type Tier = (typeof TIERS)[number];
-export type AiModels = Partial<Record<string, Tier>>;
+/** The API's effort levels (`output_config.effort`), on every model MODEL_IDS names. */
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type Effort = (typeof EFFORTS)[number];
+/** The model tier and effort each job's API run uses, as saved; a job left out uses its FEATURES default. */
+export type AiChoices = {
+  models: Partial<Record<string, Tier>>;
+  efforts: Partial<Record<string, Effort>>;
+};
 
-function modelsOf(raw: unknown): AiModels {
-  const given = (raw as { models?: Record<string, unknown> } | null)?.models;
-  const out: AiModels = {};
-  for (const [feature, tier] of Object.entries(given ?? {}))
-    if (TIERS.includes(tier as Tier)) out[feature] = tier as Tier;
+function pick<T extends string>(given: unknown, allowed: readonly T[]): Partial<Record<string, T>> {
+  const out: Partial<Record<string, T>> = {};
+  for (const [feature, value] of Object.entries((given as Record<string, unknown>) ?? {}))
+    if (allowed.includes(value as T)) out[feature] = value as T;
   return out;
 }
 
-/** The model each job runs on when the API does it: fast, standard or deep (site-runtime's MODEL_IDS). A job with none saved uses its own default. */
-export async function readAiModels(db: D1Database): Promise<AiModels> {
+function choicesOf(raw: unknown): AiChoices {
+  const r = raw as { models?: unknown; efforts?: unknown } | null;
+  return { models: pick(r?.models, TIERS), efforts: pick(r?.efforts, EFFORTS) };
+}
+
+/** The model tier (site-runtime's MODEL_IDS) and effort each job runs on when the API does it. */
+export async function readAiChoices(db: D1Database): Promise<AiChoices> {
   const row = await drizzle(db).select().from(aiSettings).where(eq(aiSettings.id, 1)).get();
   try {
-    return row ? modelsOf(JSON.parse(row.json)) : {};
+    return choicesOf(row ? JSON.parse(row.json) : null);
   } catch {
-    return {};
+    return choicesOf(null);
   }
 }
 
-/** The model id for a job: its saved tier, else `fallback`. */
-export function aiModel(models: AiModels, feature: string, fallback: Tier): string {
-  return MODEL_IDS[models[feature] ?? fallback];
+/**
+ * A job's model and effort, spread into its request: its saved choice, else its FEATURES default. The effort is always
+ * sent, because the API's own default differs by model and would change whenever the tier did.
+ */
+export function aiRun(choices: AiChoices, feature: FeatureKey) {
+  const job = FEATURES.find((f) => f.key === feature)!;
+  const effort: Effort = choices.efforts[feature] ?? job.effort;
+  return { model: MODEL_IDS[choices.models[feature] ?? job.tier], output_config: { effort } };
 }
 
 export async function saveAiSettings(
@@ -170,7 +200,7 @@ export async function saveAiSettings(
   // (docs.server.ts), which is saved on its own page and kept as it is here.
   const json = JSON.stringify({
     ...settings,
-    models: modelsOf(input),
+    ...choicesOf(input),
     docsEmail: await readDocsEmail(db),
   });
   await drizzle(db)
@@ -197,12 +227,13 @@ export async function usageThisMonth(db: D1Database, now = new Date()) {
   return drizzle(db)
     .select({
       feature: aiUsage.feature,
+      effort: aiUsage.effort,
       calls: sql<number>`count(*)`,
       micros: sql<number>`sum(${aiUsage.micros})`,
     })
     .from(aiUsage)
     .where(gte(aiUsage.createdAt, monthStart(now)))
-    .groupBy(aiUsage.feature)
+    .groupBy(aiUsage.feature, aiUsage.effort)
     .orderBy(desc(sql`sum(${aiUsage.micros})`))
     .all();
 }
@@ -267,8 +298,11 @@ async function capAlert(env: Env, now = new Date()): Promise<boolean> {
   }
 }
 
-/** Call options that record the call's cost under `feature`, even when the call failed (it still spent tokens). */
-export function meteredOptions(env: Env, feature: FeatureKey): CallOptions {
+/**
+ * Call options that record the call's cost under `feature` and the effort it ran at, even when the call failed (it
+ * still spent tokens).
+ */
+export function meteredOptions(env: Env, feature: FeatureKey, effort: Effort): CallOptions {
   const db = env.DB;
   return {
     feature,
@@ -277,6 +311,7 @@ export function meteredOptions(env: Env, feature: FeatureKey): CallOptions {
         .insert(aiUsage)
         .values({
           feature,
+          effort,
           model: r.model,
           micros: costMicros(r.model, r) ?? 0,
           promptSize: r.input + r.cacheRead + r.cacheWrite + r.cacheWrite1h,
@@ -309,12 +344,12 @@ type SocialItem = {
 /** One post for one item, from the account's voice. The caller stores it and lints it like any other draft. */
 export async function draftPostViaApi(env: Env, item: SocialItem, fetcher?: typeof fetch) {
   const maxChars = item.platform === "x" ? 280 : 300;
-  const models = await readAiModels(env.DB);
+  const run = aiRun(await readAiChoices(env.DB), "social");
   return structured<{ text: string }>(
     env,
     "carrel",
     {
-      model: aiModel(models, "social", "standard"),
+      ...run,
       max_tokens: 600,
       system: [
         `Draft one ${item.platform} post for ${item.account} announcing the item below, in the account's voice. The post announces the item and links it, says nothing the item does not say, and is at most ${maxChars} characters including the link.`,
@@ -336,7 +371,7 @@ export async function draftPostViaApi(env: Env, item: SocialItem, fetcher?: type
       ],
     },
     POST_SCHEMA,
-    { ...meteredOptions(env, "social"), ...(fetcher ? { fetcher } : {}) },
+    { ...meteredOptions(env, "social", run.output_config.effort), ...(fetcher ? { fetcher } : {}) },
   );
 }
 
@@ -404,7 +439,7 @@ export async function draftEpisodeViaApi(
   const parts = splitSource(normalizeNewlines(episode.source));
   if (parts.front === null) return { ok: false, error: "The episode has no front matter." };
   const front = parts.front;
-  const models = await readAiModels(env.DB);
+  const run = aiRun(await readAiChoices(env.DB), "episode");
   const needSummary = isEmpty(readKey(front, "excerpt").trim());
   const needChapters = isEmpty(readKey(front, "chapters").trim());
   if (!needSummary && !needChapters) return { ok: true };
@@ -417,7 +452,7 @@ export async function draftEpisodeViaApi(
       env,
       "carrel",
       {
-        model: aiModel(models, "episode", "standard"),
+        ...run,
         max_tokens: 4000,
         system: [
           "Write a summary and chapters for the podcast episode below from its transcript. The summary is two or three plain sentences saying what the listener learns.",
@@ -440,7 +475,10 @@ export async function draftEpisodeViaApi(
         ],
       },
       EPISODE_SCHEMA,
-      { ...meteredOptions(env, "episode"), ...(fetcher ? { fetcher } : {}) },
+      {
+        ...meteredOptions(env, "episode", run.output_config.effort),
+        ...(fetcher ? { fetcher } : {}),
+      },
     );
   let result = await ask();
   // Verify pass: a capitalized word in a title or the summary that the written text never uses is a likely mishearing
@@ -505,7 +543,7 @@ export async function suggestSeo(
   project: SiteProject,
   viewer: Viewer,
   itemId: string,
-  model: string = MODEL_IDS.standard,
+  run: ReturnType<typeof aiRun>,
 ): Promise<SeoSuggestion> {
   const working = await workingParts(env, project, viewer, itemId);
   if (!working.ok) return working;
@@ -521,7 +559,7 @@ export async function suggestSeo(
     env,
     "carrel",
     {
-      model: model,
+      ...run,
       max_tokens: 500,
       system: [
         "Write the search description for the web page below, and a search title. The description says in one or two plain sentences what the reader gets from the page, 110 to 155 characters, in the author's own register. The title is at most 60 characters. No keyword lists, no questions to the reader, nothing the page does not say.",
@@ -539,7 +577,7 @@ export async function suggestSeo(
       ],
     },
     SEO_SCHEMA,
-    meteredOptions(env, "seo"),
+    meteredOptions(env, "seo", run.output_config.effort),
   );
   if (!result.ok) return { ok: false, error: result.error };
   let next = front;
