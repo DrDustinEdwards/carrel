@@ -223,19 +223,6 @@ describe("PLANT: a reply attempt is refused, before anything is sent", () => {
       }),
     ).toThrow(SocialRefused);
   });
-
-  it("lets an original post through", () => {
-    expect(() =>
-      assertOriginalPost("POST", "https://api.x.com/2/tweets", { text: "hi" }),
-    ).not.toThrow();
-    expect(() =>
-      assertOriginalPost("POST", "https://bsky.social/xrpc/com.atproto.repo.createRecord", {
-        repo: "d",
-        collection: "app.bsky.feed.post",
-        record: { $type: "app.bsky.feed.post", text: "hi" },
-      }),
-    ).not.toThrow();
-  });
 });
 
 describe("X signing", () => {

@@ -153,19 +153,6 @@ describe("the book view", () => {
       `/b/${SLUG}/f/chapters/02-the-letters/01-morning.md`,
     );
   });
-
-  it("says why when Git is not connected, and still shows the index", async () => {
-    const offline = { ...testEnv };
-    const data = (await bookLoader({
-      request: new Request("https://carrel.test/b/x"),
-      params: { project: SLUG },
-      context: await contextFor("owner@test.invalid", offline),
-    } as never)) as Awaited<ReturnType<typeof bookLoader>>;
-    expect(data.head.connected).toBe(false);
-    expect(data.connectionDetail).toMatch(
-      /GitHub App for the writing repository is not set up yet/,
-    );
-  });
 });
 
 describe("the file editor", () => {

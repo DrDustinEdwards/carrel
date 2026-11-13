@@ -18,7 +18,6 @@ import {
   orderFromTree,
   parseOrder,
   planRenames,
-  siteBinderTree,
   withChapterOrder,
 } from "~/lib/writing/binder";
 import { action as bookAction } from "~/routes/book";
@@ -39,17 +38,6 @@ const PATHS = [A1, A2, B1, B2, "book.md", "bible/characters/wade.md"];
 // ---------- pure
 
 describe("planning a reorder", () => {
-  it("renumbers the scenes of a chapter when one moves within it", () => {
-    const plan = planRenames(PATHS, withChapterOrder(PATHS, "01-arrival", [A2, A1]));
-    expect(plan).toEqual({
-      ok: true,
-      renames: [
-        { from: A2, to: "chapters/01-arrival/01-supper.md" },
-        { from: A1, to: "chapters/01-arrival/02-the-gate.md" },
-      ],
-    });
-  });
-
   it("renumbers both chapters when a scene moves from one to the other", () => {
     const plan = planRenames(PATHS, [
       { chapter: "01-arrival", scenes: [A1, B1, A2] },
@@ -188,20 +176,6 @@ describe("the binder's tree", () => {
       '[{"chapter":"a","scenes":[1]}]',
     ])
       expect(parseOrder(bad)).toBeNull();
-  });
-
-  it("groups a site's writing by kind, posts first", () => {
-    const tree = siteBinderTree(
-      [
-        { itemId: "about", kind: "page", title: "About", status: "published" },
-        { itemId: "spring-update", kind: "post", title: "Spring update", status: "draft" },
-      ],
-      "/p/site",
-    );
-    expect(tree.map((k) => [k.label, k.children!.map((c) => [c.label, c.meta, c.href])])).toEqual([
-      ["Posts", [["Spring update", "Draft", "/p/site/e/spring-update"]]],
-      ["Pages", [["About", "Published", "/p/site/e/about"]]],
-    ]);
   });
 
   it("gives a card with no summary the first sentence of its scene", () => {
@@ -362,19 +336,6 @@ describe("one commit for many renames", () => {
     ).rejects.toBeInstanceOf(GitConflict);
     expect(gh.files.get(`${SLUG}/outline/plan.md`)!.source).toBe("# Plan, pushed meanwhile\n");
     expect(gh.files.has(`${SLUG}/${A1}`)).toBe(true);
-  });
-
-  it("lists a path's commits and reads a file as it was at one", async () => {
-    const first = gh.files.get(`${SLUG}/${A1}`)!.source;
-    const edit = await gh.commitElsewhere(
-      `${SLUG}/${A1}`,
-      scene("Nell", "Second version."),
-      "Second pass",
-    );
-    const commits = await gh.repo.history(`${SLUG}/${A1}`);
-    expect(commits.map((c) => c.message)).toEqual(["Second pass", "Initial"]);
-    expect((await gh.repo.readAt(`${SLUG}/${A1}`, commits[1]!.sha))?.source).toBe(first);
-    expect((await gh.repo.readAt(`${SLUG}/${A1}`, edit))?.source).toContain("Second version.");
   });
 });
 

@@ -13,12 +13,10 @@ const source = (excerpt: string, chapters: string) =>
   `---\ntitle: "Pump"\nexcerpt: ${excerpt}\nchapters: ${chapters}\n---\nBody`;
 
 describe("needsDraft", () => {
-  it("is true when the summary or the chapters are empty or missing", () => {
+  it("is true when the summary or the chapters are empty or missing, false when both are filled", () => {
     expect(needsDraft(source('""', '[{"start":0,"title":"A"}]'))).toBe(true);
     expect(needsDraft(source('"A summary."', "[]"))).toBe(true);
     expect(needsDraft('---\ntitle: "Pump"\n---\nBody')).toBe(true);
-  });
-  it("is false when both are filled", () => {
     expect(needsDraft(source('"A summary."', '[{"start":0,"title":"A"}]'))).toBe(false);
   });
 });
