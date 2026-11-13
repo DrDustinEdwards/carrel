@@ -60,6 +60,8 @@ describe("names and hints", () => {
       "carrel_save_book_draft",
       "carrel_add_book_finding",
       "carrel_draft_social_post",
+      "carrel_change_doc",
+      "carrel_comment_doc",
     ];
     for (const tool of tools)
       expect(hints[tool.name]!.readOnlyHint, tool.name).toBe(!writes.includes(tool.name));
@@ -92,11 +94,23 @@ describe("names and hints", () => {
           "carrel_import_media",
           "carrel_set_media_alt",
           "carrel_decide_mention",
+          // The Docs tools reach Google (the reads too), and a suggestion or comment is taken back in Docs.
+          "carrel_list_docs",
+          "carrel_read_doc",
+          "carrel_change_doc",
+          "carrel_comment_doc",
         ].includes(t.name),
     )) {
       expect(hints[tool.name]!.destructiveHint, tool.name).toBe(false);
       expect(hints[tool.name]!.openWorldHint, tool.name).toBe(false);
     }
+    for (const tool of [
+      "carrel_list_docs",
+      "carrel_read_doc",
+      "carrel_change_doc",
+      "carrel_comment_doc",
+    ])
+      expect(hints[tool], tool).toMatchObject({ destructiveHint: false, openWorldHint: true });
     // A flag twice is one flag; a draft twice is two drafts.
     expect(hints.carrel_add_finding!.idempotentHint).toBe(true);
     expect(hints.carrel_save_draft!.idempotentHint).toBe(false);
