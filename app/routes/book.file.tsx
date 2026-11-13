@@ -3,14 +3,14 @@
 // comments and suggestions, and Save, which commits the room's text to Git with the version it started
 // from. Beside a scene: its flags and the bible entries it names.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Link, ButtonLink, routerRenderLink } from "capsomer/react/link";
 import { RowList } from "capsomer/react/row-list";
 import { FlagRow } from "~/components/editor/flags-panel";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { Disclosure } from "capsomer/react/disclosure";
 import { useMessage } from "capsomer/react/message";
@@ -321,13 +321,12 @@ export default function BookFileRoute({ loaderData }: Route.ComponentProps) {
 type Ask = {
   kind: "discard" | "drop-draft" | "put-draft" | "dismiss" | "use-ai";
   id?: number;
-  opener: HTMLElement | null;
 };
 
 function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   // `?tab=checks` opens the inspector on that tab (a link from Home's flags lands on the checks).
   const [params] = useSearchParams();
-  const [asking, setAsking] = useState<Ask | null>(null);
+  const asking = useConfirmAction<Ask>();
   const writer = useFetcher<ActionResult>();
   const checker = useFetcher<ActionResult>();
   const aiJob = useFetcher<AiJobAnswer>();
@@ -413,8 +412,6 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
           ? "Matches Git"
           : "";
   const openFlags = data.findings.filter((f) => f.status === "open").length;
-  const ask = (kind: Ask["kind"], opener: HTMLElement | null, id?: number) =>
-    setAsking({ kind, opener, id });
 
   const crumbs: { label: string; href?: string }[] = [{ label: data.project.name, href: base }];
   if (data.kind === "scene")
@@ -460,7 +457,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 <Button
                   size="sm"
                   pending={busy}
-                  onClick={(event) => ask("put-draft", event.currentTarget)}
+                  onClick={(event) => asking.ask({ kind: "put-draft" }, event.currentTarget)}
                 >
                   Put it in for everyone
                 </Button>
@@ -468,7 +465,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   size="sm"
                   variant="quiet"
                   pending={busy}
-                  onClick={(event) => ask("drop-draft", event.currentTarget)}
+                  onClick={(event) => asking.ask({ kind: "drop-draft" }, event.currentTarget)}
                 >
                   Delete it
                 </Button>
@@ -563,7 +560,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         <Button
                           variant="quiet"
                           pending={busy}
-                          onClick={(event) => ask("discard", event.currentTarget)}
+                          onClick={(event) => asking.ask({ kind: "discard" }, event.currentTarget)}
                         >
                           Discard unsaved changes
                         </Button>
@@ -614,7 +611,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                               flag={f}
                               meta={f.line ? `line ${f.line}` : undefined}
                               onDismiss={
-                                data.canPublish ? (button) => ask("dismiss", button, f.id) : null
+                                data.canPublish
+                                  ? (button) => asking.ask({ kind: "dismiss", id: f.id }, button)
+                                  : null
                               }
                             />
                           ))}
@@ -673,7 +672,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                                 <Button
                                   size="sm"
                                   pending={busy}
-                                  onClick={(event) => ask("use-ai", event.currentTarget, d.id)}
+                                  onClick={(event) =>
+                                    asking.ask({ kind: "use-ai", id: d.id }, event.currentTarget)
+                                  }
                                 >
                                   Use as the working copy
                                 </Button>
@@ -739,68 +740,65 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       </div>
 
       <PutDraftDialog
-        open={asking?.kind === "put-draft"}
-        returnTo={asking?.opener}
+        returnTo={asking.props.returnTo}
+        onClose={asking.close}
+        open={asking.subject?.kind === "put-draft"}
         perform={async () => {
           await send("use-own-draft", { confirmed: "1" });
         }}
-        onClose={() => setAsking(null)}
       />
       <DropDraftDialog
-        open={asking?.kind === "drop-draft"}
-        returnTo={asking?.opener}
+        returnTo={asking.props.returnTo}
+        onClose={asking.close}
+        open={asking.subject?.kind === "drop-draft"}
         perform={async () => {
           await send("drop-own-draft", { confirmed: "1" });
         }}
-        onClose={() => setAsking(null)}
       />
       <ConfirmDialog
-        open={asking?.kind === "discard"}
+        {...asking.props}
+        open={asking.subject?.kind === "discard"}
         title="Discard the unsaved changes?"
         lead="The text goes back to Git's version for everyone working on it, and every change since the last save is lost, suggestions too. This cannot be undone."
         body={[]}
         action="Discard unsaved changes"
-        returnTo={asking?.opener}
         perform={async () => {
           await send("discard", { confirmed: "1" });
         }}
-        onClose={() => setAsking(null)}
       />
       <ConfirmDialog
-        open={asking?.kind === "dismiss"}
+        {...asking.props}
+        open={asking.subject?.kind === "dismiss"}
         title="Dismiss this flag?"
         lead="A dismissed flag no longer holds export, and it cannot be reopened."
         body={
-          asking?.id !== undefined
-            ? [data.findings.find((f) => f.id === asking.id)?.message ?? ""]
+          asking.subject?.id !== undefined
+            ? [data.findings.find((f) => f.id === asking.subject?.id)?.message ?? ""]
             : []
         }
         action="Dismiss flag"
-        returnTo={asking?.opener}
         perform={async () => {
-          if (asking?.id !== undefined)
+          if (asking.subject?.id !== undefined)
             await writer.submit(
-              { intent: "dismiss", finding: String(asking.id), confirmed: "1" },
+              { intent: "dismiss", finding: String(asking.subject.id), confirmed: "1" },
               { method: "post" },
             );
         }}
-        onClose={() => setAsking(null)}
       />
       <ConfirmDialog
-        open={asking?.kind === "use-ai"}
+        {...asking.props}
+        open={asking.subject?.kind === "use-ai"}
         title="Use the AI draft as the working copy?"
         lead="Its text replaces the text everyone here is working on, which you then edit and save as usual. Changes since the last save are not kept."
         body={[]}
         action="Replace the text"
-        returnTo={asking?.opener}
         perform={async () => {
-          if (asking?.id !== undefined)
+          if (asking.subject?.id !== undefined)
             await writer.submit(
-              { intent: "use-ai-draft", draft: String(asking.id), confirmed: "1" },
+              { intent: "use-ai-draft", draft: String(asking.subject.id), confirmed: "1" },
               { method: "post" },
             );
         }}
-        onClose={() => setAsking(null)}
       />
     </div>
   );
