@@ -79,7 +79,7 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const [view, setView] = useState<"rendered" | "source">("rendered");
   return (
-    <div className="app-page app-editor">
+    <div className="cap-admin-page app-editor">
       <DraftHead
         project={project}
         itemId={itemId}

@@ -216,7 +216,7 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
   const moved = versions.filter((v) => v.path !== path).length;
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         renderLink={routerRenderLink}
         crumbs={[

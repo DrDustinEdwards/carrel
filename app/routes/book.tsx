@@ -176,7 +176,7 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
   const file = (path: string) => `${base}/f/${path}`;
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <BookHead book={head} section="manuscript" view="list" />
 
       <StatTiles label="The book at a glance">

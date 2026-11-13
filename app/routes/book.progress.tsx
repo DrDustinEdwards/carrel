@@ -66,7 +66,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 export default function BookProgress({ loaderData, actionData }: Route.ComponentProps) {
   const { head, canEdit, wordsNow, progress } = loaderData;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <BookHead book={head} section="progress" />
       <div className="app-narrow">
         <WritingProgress

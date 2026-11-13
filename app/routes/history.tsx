@@ -319,7 +319,7 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
   const historyPath = `${editor}/history`;
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         renderLink={routerRenderLink}
         crumbs={[

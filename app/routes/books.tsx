@@ -59,7 +59,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 export default function Books({ loaderData }: Route.ComponentProps) {
   const { books, isOwner } = loaderData;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="Books"
         lead="Manuscripts kept in the writing repository."

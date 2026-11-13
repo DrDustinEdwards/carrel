@@ -33,7 +33,7 @@ const FRAME: FrameData = {
 export default function ProgressDemo({ loaderData }: Route.ComponentProps) {
   return (
     <Frame data={FRAME}>
-      <div className="app-page">
+      <div className="cap-admin-page">
         <PageHead title="Sample book" lead="A book's page in Desk, with its writing progress." />
         <div className="cap-stack" data-gap="6">
           <Banner tone="info" title="Demo with sample data">

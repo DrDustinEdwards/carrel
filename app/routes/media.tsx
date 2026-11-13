@@ -104,7 +104,7 @@ export default function MediaPage({ loaderData, actionData }: Route.ComponentPro
     return (await response.json()) as KitMediaChanges | { reload: true };
   };
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="Media"
         lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`}

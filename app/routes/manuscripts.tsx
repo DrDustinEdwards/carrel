@@ -92,7 +92,7 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
   const { q, files, setup, error, titlesOnly, google, message } = loaderData;
   const refreshing = useNavigation().state === "submitting";
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="Manuscripts"
         lead="The shared Drive folder, read-only. Open goes to Google Docs; search runs in Drive, so the text stays there."
