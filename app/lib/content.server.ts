@@ -11,7 +11,7 @@ import { changes, drafts, rooms } from "~/db/schema";
 import { indexDoc } from "~/lib/index.server";
 import { checkLegalWrite } from "~/lib/legal.server";
 import { missingAltRefusal, postFieldRefusal, searchFieldRefusal } from "~/lib/seo-checks";
-import { listedPostFields, listedSearchFields } from "~/lib/seo.server";
+import { listedFields } from "~/lib/seo.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can, mayPublish, type Action, type Role } from "~/lib/roles";
@@ -297,8 +297,11 @@ export async function writeToSite(
         : (current?.source ?? "");
     const refusal =
       missingAltRefusal(outgoing) ??
-      searchFieldRefusal(outgoing, await listedSearchFields(env, project, outgoing, fetcher)) ??
-      postFieldRefusal(outgoing, await listedPostFields(env, project, outgoing, fetcher));
+      searchFieldRefusal(
+        outgoing,
+        await listedFields(env, project, outgoing, "searchFields", fetcher),
+      ) ??
+      postFieldRefusal(outgoing, await listedFields(env, project, outgoing, "postFields", fetcher));
     if (refusal) return { ok: false, reason: "refused", message: refusal };
   }
 
