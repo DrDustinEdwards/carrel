@@ -11,7 +11,8 @@
 // policy-management/ (Zero Trust > Access controls > Policies), and .../cloudflare-one/integrations/
 // identity-providers/one-time-pin/ (Zero Trust > Integrations > Identity providers).
 
-import { Form, useNavigate, useNavigation, useSearchParams, useSubmit } from "react-router";
+import { Form, useNavigation, useSubmit } from "react-router";
+import { useUrlDialog } from "capsomer/react/route-hooks";
 import { Link } from "capsomer/react/link";
 import { Dialog, DialogBody, DialogHeader, DialogTitle } from "capsomer/react/dialog";
 import { Alert, Banner } from "capsomer/react/banner";
@@ -206,9 +207,8 @@ function rolesFor(person: Person | undefined, project: Project | undefined): Rol
 
 /** Adding a person or an AI agent: dialogs opened from the head (?add=person, ?add=agent), so a link
  * opens one; before the page's script runs, the same forms show as panels. */
-function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) {
+function AddDialogs({ dialog, busy }: { dialog: ReturnType<typeof useUrlDialog>; busy: boolean }) {
   const hydrated = useHydrated();
-  const navigate = useNavigate();
   const person = (
     <Form method="post" action="/people" className="app-form">
       <div className="cap-fields">
@@ -279,18 +279,23 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
         <Panel title="Add an AI agent">{agent}</Panel>
       </>
     );
-  const close = (open: boolean) => {
-    if (!open) void navigate("/people", { replace: true, preventScrollReset: true });
-  };
   return (
     <>
-      <Dialog open={adding === "person"} onOpenChange={close} aria-labelledby="add-person-title">
+      <Dialog
+        open={dialog.value === "person"}
+        onOpenChange={dialog.onOpenChange}
+        aria-labelledby="add-person-title"
+      >
         <DialogHeader>
           <DialogTitle id="add-person-title">Add a person</DialogTitle>
         </DialogHeader>
         <DialogBody>{person}</DialogBody>
       </Dialog>
-      <Dialog open={adding === "agent"} onOpenChange={close} aria-labelledby="add-agent-title">
+      <Dialog
+        open={dialog.value === "agent"}
+        onOpenChange={dialog.onOpenChange}
+        aria-labelledby="add-agent-title"
+      >
         <DialogHeader>
           <DialogTitle id="add-agent-title">Add an AI agent</DialogTitle>
         </DialogHeader>
@@ -303,8 +308,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
 export default function People({ loaderData, actionData }: Route.ComponentProps) {
   const { people, projects, access } = loaderData;
   const busy = useNavigation().state !== "idle";
-  const [params] = useSearchParams();
-  const adding = params.get("add");
+  const adding = useUrlDialog("add");
   const submit = useSubmit();
   const byId = new Map(people.map((p) => [String(p.id), p]));
   const projectById = new Map(projects.map((p) => [String(p.id), p]));
@@ -319,11 +323,11 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page."
         actions={
           <>
-            <Link to="/people?add=agent" className="cap-btn" preventScrollReset>
+            <Link to={adding.href("agent")} className="cap-btn" preventScrollReset>
               Add an AI agent
             </Link>
             <Link
-              to="/people?add=person"
+              to={adding.href("person")}
               className="cap-btn"
               data-variant="primary"
               preventScrollReset
@@ -443,7 +447,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         />
       </Panel>
 
-      <AddDialogs adding={adding} busy={busy} />
+      <AddDialogs dialog={adding} busy={busy} />
     </div>
   );
 }

@@ -2,10 +2,10 @@
 // where it sits, who saved it and when, and the one step that uses it, asked once in a confirm before the form posts.
 
 import { routerRenderLink } from "capsomer/react/link";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Form, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { PageHead } from "capsomer/react/page-head";
 import { Time } from "capsomer/react/time";
 
@@ -36,7 +36,7 @@ type Props = {
 export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
   const editor = `/p/${project.slug}/e/${encodeURIComponent(itemId)}`;
   const busy = useNavigation().state !== "idle";
-  const [asking, setAsking] = useState<HTMLElement | null>(null);
+  const asking = useConfirmAction<true>();
   const form = useRef<HTMLFormElement>(null);
   return (
     <>
@@ -64,7 +64,7 @@ export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
                   pending={busy}
                   onClick={(event) => {
                     event.preventDefault();
-                    setAsking(event.currentTarget);
+                    asking.ask(true, event.currentTarget);
                   }}
                 >
                   {use.label}
@@ -77,17 +77,16 @@ export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
       />
       {use ? (
         <ConfirmDialog
-          open={asking !== null}
+          {...asking.props}
+          open={asking.subject !== null}
           title={use.title}
           lead={use.lead}
           body={[]}
           action={use.action}
-          returnTo={asking}
           perform={async () => {
             // Submitting the form itself does not press the button again, so it does not ask twice.
             form.current?.requestSubmit();
           }}
-          onClose={() => setAsking(null)}
         />
       ) : null}
     </>
