@@ -69,7 +69,7 @@ const SITES: Record<SiteId, SiteEntry> = {
     searchConsoleProperty: (env) =>
       (
         env as { SEARCH_CONSOLE_PROPERTY_GERMOMICS?: string }
-      ).SEARCH_CONSOLE_PROPERTY_GERMOMICS?.trim() || "sc-domain:germomics.com",
+      ).SEARCH_CONSOLE_PROPERTY_GERMOMICS?.trim() || "https://germomics.com/",
   },
   foxhound: {
     name: "Foxhound",
