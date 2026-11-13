@@ -1,6 +1,6 @@
 {
   "enforce": true,
-  "budget_bytes": 577000,
+  "budget_bytes": 570000,
   "baseline": {
     "measured_at": "75b3992",
     "routes": {
