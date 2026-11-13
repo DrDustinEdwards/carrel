@@ -98,9 +98,7 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
         lead="The shared Drive folder, read-only. Open goes to Google Docs; search runs in Drive, so the text stays there."
         actions={
           <>
-            <Link to="/manuscripts/activity" className="cap-btn">
-              Docs activity
-            </Link>
+            <ButtonLink to="/manuscripts/activity">Docs activity</ButtonLink>
             {!setup ? (
               <Form method="post">
                 <Button type="submit" pending={refreshing}>
