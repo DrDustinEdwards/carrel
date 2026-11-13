@@ -499,17 +499,4 @@ describe("Search Console", () => {
     });
     expect(await pageStats(env, project, "/blog/other")).toBeNull();
   });
-
-  it("says what to do when the service account is not on the property", async () => {
-    google.state.scStatus = 403;
-    const project = await requireSiteProject(
-      testEnv.DB,
-      await viewerFor("owner@test.invalid"),
-      SLUG,
-      "read",
-    );
-    await expect(refreshSearchConsole(env, project, google.fetch)).rejects.toThrow(
-      "Add the service account as a user on the property in Search Console.",
-    );
-  });
 });

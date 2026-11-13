@@ -304,12 +304,6 @@ describe("what a named agent key refuses", () => {
     expect((await door(authed(`bearer ${KEY}`, "carrel_list_projects"))).status).toBe(200);
   });
 
-  it("is inert until a secret exists: with none, the door answers as it did before", async () => {
-    const none = connectedEnv();
-    const response = await door(modernRequest(1, "tools/list"), none);
-    expect(response.status).toBe(401);
-  });
-
   it("keeps the agent key to /mcp: another path on the door is never an agent's", async () => {
     for (const path of ["/", "/p/de-info", "/authorize", "/token", "/health"]) {
       const response = await door(

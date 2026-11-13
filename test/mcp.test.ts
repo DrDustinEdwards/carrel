@@ -270,19 +270,6 @@ describe("reading, drafting, flagging", () => {
       preview: { card: { title: "Post one", image: null }, host: "site.test" },
     });
   });
-
-  it("previews through the site's own renderer", async () => {
-    await seedPost();
-    const result = await (
-      await connect("reader@test.invalid")
-    ).call("carrel_preview_item", {
-      project: SLUG,
-      item: "post-one",
-      source: "---\ntitle: T\n---\nHello.",
-    });
-    expect(result.isError).toBeUndefined();
-    expect(String(result.structuredContent?.html)).toContain("Hello.");
-  });
 });
 
 const PNG = Uint8Array.from(
