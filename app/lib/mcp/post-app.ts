@@ -2,7 +2,8 @@
 // site's text, Dustin's working draft, and each AI draft saved beside it). Read only: the view calls no tool and
 // changes nothing; saving and publishing stay with the tools and their rules.
 //
-// Wire format, from the official client (@modelcontextprotocol/ext-apps 2.0.4, spec 2026-01-26): the view sends the
+// Wire format, from the official client (@modelcontextprotocol/ext-apps 2.1.0, spec 2026-01-26; 2.1.0 added no wire
+// message, and its WebMCP bridge mirrors only tools a view registers, which this one does not): the view sends the
 // JSON-RPC request `ui/initialize` to the host over postMessage, then the notification `ui/notifications/initialized`,
 // and the host answers with `ui/notifications/tool-result`, whose params are the tool's result. The view reads
 // `structuredContent` and writes it with textContent only: every field is text people or AI sessions wrote, so it is
