@@ -52,6 +52,9 @@ const MODELS = [
   { value: "deep", label: `Deep, ${MODEL_IDS.deep} (${price("deep")})` },
 ];
 
+// Capsomer's table has an Effort column per job. Carrel's engine sends no effort yet, so the one choice is the default.
+const EFFORTS = [{ value: "", label: "The job's own default" }];
+
 export async function loader({ context }: Route.LoaderArgs) {
   const env = getEnv(context);
   if (!getViewer(context).isOwner) throw new Response("Not found", { status: 404 });
@@ -172,6 +175,8 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
         models={models}
         jobs={features}
         modelOptions={MODELS}
+        efforts={{}}
+        effortOptions={EFFORTS}
         ready={{ subscription: !routineMissing, api: !apiKeyMissing }}
         readyNote={
           <>

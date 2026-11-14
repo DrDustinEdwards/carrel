@@ -4,12 +4,12 @@
 // viewer's role allows, each sending the room's text through site-api's version check.
 
 import { AiJobButtons, type AiJobAnswer } from "capsomer/react/ai-job-buttons";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useSearchParams } from "react-router";
 import { useHydrated } from "capsomer/react/hooks";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
+import { ConfirmDialog } from "capsomer/react/confirm-dialog";
 import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
@@ -48,6 +48,7 @@ import {
   listAiDrafts,
   publishedByLine,
 } from "~/lib/ai.server";
+import { useConfirmAction } from "~/lib/confirm-action";
 import { roomNames } from "~/lib/comments.server";
 import { listTranscriptDrafts } from "~/lib/transcripts.server";
 import {
@@ -67,7 +68,6 @@ import {
   mergePlan,
   type MergePick as Pick,
 } from "capsomer/behavior/draft-compare";
-import { DraftMerge, mergeCountsText } from "capsomer/react/draft-compare";
 import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { type PostField, type SearchField } from "@dustinedwards/site-api/frontmatter";
@@ -112,16 +112,7 @@ import "capsomer/inspector.css";
 /** The editor shows the newest revisions; the history page lists them all. */
 const HISTORY_SHOWN = 8;
 
-/** The merge view's words: the room's text is Carrel's, the newer copy is the site's. */
-const MERGE_LABELS = {
-  mine: "In Carrel",
-  theirs: "On the site",
-  keepMine: "Keep Carrel's",
-  keepTheirs: "Take the site's",
-  notInMine: "Not in Carrel's text",
-  notInTheirs: "Not on the site",
-  withoutBase: "Carrel could not read the version both started from, so each starts on Carrel's.",
-};
+const MergePanel = lazy(() => import("~/components/editor/merge-panel"));
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `${data.title || data.itemId} · Carrel` : "Carrel" }];
@@ -886,16 +877,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           </Banner>
         ) : null}
         {data.merge && mayEdit && !readOnly ? (
-          <Panel
-            title="Merge Carrel's text with the site's"
-            id="merge"
-            src={mergeCountsText(data.merge.plan)}
-          >
-            <DraftMerge
+          <Suspense fallback={null}>
+            <MergePanel
               key={`${data.merge.from}:${data.merge.siteVersion}`}
               plan={data.merge.plan}
               pending={busy}
-              labels={MERGE_LABELS}
               onApply={(picks) =>
                 void send("merge", {
                   picks: JSON.stringify(picks),
@@ -907,7 +893,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 })
               }
             />
-          </Panel>
+          </Suspense>
         ) : null}
         {data.ownDraft && mayEdit ? (
           <Banner

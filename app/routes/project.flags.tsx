@@ -7,7 +7,7 @@ import { Form, useFetcher } from "react-router";
 import { routerRenderLink } from "capsomer/react/link";
 import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
+import { ConfirmDialog } from "capsomer/react/confirm-dialog";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
@@ -15,6 +15,7 @@ import { Pill, Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { useConfirmAction } from "~/lib/confirm-action";
 import { dismissItemFinding, projectFlags } from "~/lib/ai.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
