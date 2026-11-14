@@ -1,5 +1,5 @@
 import { markdownCopies } from "@drdustinedwards/site-helpers/markdown-copy";
-import { robotsResponse } from "@drdustinedwards/site-helpers/robots";
+import { privateRobotsResponse } from "@drdustinedwards/site-helpers/robots";
 import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { exportAuditLog } from "@dustinedwards/site-runtime/audit-log";
 import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
@@ -71,7 +71,7 @@ function routeName(request: Request): string | undefined {
 const door = withMcpHeaders<Env>(
   (request, env, ctx) =>
     new URL(request.url).pathname === "/robots.txt"
-      ? robotsResponse({ origin: new URL(request.url).origin, request, preview: true })
+      ? privateRobotsResponse()
       : aiDoor(request, env, ctx as ExecutionContext),
   {
     site: carrelMcp,
