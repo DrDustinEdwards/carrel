@@ -8,7 +8,7 @@
   --hero-title: clamp(2.5rem, 1.6rem + 3.6vw, 4.25rem);
   --hero-lead-face: var(--prose);
   --hero-lead-size: var(--fs-h2);
-  --hero-gap: 40px;
+  --hero-gap: var(--space-7-5);
   margin-block-end: var(--space-8);
 }
 .hero-card-note {
@@ -39,7 +39,7 @@
   margin: 0;
   padding: var(--space-5) 0;
   border-block-end: var(--line-w) solid var(--line);
-  font: var(--weight-regular) var(--fs-h3) / 1.55 var(--prose);
+  font: var(--weight-regular) var(--fs-h3) / var(--leading-normal) var(--prose);
 }
 .rules b {
   font-family: var(--ui);

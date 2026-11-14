@@ -38,7 +38,7 @@ import { useBrowserZone } from "capsomer/react/hooks";
 import { visibleProjects } from "~/lib/people.server";
 
 import type { Route } from "./+types/home";
-import "capsomer/attention-list.css";
+import "capsomer/needs-list.css";
 
 export function meta() {
   return [{ title: "Home · Carrel" }];
