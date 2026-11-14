@@ -1,12 +1,15 @@
 import { fileURLToPath } from "node:url";
 
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { nativeBuiltins } from "@dustinedwards/devkit/vite/native-builtins";
 import { reactRouter } from "@react-router/dev/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   // public/_headers is written before the build by site-runtime-headers from Desk's registry entry (npm run headers).
-  plugins: [cloudflare({ viteEnvironment: { name: "ssr" } }), reactRouter()],
+  // nativeBuiltins first: mdast-util-to-hast's structuredClone polyfill becomes the global, which Workers and
+  // every supported browser have.
+  plugins: [nativeBuiltins(), cloudflare({ viteEnvironment: { name: "ssr" } }), reactRouter()],
   build: {
     // A font is always a file of its own: a font inlined as a data: URI is refused by font-src 'self'.
     assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf)$/.test(file) ? false : undefined),
