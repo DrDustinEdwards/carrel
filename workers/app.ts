@@ -65,7 +65,7 @@ function routeName(request: Request): string | undefined {
  * The AI door's headers, all from site-runtime: its registry entry's set, noindex and no-store, the consent page's
  * hashed-style policy, a load-nothing policy for everything else, both report sinks, and security.txt (the same contact
  * and expiry as the public page's, www/build.mjs; renew both together). Its CSP sink is cspReport, which answers CORS for
- * Desk's pages, so the wrapper's own is never reached. Its robots.txt is Prelum's in the preview form, `Disallow: /`:
+ * Desk's pages, so the wrapper's own is never reached. Its robots.txt is Prelum's private-host response, `Disallow: /`:
  * the door is for machines, and no crawler should fetch from it.
  */
 const door = withMcpHeaders<Env>(
@@ -86,26 +86,26 @@ const door = withMcpHeaders<Env>(
  * (workers/security-headers.ts), refusals and redirects included.
  */
 async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const path = new URL(request.url).pathname;
   // The maintenance page (site-runtime ./maintenance), on both doors: every path but /health answers 503 while the
   // MAINTENANCE var is on.
-  if (maintenanceOn(env) && new URL(request.url).pathname !== "/health")
+  if (maintenanceOn(env) && path !== "/health")
     return deskHeaders(maintenanceResponse({ siteName: "Carrel" }), request, env);
   if (isMcpHost(request, env)) {
     if (isCspReport(request)) return cspReport(request, env, carrelOrigin(env));
     // Capsid Admin's run a job now (app/lib/operator.server.ts).
-    if (new URL(request.url).pathname === OPERATOR_PATH)
+    if (path === OPERATOR_PATH)
       return operatorAnswer(request, env, () => withWork(ALL_JOBS, env, ctx));
     const response = await door(request, env, ctx);
     // The door's set says nofollow on every response; /health keeps site-runtime's own noindex, as every family site's does.
-    if (new URL(request.url).pathname === "/health")
-      response.headers.set("X-Robots-Tag", "noindex");
+    if (path === "/health") response.headers.set("X-Robots-Tag", "noindex");
     return response;
   }
   const nonce = nonceFor(request);
   // The Desk's people, hashed with a fresh salt, for the daily Access drift check (.github/workflows/access-drift.yml).
   // Before the gate, because the caller is carrel-desk-login's service token and not a person: adminListResponse answers
   // only a GET carrying that application's verified Access token from a service token, and 404 to everything else.
-  if (new URL(request.url).pathname === ADMIN_LIST_PATH) {
+  if (path === ADMIN_LIST_PATH) {
     const list = await adminListResponse(request, env, {
       admins: await deskPeopleEmails(env.DB, env),
     });
