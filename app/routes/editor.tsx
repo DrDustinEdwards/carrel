@@ -9,7 +9,7 @@ import { useFetcher, useSearchParams } from "react-router";
 import { useHydrated } from "capsomer/react/hooks";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
@@ -48,7 +48,6 @@ import {
   listAiDrafts,
   publishedByLine,
 } from "~/lib/ai.server";
-import { useConfirmAction } from "~/lib/confirm-action";
 import { roomNames } from "~/lib/comments.server";
 import { listTranscriptDrafts } from "~/lib/transcripts.server";
 import {

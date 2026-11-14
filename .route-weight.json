@@ -4,7 +4,7 @@
   "baseline": {
     "measured_at": "75b3992",
     "routes": {
-      "routes/editor": 561835,
+      "routes/editor": 561706,
       "routes/book.file": 529658,
       "routes/media": 248380,
       "routes/book.progress": 240375,

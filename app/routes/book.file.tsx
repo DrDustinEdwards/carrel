@@ -10,7 +10,7 @@ import { RowList } from "capsomer/react/row-list";
 import { FlagRow } from "~/components/editor/flags-panel";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { ConfirmDialog } from "capsomer/react/confirm-dialog";
+import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { Disclosure } from "capsomer/react/disclosure";
 import { useMessage } from "capsomer/react/message";
@@ -40,7 +40,6 @@ import {
   saveBookFile,
   type BookWrite,
 } from "~/lib/books.server";
-import { useConfirmAction } from "~/lib/confirm-action";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { roomNames } from "~/lib/comments.server";
 import { discardDraft, readDraft, readOwnDraft } from "~/lib/content.server";
