@@ -85,7 +85,7 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
   const busy = useNavigation().state !== "idle";
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title={project.name}
         lead={`What an AI session reads before it drafts a post for ${project.site}, and what its drafts are scanned against. Drafts are written from your own writing, and you still edit every one.`}

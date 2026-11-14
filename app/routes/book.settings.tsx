@@ -68,10 +68,10 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
   const result = actionData && "saved" in actionData ? actionData : null;
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <BookHead book={head} section="settings" />
 
-      <div className="app-split" data-aside data-even>
+      <div className="cap-panes">
         <Panel
           title="Scene statuses"
           count={labels.length}

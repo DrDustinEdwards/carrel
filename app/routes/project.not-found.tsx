@@ -62,7 +62,7 @@ export default function ProjectNotFound({ loaderData }: Route.ComponentProps) {
   const [, setSearchParams] = useSearchParams();
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title={project.name}
         lead={`Paths on ${project.site} that answered 404 in the last ${days} days, and who linked to them.`}

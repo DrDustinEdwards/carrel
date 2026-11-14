@@ -65,7 +65,7 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
   const busy = useNavigation().state !== "idle";
   const [slug, setSlug] = useState("");
   return (
-    <div className="app-page" data-narrow>
+    <div className="cap-admin-page" data-width="narrow">
       <PageHead
         renderLink={routerRenderLink}
         crumbs={[

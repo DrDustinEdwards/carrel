@@ -122,7 +122,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
   const saving = navigation.state !== "idle" ? String(navigation.formData?.get("key") ?? "") : null;
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title={project.name}
         lead={`The privacy and terms pages on ${project.site}, and the text every site shares.`}

@@ -129,7 +129,7 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
   if (result?.confirm) {
     const c = result.confirm;
     return (
-      <div className="app-page">
+      <div className="cap-admin-page">
         <ConfirmPage
           title={c.title}
           lead={c.lead}
@@ -146,7 +146,7 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
     .filter((r) => selected.includes(r.key))
     .map((r) => ({ id: r.key, label: `${r.title} · ${r.site}` }));
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="Writing"
         lead="Every post and page, on every site."

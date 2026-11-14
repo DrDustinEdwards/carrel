@@ -851,7 +851,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const pendingAt = data.pendingUpdate?.publishAt ?? null;
 
   return (
-    <div className="app-page app-editor" data-layout={layout}>
+    <div className="cap-admin-page app-editor" data-layout={layout}>
       <PageHead
         renderLink={routerRenderLink}
         crumbs={[

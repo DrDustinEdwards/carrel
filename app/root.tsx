@@ -66,7 +66,7 @@ export default function App() {
 // Capsomer's error page, without the shell, whose header reads the frame's loader data.
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   return (
-    <ErrorPage error={error} home="/" className="app-page" dev={import.meta.env.DEV}>
+    <ErrorPage error={error} home="/" className="cap-admin-page" dev={import.meta.env.DEV}>
       <p>Nothing you wrote is lost.</p>
     </ErrorPage>
   );
