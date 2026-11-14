@@ -426,7 +426,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   crumbs.push({ label: data.label });
 
   return (
-    <div className="app-page app-editor">
+    <div className="cap-admin-page app-editor">
       <PageHead
         renderLink={routerRenderLink}
         crumbs={crumbs}

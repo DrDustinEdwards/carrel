@@ -146,7 +146,7 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
     loaderData;
   const busy = useNavigation().state !== "idle";
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="AI engine"
         lead="Choose whether Carrel's AI work runs on your Claude subscription or on the Claude API."

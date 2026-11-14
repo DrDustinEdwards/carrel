@@ -193,7 +193,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
   );
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <BookHead book={head} section="manuscript" view="corkboard" />
       <div className="cap-stack" data-gap="4">
         <p className="cap-muted app-note">

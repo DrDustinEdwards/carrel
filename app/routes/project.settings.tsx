@@ -70,7 +70,7 @@ const STATE = {
 export default function SiteSettings({ loaderData }: Route.ComponentProps) {
   const { project, connection, indexed, lastRead } = loaderData;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title={project.name}
         lead={`How Desk reaches ${project.site}, and who shares it.`}

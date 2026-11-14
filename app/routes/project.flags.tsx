@@ -77,7 +77,7 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
   const dismissed = fetcher.data?.dismissed ?? actionData?.dismissed;
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title={project.name}
         lead={`${open} open of ${flags.length} flags on ${project.site}. An open flag holds publish until the text is fixed or the Owner dismisses it.`}
