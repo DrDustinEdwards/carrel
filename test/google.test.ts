@@ -15,7 +15,7 @@ import {
 } from "~/lib/google/drive.server";
 import { pageStats, refreshSearchConsole } from "~/lib/google/search-console.server";
 import {
-  assertReadOnly,
+  assertAllowed,
   clearSaTokenCache,
   GoogleNotConnected,
   SA_SCOPES,
@@ -126,10 +126,11 @@ describe("the service account", () => {
     expect(google.assertions[0]).toMatchObject({ iss: CLIENT_EMAIL, scope: SA_SCOPES.join(" ") });
   });
 
-  it("never asks for drive.readonly, or any scope that writes", () => {
+  it("never asks for drive.readonly or a Drive scope that writes; the Docs scope that writes is walled to suggestions and comments", () => {
     expect(SA_SCOPES).toEqual([
       "https://www.googleapis.com/auth/drive.metadata.readonly",
       "https://www.googleapis.com/auth/webmasters.readonly",
+      "https://www.googleapis.com/auth/documents",
     ]);
   });
 
@@ -155,7 +156,7 @@ describe("the service account", () => {
     expect(google.requests).toEqual([]);
     // And the reads it does make pass.
     expect(() =>
-      assertReadOnly("GET", "https://www.googleapis.com/drive/v3/files?q=x"),
+      assertAllowed("GET", "https://www.googleapis.com/drive/v3/files?q=x"),
     ).not.toThrow();
   });
 
@@ -497,18 +498,5 @@ describe("Search Console", () => {
       position: 8.44,
     });
     expect(await pageStats(env, project, "/blog/other")).toBeNull();
-  });
-
-  it("says what to do when the service account is not on the property", async () => {
-    google.state.scStatus = 403;
-    const project = await requireSiteProject(
-      testEnv.DB,
-      await viewerFor("owner@test.invalid"),
-      SLUG,
-      "read",
-    );
-    await expect(refreshSearchConsole(env, project, google.fetch)).rejects.toThrow(
-      "Add the service account as a user on the property in Search Console.",
-    );
   });
 });

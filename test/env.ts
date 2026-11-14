@@ -80,3 +80,16 @@ export async function sharedBook(slug: string): Promise<number> {
   await share(id, reader, "reader");
   return id;
 }
+
+/** A fake send_email binding that keeps what it sent; `fail` makes every send throw. */
+export function mailbox(fail = false) {
+  const sent: { from: string; to: string; subject: string; text: string }[] = [];
+  const EMAIL = {
+    async send(message: (typeof sent)[number]) {
+      if (fail) throw new Error("send failed");
+      sent.push(message);
+      return { messageId: `m${sent.length}` };
+    },
+  } as unknown as SendEmail;
+  return { sent, EMAIL };
+}

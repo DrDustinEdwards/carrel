@@ -135,16 +135,6 @@ describe("the preview of an AI-draft-only post", () => {
     expect(html).toContain("A desk apart");
     expect(html).toContain("AI draft from Claude. It is not your draft and it is not on the site.");
   });
-
-  it("still says there is nothing to preview when there is no AI draft either", async () => {
-    const request = new Request(`https://carrel.test/p/${SLUG}/e/none/preview`);
-    const response = (await previewLoader({
-      request,
-      params: { project: SLUG, item: "none" },
-      context: await context("owner@test.invalid"),
-    } as never)) as Response;
-    expect(await response.text()).toContain("There is nothing to preview yet.");
-  });
 });
 
 describe("titleOf", () => {

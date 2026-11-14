@@ -3,7 +3,7 @@ import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { exportAuditLog } from "@dustinedwards/site-runtime/audit-log";
 import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
 import { runJobs } from "@dustinedwards/site-runtime/cron";
-import { deployedSha } from "@dustinedwards/site-runtime/health";
+import { deployedSha } from "@dustinedwards/site-runtime/deploy";
 import { maintenanceOn, maintenanceResponse } from "@dustinedwards/site-runtime/maintenance";
 import { logEvent, routeNamer, withRequestLog } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
@@ -22,6 +22,7 @@ import { runHealth } from "~/lib/health.server";
 import { runSignedInCrawl, type DeskAs } from "~/lib/signed-in-crawl.server";
 import { reportDraftsInbox } from "~/lib/inbox-report.server";
 import { aiDoor, isMcpHost } from "~/lib/mcp/door";
+import { emailDocsDigest } from "~/lib/google/docs.server";
 import { carrelOrigin } from "~/lib/mcp/server";
 import { refreshAllSites } from "~/lib/refresh.server";
 import { deskPeopleEmails } from "~/lib/people.server";
@@ -183,6 +184,7 @@ const WORK: Record<JobName, (env: Env, ctx: ExecutionContext) => Promise<unknown
   backup: (env) => runBackup(env),
   "prune-404": (env) => pruneNotFound(env.DB),
   "signed-in-crawl": (env, ctx) => runSignedInCrawl(env, deskAs(env, ctx)),
+  "docs-email": (env) => emailDocsDigest(env),
   "tool-call-log-export": (env) => {
     if (!env.AUDIT_BUCKET)
       throw new Error("AUDIT_BUCKET is not bound; the tool-call log is not copied");

@@ -35,6 +35,7 @@ export default [
     route("p/:project/e/:item/transcript/:id", "routes/transcript-draft.tsx"),
     route("p/:project/e/:item/history", "routes/history.tsx"),
     route("manuscripts", "routes/manuscripts.tsx"),
+    route("manuscripts/activity", "routes/manuscripts-activity.tsx"),
     route("social", "routes/social.tsx"),
     route("ai", "routes/ai.tsx"),
   ]),

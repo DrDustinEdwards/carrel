@@ -37,6 +37,7 @@ import { SiteNotConnected } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/history";
+import "capsomer/history-list.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `History of ${data.title || data.itemId} · Carrel` : "Carrel" }];

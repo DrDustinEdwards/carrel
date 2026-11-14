@@ -71,6 +71,17 @@ export async function serviceAccountKey() {
   return { json, publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey) };
 }
 
+/** A Doc as the Docs API would hold it: paragraphs of pieces, a piece being plain, a pending insertion or a pending deletion. */
+export type FakeDoc = {
+  title: string;
+  revisionId: string;
+  paragraphs: { heading?: number; segs: { t: string; ins?: boolean; del?: boolean }[] }[];
+  suggestions: { suggestionId: string; status: string; posts: { content: string }[] }[];
+  comments: { commentId: string; status: string; quote: string; posts: { content: string }[] }[];
+  /** Every batchUpdate body the Doc received, for the tests to read. */
+  batches: Record<string, unknown>[];
+};
+
 export type FakeFile = {
   id: string;
   name: string;
@@ -87,6 +98,8 @@ export function fakeGoogle(opts: {
 }) {
   const files = [...(opts.files ?? [])];
   const docs = new Map<string, { name: string; content: string }>();
+  const docApi = new Map<string, FakeDoc>();
+  let docIds = 0;
   const requests: string[] = [];
   const assertions: Record<string, unknown>[] = [];
   const state = {
@@ -96,6 +109,8 @@ export function fakeGoogle(opts: {
     grantedScope: "https://www.googleapis.com/auth/drive.file",
     scStatus: 200,
     docEdits: new Map<string, string>(),
+    /** Google saves a suggestion's text but not its reply: commentUpdateState says so. */
+    labelFails: false,
   };
 
   const json = (status: number, body: unknown) =>
@@ -231,8 +246,203 @@ export function fakeGoogle(opts: {
       return json(200, { rows: opts.scRows ?? [], responseAggregationType: "byPage" });
     }
 
+    const docRoute = /^\/v1\/documents\/([^/:]+)(:batchUpdate)?$/.exec(url.pathname);
+    if (url.origin === "https://docs.googleapis.com" && docRoute) {
+      if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
+      const doc = docApi.get(docRoute[1]!);
+      if (!doc)
+        return json(404, { error: { code: 404, message: "Requested entity was not found." } });
+      if (!docRoute[2] && request.method === "GET") {
+        let at = 1;
+        const content = doc.paragraphs.map((p) => {
+          const start = at;
+          const elements = p.segs.map((seg, i) => {
+            const text = i === p.segs.length - 1 ? `${seg.t}\n` : seg.t;
+            const el = {
+              startIndex: at,
+              endIndex: at + text.length,
+              textRun: {
+                content: text,
+                ...(seg.ins ? { suggestedInsertionIds: ["suggest.pending"] } : {}),
+                ...(seg.del ? { suggestedDeletionIds: ["suggest.pending"] } : {}),
+              },
+            };
+            at += text.length;
+            return el;
+          });
+          return {
+            startIndex: start,
+            endIndex: at,
+            paragraph: {
+              elements,
+              paragraphStyle: {
+                namedStyleType: p.heading ? `HEADING_${p.heading}` : "NORMAL_TEXT",
+              },
+            },
+          };
+        });
+        return json(200, {
+          documentId: docRoute[1],
+          title: doc.title,
+          revisionId: doc.revisionId,
+          tabs: [
+            { tabProperties: { tabId: "t.0", title: "Tab 1" }, documentTab: { body: { content } } },
+          ],
+          suggestions: doc.suggestions.map((t) => ({
+            suggestionId: t.suggestionId,
+            status: t.status,
+            summaryText: "",
+            headPost: { content: "", author: { displayName: "Carrel Robot" } },
+            replies: t.posts.map((p) => ({
+              content: p.content,
+              author: { displayName: "Carrel Robot" },
+            })),
+          })),
+          comments: doc.comments.map((t) => ({
+            commentId: t.commentId,
+            status: t.status,
+            plainTextQuote: t.quote,
+            headPost: {
+              content: t.posts[0]?.content ?? "",
+              author: { displayName: "Carrel Robot" },
+            },
+            replies: t.posts
+              .slice(1)
+              .map((p) => ({ content: p.content, author: { displayName: "Carrel Robot" } })),
+          })),
+        });
+      }
+      if (docRoute[2] && request.method === "POST") {
+        const body = (await request.json()) as {
+          requests: Record<string, Record<string, unknown>>[];
+          writeControl?: { writeMode?: string; requiredRevisionId?: string };
+        };
+        doc.batches.push(body);
+        if (
+          body.writeControl?.requiredRevisionId &&
+          body.writeControl.requiredRevisionId !== doc.revisionId
+        )
+          return json(400, {
+            error: { code: 400, message: "The document was changed since it was read." },
+          });
+        const suggest = body.writeControl?.writeMode === "SUGGEST";
+        // A direct change to the text, a decision on a suggestion and a deleted thread change the fake Doc itself.
+        let changed = false;
+        for (const r of body.requests) {
+          if (!suggest && (r.insertText || r.deleteContentRange)) {
+            applyDirect(doc, r);
+            changed = true;
+          }
+          const decided = (r.acceptSuggestion ?? r.rejectSuggestion ?? r.deleteSuggestion) as
+            | { suggestionId?: string }
+            | undefined;
+          if (decided) {
+            const thread = doc.suggestions.find((t) => t.suggestionId === decided.suggestionId);
+            if (!thread || thread.status !== "OPEN")
+              return json(400, { error: { code: 400, message: "No such open suggestion." } });
+            thread.status = r.acceptSuggestion ? "ACCEPTED" : "REJECTED";
+            if (r.deleteSuggestion) doc.suggestions.splice(doc.suggestions.indexOf(thread), 1);
+            changed = true;
+          }
+          if (r.deleteComment) {
+            const id = (r.deleteComment as { commentId?: string }).commentId;
+            doc.comments = doc.comments.filter((c) => c.commentId !== id);
+          }
+        }
+        if (changed) doc.revisionId = `${doc.revisionId}+`;
+        let failed = false;
+        const suggestionResponses = body.requests.map(() => ({
+          createdSuggestionIds: [] as string[],
+        }));
+        const replies = body.requests.map((r) => {
+          if (r.insertComment) {
+            const commentId = `c.${doc.comments.length + 1}`;
+            doc.comments.push({
+              commentId,
+              status: "OPEN",
+              quote: "",
+              posts: [{ content: String(r.insertComment.content) }],
+            });
+            return { insertComment: { commentId } };
+          }
+          if (r.addCommentReply) {
+            if (state.labelFails) {
+              failed = true;
+              return {};
+            }
+            const id = String(r.addCommentReply.suggestionId ?? r.addCommentReply.commentId);
+            const thread =
+              doc.suggestions.find((t) => t.suggestionId === id) ??
+              doc.comments.find((t) => t.commentId === id);
+            const post = r.addCommentReply.post as { content?: string; commentAction?: string };
+            thread?.posts.push({ content: post.content ?? "" });
+            if (thread && post.commentAction === "RESOLVE") thread.status = "RESOLVED";
+            if (thread && post.commentAction === "REOPEN") thread.status = "OPEN";
+            return { addCommentReply: { postId: `p.${Math.random().toString(36).slice(2, 8)}` } };
+          }
+          return {};
+        });
+        if (suggest)
+          body.requests.forEach((_, i) => {
+            const id = `suggest.${doc.suggestions.length + 1}`;
+            doc.suggestions.push({ suggestionId: id, status: "OPEN", posts: [] });
+            suggestionResponses[i]!.createdSuggestionIds.push(id);
+          });
+        return json(200, {
+          documentId: docRoute[1],
+          replies,
+          suggestionResponses,
+          commentUpdateState: failed ? "ALL_FAILED_UNKNOWN_REASON" : "ALL_SAVED",
+        });
+      }
+    }
+
     throw new Error(`the tests reach only the fake Google, not ${request.method} ${request.url}`);
   }) as typeof globalThis.fetch;
 
-  return { fetch, files, docs, requests, assertions, state };
+  /** A direct insert or delete, at Google's positions, inside one paragraph (each paragraph is its text and a newline). */
+  function applyDirect(doc: FakeDoc, r: Record<string, Record<string, unknown>>) {
+    let at = 1;
+    const spans = doc.paragraphs.map((p) => {
+      const text = p.segs.map((seg) => seg.t).join("");
+      const span = { p, start: at, text };
+      at += text.length + 1;
+      return span;
+    });
+    const where = (index: number) => {
+      const span = spans.find((x) => index >= x.start && index <= x.start + x.text.length);
+      if (!span) throw new Error(`the fake Doc has no position ${index}`);
+      return span;
+    };
+    if (r.insertText) {
+      const { text, location } = r.insertText as { text: string; location: { index: number } };
+      const span = where(location.index);
+      const off = location.index - span.start;
+      span.p.segs = [{ t: span.text.slice(0, off) + text + span.text.slice(off) }];
+    } else {
+      const { range } = r.deleteContentRange as { range: { startIndex: number; endIndex: number } };
+      const span = where(range.startIndex);
+      const off = range.startIndex - span.start;
+      span.p.segs = [
+        { t: span.text.slice(0, off) + span.text.slice(off + range.endIndex - range.startIndex) },
+      ];
+    }
+  }
+
+  /** A Doc in the folder: the fake Drive lists it, and the fake Docs API serves and changes it. */
+  function addDoc(
+    id: string,
+    doc: Omit<FakeDoc, "revisionId" | "suggestions" | "comments" | "batches">,
+  ) {
+    docApi.set(id, {
+      ...doc,
+      revisionId: `rev-${++docIds}`,
+      suggestions: [],
+      comments: [],
+      batches: [],
+    });
+    return docApi.get(id)!;
+  }
+
+  return { fetch, files, docs, docApi, addDoc, requests, assertions, state };
 }

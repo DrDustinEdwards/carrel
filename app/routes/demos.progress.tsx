@@ -13,6 +13,9 @@ import { WritingProgress } from "capsomer/react/writing-progress";
 import { sampleProgress } from "~/lib/demo/writing-sample";
 
 import type { Route } from "./+types/demos.progress";
+import "capsomer/chart-frame.css";
+import "capsomer/enarratio.css";
+import "capsomer/writing-progress.css";
 
 export function meta() {
   return [{ title: "Writing progress demo · Carrel" }, { name: "robots", content: "noindex" }];

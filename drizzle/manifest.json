@@ -36,6 +36,8 @@
     "0031_ai_engine.sql": "fb6621f91f49c8739bdbe42e5ff0df90f93403e7bffcf4e63b5e2b1342a3f883",
     "0032_transcripts.sql": "7e78d3909182e2cc21d582a020f668cd1fda4445ea007cdcac2ef6372ae5d91c",
     "0033_need_later.sql": "1392a3c0295601b7e1aa0e097448d2fe86d801cf295856195a60f382a44ca7a3",
-    "0034_google_token_sealed.sql": "6227109bdd58ebf595661a101605bbef973aa0db9e937c0391f0f3c21f5dbe19"
+    "0034_google_token_sealed.sql": "6227109bdd58ebf595661a101605bbef973aa0db9e937c0391f0f3c21f5dbe19",
+    "0035_doc_changes.sql": "33d79a065550b3e8ffe4c14933f75d2ce94cf54ab70fe616f43122420b5bcefe",
+    "0036_doc_actions.sql": "b821e885dc73de1fb1cacb276e4eec9b841b35fe736973b13a52d57028ea27f5"
   }
 }

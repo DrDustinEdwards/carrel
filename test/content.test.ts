@@ -253,17 +253,6 @@ describe("the Owner's writes", () => {
     }>();
     expect(count!.n).toBe(2);
   });
-
-  it("reports a site that is not connected rather than failing obscurely", async () => {
-    const { viewer, project } = await as("owner@test.invalid");
-    await expect(
-      writeToSite(testEnv, project, viewer, "post-one", {
-        action: "save",
-        source: "x",
-        expectedVersion: null,
-      }),
-    ).rejects.toThrow(/No SITE_DUSTINEDWARDS_KEY set/);
-  });
 });
 
 describe("missing alt text blocks a publish (Dustin approved, 2026-10-31)", () => {

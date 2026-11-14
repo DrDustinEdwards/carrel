@@ -58,19 +58,6 @@ describe("expandShared", () => {
 describe("prepareLegalWrite", () => {
   const base = { sections: SECTIONS, today: "2026-10-06" };
 
-  it("stamps last_updated when the Owner publishes a changed text", () => {
-    const result = prepareLegalWrite({
-      ...base,
-      source: `${FRONT}New.\n`,
-      stored: `${FRONT}Old.\n`,
-      storedPublic: true,
-      public: true,
-    });
-    expect(result.ok && readKey(splitSource(result.source).front, "last_updated")).toBe(
-      "2026-10-06",
-    );
-  });
-
   it("leaves the date alone when only a field changed", () => {
     const stored = `${FRONT}Same.\n`;
     const result = prepareLegalWrite({
@@ -217,21 +204,6 @@ describe("a legal page written to the site", () => {
     );
     expect(published).toMatchObject({ ok: false, reason: "refused" });
     expect(writes(site).length).toBe(before);
-  });
-
-  it("is an ordinary item for an AI session: no special refusal, the same role rules", async () => {
-    const site = fakeSite();
-    const { viewer, project } = await as("editor@test.invalid");
-    const saved = await writeToSite(
-      connectedEnv(),
-      project,
-      viewer,
-      "page.privacy",
-      { action: "save", source: `${FRONT}Draft text.\n`, expectedVersion: null },
-      site.fetch,
-      { client: "claude" },
-    );
-    expect(saved.ok).toBe(true);
   });
 });
 

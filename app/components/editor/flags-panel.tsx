@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import type { AiDraftSummary, ItemFinding } from "~/lib/ai.server";
 import type { TranscriptDraftSummary } from "~/lib/transcripts.server";
 import { plural } from "@drdustinedwards/site-helpers/text";
+import "capsomer/flag-list.css";
 
 type Props = {
   flags: ItemFinding[];

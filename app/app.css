@@ -1,4 +1,7 @@
-/* Carrel's look is Capsomer's: its tokens, its base and the CSS of each component Carrel uses. What is
+/* Carrel's look is Capsomer's: its tokens, its base and the CSS of the components the shell and most
+   pages draw. A component only some pages draw brings its stylesheet with the module that draws it
+   (an `import "capsomer/<name>.css"` beside the component, in the order Capsomer's files had here, since
+   the later rule wins inside a layer), so the other pages never load it. What is
    written below is only what Capsomer does not have: the page frame inside the shell, and the few
    rules the writing screens need. Carrel's own rules are unlayered, so they win over Capsomer's. */
 @import "capsomer/layers.css";
@@ -7,7 +10,6 @@
 @import "capsomer/family-olive.css";
 @import "capsomer/base.css";
 @import "capsomer/link.css";
-@import "capsomer/prose.css";
 @import "capsomer/utilities.css";
 @import "capsomer/layout.css";
 @import "capsomer/icons.css";
@@ -45,11 +47,6 @@
 @import "capsomer/site-header.css";
 @import "capsomer/admin-shell.css";
 @import "capsomer/confirm-dialog.css";
-@import "capsomer/markdown-editor.css";
-@import "capsomer/rich-editor.css";
-@import "capsomer/collab-editor.css";
-@import "capsomer/editor-workspace.css";
-@import "capsomer/ai-job-buttons.css";
 @import "capsomer/schedule-dialog.css";
 @import "capsomer/not-found-report.css";
 @import "capsomer/moderation-queue.css";
@@ -58,19 +55,8 @@
 @import "capsomer/ai-engine-settings.css";
 @import "capsomer/publish-gate.css";
 @import "capsomer/share-preview.css";
-@import "capsomer/stat-tile.css";
-@import "capsomer/chart-frame.css";
-@import "capsomer/chart-builder.css";
-/* The whole chart stylesheet: Enarratio's base, the token mapping, gridlines, series inks and color pairs. */
-@import "capsomer/enarratio.css";
-@import "capsomer/drop-zone.css";
-@import "capsomer/media.css";
-@import "capsomer/tree.css";
-@import "capsomer/sortable-list.css";
-@import "capsomer/card.css";
 @import "capsomer/inline-add-form.css";
 @import "capsomer/frontmatter-fields.css";
-@import "capsomer/flag-list.css";
 @import "capsomer/draft-compare.css";
 @import "capsomer/bulk-bar.css";
 @import "capsomer/summary-list.css";
@@ -79,14 +65,9 @@
 @import "capsomer/command-menu.css";
 @import "capsomer/shortcuts.css";
 @import "capsomer/content.css";
-@import "capsomer/media-library.css";
 @import "capsomer/menu.css";
 @import "capsomer/mentions-list.css";
-@import "capsomer/inspector.css";
-@import "capsomer/attention-list.css";
 @import "capsomer/role-grid.css";
-@import "capsomer/history-list.css";
-@import "capsomer/writing-progress.css";
 
 .cap-table th .cap-status {
   margin-inline-start: var(--space-3);
@@ -179,7 +160,7 @@
   display: grid;
   gap: var(--space-3);
   padding-block-start: var(--space-5);
-  border-block-start: 1px solid var(--line);
+  border-block-start: var(--line-w) solid var(--line);
 
   &:first-child {
     padding-block-start: 0;
@@ -194,7 +175,7 @@
 .app-post-text {
   display: block;
   max-width: 60ch;
-  font-weight: 400;
+  font-weight: var(--weight-regular);
   white-space: normal;
 }
 
@@ -204,7 +185,7 @@
 
 .app-account h3 .cap-muted {
   font-size: var(--fs-body);
-  font-weight: 400;
+  font-weight: var(--weight-regular);
 }
 
 /* Books: a chapter's scenes, the bible's links, and the one-line forms that start a file. */
@@ -214,7 +195,7 @@
   padding-block-start: var(--space-4);
 
   & + & {
-    border-block-start: 1px solid var(--line);
+    border-block-start: var(--line-w) solid var(--line);
   }
   & h3 {
     display: flex;
@@ -227,7 +208,7 @@
   }
   & h3 .cap-muted {
     font-size: var(--fs-body);
-    font-weight: 400;
+    font-weight: var(--weight-regular);
   }
 }
 
@@ -255,7 +236,7 @@
 
   & b {
     color: var(--dim);
-    font-weight: 400;
+    font-weight: var(--weight-regular);
   }
 }
 /* The short facts wrap as whole items; a long value wraps inside its own item, after its label. */
@@ -284,7 +265,7 @@
 .app-reading {
   max-width: var(--measure);
   font-size: var(--fs-prose);
-  line-height: 1.7;
+  line-height: var(--leading-loose);
 }
 
 .app-scene-break {
@@ -405,7 +386,7 @@
   margin: 0 0 var(--space-3);
   white-space: pre-wrap;
   font-family: var(--prose);
-  line-height: 1.6;
+  line-height: var(--leading-relaxed);
 }
 
 .app-editor-main {
@@ -443,18 +424,18 @@
   white-space: pre-wrap;
   font-family: var(--prose);
   font-size: var(--fs-prose);
-  line-height: 1.7;
+  line-height: var(--leading-loose);
 }
 
 /* An excerpt of the author's own posts on the Voice page: prose, in the reading face, marked as a quotation. */
 .app-voice-excerpt {
   margin: var(--space-3) 0;
   padding-inline-start: var(--space-3);
-  border-inline-start: 3px solid var(--line-strong);
+  border-inline-start: var(--line-w-bar) solid var(--line-strong);
   max-width: var(--measure);
   white-space: pre-wrap;
   font-family: var(--prose);
-  line-height: 1.7;
+  line-height: var(--leading-loose);
 }
 
 /* A row's checkbox sits above the row's stretched link, as Capsomer already lifts links and buttons
@@ -474,8 +455,8 @@
 
 .app-outliner-chapter {
   display: block;
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--fs-small);
+  font-weight: var(--weight-regular);
 }
 
 .app-filter {
@@ -513,7 +494,7 @@
   margin: 0;
   padding-inline-start: 1.25rem;
   display: grid;
-  gap: var(--space-1, 0.25rem);
+  gap: var(--space-1);
 }
 
 /* Writing on a phone: each post is a card, the box beside the title, its status and Open under it. */

@@ -16,6 +16,9 @@ import { progressEntries, readGoal, saveGoal } from "~/lib/writing.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.progress";
+import "capsomer/chart-frame.css";
+import "capsomer/enarratio.css";
+import "capsomer/writing-progress.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Progress · ${data.head.name} · Carrel` : "Carrel" }];

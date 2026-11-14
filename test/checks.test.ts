@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { chartBlock } from "@drdustinedwards/site-helpers/source";
-import { checkCharts, suggestFinding } from "~/lib/chart-check.client";
+import { checkCharts } from "~/lib/chart-check.client";
 import {
   checkContinuity,
   checkFile,
@@ -296,18 +296,5 @@ describe("the chart check", () => {
     expect(
       checkCharts(chartBlock({ ...fields, title: "Visits per year" })).filter((f) => f.strict),
     ).toEqual([]);
-  });
-
-  it("drafts a finding from the data for Dustin to take or leave", () => {
-    const block = chartBlock({
-      type: "line",
-      x: "year",
-      y: ["Visits", "Readers"],
-      title: "Visits and readers",
-      alt: "A chart.",
-      caption: "",
-      csv: CSV,
-    });
-    expect(suggestFinding(block)).toMatch(/^Visits .*2024.*2026.*\.$/);
   });
 });

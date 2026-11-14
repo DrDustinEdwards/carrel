@@ -28,6 +28,10 @@ import { siteEntry } from "~/lib/sites.server";
 import { readForm, UPLOAD_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/media";
+import "capsomer/drop-zone.css";
+import "capsomer/media.css";
+import "capsomer/sortable-list.css";
+import "capsomer/media-library.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Media · ${data.project.name} · Carrel` : "Carrel" }];

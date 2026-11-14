@@ -427,6 +427,63 @@ export const manuscripts = sqliteTable("manuscripts", {
   syncedAt: text("synced_at").notNull(),
 });
 
+// Every change an AI made in a Google Doc through Carrel (migration 0035): which AI, why, and the exact change.
+export const docChanges = sqliteTable("doc_changes", {
+  id: integer("id").primaryKey(),
+  fileId: text("file_id").notNull(),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
+  client: text("client").notNull(),
+  model: text("model"),
+  mode: text("mode", { enum: ["suggest", "comment", "reply", "resolve", "reopen"] }).notNull(),
+  reason: text("reason").notNull().default(""),
+  change: text("change").notNull(),
+  googleIds: text("google_ids").notNull().default("[]"),
+  labeled: integer("labeled", { mode: "boolean" }).notNull().default(false),
+  revisionId: text("revision_id"),
+  // When an undo took the suggestion or comment back (migration 0036).
+  undoneAt: text("undone_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+// What changed a Doc's text on Dustin's own ask (migration 0036): a direct write, an accept, a reject, a withdrawn
+// suggestion or an undo, with the text before a write so it can be taken back.
+export const docActions = sqliteTable("doc_actions", {
+  id: integer("id").primaryKey(),
+  fileId: text("file_id").notNull(),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
+  client: text("client").notNull(),
+  model: text("model"),
+  action: text("action", { enum: ["write", "accept", "reject", "withdraw", "undo"] }).notNull(),
+  reason: text("reason").notNull().default(""),
+  change: text("change").notNull(),
+  googleIds: text("google_ids").notNull().default("[]"),
+  revisionId: text("revision_id"),
+  beforeText: text("before_text"),
+  undoes: integer("undoes"),
+  undoesTable: text("undoes_table", { enum: ["doc_changes", "doc_actions"] }),
+  undoneAt: text("undone_at"),
+  emailedAt: text("emailed_at"),
+  emailError: text("email_error"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
+// Dustin's per-Doc lock (migration 0036): suggest-only refuses direct writes and accepts, no-ai refuses every Docs tool.
+export const docLocks = sqliteTable("doc_locks", {
+  fileId: text("file_id").primaryKey(),
+  lock: text("lock", { enum: ["suggest-only", "no-ai"] }).notNull(),
+  setAt: text("set_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
 export const sentDocs = sqliteTable("sent_docs", {
   id: integer("id").primaryKey(),
   projectId: integer("project_id")

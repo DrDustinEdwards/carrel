@@ -29,6 +29,7 @@ import { confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/legal";
+import "capsomer/card.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Legal · ${data.project.name} · Carrel` : "Carrel" }];
