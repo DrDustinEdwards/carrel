@@ -1,5 +1,4 @@
 import { markdownCopies } from "@drdustinedwards/site-helpers/markdown-copy";
-import { privateRobotsResponse } from "@drdustinedwards/site-helpers/robots";
 import { withAdminIdle } from "@dustinedwards/site-runtime/access";
 import { exportAuditLog } from "@dustinedwards/site-runtime/audit-log";
 import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/access-drift";
@@ -65,14 +64,11 @@ function routeName(request: Request): string | undefined {
  * The AI door's headers, all from site-runtime: its registry entry's set, noindex and no-store, the consent page's
  * hashed-style policy, a load-nothing policy for everything else, both report sinks, and security.txt (the same contact
  * and expiry as the public page's, www/build.mjs; renew both together). Its CSP sink is cspReport, which answers CORS for
- * Desk's pages, so the wrapper's own is never reached. Its robots.txt is Prelum's private-host response, `Disallow: /`:
- * the door is for machines, and no crawler should fetch from it.
+ * Desk's pages, so the wrapper's own is never reached. Its robots.txt, `Disallow: /`, is the static
+ * public/robots.txt, served before the Worker on both doors.
  */
 const door = withMcpHeaders<Env>(
-  (request, env, ctx) =>
-    new URL(request.url).pathname === "/robots.txt"
-      ? privateRobotsResponse()
-      : aiDoor(request, env, ctx as ExecutionContext),
+  (request, env, ctx) => aiDoor(request, env, ctx as ExecutionContext),
   {
     site: carrelMcp,
     securityTxt: { contact: "security@dustinedwards.info", expires: "2027-10-26T00:00:00Z" },
