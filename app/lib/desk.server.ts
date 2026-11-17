@@ -12,6 +12,7 @@ import {
   authorship,
   drafts,
   findings,
+  manuscripts,
   needLater,
   projects,
   siteItems,
@@ -38,8 +39,8 @@ function byId(list: VisibleProject[]) {
 }
 
 /**
- * The work waiting on this person that D1 knows about: AI drafts, posts due to go out, open flags and
- * (the Owner's) social posts awaiting approval. Oldest first within a group.
+ * The work waiting on this person that D1 knows about: AI drafts, posts due to go out, open flags and, the Owner's
+ * alone, AI suggestions waiting in Google Docs and social posts awaiting approval. Oldest first within a group.
  */
 export async function needsYou(
   db: D1Database,
@@ -49,7 +50,8 @@ export async function needsYou(
 ): Promise<Need[]> {
   const known = byId(visible);
   const ids = visible.map((p) => p.id);
-  if (ids.length === 0) return [];
+  // The Owner's Docs are his with no project; inList matches nothing on an empty list.
+  if (ids.length === 0 && !viewer.isOwner) return [];
   const d = drizzle(db);
   const soon = new Date(now.getTime() + 24 * 3_600_000).toISOString();
 
@@ -99,6 +101,22 @@ export async function needsYou(
       : Promise.resolve([] as { n: number; since: string | null }[]),
     laterMarks(db, viewer, now),
   ]);
+  // The Owner's Docs where suggestions an AI laid through Carrel wait (the Docs plan, slice 7).
+  const docs = viewer.isOwner
+    ? await d
+        .select({
+          id: manuscripts.fileId,
+          name: manuscripts.name,
+          url: manuscripts.webViewLink,
+          n: manuscripts.waiting,
+          at: manuscripts.modifiedTime,
+        })
+        .from(manuscripts)
+        .where(gt(manuscripts.waiting, 0))
+        .orderBy(manuscripts.modifiedTime)
+        .limit(20)
+        .all()
+    : [];
 
   const out: Need[] = [];
   for (const row of ai) {
@@ -116,6 +134,17 @@ export async function needsYou(
       at: row.since,
     });
   }
+  for (const row of docs)
+    out.push({
+      id: `doc-${row.id}`,
+      group: "ai",
+      urgency: "waiting",
+      title:
+        row.n === 1 ? "1 AI suggestion waits in a Doc" : `${row.n} AI suggestions wait in a Doc`,
+      detail: row.name,
+      action: { label: "Review", href: row.url },
+      at: row.at,
+    });
   for (const row of due) {
     const p = known.get(row.projectId);
     if (!p) continue;

@@ -101,6 +101,7 @@ describe("the nightly dump", () => {
     expect(problems(dump)).toEqual([
       "google_tokens is in the dump but must be excluded",
       "google_oauth_states is in the dump but must be excluded",
+      "drive_watch is in the dump but must be excluded",
     ]);
   });
 
