@@ -5,7 +5,12 @@ import { ADMIN_LIST_PATH, adminListResponse } from "@dustinedwards/site-runtime/
 import { runJobs } from "@dustinedwards/site-runtime/cron";
 import { deployedSha } from "@dustinedwards/site-runtime/deploy";
 import { maintenanceOn, maintenanceResponse } from "@dustinedwards/site-runtime/maintenance";
-import { logEvent, routeNamer, withRequestLog } from "@dustinedwards/site-runtime/log";
+import {
+  databaseDownStatus,
+  logEvent,
+  routeNamer,
+  withRequestLog,
+} from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
 import { withSiteSentry } from "@dustinedwards/site-runtime/sentry";
@@ -46,7 +51,18 @@ export { ToolCallLog } from "@dustinedwards/site-runtime/audit-log";
 export { RateLimiter } from "@dustinedwards/site-runtime/rate-limit/durable-object";
 
 const serverBuild = () => import("virtual:react-router/server-build");
-const requestHandler = createRequestHandler(serverBuild, import.meta.env.MODE);
+const handleRoute = createRequestHandler(serverBuild, import.meta.env.MODE);
+
+/**
+ * React Router's handler, where a route that failed because D1 was down (a page, a .data request or a resource route)
+ * answers 503 with Retry-After and no-store instead of 500: site-runtime ./log databaseDownStatus, as its ./worker does
+ * for the sites on siteWorker. React Router gives a resource route's error no hook of its own.
+ */
+async function requestHandler(request: Request, context: RouterContextProvider): Promise<Response> {
+  const page = await handleRoute(request, context);
+  const status = databaseDownStatus(request, page.status, page.headers);
+  return status === page.status ? page : new Response(page.body, { status, headers: page.headers });
+}
 
 // The route pattern each `request` log line names (`/blog/:slug`), from the React Router build's route table, made once
 // per isolate (site-runtime ./log's routeNamer). Requests the Worker answers itself (/api, /health, /mcp, /media) carry
