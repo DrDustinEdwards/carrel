@@ -30,13 +30,24 @@ type Fetch = typeof fetch;
 
 const DOCS = "https://docs.googleapis.com/v1/documents";
 export const GOOGLE_DOC = "application/vnd.google-apps.document";
+export const GOOGLE_SLIDES = "application/vnd.google-apps.presentation";
+export const GOOGLE_SHEET = "application/vnd.google-apps.spreadsheet";
+/** The files the AI tools reach: Docs, Slides and Sheets in the manuscripts index. */
+export const AI_FILES = [GOOGLE_DOC, GOOGLE_SLIDES, GOOGLE_SHEET];
 /** The most text one read returns, in characters; a longer Doc is read by tab or by heading. */
-const READ_LIMIT = 100_000;
-const MAX = { quote: 2000, text: 20_000, reason: 1000, label: 1800, edits: 50, ids: 100 } as const;
+export const READ_LIMIT = 100_000;
+const MAX = {
+  quote: 2000,
+  text: 20_000,
+  reason: 1000,
+  label: 1800,
+  edits: 50,
+  ids: 100,
+} as const;
 /** The words kept on each side of a direct write, so undo finds the passage again. */
 const CONTEXT = 40;
 /** The most of a Doc's text kept from before a direct write; a longer Doc keeps the tab the write touched. */
-const BEFORE_LIMIT = 1_000_000;
+export const BEFORE_LIMIT = 1_000_000;
 /** A stand-in for each character position taken by something that is not text (an image, a page break). */
 const OBJECT = "￼";
 
@@ -95,7 +106,7 @@ type Post = {
   commentAction?: string;
   suggestionAction?: string;
 };
-type Thread = {
+export type Thread = {
   commentId?: string;
   anchorId?: string;
   suggestionId?: string;
@@ -213,9 +224,9 @@ function paraText(p: Para): string {
 
 // ---------- fetching
 
-type Posts = { author: string; at: string | null; text: string; action?: string }[];
+export type Posts = { author: string; at: string | null; text: string; action?: string }[];
 
-function postsOf(t: Thread): Posts {
+export function postsOf(t: Thread): Posts {
   return [t.headPost, ...(t.replies ?? [])]
     .filter((p): p is Post => !!p && !p.deleted)
     .map((p) => ({
@@ -229,7 +240,7 @@ function postsOf(t: Thread): Posts {
     }));
 }
 
-async function googleError(res: Response, what: string): Promise<never> {
+export async function googleError(res: Response, what: string): Promise<never> {
   let detail = "";
   try {
     const body = (await res.json()) as { error?: { message?: string } };
@@ -239,7 +250,7 @@ async function googleError(res: Response, what: string): Promise<never> {
   }
   if (res.status === 403 || res.status === 404)
     throw new AiRefusal(
-      `Google would not ${what} (${res.status}${detail}). The Doc must be shared with Carrel's service account as an Editor.`,
+      `Google would not ${what} (${res.status}${detail}). The file must be shared with Carrel's service account as an Editor, and its API turned on in the Google project.`,
     );
   throw new AiRefusal(`Google did not ${what} (${res.status}${detail}).`);
 }
@@ -249,15 +260,21 @@ export type DocLock = "suggest-only" | "no-ai";
 type Need = "read" | "suggest" | "write";
 
 /**
- * The index's row for a Doc, once the lock allows what the call needs: only a Google Doc in the shared folder is
- * reachable, never one Dustin locked "no AI", and a direct change never one he locked "suggest only".
+ * The index's row for a file, once the lock allows what the call needs: only a file of the kinds given, in the shared
+ * folder, is reachable, never one Dustin locked "no AI", and a direct change never one he locked "suggest only".
  */
-export async function indexed(env: Env, viewer: Viewer, docId: string, need: Need = "read") {
+export async function indexedFile(
+  env: Env,
+  viewer: Viewer,
+  fileId: string,
+  need: Need,
+  kinds: string[],
+) {
   requireOwner(viewer);
   const lock = await drizzle(env.DB)
     .select({ lock: docLocks.lock })
     .from(docLocks)
-    .where(eq(docLocks.fileId, docId))
+    .where(eq(docLocks.fileId, fileId))
     .get();
   if (lock?.lock === "no-ai")
     throw new AiRefusal("Dustin locked this Doc against AI in Carrel: no AI reads or changes it.");
@@ -268,14 +285,31 @@ export async function indexed(env: Env, viewer: Viewer, docId: string, need: Nee
   const row = await drizzle(env.DB)
     .select()
     .from(manuscripts)
-    .where(and(eq(manuscripts.fileId, docId), eq(manuscripts.mimeType, GOOGLE_DOC)))
+    .where(and(eq(manuscripts.fileId, fileId), inArray(manuscripts.mimeType, kinds)))
     .get();
+  if (!row && kinds.length === 1) {
+    const other = await drizzle(env.DB)
+      .select({ id: manuscripts.fileId })
+      .from(manuscripts)
+      .where(and(eq(manuscripts.fileId, fileId), inArray(manuscripts.mimeType, AI_FILES)))
+      .get();
+    if (other)
+      throw new AiRefusal(
+        "That is a Slides or Sheets file, and this works on Google Docs only. carrel_read_doc, carrel_comment_doc and carrel_change_doc reach Slides and Sheets.",
+      );
+  }
   if (!row)
     throw new AiRefusal(
-      "That is not a Google Doc in the manuscripts index. List them with carrel_list_docs (refresh: true if it was added a moment ago).",
+      kinds.length > 1
+        ? "That is not a Google Doc, Slides or Sheets file in the manuscripts index. List them with carrel_list_docs (refresh: true if it was added a moment ago)."
+        : "That is not a Google Doc in the manuscripts index. List them with carrel_list_docs (refresh: true if it was added a moment ago).",
     );
   return row;
 }
+
+/** A Google Doc in the index (the Docs-only tools: suggestions, review, undo, export). */
+export const indexed = (env: Env, viewer: Viewer, docId: string, need: Need = "read") =>
+  indexedFile(env, viewer, docId, need, [GOOGLE_DOC]);
 
 export async function fetchDoc(env: Env, docId: string, fetcher?: Fetch): Promise<GoogleDoc> {
   const params = new URLSearchParams({
@@ -290,7 +324,7 @@ export async function fetchDoc(env: Env, docId: string, fetcher?: Fetch): Promis
 
 // ---------- slice 1: read
 
-type DocRead = {
+export type DocRead = {
   docId: string;
   title: string;
   url: string;
@@ -408,7 +442,12 @@ export type EditAsked =
 type Located = { start: number; end: number; tabId: string; prefix: string; suffix: string };
 
 /** Where a quote sits: exactly once among the text no pending suggestion touches, inside one paragraph. */
-function locate(paras: Para[], quote: string, tabId: string | undefined, what: string): Located {
+export function locate(
+  paras: Para[],
+  quote: string,
+  tabId: string | undefined,
+  what: string,
+): Located {
   if (!quote) throw new AiRefusal(`${what} is empty.`);
   if (quote.length > MAX.quote)
     throw new AiRefusal(`${what} is longer than ${MAX.quote} characters.`);
@@ -472,9 +511,10 @@ export function labelOf(session: AiSession, model: string | undefined, said: str
   return why ? `${who}, through Carrel: ${why}` : `${who}, through Carrel`;
 }
 
-async function batch(
+/** A batchUpdate to a Docs, Slides or Sheets file (`url` is the file's :batchUpdate address). */
+export async function postBatch(
   env: Env,
-  docId: string,
+  url: string,
   body: Record<string, unknown>,
   fetcher?: Fetch,
   opts: DocWrite = {},
@@ -484,17 +524,20 @@ async function batch(
   commentUpdateState?: string;
   writeControl?: { requiredRevisionId?: string };
 }> {
-  const res = await saClient(env, fetcher).request(
-    "POST",
-    `${DOCS}/${docId}:batchUpdate`,
-    body,
-    opts,
-  );
+  const res = await saClient(env, fetcher).request("POST", url, body, opts);
   if (!res.ok) return googleError(res, "apply the change");
-  return (await res.json()) as Awaited<ReturnType<typeof batch>>;
+  return (await res.json()) as Awaited<ReturnType<typeof postBatch>>;
 }
 
-async function record(
+const batch = (
+  env: Env,
+  docId: string,
+  body: Record<string, unknown>,
+  fetcher?: Fetch,
+  opts: DocWrite = {},
+) => postBatch(env, `${DOCS}/${docId}:batchUpdate`, body, fetcher, opts);
+
+export async function record(
   env: Env,
   viewer: Viewer,
   session: AiSession,
@@ -531,7 +574,7 @@ async function record(
 type Planned = { at: Located; insert: string; remove: boolean; quote: string; reason: string };
 
 /** Each edit as asked, located from one fresh read: refused whole if any quote is missing, repeated or overlapping. */
-function planEdits(paras: Para[], edits: EditAsked[], tabId: string | undefined): Planned[] {
+export function planEdits(paras: Para[], edits: EditAsked[], tabId: string | undefined): Planned[] {
   if (!Array.isArray(edits) || edits.length === 0 || edits.length > MAX.edits)
     throw new AiRefusal(`edits is a list of 1 to ${MAX.edits} edits.`);
   const planned = edits.map((edit, i): Planned => {
@@ -618,7 +661,7 @@ type SuggestResult = {
   labelProblem?: string;
 };
 
-type WriteResult = {
+export type WriteResult = {
   mode: "write";
   changeId: number;
   undo: string;
@@ -784,9 +827,15 @@ export async function changeInDoc(
 }
 
 /** One direct write's edit as kept for undo: the text before and after, and the words on each side. */
-type WrittenEdit = { tab: string; before: string; after: string; prefix: string; suffix: string };
+export type WrittenEdit = {
+  tab: string;
+  before: string;
+  after: string;
+  prefix: string;
+  suffix: string;
+};
 
-function writtenOf(p: Planned): WrittenEdit {
+export function writtenOf(p: Planned): WrittenEdit {
   // An insertion keeps its quote as part of the words before it, so undo finds the spot again.
   return p.remove
     ? {
@@ -806,7 +855,7 @@ function writtenOf(p: Planned): WrittenEdit {
 }
 
 /** Records a direct write (or the undo of one) and emails Dustin about it by his Docs email setting. */
-async function writeDone(
+export async function writeDone(
   env: Env,
   viewer: Viewer,
   session: AiSession,
@@ -818,6 +867,8 @@ async function writeDone(
     revisionId?: string;
     beforeText?: string;
     undoes?: { id: number; table: "doc_changes" | "doc_actions" };
+    /** False for a Slides write: Carrel keeps the text it replaced, but only a Doc has an undo. */
+    undoable?: boolean;
   },
 ): Promise<WriteResult> {
   const edits = w.edits.map((e) => ("at" in e ? writtenOf(e) : e));
@@ -848,12 +899,20 @@ async function writeDone(
           `  after:  ${e.after || "(deleted)"}`,
         ]),
         "",
-        `Take it back: ask any AI connected to Carrel to undo a${actionId} in this Doc, or open ${carrelOrigin(env)}/manuscripts/activity.`,
+        w.undoable === false
+          ? `The text it replaced is kept at ${carrelOrigin(env)}/manuscripts/activity, and Google keeps the file's own version history.`
+          : `Take it back: ask any AI connected to Carrel to undo a${actionId} in this Doc, or open ${carrelOrigin(env)}/manuscripts/activity.`,
         "",
       ].join("\n"),
     });
   }
-  return { mode: "write", changeId: actionId, undo: `a${actionId}`, edits: edits.length, emailed };
+  return {
+    mode: "write",
+    changeId: actionId,
+    undo: w.undoable === false ? "" : `a${actionId}`,
+    edits: edits.length,
+    emailed,
+  };
 }
 
 /** Sends one email about these doc_actions rows and records on each whether it went. */
@@ -1347,27 +1406,34 @@ export async function setDocLock(db: D1Database, viewer: Viewer, fileId: string,
 }
 
 type CommentResult = { changeId: number; id: string | null; labeled: true };
+export type CommentInput = {
+  text?: string;
+  quote?: string;
+  reply_to?: string;
+  action?: "resolve" | "reopen" | "";
+  tab?: string;
+  model?: string;
+};
+/** What a new comment is anchored on, as the fields of Google's insertComment, and the revision it was read at. */
+export type CommentAnchor = { fields: Record<string, unknown>; revisionId?: string };
 
 /**
- * A comment on quoted words, a reply to a thread (a comment's or a suggestion's), or a resolve or reopen.
- * The label is the start of the post itself, so it cannot be saved without the words.
+ * A comment on a Doc, a Slides or a Sheets file: a new one on what `anchor` names, a reply to a thread (a comment's or
+ * a suggestion's), or a resolve or reopen. The label is the start of the post itself, so it cannot be saved without
+ * the words. The three APIs share the request shapes; only the anchor differs.
  */
-export async function commentInDoc(
+export async function commentInFile(
   env: Env,
   viewer: Viewer,
   session: AiSession,
-  docId: string,
-  input: {
-    text?: string;
-    quote?: string;
-    reply_to?: string;
-    action?: "resolve" | "reopen" | "";
-    tab?: string;
-    model?: string;
-  },
+  fileId: string,
+  kinds: string[],
+  batchUrl: string,
+  input: CommentInput,
+  anchor: () => Promise<CommentAnchor>,
   fetcher?: Fetch,
 ): Promise<CommentResult> {
-  await indexed(env, viewer, docId, "suggest");
+  await indexedFile(env, viewer, fileId, "suggest", kinds);
   const text = input.text?.trim() ?? "";
   if (text.length > 1800) throw new AiRefusal("text is longer than 1,800 characters.");
   if (input.action && !input.reply_to)
@@ -1375,8 +1441,6 @@ export async function commentInDoc(
   if (!input.action && !text) throw new AiRefusal("text is required.");
   if (input.reply_to && input.quote)
     throw new AiRefusal("A reply goes on a thread; give reply_to or quote, not both.");
-  if (!input.reply_to && !input.quote)
-    throw new AiRefusal("A new comment needs quote, the words it is about.");
   const said = input.action ? text || (input.action === "resolve" ? "resolved" : "reopened") : text;
   const content = labelOf(session, input.model, said);
   let request: Record<string, unknown>;
@@ -1396,24 +1460,18 @@ export async function commentInDoc(
       },
     };
   } else {
-    const doc = await fetchDoc(env, docId, fetcher);
-    revisionId = doc.revisionId;
-    const at = locate(paragraphsOf(doc), input.quote!, tabIdOf(doc, input.tab), "quote");
-    request = {
-      insertComment: {
-        content,
-        range: { startIndex: at.start, endIndex: at.end, tabId: at.tabId },
-      },
-    };
+    const at = await anchor();
+    revisionId = at.revisionId;
+    request = { insertComment: { content, ...at.fields } };
   }
-  const done = await batch(env, docId, { requests: [request] }, fetcher);
+  const done = await postBatch(env, batchUrl, { requests: [request] }, fetcher);
   if (done.commentUpdateState === "ALL_FAILED_UNKNOWN_REASON")
     throw new AiRefusal("Google did not save the comment.");
   const reply = done.replies?.[0];
   const id = reply?.insertComment?.commentId ?? reply?.addCommentReply?.postId ?? null;
   const mode = input.action || (input.reply_to ? "reply" : "comment");
   const changeId = await record(env, viewer, session, {
-    fileId: docId,
+    fileId,
     mode,
     model: input.model,
     reason: text,
@@ -1423,6 +1481,36 @@ export async function commentInDoc(
     revisionId,
   });
   return { changeId, id, labeled: true };
+}
+
+/** A comment on quoted words in a Doc. */
+export function commentInDoc(
+  env: Env,
+  viewer: Viewer,
+  session: AiSession,
+  docId: string,
+  input: CommentInput,
+  fetcher?: Fetch,
+): Promise<CommentResult> {
+  return commentInFile(
+    env,
+    viewer,
+    session,
+    docId,
+    [GOOGLE_DOC],
+    `${DOCS}/${docId}:batchUpdate`,
+    input,
+    async () => {
+      if (!input.quote) throw new AiRefusal("A new comment needs quote, the words it is about.");
+      const doc = await fetchDoc(env, docId, fetcher);
+      const at = locate(paragraphsOf(doc), input.quote, tabIdOf(doc, input.tab), "quote");
+      return {
+        fields: { range: { startIndex: at.start, endIndex: at.end, tabId: at.tabId } },
+        revisionId: doc.revisionId,
+      };
+    },
+    fetcher,
+  );
 }
 
 /** The latest changes AIs made in Docs, newest first, with each Doc's name: the Docs activity page. */

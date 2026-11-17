@@ -129,12 +129,14 @@ describe("the service account", () => {
     expect(google.assertions[0]).toMatchObject({ iss: CLIENT_EMAIL, scope: SA_SCOPES.join(" ") });
   });
 
-  it("never asks for a Drive scope that writes; drive.readonly is walled to exports, and the Docs scope that writes to suggestions and comments", () => {
+  it("never asks for a Drive scope that writes; drive.readonly is walled to exports, and the Docs, Slides and Sheets scopes that write to suggestions, comments, a slide on the Owner's ask and tabs Carrel made", () => {
     expect(SA_SCOPES).toEqual([
       "https://www.googleapis.com/auth/drive.metadata.readonly",
       "https://www.googleapis.com/auth/drive.readonly",
       "https://www.googleapis.com/auth/webmasters.readonly",
       "https://www.googleapis.com/auth/documents",
+      "https://www.googleapis.com/auth/presentations",
+      "https://www.googleapis.com/auth/spreadsheets",
     ]);
   });
 

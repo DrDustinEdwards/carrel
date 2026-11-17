@@ -108,6 +108,58 @@ export type FakeDoc = {
   batches: Record<string, unknown>[];
 };
 
+/** A comment thread in the fake Slides and Sheets APIs. */
+type FakeThread = {
+  commentId: string;
+  status: string;
+  posts: { content: string; action?: string }[];
+};
+
+/** The fields of a Slides or Sheets batch request the fakes read. */
+type BatchArgs = {
+  content?: string;
+  objectId?: string;
+  text?: string;
+  insertionIndex?: number;
+  textRange?: { startIndex: number; endIndex: number };
+  shapeTextAnchor?: { objectId: string; textRange: { startIndex: number; endIndex: number } };
+  commentId?: string;
+  post?: { content?: string; commentAction?: string };
+  properties?: { sheetId: number; title: string };
+  coordinate?: { sheetId: number; rowIndex: number; columnIndex: number };
+};
+
+/** A presentation as the fake Slides API serves it: slides of text boxes, speaker notes and comment threads. */
+export type FakeSlides = {
+  title: string;
+  revisionId: string;
+  slides: { id: string; boxes: { id: string; text: string }[]; notes?: string }[];
+  /** `at` anchors a thread on a text range in a box; without it the thread is on the slide. */
+  comments: {
+    commentId: string;
+    status: string;
+    slide: string;
+    at?: { box: string; start: number; end: number };
+    posts: { content: string; action?: string }[];
+  }[];
+  /** Every batchUpdate body received, in order. */
+  batches: Record<string, unknown>[];
+};
+
+/** A spreadsheet as the fake Sheets API serves it: tabs of rows, comments on cells, and every cell write. */
+export type FakeSheet = {
+  title: string;
+  tabs: { sheetId: number; title: string; rows: string[][] }[];
+  comments: {
+    commentId: string;
+    status: string;
+    cell: { sheetId: number; row: number; column: number };
+    posts: { content: string; action?: string }[];
+  }[];
+  batches: Record<string, unknown>[];
+  writes: { range: string; values: unknown[][]; input: string | null }[];
+};
+
 export type FakeFile = {
   id: string;
   name: string;
@@ -125,6 +177,9 @@ export function fakeGoogle(opts: {
   const files = [...(opts.files ?? [])];
   const docs = new Map<string, { name: string; content: string }>();
   const docApi = new Map<string, FakeDoc>();
+  const slideApi = new Map<string, FakeSlides>();
+  const sheetApi = new Map<string, FakeSheet>();
+  let threads = 0;
   let docIds = 0;
   const requests: string[] = [];
   const assertions: Record<string, unknown>[] = [];
@@ -147,6 +202,65 @@ export function fakeGoogle(opts: {
 
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+  /** A Slides or Sheets comment thread as Google serves it. */
+  const threadJson = (t: FakeThread) => ({
+    commentId: t.commentId,
+    anchorId: `a-${t.commentId}`,
+    status: t.status,
+    headPost: { content: t.posts[0]!.content, author: { displayName: "Reader" } },
+    replies: t.posts.slice(1).map((p) => ({
+      content: p.content,
+      ...(p.action ? { commentAction: p.action } : {}),
+      author: { displayName: "Reader" },
+    })),
+  });
+
+  /**
+   * A Slides or Sheets batch applied: its comment requests to the store's threads (`make` builds a new one from the
+   * request), any other request through `other`, and Google's reply, or the first error response.
+   */
+  function applyBatch<T extends FakeThread>(
+    store: { batches: Record<string, unknown>[]; comments: T[] },
+    body: { requests: Record<string, BatchArgs>[] },
+    prefix: string,
+    ids: Record<string, string | undefined>,
+    make: (base: FakeThread, a: BatchArgs) => T,
+    other: (name: string, a: BatchArgs) => Record<string, unknown> | Response,
+  ): Response {
+    store.batches.push(body as unknown as Record<string, unknown>);
+    const replies: Record<string, unknown>[] = [];
+    for (const r of body.requests) {
+      const [name, a] = Object.entries(r)[0]!;
+      if (name === "insertComment") {
+        const id = `${prefix}.${++threads}`;
+        store.comments.push(
+          make({ commentId: id, status: "OPEN", posts: [{ content: a.content! }] }, a),
+        );
+        replies.push({ insertComment: { commentId: id } });
+      } else if (name === "addCommentReply") {
+        const t = store.comments.find((x) => x.commentId === a.commentId);
+        if (!t) return json(404, { error: { code: 404, message: "No such comment." } });
+        const post = a.post!;
+        t.posts.push({
+          content: post.content ?? "",
+          ...(post.commentAction ? { action: post.commentAction } : {}),
+        });
+        if (post.commentAction) t.status = post.commentAction === "RESOLVE" ? "RESOLVED" : "OPEN";
+        replies.push({ addCommentReply: { postId: `post.${threads}` } });
+      } else {
+        const reply = other(name, a);
+        if (reply instanceof Response) return reply;
+        replies.push(reply);
+      }
+    }
+    const commented = body.requests.some((r) => "insertComment" in r || "addCommentReply" in r);
+    return json(200, {
+      ...ids,
+      replies,
+      commentUpdateState: commented ? "ALL_SAVED" : "NO_UPDATES_REQUESTED",
+    });
+  }
 
   const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
@@ -352,6 +466,204 @@ export function fakeGoogle(opts: {
           error: { code: 403, message: "User does not have sufficient permission" },
         });
       return json(200, { rows: opts.scRows ?? [], responseAggregationType: "byPage" });
+    }
+
+    const slideRoute = /^\/v1\/presentations\/([^/:]+)(:batchUpdate)?$/.exec(url.pathname);
+    if (url.origin === "https://slides.googleapis.com" && slideRoute) {
+      if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
+      const deck = slideApi.get(slideRoute[1]!);
+      if (!deck)
+        return json(404, { error: { code: 404, message: "Requested entity was not found." } });
+      if (!slideRoute[2] && request.method === "GET") {
+        const textOf = (text: string) => [
+          { endIndex: text.length, paragraphMarker: {} },
+          { endIndex: text.length, textRun: { content: text } },
+        ];
+        return json(200, {
+          presentationId: slideRoute[1],
+          title: deck.title,
+          revisionId: deck.revisionId,
+          slides: deck.slides.map((slide) => ({
+            objectId: slide.id,
+            pageElements: slide.boxes.map((b) => ({
+              objectId: b.id,
+              shape: { text: { textElements: textOf(b.text) } },
+            })),
+            slideProperties: {
+              notesPage: {
+                objectId: `${slide.id}-notes`,
+                notesProperties: { speakerNotesObjectId: `${slide.id}-speaker` },
+                pageElements: [
+                  {
+                    objectId: `${slide.id}-speaker`,
+                    shape: { text: { textElements: textOf(slide.notes ?? "") } },
+                  },
+                ],
+              },
+            },
+            commentAnchors: deck.comments
+              .filter((t) => t.slide === slide.id)
+              .map((t) => ({
+                anchorId: `a-${t.commentId}`,
+                objectAnchors: t.at
+                  ? [
+                      {
+                        objectId: t.at.box,
+                        shapeTextAnchors: {
+                          ranges: [{ startIndex: t.at.start, endIndex: t.at.end }],
+                        },
+                      },
+                    ]
+                  : [{ objectId: slide.id }],
+              })),
+          })),
+          comments: deck.comments.map(threadJson),
+        });
+      }
+      if (slideRoute[2] && request.method === "POST") {
+        const body = (await request.json()) as {
+          requests: Record<string, BatchArgs>[];
+          writeControl?: { requiredRevisionId?: string };
+        };
+        if (
+          body.writeControl?.requiredRevisionId &&
+          body.writeControl.requiredRevisionId !== deck.revisionId
+        )
+          return json(400, { error: { code: 400, message: "The presentation changed." } });
+        return applyBatch(
+          deck,
+          body,
+          "slidec",
+          { presentationId: slideRoute[1] },
+          (base, a) => {
+            const anchor = a.shapeTextAnchor;
+            const slide = anchor
+              ? deck.slides.find((x) => x.boxes.some((b) => b.id === anchor.objectId))!.id
+              : a.objectId!;
+            return {
+              ...base,
+              slide,
+              ...(anchor
+                ? {
+                    at: {
+                      box: anchor.objectId,
+                      start: anchor.textRange.startIndex,
+                      end: anchor.textRange.endIndex,
+                    },
+                  }
+                : {}),
+            };
+          },
+          (name, a) => {
+            const box = deck.slides.flatMap((x) => x.boxes).find((b) => b.id === a.objectId)!;
+            if (name === "deleteText")
+              box.text =
+                box.text.slice(0, a.textRange!.startIndex) + box.text.slice(a.textRange!.endIndex);
+            if (name === "insertText")
+              box.text =
+                box.text.slice(0, a.insertionIndex) + a.text + box.text.slice(a.insertionIndex);
+            deck.revisionId = `deck-${++docIds}`;
+            return {};
+          },
+        );
+      }
+    }
+
+    const sheetRoute =
+      /^\/v4\/spreadsheets\/([^/:]+)(:batchUpdate|\/values:batchGet|\/values\/.+)?$/.exec(
+        url.pathname,
+      );
+    if (url.origin === "https://sheets.googleapis.com" && sheetRoute) {
+      if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
+      const book = sheetApi.get(sheetRoute[1]!);
+      if (!book)
+        return json(404, { error: { code: 404, message: "Requested entity was not found." } });
+      const tail = sheetRoute[2];
+      if (!tail && request.method === "GET")
+        return json(200, {
+          spreadsheetId: sheetRoute[1],
+          properties: { title: book.title },
+          sheets: book.tabs.map((t) => ({
+            properties: {
+              sheetId: t.sheetId,
+              title: t.title,
+              gridProperties: { rowCount: 1000, columnCount: 26 },
+            },
+            commentAnchors: book.comments
+              .filter((c) => c.cell.sheetId === t.sheetId)
+              .map((c) => ({
+                anchorId: `a-${c.commentId}`,
+                range: {
+                  sheetId: t.sheetId,
+                  startRowIndex: c.cell.row,
+                  endRowIndex: c.cell.row + 1,
+                  startColumnIndex: c.cell.column,
+                  endColumnIndex: c.cell.column + 1,
+                },
+              })),
+          })),
+          comments: book.comments.map(threadJson),
+        });
+      if (tail === "/values:batchGet" && request.method === "GET")
+        return json(200, {
+          spreadsheetId: sheetRoute[1],
+          valueRanges: url.searchParams.getAll("ranges").map((range) => {
+            const title = /^'((?:[^']|'')+)'!/.exec(range)?.[1]?.replace(/''/g, "'");
+            return {
+              range,
+              values: Array.from(
+                book.tabs.find((t) => t.title === title)?.rows ?? [],
+                (r) => r ?? [],
+              ),
+            };
+          }),
+        });
+      if (tail === ":batchUpdate" && request.method === "POST") {
+        const body = (await request.json()) as { requests: Record<string, BatchArgs>[] };
+        return applyBatch(
+          book,
+          body,
+          "sheetc",
+          { spreadsheetId: sheetRoute[1] },
+          (base, a) => ({
+            ...base,
+            cell: {
+              sheetId: a.coordinate!.sheetId,
+              row: a.coordinate!.rowIndex,
+              column: a.coordinate!.columnIndex,
+            },
+          }),
+          (_name, a) => {
+            const p = a.properties!;
+            if (book.tabs.some((t) => t.sheetId === p.sheetId || t.title === p.title))
+              return json(400, { error: { code: 400, message: "That sheet already exists." } });
+            book.tabs.push({ sheetId: p.sheetId, title: p.title, rows: [] });
+            return { addSheet: { properties: p } };
+          },
+        );
+      }
+      if (tail?.startsWith("/values/") && request.method === "PUT") {
+        const range = decodeURIComponent(tail.slice("/values/".length));
+        const body = (await request.json()) as { values: unknown[][] };
+        book.writes.push({
+          range,
+          values: body.values,
+          input: url.searchParams.get("valueInputOption"),
+        });
+        const m = /^'((?:[^']|'')+)'!([A-Z]+)([0-9]+)$/.exec(range);
+        const tab = book.tabs.find((t) => t.title === m?.[1]?.replace(/''/g, "'"));
+        if (!m || !tab)
+          return json(400, { error: { code: 400, message: "Unable to parse range." } });
+        const row0 = Number(m[3]) - 1;
+        body.values.forEach((cells, i) => {
+          tab.rows[row0 + i] = (cells as unknown[]).map(String);
+        });
+        return json(200, {
+          spreadsheetId: sheetRoute[1],
+          updatedRange: range,
+          updatedCells: body.values.flat().length,
+        });
+      }
     }
 
     const docRoute = /^\/v1\/documents\/([^/:]+)(:batchUpdate)?$/.exec(url.pathname);
@@ -598,5 +910,30 @@ export function fakeGoogle(opts: {
     return docApi.get(id)!;
   }
 
-  return { fetch, files, docs, docApi, addDoc, requests, assertions, state };
+  /** A presentation in the folder: the fake Slides API serves and changes it. */
+  function addSlides(id: string, deck: Pick<FakeSlides, "title" | "slides"> & Partial<FakeSlides>) {
+    slideApi.set(id, { revisionId: `deck-${++docIds}`, comments: [], batches: [], ...deck });
+    return slideApi.get(id)!;
+  }
+
+  /** A spreadsheet in the folder: the fake Sheets API serves and changes it. */
+  function addSheetFile(id: string, book: Pick<FakeSheet, "title" | "tabs"> & Partial<FakeSheet>) {
+    sheetApi.set(id, { comments: [], batches: [], writes: [], ...book });
+    return sheetApi.get(id)!;
+  }
+
+  return {
+    fetch,
+    files,
+    docs,
+    docApi,
+    slideApi,
+    sheetApi,
+    addDoc,
+    addSlides,
+    addSheetFile,
+    requests,
+    assertions,
+    state,
+  };
 }
