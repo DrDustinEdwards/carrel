@@ -10,11 +10,11 @@ import { WRITING_RULES } from "@dustinedwards/site-runtime/prose";
 import { joinSource } from "@drdustinedwards/site-helpers/frontmatter";
 
 import {
-  aiModel,
+  aiRun,
   meteredOptions,
   monthSpendMicros,
   onlyEngine,
-  readAiModels,
+  readAiChoices,
   readAiSettings,
   suggestSeo,
   workingParts,
@@ -77,7 +77,7 @@ function routineFor(env: Env, key: string, prompt: string, fetcher?: typeof fetc
 }
 
 type Only = "api" | "subscription" | undefined;
-type Models = Awaited<ReturnType<typeof readAiModels>>;
+type Choices = Awaited<ReturnType<typeof readAiChoices>>;
 
 /**
  * Runs one writing job on the engine its setting names (or the one Dustin forced for this run). `api` writes and stores
@@ -88,10 +88,10 @@ async function runWrite(
   job: WriteJob,
   only: Only,
   routine: { key: string; prompt: string },
-  api: (models: Models) => Promise<{ ok: true; draftId: number } | { ok: false; error: string }>,
+  api: (choices: Choices) => Promise<{ ok: true; draftId: number } | { ok: false; error: string }>,
   fetcher?: typeof fetch,
 ): Promise<WriteResult> {
-  const [settings, models] = await Promise.all([readAiSettings(env.DB), readAiModels(env.DB)]);
+  const [settings, choices] = await Promise.all([readAiSettings(env.DB), readAiChoices(env.DB)]);
   let draftId = 0;
   const ran = await runAi({
     settings: onlyEngine(settings, job, only),
@@ -106,7 +106,7 @@ async function runWrite(
     api: !env.ANTHROPIC_API_KEY
       ? undefined
       : async () => {
-          const made = await api(models);
+          const made = await api(choices);
           if (made.ok) draftId = made.draftId;
           return made;
         },
@@ -139,22 +139,16 @@ export function writePost(
       key: `write:${project.slug}:${itemId}:${job}`,
       prompt: postPrompt(project.slug, itemId, job),
     },
-    async (models) => {
+    async (choices) => {
       if (job === "seo") {
-        const made = await suggestSeo(
-          env,
-          project,
-          viewer,
-          itemId,
-          aiModel(models, "seo", "standard"),
-        );
+        const made = await suggestSeo(env, project, viewer, itemId, aiRun(choices, "seo"));
         return made.ok ? { ok: true, draftId: made.draftId } : made;
       }
       const working = await workingParts(env, project, viewer, itemId);
       if (!working.ok) return working;
       const { parts } = working;
       const brief = briefOf(await readVoicePack(env.DB, project));
-      const written = await writeText(env, job, parts.body, brief, models, fetcher);
+      const written = await writeText(env, job, parts.body, brief, choices, fetcher);
       if (!written.ok) return written;
       const saved = await saveAiDraft(
         env,
@@ -191,10 +185,10 @@ export function writeBookFile(
       key: `write:${project.slug}:${path}:${job}`,
       prompt: bookPrompt(project.slug, path, job),
     },
-    async (models) => {
+    async (choices) => {
       const voice = await bookVoice(env.DB, project, path);
       const brief = { rules: "", guide: "", excerpts: voice.excerpts };
-      const written = await writeText(env, job, source, brief, models, fetcher);
+      const written = await writeText(env, job, source, brief, choices, fetcher);
       if (!written.ok) return written;
       const saved = await saveBookAiDraft(
         env.DB,
@@ -254,14 +248,15 @@ async function writeText(
   job: "continue" | "edit",
   text: string,
   brief: { rules: string; guide: string; excerpts: string[] },
-  models: Awaited<ReturnType<typeof readAiModels>>,
+  choices: Choices,
   fetcher?: typeof fetch,
 ): Promise<{ ok: true; text: string; note: string } | { ok: false; error: string }> {
+  const run = aiRun(choices, job);
   const result = await structured<{ text: string; note: string }>(
     env,
     "carrel",
     {
-      model: aiModel(models, job, "deep"),
+      ...run,
       max_tokens: 16_000,
       system: [INSTRUCTION[job], WRITING_RULES, brief.rules, UNTRUSTED_DATA_RULE]
         .filter(Boolean)
@@ -280,7 +275,7 @@ async function writeText(
       ],
     },
     WRITE_SCHEMA,
-    { ...meteredOptions(env, job), ...(fetcher ? { fetcher } : {}) },
+    { ...meteredOptions(env, job, run.output_config.effort), ...(fetcher ? { fetcher } : {}) },
   );
   if (!result.ok) return { ok: false, error: result.error };
   const out = result.value.text.trim();

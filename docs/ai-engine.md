@@ -29,7 +29,10 @@ Carrel's AI work runs on one of two engines: Dustin's Claude subscription (a Cla
 Every result but alt text is an AI draft beside your text, never over it, and starts only from a button press (or, for
 social and episode drafts, the schedule). Alt text sets only files that have none. After any run the editor offers the
 same job on the other engine. The AI engine page also has Draft now (the episode and social passes, without sending any
-post) and a model per job (fast, standard or deep, with list prices) for when the API does it.
+post) and a model and effort per job for when the API does it: fast, standard or deep with list prices, and low, medium,
+high, extra high or max. Carrel always sends the effort, the job's own default when none is picked (the API's default for
+that job's tier), because the API's default differs by model. Each call records its effort, and the spend by job is split
+by it.
 
 The API's alt text calls are metered on each site (its `anthropic_call` log), so they count as calls here but add no
 dollars to the cap. At 80% of the cap Carrel emails the alert address once that month.
