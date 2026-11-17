@@ -35,7 +35,8 @@
 	// global_fetch_strictly_public: the AI door's OAuth provider refuses to fetch a client's metadata
 	// document (CIMD) without it, as SSRF protection. It also sends same-zone fetches (the site API on
 	// dustinedwards.info) through the public front door, as a browser's would go.
-	"compatibility_flags": ["global_fetch_strictly_public", "enable_request_signal"],
+	// nodejs_als: AsyncLocalStorage, which the Sentry SDK keeps each invocation's reports apart with (site-runtime ./sentry).
+	"compatibility_flags": ["global_fetch_strictly_public", "enable_request_signal", "nodejs_als"],
 	"workers_dev": false,
 	"preview_urls": false,
 	// Uncomment only after Desk's Access application exists (setup step 7), and the second route only after

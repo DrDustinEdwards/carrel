@@ -8,6 +8,7 @@ import { maintenanceOn, maintenanceResponse } from "@dustinedwards/site-runtime/
 import { logEvent, routeNamer, withRequestLog } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
+import { withSiteSentry } from "@dustinedwards/site-runtime/sentry";
 import { carrel, carrelMcp } from "@dustinedwards/site-runtime/sites";
 import { createRequestHandler, RouterContextProvider } from "react-router";
 
@@ -232,8 +233,8 @@ const withMarkdownCopies = markdownCopies(
 );
 
 // An admin idle for an hour is signed out of Access (site-runtime ./access). Every request writes one `request` log line
-// with its status and the deployed commit (site-runtime's withRequestLog).
-export default {
+// with its status and the deployed commit (site-runtime's withRequestLog). Errors go to Sentry (site-runtime ./sentry).
+export default withSiteSentry({
   fetch: withRequestLog(
     (request: Request, env: Env, ctx: ExecutionContext) =>
       withAdminIdle(request, () => withMarkdownCopies(request, env, ctx), {
@@ -246,4 +247,4 @@ export default {
     },
   ),
   scheduled,
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<Env>);
