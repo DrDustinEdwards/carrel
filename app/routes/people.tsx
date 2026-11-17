@@ -242,7 +242,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
           />
         </div>
       </fieldset>
-      <div className="app-actions">
+      <div className="cap-cluster">
         <Button type="submit" name="intent" value="add" variant="primary" pending={busy}>
           Add
         </Button>
@@ -270,7 +270,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
           <input className="cap-input" type="text" name="label" autoComplete="off" />
         </Field>
       </div>
-      <div className="app-actions">
+      <div className="cap-cluster">
         <Button type="submit" name="intent" value="add-agent" variant="primary" pending={busy}>
           Add agent
         </Button>

@@ -51,24 +51,39 @@ type Run = {
   content?: string;
   suggestedInsertionIds?: string[];
   suggestedDeletionIds?: string[];
+  textStyle?: {
+    bold?: boolean;
+    italic?: boolean;
+    strikethrough?: boolean;
+    link?: { url?: string };
+  };
 };
 type ParagraphElement = { startIndex?: number; endIndex?: number; textRun?: Run } & Record<
   string,
   unknown
 >;
-type Content = {
+export type Content = {
   startIndex?: number;
   endIndex?: number;
   paragraph?: {
     elements?: ParagraphElement[];
     paragraphStyle?: { namedStyleType?: string };
+    bullet?: { listId?: string; nestingLevel?: number };
   };
   table?: { tableRows?: { tableCells?: { content?: Content[] }[] }[] };
   tableOfContents?: { content?: Content[] };
 };
-type Tab = {
+export type Tab = {
   tabProperties?: { tabId?: string; title?: string };
-  documentTab?: { body?: { content?: Content[] } };
+  documentTab?: {
+    body?: { content?: Content[] };
+    lists?: Record<
+      string,
+      { listProperties?: { nestingLevels?: { glyphType?: string; glyphSymbol?: string }[] } }
+    >;
+    /** Where each comment thread sits (a thread's anchorId), in Google's positions. */
+    commentAnchors?: Record<string, { ranges?: { startIndex?: number; endIndex?: number }[] }>;
+  };
   childTabs?: Tab[];
 };
 type Post = {
@@ -82,6 +97,7 @@ type Post = {
 };
 type Thread = {
   commentId?: string;
+  anchorId?: string;
   suggestionId?: string;
   headPost?: Post;
   replies?: Post[];
@@ -89,7 +105,7 @@ type Thread = {
   plainTextQuote?: string;
   summaryText?: string;
 };
-type GoogleDoc = {
+export type GoogleDoc = {
   documentId: string;
   title: string;
   revisionId?: string;
@@ -105,9 +121,11 @@ type Seg = {
   end: number;
   text: string;
   state: "plain" | "inserted" | "deleted" | "object";
+  /** The pending suggestions an inserted or deleted piece belongs to. */
+  ids?: string[];
 };
 /** One paragraph (or table cell paragraph): its pieces in order, each with the positions Google gave it. */
-type Para = { tabId: string; tabTitle: string; heading: number; segs: Seg[] };
+export type Para = { tabId: string; tabTitle: string; heading: number; segs: Seg[] };
 
 function segmentOf(el: ParagraphElement): Seg | null {
   if (el.startIndex === undefined || el.endIndex === undefined) return null;
@@ -124,7 +142,14 @@ function segmentOf(el: ParagraphElement): Seg | null {
     : run.suggestedDeletionIds?.length
       ? "deleted"
       : "plain";
-  return { start: el.startIndex, end: el.endIndex, text: run.content, state };
+  const ids = state === "inserted" ? run.suggestedInsertionIds : run.suggestedDeletionIds;
+  return {
+    start: el.startIndex,
+    end: el.endIndex,
+    text: run.content,
+    state,
+    ...(state !== "plain" ? { ids } : {}),
+  };
 }
 
 function headingOf(style?: string): number {
@@ -154,7 +179,16 @@ function collect(
 }
 
 /** Every paragraph of every tab, child tabs after their parent, in reading order. */
-function paragraphsOf(doc: GoogleDoc): Para[] {
+/** The ids of the Doc's suggestions still open. */
+export function openSuggestions(doc: GoogleDoc): Set<string> {
+  return new Set(
+    (doc.suggestions ?? [])
+      .filter((t) => (t.status ?? "OPEN") === "OPEN" && t.suggestionId)
+      .map((t) => t.suggestionId!),
+  );
+}
+
+export function paragraphsOf(doc: GoogleDoc): Para[] {
   const out: Para[] = [];
   const walk = (tabs: Tab[] | undefined) => {
     for (const tab of tabs ?? []) {
@@ -243,7 +277,7 @@ export async function indexed(env: Env, viewer: Viewer, docId: string, need: Nee
   return row;
 }
 
-async function fetchDoc(env: Env, docId: string, fetcher?: Fetch): Promise<GoogleDoc> {
+export async function fetchDoc(env: Env, docId: string, fetcher?: Fetch): Promise<GoogleDoc> {
   const params = new URLSearchParams({
     includeTabsContent: "true",
     suggestionsViewMode: "SUGGESTIONS_INLINE",
@@ -1041,11 +1075,7 @@ export async function reviewInDoc(
     );
   if (named.length > MAX.ids) throw new AiRefusal(`suggestions holds at most ${MAX.ids} ids.`);
   const doc = await fetchDoc(env, docId, fetcher);
-  const open = new Set(
-    (doc.suggestions ?? [])
-      .filter((t) => (t.status ?? "OPEN") === "OPEN" && t.suggestionId)
-      .map((t) => t.suggestionId!),
-  );
+  const open = openSuggestions(doc);
   const ours = await carrelSuggestions(env, docId);
   const ids = named.length
     ? named
