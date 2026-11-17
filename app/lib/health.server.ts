@@ -4,8 +4,8 @@
 // It checks the settings the gate needs, the database and its Owner, the Access signing keys, and
 // each site: its key, and whether the site still conforms to the site-api contract Carrel was built
 // against, the GitHub App for the writing repository, that every AI publish reached Dustin's inbox,
-// Google (the service account key's age and whether Google still takes it, and Dustin's drive.file
-// grant), and any template social post that went out, which Dustin should know about (design
+// Google (the service account key's age and whether Google still takes it, the Search Console properties
+// shared with it, and Dustin's drive.file grant), and any template social post that went out, which Dustin should know about (design
 // decision 5, third step).
 //
 // Each run also rewrites the public conformance report (conformanceReport below), which devkit's
@@ -39,7 +39,12 @@ import {
 import { backupStatus } from "~/lib/backup.server";
 import { ALL_JOBS } from "~/lib/cron-schedule";
 import { oauthConnection, userAccessToken } from "~/lib/google/oauth.server";
-import { saAccessToken, saConnection } from "~/lib/google/service-account.server";
+import { searchConsoleAccess } from "~/lib/google/search-console.server";
+import {
+  GoogleNotConnected,
+  saAccessToken,
+  saConnection,
+} from "~/lib/google/service-account.server";
 import { installationToken, NOVELS_REPO, novelsConnection } from "~/lib/novels/repo.server";
 import { SITE_IDS, siteConnection, siteEntry, type SiteId } from "~/lib/sites.server";
 import { unseenTemplates } from "~/lib/social/queue.server";
@@ -325,6 +330,30 @@ async function checkServiceAccount(env: Env, fetcher: Fetch, now: Date): Promise
   };
 }
 
+/**
+ * Each connected site's Search Console property must be shared with the service account, a setup step that is
+ * Dustin's. One that is not fails here, so it is emailed once when it starts and once when it is fixed, while the
+ * refresh skips it in silence rather than logging the same refusal every quarter hour.
+ */
+async function checkSearchConsole(env: Env, fetcher: Fetch): Promise<CheckResult> {
+  const name = "google-search-console";
+  try {
+    const { email, sites } = await searchConsoleAccess(env, fetcher as typeof fetch);
+    const unshared = sites.filter((s) => !s.shared).map((s) => s.property);
+    // The step is Search Console Help's "Managing owners, users, and permissions" (support.google.com/webmasters/answer/7687615).
+    return unshared.length === 0
+      ? { name, ok: true, detail: `${sites.length} shared.` }
+      : {
+          name,
+          ok: false,
+          detail: `Not shared with ${email}: ${unshared.join(", ")}. In Search Console: Settings, Users and permissions, Full.`,
+        };
+  } catch (error) {
+    // Not connected is the service account's own setup, which google-service-account reports.
+    return { name, ok: error instanceof GoogleNotConnected, detail: errorMessage(error) };
+  }
+}
+
 /** Dustin's drive.file grant, if he has connected it: Google must still refresh it. */
 async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
   const connection = await oauthConnection(env);
@@ -396,6 +425,7 @@ export async function runChecks(
     checkAiPublishEmails(env),
     checkBackup(env, now),
     checkServiceAccount(env, fetcher, now),
+    checkSearchConsole(env, fetcher),
     checkDriveFile(env, fetcher),
     checkSocialTemplates(env),
   ]);

@@ -11,6 +11,8 @@
 // policy-management/ (Zero Trust > Access controls > Policies), and .../cloudflare-one/integrations/
 // identity-providers/one-time-pin/ (Zero Trust > Integrations > Identity providers).
 
+import { useEffect } from "react";
+import { enhance } from "capsomer/behavior/field";
 import { Form, useNavigate, useNavigation, useSearchParams, useSubmit } from "react-router";
 import { ButtonLink } from "capsomer/react/link";
 import { Dialog, DialogBody, DialogHeader, DialogTitle } from "capsomer/react/dialog";
@@ -209,8 +211,11 @@ function rolesFor(person: Person | undefined, project: Project | undefined): Rol
 function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) {
   const hydrated = useHydrated();
   const navigate = useNavigate();
+  // The forms are data-cap="field": Capsomer marks a typed-in control, and its dialog then ignores a
+  // backdrop press or swipe (Esc and Cancel still close).
+  useEffect(() => enhance(document), [hydrated, adding]);
   const person = (
-    <Form method="post" action="/people" className="app-form">
+    <Form method="post" action="/people" className="app-form" data-cap="field">
       <div className="cap-fields">
         <Field label="Email" required>
           <input className="cap-input" type="email" name="email" required autoComplete="off" />
@@ -245,7 +250,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
     </Form>
   );
   const agent = (
-    <Form method="post" action="/people" className="app-form">
+    <Form method="post" action="/people" className="app-form" data-cap="field">
       <p className="cap-muted app-note">
         For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never
         as you.
@@ -258,7 +263,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
             name="agent"
             required
             autoComplete="off"
-            pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,31}"
+            pattern="[A-Za-z0-9][A-Za-z0-9_\-]{0,31}"
           />
         </Field>
         <Field label="Label">
