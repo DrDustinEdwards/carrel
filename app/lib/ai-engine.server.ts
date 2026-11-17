@@ -108,8 +108,37 @@ export const FEATURES = [
     engine: "auto",
     note: "Edits for clarity and correctness in your voice, as a draft beside yours. Starts on the subscription and uses the API when it is refused.",
   },
+  // The Docs jobs are "Carrel writes it": any AI, or the Docs panel, passes Dustin's request on and Carrel's own model
+  // does the writing, so the result does not depend on which AI he asked. Someone is waiting, so they start on the API.
+  {
+    key: "docs-edit",
+    tier: "deep",
+    effort: "medium",
+    label: "Docs: suggest edits",
+    subscription: true,
+    engine: "api",
+    note: "When you ask an AI to have Carrel write it, Carrel's model makes the edits you asked for and lays them in the Google Doc as suggestions (or writes them, when you asked for a direct write), each labeled. The subscription's routine does it with Carrel's Docs tools.",
+  },
+  {
+    key: "docs-write",
+    tier: "deep",
+    effort: "medium",
+    label: "Docs: write new text",
+    subscription: true,
+    engine: "api",
+    note: "New passages in your voice, added where you asked as labeled suggestions in the Google Doc. None of your words change. The subscription's routine does it with Carrel's Docs tools.",
+  },
+  {
+    key: "docs-review",
+    tier: "standard",
+    effort: "high",
+    label: "Docs: review and comment",
+    subscription: true,
+    engine: "api",
+    note: "Comments on the words that need work, each labeled, and no change to your text. The subscription's routine does it with Carrel's Docs tools.",
+  },
 ] as const;
-type FeatureKey = (typeof FEATURES)[number]["key"];
+export type FeatureKey = (typeof FEATURES)[number]["key"];
 
 /** The API cap a month before Dustin sets one: a guard well inside his monthly API credit. */
 const DEFAULT_CAP_MICROS = 20_000_000;

@@ -403,6 +403,83 @@ describe("write, review, undo and locks", () => {
   });
 });
 
+describe("Carrel writes it", () => {
+  /** The model's answer, then Google: what Carrel's own engine would write for the request. */
+  function withModel(answer: unknown) {
+    const asked: Record<string, unknown>[] = [];
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      if (request.url !== "https://api.anthropic.com/v1/messages") return google.fetch(input, init);
+      asked.push((await request.json()) as Record<string, unknown>);
+      return Response.json({
+        id: "msg_test",
+        type: "message",
+        role: "assistant",
+        model: "claude-opus-5-5",
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: JSON.stringify(answer) }],
+        usage: { input_tokens: 1000, output_tokens: 100 },
+      });
+    };
+    const c = connectAs("owner@test.invalid", "Grok Bot", {
+      env: { ...env, ANTHROPIC_API_KEY: "sk-ant-api-test" } as Env,
+      deps: { fetcher: fetcher as typeof fetch },
+    });
+    return { c, asked };
+  }
+
+  it("writes the edits with Carrel's own model and effort, labels them as Carrel's for the AI that asked, and skips a quote it cannot place", async () => {
+    const { c: client, asked } = withModel({
+      edits: [
+        {
+          kind: "replace",
+          quote: "wide and the water was cold",
+          text: "wide and cold",
+          reason: "shorter",
+        },
+        { kind: "replace", quote: "not in the Doc", text: "x", reason: "made up" },
+      ],
+      note: "One cut.",
+    });
+    const c = await client;
+    const result = (
+      await c.call("carrel_change_doc", {
+        doc: DOC,
+        reason: "tighten",
+        ask: "Tighten the river sentence.",
+      })
+    ).structuredContent as {
+      engine: string;
+      model: string;
+      skipped: { quote: string }[];
+      suggestionIds: string[];
+    };
+    expect(result).toMatchObject({ engine: "api", model: "claude-opus-5-5" });
+    expect(result.skipped.map((s) => s.quote)).toEqual(["not in the Doc"]);
+    expect(asked[0]).toMatchObject({
+      model: "claude-opus-5-5",
+      output_config: { effort: "medium" },
+    });
+    const labels = google.docApi
+      .get(DOC)!
+      .suggestions.flatMap((s) => s.posts.map((p) => p.content));
+    expect(labels).toContain(
+      "Carrel (Claude API) for Grok Bot (claude-opus-5-5), through Carrel: shorter",
+    );
+    const usage = await testEnv.DB.prepare("SELECT feature, effort FROM ai_usage").all();
+    expect(usage.results).toEqual([{ feature: "docs-edit", effort: "medium" }]);
+  });
+
+  it("PLANT: a locked Doc refuses before the model is asked", async () => {
+    await setDocLock(testEnv.DB, await viewerFor("owner@test.invalid"), DOC, "no-ai");
+    const { c: client, asked } = withModel({ comments: [], note: "" });
+    const c = await client;
+    const refused = await c.call("carrel_comment_doc", { doc: DOC, ask: "Review it." });
+    expect(refused.isError).toBe(true);
+    expect(asked).toEqual([]);
+  });
+});
+
 describe("Docs activity", () => {
   it("lists what each AI did in which Doc, newest first, to the Owner alone", async () => {
     const c = await connect();
