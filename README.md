@@ -121,6 +121,10 @@ They run on every save, on the saved text, and after a refresh that finds change
 
 There is no global word list: a word Dustin uses is never flagged. A session drafting a scene gets excerpts of the same writing with `carrel_read_book_file`, among them a long sentence of his and a short one. Every check has a planted problem that must be flagged and a clean twin that must not (`test/checks.test.ts`).
 
+## A book file and a Google Doc
+
+For a coauthor who works in Google Docs. On a book file, the Owner picks a Doc from Manuscripts and brings it in: its text becomes the file's working copy in the room, Google's open suggestions become Carrel suggestions (round "Google Docs", each by the person on the book whose name matches its author in Google, else by the Owner), and its open comment threads become Carrel threads on the same words. Nothing reaches Git until someone saves. Send to the Doc then lays what changed in Carrel into the same Doc as suggestions labeled "Desk", accepts or rejects in the Doc each Google suggestion decided in Carrel when the text says which, and adds each thread started in Carrel since as a comment. Images, tables and colors stay in the Doc; what goes back is text, not a heading's level or a word's bold (`app/lib/google/book-docs.server.ts`, `test/book-docs.test.ts`).
+
 ## Importing a manuscript from Word
 
 A manuscript that starts as Word files (exported from Google Docs with File, Download, Microsoft Word) is converted once into a book in the writing repository, then reviewed as a pull request there. Nothing is sent anywhere; the importer reads the files and writes Markdown into a local clone.
