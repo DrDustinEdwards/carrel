@@ -59,7 +59,7 @@ import {
   type ExportFormat,
   type ReviewAction,
 } from "~/lib/google/docs.server";
-import { changeInFile, commentOnFile, kindOf, readFile } from "~/lib/google/slides-sheets.server";
+import { changeInFile, commentOnFile, fileKind, readFile } from "~/lib/google/slides-sheets.server";
 import { keyMomentProblems } from "~/lib/transcript";
 import { readMentions, runIntent as runMentionsIntent } from "~/lib/mentions.server";
 import {
@@ -1497,7 +1497,7 @@ export const TOOLS: Tool[] = [
           .filter((m) => AI_FILES.includes(m.mimeType))
           .map((m) => ({
             docId: m.fileId,
-            kind: kindOf(m.mimeType),
+            kind: fileKind(m.mimeType),
             name: m.name,
             folder: m.folder,
             modified: m.modifiedTime,

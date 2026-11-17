@@ -67,7 +67,7 @@ const SHEET_MAX = {
 } as const;
 
 /** The kind a tool call names in its answer. */
-export function kindOf(mimeType: string): "doc" | "slides" | "sheet" {
+export function fileKind(mimeType: string): "doc" | "slides" | "sheet" {
   return mimeType === GOOGLE_SLIDES ? "slides" : mimeType === GOOGLE_SHEET ? "sheet" : "doc";
 }
 
