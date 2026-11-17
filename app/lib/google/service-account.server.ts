@@ -15,11 +15,14 @@ import {
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 
 /**
- * No drive.readonly: the index takes metadata, and search asks Drive each time. `documents` is the Docs API's one
- * scope that can write, which suggestions and comments need; docBatchProblem below keeps it to those.
+ * The index takes metadata, and search asks Drive each time. drive.readonly is for one thing, the export of a Doc in
+ * the index (Drive's files.export, which no narrower scope allows); the allowlist below lets nothing else through.
+ * `documents` is the Docs API's one scope that can write, which suggestions and comments need; docBatchProblem below
+ * keeps it to those.
  */
 export const SA_SCOPES = [
   "https://www.googleapis.com/auth/drive.metadata.readonly",
+  "https://www.googleapis.com/auth/drive.readonly",
   "https://www.googleapis.com/auth/webmasters.readonly",
   "https://www.googleapis.com/auth/documents",
 ];
@@ -64,11 +67,36 @@ export class ServiceAccountRefused extends Error {
   }
 }
 
-// Every request the service account may make: listing files (metadata), Search Console's query (a POST that
-// reads), and the Docs API's read and batchUpdate on one Doc. Not Drive's files.get, whose alt=media
-// returns a file's content. A batchUpdate also passes docBatchProblem.
+// Every request the service account may make: listing files (metadata), exporting one Doc as Markdown, Word, PDF or
+// plain text, Search Console's query (a POST that reads), and the Docs API's read and batchUpdate on one Doc. Not
+// Drive's files.get, whose alt=media returns any file's content. A batchUpdate also passes docBatchProblem.
+export const EXPORT_TYPES = {
+  md: "text/markdown",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pdf: "application/pdf",
+  txt: "text/plain",
+} as const;
+const EXPORT_MIME = Object.values(EXPORT_TYPES)
+  .map((t) => encodeURIComponent(t).replace(/[.]/g, "\\."))
+  .join("|");
 const ALLOWED: { method: string; url: RegExp }[] = [
   { method: "GET", url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/files(\?|$)/ },
+  {
+    method: "GET",
+    url: new RegExp(
+      `^https://www\\.googleapis\\.com/drive/v3/files/[A-Za-z0-9_-]{10,100}/export\\?mimeType=(${EXPORT_MIME})$`,
+    ),
+  },
+  // Awareness (watch.server.ts): one channel on the service account's own change log, and stopping the one it replaces.
+  {
+    method: "GET",
+    url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/changes\/startPageToken(\?|$)/,
+  },
+  {
+    method: "POST",
+    url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/changes\/watch\?pageToken=[A-Za-z0-9_-]{1,200}$/,
+  },
+  { method: "POST", url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/channels\/stop$/ },
   {
     method: "POST",
     url: /^https:\/\/searchconsole\.googleapis\.com\/webmasters\/v3\/sites\/[^/]+\/searchAnalytics\/query$/,

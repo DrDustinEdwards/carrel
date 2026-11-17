@@ -47,9 +47,9 @@ function pem(bytes: ArrayBuffer): string {
   return `-----BEGIN PRIVATE KEY-----\n${btoa(s).replace(/(.{64})/g, "$1\n")}\n-----END PRIVATE KEY-----\n`;
 }
 
-/** A service account key file as Google downloads it, and the public half to verify with. */
-export async function serviceAccountKey() {
-  const pair = (await crypto.subtle.generateKey(
+/** A fresh RS256 key pair, as Google signs with. */
+export async function rsaPair() {
+  return (await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
       modulusLength: 2048,
@@ -59,6 +59,11 @@ export async function serviceAccountKey() {
     true,
     ["sign", "verify"],
   )) as CryptoKeyPair;
+}
+
+/** A service account key file as Google downloads it, and the public half to verify with. */
+export async function serviceAccountKey() {
+  const pair = await rsaPair();
   const json = JSON.stringify({
     type: "service_account",
     project_id: "carrel-test",
@@ -111,6 +116,11 @@ export function fakeGoogle(opts: {
     docEdits: new Map<string, string>(),
     /** Google saves a suggestion's text but not its reply: commentUpdateState says so. */
     labelFails: false,
+    /** What Dustin's grant shared, and the Docs it uploaded with their metadata. */
+    shared: [] as Record<string, unknown>[],
+    uploads: [] as { id: string; name: string; parents?: string[]; description?: string }[],
+    /** Every change channel opened or stopped. */
+    channels: [] as Record<string, unknown>[],
   };
 
   const json = (status: number, body: unknown) =>
@@ -202,6 +212,38 @@ export function fakeGoogle(opts: {
       });
     }
 
+    // Dustin's grant makes a folder and shares it (drive.file reaches what Carrel made).
+    if (
+      url.href === "https://www.googleapis.com/drive/v3/files?fields=id" &&
+      request.method === "POST"
+    ) {
+      if (auth !== `Bearer ${USER_TOKEN}`) return json(401, { error: { code: 401 } });
+      const meta = (await request.json()) as { name: string; mimeType: string };
+      const id = `folderMade${files.length + 1}`;
+      files.push({ id, name: meta.name, mimeType: meta.mimeType, parent: "root" });
+      return json(200, { id });
+    }
+    // Drive's change channel (watch.server.ts), on the service account's own change log.
+    if (url.origin === "https://www.googleapis.com" && url.pathname.startsWith("/drive/v3/c")) {
+      if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
+      if (url.pathname === "/drive/v3/changes/startPageToken")
+        return json(200, { startPageToken: "42" });
+      const body = (await request.json()) as Record<string, unknown>;
+      state.channels.push({ path: url.pathname, ...body });
+      if (url.pathname === "/drive/v3/changes/watch")
+        return json(200, {
+          resourceId: `res-${state.channels.length}`,
+          expiration: String(body.expiration),
+        });
+      return new Response(null, { status: 204 });
+    }
+    const permissions = /^\/drive\/v3\/files\/([^/]+)\/permissions$/.exec(url.pathname);
+    if (url.origin === "https://www.googleapis.com" && permissions && request.method === "POST") {
+      if (auth !== `Bearer ${USER_TOKEN}`) return json(401, { error: { code: 401 } });
+      state.shared.push({ file: permissions[1]!, ...((await request.json()) as object) });
+      return json(200, { id: "perm1" });
+    }
+
     if (
       url.href.startsWith(
         "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
@@ -214,17 +256,47 @@ export function fakeGoogle(opts: {
         .split(`--${boundary}`)
         .slice(1, -1)
         .map((p) => p.replace(/^\r\n/, "").split("\r\n\r\n"));
-      const meta = JSON.parse(parts[0]![1]!.trim()) as { name: string; mimeType: string };
+      const meta = JSON.parse(parts[0]![1]!.trim()) as {
+        name: string;
+        mimeType: string;
+        parents?: string[];
+        description?: string;
+      };
       if (meta.mimeType !== "application/vnd.google-apps.document")
         return json(400, { error: "expected a Doc" });
       const content = parts[1]!.slice(1).join("\r\n\r\n").replace(/\r\n$/, "");
       const id = `doc${docs.size + 1}`;
       docs.set(id, { name: meta.name, content });
-      return json(200, { id, webViewLink: `https://docs.google.com/document/d/${id}/edit` });
+      if (meta.parents)
+        files.push({
+          id,
+          name: meta.name,
+          mimeType: meta.mimeType,
+          parent: meta.parents[0]!,
+          content,
+        });
+      state.uploads.push({ id, ...meta });
+      return json(200, {
+        id,
+        name: meta.name,
+        webViewLink: `https://docs.google.com/document/d/${id}/edit`,
+      });
     }
 
     const exported = /^\/drive\/v3\/files\/([^/]+)\/export$/.exec(url.pathname);
     if (url.origin === "https://www.googleapis.com" && exported && request.method === "GET") {
+      if (auth === `Bearer ${SA_TOKEN}`) {
+        // The robot exports a Doc it can read: its text, as the type asked for.
+        const shared = docApi.get(decodeURIComponent(exported[1]!));
+        if (!shared) return json(404, { error: { code: 404 } });
+        const type = url.searchParams.get("mimeType") ?? "";
+        return new Response(
+          shared.paragraphs.map((p) => p.segs.map((g) => g.t).join("")).join("\n"),
+          {
+            headers: { "Content-Type": type },
+          },
+        );
+      }
       if (auth !== `Bearer ${USER_TOKEN}`) return json(401, { error: { code: 401 } });
       if (url.searchParams.get("mimeType") !== "text/markdown")
         return json(400, { error: "mimeType" });
