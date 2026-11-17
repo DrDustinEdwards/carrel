@@ -23,7 +23,11 @@ beforeEach(async () => {
   projectId = await addProject("de-info", "dustinedwards");
 });
 
-async function seeded(posts: Record<string, string>, published: string[] = []) {
+async function seeded(
+  posts: Record<string, string>,
+  published: string[] = [],
+  limits: { budget?: number } = {},
+) {
   const adapter = memoryAdapter();
   for (const [id, source] of Object.entries(posts)) {
     const saved = await adapter.content.saveDraft(id, {
@@ -34,7 +38,7 @@ async function seeded(posts: Record<string, string>, published: string[] = []) {
     if (published.includes(id))
       await adapter.content.publish(id, { expectedVersion: saved.version, changeId: "seed" });
   }
-  return fakeSite(adapter);
+  return fakeSite(adapter, limits);
 }
 
 describe("refresh", () => {
@@ -52,7 +56,7 @@ describe("refresh", () => {
       { id: projectId, site: "dustinedwards" },
       site.fetch,
     );
-    expect(result).toEqual({ listed: 2, fetched: 2, removed: 0, pending: 0 });
+    expect(result).toEqual({ listed: 2, fetched: 2, removed: 0, pending: 0, limited: false });
 
     const env = connectedEnv();
     expect((await searchItems(env.DB, projectId, { q: "purge" })).map((i) => i.itemId)).toEqual([
@@ -96,6 +100,28 @@ describe("refresh", () => {
       ["a"],
     );
     expect(await searchItems(env.DB, projectId, { q: "B" })).toEqual([]);
+  });
+
+  // CARREL-4: the site's limiter answered 429 part way through the body reads, and the whole refresh was
+  // logged as an error. The reads stop at the refusal, keep what they read, and the next run carries on.
+  it("stops reading bodies at the site's rate limit, keeps what it read, and carries on next run", async () => {
+    const site = await seeded({ a: "# A\nalpha\n", b: "# B\nbravo\n", c: "# C\ncharlie\n" }, [], {
+      budget: 3,
+    });
+    const env = connectedEnv();
+    const first = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, site.fetch);
+    // One list and two bodies fit the budget of three; the third body is refused.
+    expect(first).toEqual({ listed: 3, fetched: 2, removed: 0, pending: 1, limited: true });
+    expect((await searchItems(env.DB, projectId, { q: "alpha" })).map((i) => i.itemId)).toEqual([
+      "a",
+    ]);
+
+    const later = fakeSite(site.adapter);
+    const second = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, later.fetch);
+    expect(second).toMatchObject({ fetched: 1, pending: 0, limited: false });
+    expect((await searchItems(env.DB, projectId, { q: "charlie" })).map((i) => i.itemId)).toEqual([
+      "c",
+    ]);
   });
 });
 
