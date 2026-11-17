@@ -6,8 +6,11 @@
 
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { base64url } from "@dustinedwards/site-runtime/encoding";
+
 import { docActivity, saveDocsEmail, setDocLock } from "~/lib/google/docs.server";
 import { refreshManuscripts } from "~/lib/google/drive.server";
+import { panelAnswer } from "~/lib/google/panel.server";
 import {
   clearSaTokenCache,
   assertAllowed,
@@ -15,7 +18,7 @@ import {
 } from "~/lib/google/service-account.server";
 
 import { addPerson, mailbox, resetDb, testEnv } from "./env";
-import { fakeGoogle, serviceAccountKey } from "./google";
+import { fakeGoogle, rsaPair, serviceAccountKey } from "./google";
 import { connectAs } from "./mcp-client";
 import { connectedEnv, viewerFor } from "./site";
 
@@ -421,7 +424,7 @@ describe("write, review, undo and locks", () => {
 
 describe("Carrel writes it", () => {
   /** The model's answer, then Google: what Carrel's own engine would write for the request. */
-  function withModel(answer: unknown) {
+  function modelFetcher(answer: unknown) {
     const asked: Record<string, unknown>[] = [];
     const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
@@ -437,9 +440,14 @@ describe("Carrel writes it", () => {
         usage: { input_tokens: 1000, output_tokens: 100 },
       });
     };
+    return { fetcher: fetcher as typeof fetch, asked };
+  }
+
+  function withModel(answer: unknown) {
+    const { fetcher, asked } = modelFetcher(answer);
     const c = connectAs("owner@test.invalid", "Grok Bot", {
       env: { ...env, ANTHROPIC_API_KEY: "sk-ant-api-test" } as Env,
-      deps: { fetcher: fetcher as typeof fetch },
+      deps: { fetcher },
     });
     return { c, asked };
   }
@@ -484,6 +492,87 @@ describe("Carrel writes it", () => {
     );
     const usage = await testEnv.DB.prepare("SELECT feature, effort FROM ai_usage").all();
     expect(usage.results).toEqual([{ feature: "docs-edit", effort: "medium" }]);
+  });
+
+  it("the Docs panel: Google's ID token for the add-on's client, naming the Owner, runs the job with his selection; any other token reaches nothing", async () => {
+    const pair = await rsaPair();
+    const jwk = { ...(await crypto.subtle.exportKey("jwk", pair.publicKey)), kid: "google-kid" };
+    const keys = async (kid: string) => (kid === "google-kid" ? jwk : undefined);
+    const now = Math.floor(Date.now() / 1000);
+    const sign = async (claims: Record<string, unknown>) => {
+      const head = base64url(
+        new TextEncoder().encode(JSON.stringify({ alg: "RS256", kid: "google-kid" })),
+      );
+      const body = base64url(
+        new TextEncoder().encode(
+          JSON.stringify({
+            iss: "https://accounts.google.com",
+            aud: "panel.apps.googleusercontent.com",
+            email: "owner@test.invalid",
+            email_verified: true,
+            iat: now,
+            exp: now + 3600,
+            ...claims,
+          }),
+        ),
+      );
+      const sig = await crypto.subtle.sign(
+        "RSASSA-PKCS1-v1_5",
+        pair.privateKey,
+        new TextEncoder().encode(`${head}.${body}`),
+      );
+      return `${head}.${body}.${base64url(new Uint8Array(sig))}`;
+    };
+    const { fetcher, asked } = modelFetcher({
+      edits: [
+        {
+          kind: "replace",
+          quote: "wide and the water was cold",
+          text: "wide and cold",
+          reason: "shorter",
+        },
+      ],
+      note: "One cut.",
+    });
+    const panelEnv = {
+      ...env,
+      ANTHROPIC_API_KEY: "sk-ant-api-test",
+      GOOGLE_PANEL_CLIENT_ID: "panel.apps.googleusercontent.com",
+    } as Env;
+    const ask = async (claims: Record<string, unknown>) =>
+      panelAnswer(
+        new Request("https://carrel-mcp.test/docs-panel", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${await sign(claims)}` },
+          body: JSON.stringify({
+            doc: DOC,
+            ask: "Tighten this.",
+            job: "edit",
+            selection: "The river was wide",
+          }),
+        }),
+        panelEnv,
+        keys,
+        fetcher,
+      );
+
+    const editor = await ask({ email: "editor@test.invalid" });
+    expect(editor.status).toBe(403);
+    const unverified = await ask({ email_verified: false });
+    expect(unverified.status).toBe(403);
+    const other = await ask({ aud: "other.apps.googleusercontent.com" });
+    expect(other.status).toBe(403);
+    expect(((await other.json()) as { error: string }).error).toContain(
+      "other.apps.googleusercontent.com",
+    );
+    expect(asked).toEqual([]);
+
+    const done = await ask({});
+    expect(done.status).toBe(200);
+    expect(await done.json()).toMatchObject({ ok: true, model: "claude-opus-5-5" });
+    expect(JSON.stringify(asked[0])).toContain("The river was wide");
+    const rows = await testEnv.DB.prepare("SELECT client FROM doc_changes").all();
+    expect(rows.results).toEqual([{ client: "Carrel (Claude API) for Docs panel" }]);
   });
 
   it("PLANT: a locked Doc refuses before the model is asked", async () => {

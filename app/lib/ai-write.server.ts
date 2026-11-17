@@ -368,6 +368,8 @@ type DocAsk = {
   mode?: "suggest" | "write";
   tab?: string;
   heading?: string;
+  /** The words Dustin selected in the Doc (the Docs panel), which the request is about. */
+  selection?: string;
 };
 
 /** What the routine is told: the same job, done with Carrel's own Docs tools. */
@@ -379,7 +381,7 @@ function docPrompt(docId: string, input: DocAsk): string {
         ? 'make the change with carrel_change_doc in mode "write": Dustin asked for a direct write'
         : "lay the change in as suggestions with carrel_change_doc";
   return [
-    `Carrel asks for one job in the Google Doc ${untrusted("doc", docId)}${input.tab ? `, tab ${untrusted("tab", input.tab)}` : ""}${input.heading ? `, section ${untrusted("heading", input.heading)}` : ""}. Dustin's request: ${untrusted("request", input.ask)}. Read the Doc with carrel_read_doc, then ${how}. Do only what he asked for.`,
+    `Carrel asks for one job in the Google Doc ${untrusted("doc", docId)}${input.tab ? `, tab ${untrusted("tab", input.tab)}` : ""}${input.heading ? `, section ${untrusted("heading", input.heading)}` : ""}. Dustin's request: ${untrusted("request", input.ask)}.${input.selection ? ` It is about these words in the Doc: ${untrusted("selection", input.selection)}.` : ""} Read the Doc with carrel_read_doc, then ${how}. Do only what he asked for.`,
     DOC_INSTRUCTION[input.job],
     UNTRUSTED_DATA_RULE,
   ].join("\n\n");
@@ -445,7 +447,11 @@ export async function writeInDoc(
           messages: [
             {
               role: "user",
-              content: [untrusted("request", ask), untrusted("doc", doc.text)].join("\n"),
+              content: [
+                untrusted("request", ask),
+                input.selection ? untrusted("selection", input.selection) : "",
+                untrusted("doc", doc.text),
+              ].join("\n"),
             },
           ],
         },

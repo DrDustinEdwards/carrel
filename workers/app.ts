@@ -16,6 +16,7 @@ import { knownZone } from "capsomer/behavior/time";
 import { runBackup } from "~/lib/backup.server";
 import { draftEpisodes } from "~/lib/episode-drafts.server";
 import { ALL_JOBS, CRON_JOBS, type JobName, type ScheduledJob } from "~/lib/cron-schedule";
+import { PANEL_PATH, panelAnswer } from "~/lib/google/panel.server";
 import { OPERATOR_PATH, operatorAnswer } from "~/lib/operator.server";
 import { refreshGoogle } from "~/lib/google/refresh.server";
 import { runHealth } from "~/lib/health.server";
@@ -92,6 +93,8 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
     // Capsid Admin's run a job now (app/lib/operator.server.ts).
     if (path === OPERATOR_PATH)
       return operatorAnswer(request, env, () => withWork(ALL_JOBS, env, ctx));
+    // The Docs panel, Carrel's add-on in Google Docs (app/lib/google/panel.server.ts).
+    if (path === PANEL_PATH) return panelAnswer(request, env);
     const response = await door(request, env, ctx);
     // The door's set says nofollow on every response; /health keeps site-runtime's own noindex, as every family site's does.
     if (path === "/health") response.headers.set("X-Robots-Tag", "noindex");

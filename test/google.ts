@@ -47,9 +47,9 @@ function pem(bytes: ArrayBuffer): string {
   return `-----BEGIN PRIVATE KEY-----\n${btoa(s).replace(/(.{64})/g, "$1\n")}\n-----END PRIVATE KEY-----\n`;
 }
 
-/** A service account key file as Google downloads it, and the public half to verify with. */
-export async function serviceAccountKey() {
-  const pair = (await crypto.subtle.generateKey(
+/** A fresh RS256 key pair, as Google signs with. */
+export async function rsaPair() {
+  return (await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
       modulusLength: 2048,
@@ -59,6 +59,11 @@ export async function serviceAccountKey() {
     true,
     ["sign", "verify"],
   )) as CryptoKeyPair;
+}
+
+/** A service account key file as Google downloads it, and the public half to verify with. */
+export async function serviceAccountKey() {
+  const pair = await rsaPair();
   const json = JSON.stringify({
     type: "service_account",
     project_id: "carrel-test",

@@ -52,6 +52,8 @@ interface CarrelSecrets extends SiteSecrets {
   GOOGLE_OAUTH_CLIENT_SECRET?: string;
   /** 32 random bytes, base64 or hex, that seal the drive.file refresh token in D1 (site-runtime secret-box). */
   GOOGLE_TOKEN_KEY?: string;
+  /** The Docs panel add-on's OAuth client id, the audience of the ID tokens it sends (app/lib/google/panel.server.ts). Not a secret. */
+  GOOGLE_PANEL_CLIENT_ID?: string;
   /**
    * The Claude Code routine that drafts brand posts (design decision 5): its API trigger's /fire URL
    * and the token generated for it, which can fire that one routine and read nothing.
