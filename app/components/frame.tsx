@@ -7,6 +7,7 @@ import { useCallback, useMemo, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import type { Command } from "capsomer/react/command-menu";
 import { LazyCommandMenu, useCommandHost } from "capsomer/react/command-host";
+import { initials } from "capsomer/behavior/avatar";
 import { Icon } from "capsomer/react/icons";
 import { routerRenderLink } from "capsomer/react/link";
 import { MessageProvider } from "capsomer/react/message";
@@ -42,14 +43,6 @@ const ICONS = {
     "M6 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13c.4-2.3 2.2-3.5 4.5-3.5s4.1 1.2 4.5 3.5M11 7a2 2 0 1 0 0-4M12 9.6c1.2.3 2.1 1.3 2.5 3.4",
   ),
 };
-
-const initialsOf = (name: string) =>
-  name
-    .split(/[\s@.]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("") || "?";
 
 export function Frame({ data, children }: { data: FrameData | null; children: ReactNode }) {
   const { pathname } = useLocation();
@@ -181,7 +174,7 @@ export function Frame({ data, children }: { data: FrameData | null; children: Re
       inbox={data ? { count: needs, countNote: "need you", href: "/" } : undefined}
       account={{
         name: data?.name ?? "Signed out",
-        initials: initialsOf(data?.name ?? ""),
+        initials: initials(data?.name ?? ""),
         role: owner ? "Owner" : undefined,
         accessLogout: Boolean(data),
       }}

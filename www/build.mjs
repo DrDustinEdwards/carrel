@@ -70,21 +70,15 @@ const TITLE = "Carrel: one desk for everything you write";
 const DESCRIPTION =
   "Carrel is an open-source writing app on Cloudflare: publish posts to several websites from one place, keep books in Git, and work with AI that drafts beside you.";
 
-/** Source Serif 4, the one face Capsomer's fonts.css leaves to @fontsource (latin only: the site is in English). */
-const SERIF = "@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2";
-
 /** @param {string} outDir */
 function writeStyles(outDir) {
   const capsomer = dirname(require.resolve("capsomer/package.json"));
   const base = join(capsomer, "css/base.css");
   // Capsomer's font files sit beside site.css, so its fonts.css loads them as fonts/.
   cpSync(join(capsomer, "fonts"), join(outDir, "fonts"), { recursive: true });
-  const serif = SERIF.split("/").pop() ?? "";
-  copyFileSync(require.resolve(SERIF), join(outDir, "fonts", serif));
   const css = [
     "/* Built by www/build.mjs: Capsomer's fonts, tokens, base, link system, Carrel's family, the manual theme and the family footer, then www/site.css. */",
     inlineCss(join(capsomer, "css", "fonts.css")).replaceAll('url("../fonts/', 'url("fonts/'),
-    `@font-face {\n  font-family: "Source Serif 4";\n  font-style: normal;\n  font-weight: 200 900;\n  font-display: swap;\n  src: url("fonts/${serif}") format("woff2");\n}`,
     inlineCss(join(capsomer, "css", "tokens.css")),
     inlineCss(base),
     inlineCss(join(capsomer, "components", "link", "link.css")),
