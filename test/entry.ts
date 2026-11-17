@@ -15,11 +15,17 @@ export class DocRoom extends Room {
   #changes = 0;
 
   override async onStart() {
-    await super.onStart();
+    // Counted ahead of y-partyserver's own listener: when its timer runs late, that listener starts the
+    // save inside this same event, and a change counted after the save began would wait for a save that
+    // never comes. The stored state applied while starting is not a change.
+    let started = false;
     this.document.on("update", () => {
+      if (!started) return;
       this.#changes++;
       changed(this);
     });
+    await super.onStart();
+    started = true;
   }
 
   override async onSave() {
