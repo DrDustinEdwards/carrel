@@ -1,16 +1,11 @@
 // The cron's Google work: the manuscripts index (so files added to the folder appear), the channel on which Google
 // tells Carrel of a change sooner (watch.server.ts), and each
 // site's Search Console rows (at most daily). Nothing runs until the service account is set up; a
-// failure is logged, and the health check is where a broken key is reported.
-
-import { isNotNull } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
-
-import { projects } from "~/db/schema";
-import { isSiteId, siteConnection } from "~/lib/sites.server";
+// failure is logged, and the health check is where a broken key, or a property not shared with the service account,
+// is reported. An unshared property is skipped here, not retried as an error every quarter hour.
 
 import { manuscriptsFolder, refreshManuscripts } from "./drive.server";
-import { refreshSearchConsole } from "./search-console.server";
+import { refreshSearchConsole, searchConsoleAccess } from "./search-console.server";
 import { saConnection } from "./service-account.server";
 import { keepWatching } from "./watch.server";
 
@@ -38,21 +33,14 @@ export async function refreshGoogle(
       note("watch", error);
     }
   }
-  const sites = await drizzle(env.DB)
-    .select({ id: projects.id, slug: projects.slug, site: projects.site })
-    .from(projects)
-    .where(isNotNull(projects.site))
-    .all();
+  // A refused list throws, and the job is recorded failed: that is Google refusing the key, not a setup step.
+  const { sites } = await searchConsoleAccess(env, fetcher);
   for (const row of sites) {
-    if (!isSiteId(row.site) || siteConnection(env, row.site).state !== "connected") continue;
+    const key = `search-console:${row.slug}`;
     try {
-      out[`search-console:${row.slug}`] = await refreshSearchConsole(
-        env,
-        { id: row.id, site: row.site },
-        fetcher,
-      );
+      out[key] = row.shared ? await refreshSearchConsole(env, row, fetcher) : "not shared";
     } catch (error) {
-      note(`search-console:${row.slug}`, error);
+      note(key, error);
     }
   }
   return out;

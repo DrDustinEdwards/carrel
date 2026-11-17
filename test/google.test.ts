@@ -15,6 +15,7 @@ import {
   searchManuscripts,
   sendToDocs,
 } from "~/lib/google/drive.server";
+import { refreshGoogle } from "~/lib/google/refresh.server";
 import { pageStats, refreshSearchConsole } from "~/lib/google/search-console.server";
 import {
   assertAllowed,
@@ -519,7 +520,8 @@ describe("Search Console", () => {
     const owner = await viewerFor("owner@test.invalid");
     const project = await requireSiteProject(testEnv.DB, owner, SLUG, "read");
     const now = new Date("2026-09-27T12:00:00Z");
-    expect(await refreshSearchConsole(env, project, google.fetch, now)).toEqual({
+    const sc = { id: project.id, property: "sc-domain:dustinedwards.info" };
+    expect(await refreshSearchConsole(env, sc, google.fetch, now)).toEqual({
       pages: 1,
       skipped: false,
       start: "2026-08-28",
@@ -529,8 +531,7 @@ describe("Search Console", () => {
       "POST https://searchconsole.googleapis.com/webmasters/v3/sites/sc-domain%3Adustinedwards.info/searchAnalytics/query",
     ]);
     expect(
-      (await refreshSearchConsole(env, project, google.fetch, new Date("2026-09-27T20:00:00Z")))
-        .skipped,
+      (await refreshSearchConsole(env, sc, google.fetch, new Date("2026-09-27T20:00:00Z"))).skipped,
     ).toBe(true);
     expect(await pageStats(env, project, "/blog/post-one")).toMatchObject({
       clicks: 12,
@@ -538,5 +539,33 @@ describe("Search Console", () => {
       position: 8.44,
     });
     expect(await pageStats(env, project, "/blog/other")).toBeNull();
+  });
+
+  it("PLANT: a property not shared with the service account is a setup step: skipped without an error, named once by health", async () => {
+    google.state.scShared.clear();
+    const lines: string[] = [];
+    const error = console.error;
+    console.error = (...args: unknown[]) => void lines.push(args.join(" "));
+    try {
+      expect(
+        await refreshGoogle(googleEnv({ GOOGLE_MANUSCRIPTS_FOLDER_ID: undefined }), google.fetch),
+      ).toEqual({
+        [`search-console:${SLUG}`]: "not shared",
+      });
+    } finally {
+      console.error = error;
+    }
+    expect(lines.filter((l) => l.includes("google.refresh-failed"))).toEqual([]);
+    expect(google.requests.filter((r) => r.includes("searchAnalytics"))).toEqual([]);
+
+    const { results } = await runHealth(
+      { ...env, EMAIL: { send: async () => ({ messageId: "m" }) } as unknown as SendEmail },
+      (url, init) => google.fetch(url, init),
+    );
+    expect(results.find((r) => r.name === "google-search-console")).toEqual({
+      name: "google-search-console",
+      ok: false,
+      detail: `Not shared with ${CLIENT_EMAIL}: sc-domain:dustinedwards.info. In Search Console: Settings, Users and permissions, Full.`,
+    });
   });
 });
