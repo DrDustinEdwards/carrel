@@ -11,13 +11,14 @@
 // what is written. The version it is checked against is the room's too. After the write, the room is
 // told the new version, and everyone who had a hand in the text goes into the authorship record.
 
-import { viewerRequest } from "@dustinedwards/site-runtime/doc-room";
+import { viewerRequest, type ReplaceInput } from "@dustinedwards/site-runtime/doc-room";
 import { getServerByName } from "partyserver";
 import { chunked, inList, rowsPerInsert } from "@dustinedwards/site-runtime/d1";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changeContributors, changes, drafts, people, rooms } from "~/db/schema";
+import type { JsonDoc } from "capsomer/behavior/collab-editor";
 import type { Dialect } from "capsomer/behavior/rich-editor";
 import type { Viewer } from "~/lib/people.server";
 import { can, type Role } from "~/lib/roles";
@@ -145,13 +146,17 @@ export async function hasRoom(db: D1Database, projectId: number, itemId: string)
   return Boolean(row);
 }
 
-/** Replaces the room's whole text for everyone. Takes edit: Discard, the site's version, an AI draft, a draft from before the room, an import. */
+/**
+ * Replaces the room's whole text for everyone. Takes edit: Discard, the site's version, an AI draft, a draft from
+ * before the room, an import. A Google Doc brought in gives `doc`, the editor's JSON with its suggestions, and
+ * `threads`, its comments (lib/google/book-docs.server.ts).
+ */
 export async function replaceRoom(
   env: Env,
   project: Where,
   viewer: Viewer,
   itemId: string,
-  input: { markdown: string; version: string | null; unsaved?: boolean },
+  input: Pick<ReplaceInput, "markdown" | "version" | "unsaved" | "doc" | "threads">,
 ): Promise<void> {
   if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
   const room = await stub(env, project.id, itemId);
@@ -195,6 +200,16 @@ export async function roomText(
 ): Promise<{ markdown: string; version: string | null }> {
   const snap = await (await stub(env, project.id, itemId)).snapshot();
   return { markdown: snap.markdown, version: snap.version };
+}
+
+/** The room's document as the editor's JSON, suggestions and all, or null before anyone opened the file. */
+export async function roomDocument(
+  env: Env,
+  project: Where,
+  itemId: string,
+): Promise<JsonDoc | null> {
+  const text = await (await stub(env, project.id, itemId)).json();
+  return text === null ? null : (JSON.parse(text) as JsonDoc);
 }
 
 /** The room's version now, for a write that sends no text (unpublish, unschedule). */
