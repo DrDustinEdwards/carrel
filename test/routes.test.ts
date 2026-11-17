@@ -92,16 +92,35 @@ describe("the preview", () => {
 });
 
 describe("publishing from the editor", () => {
-  it("asks before a first publish, and publishes on the explicit second ask", async () => {
+  it("asks before a first publish naming who edited since the last one, and publishes on the explicit second ask", async () => {
     const site = fakeSite();
     vi.stubGlobal("fetch", site.fetch);
     const env = connectedEnv();
     await seedPost(site);
-    await editorLoader({
+    // Saves before the last publish are no one's to name now; the saver and those credited beside them since are.
+    const id = (name: string) =>
+      testEnv.DB.prepare("SELECT id FROM people WHERE email = ?")
+        .bind(`${name}@test.invalid`)
+        .first<number>("id");
+    const projectId = await testEnv.DB.prepare("SELECT id FROM projects").first<number>("id");
+    const saved = (change: string, who: number | null | undefined, action: string, at: string) =>
+      testEnv.DB.prepare(
+        "INSERT INTO changes (id, project_id, item_id, person_id, action, version_after, created_at) VALUES (?, ?, 'post-one', ?, ?, 'v', ?)",
+      ).bind(change, projectId, who ?? null, action, at);
+    await testEnv.DB.batch([
+      saved("c1", await id("owner"), "save", "2026-01-01T00:00:00Z"),
+      saved("c2", await id("owner"), "publish", "2026-01-02T00:00:00Z"),
+      saved("c3", await id("editor"), "save", "2026-01-03T00:00:00Z"),
+      testEnv.DB.prepare(
+        "INSERT INTO change_contributors (change_id, person_id) VALUES ('c3', ?)",
+      ).bind(await id("reader")),
+    ]);
+    const page = (await editorLoader({
       request: new Request(`https://carrel.test/p/${SLUG}/e/post-one`),
       params: { project: SLUG, item: "post-one" },
       context: await contextFor("owner@test.invalid", env),
-    } as never);
+    } as never)) as { editors: string[] };
+    expect([...page.editors].sort()).toEqual(["editor", "reader"]);
 
     const ask = await post("owner@test.invalid", env, { intent: "publish" });
     expect(ask).toEqual({ intent: "publish", needsConfirm: true });

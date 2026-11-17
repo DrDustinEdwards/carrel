@@ -13,7 +13,13 @@ import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
-import { PublishGate, type GateCheck, type GateSite } from "capsomer/react/publish-gate";
+import {
+  PublishButton,
+  PublishGate,
+  gateStates,
+  type GateCheck,
+  type GateSite,
+} from "capsomer/react/publish-gate";
 import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { exact, parse } from "capsomer/behavior/time";
@@ -92,6 +98,7 @@ import {
   roomText,
   roomVersion,
   saveRoom,
+  editorsSincePublish,
   siteCoauthors,
   withOthers,
 } from "~/lib/rooms.server";
@@ -253,6 +260,8 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const coauthors = revisions
     ? await siteCoauthors(env.DB, project.id, itemId)
     : new Map<string, string[]>();
+  // Named in the publish confirmation: everyone who edited since the last publish.
+  const editors = canPublish ? await editorsSincePublish(env, project, itemId) : [];
   const paths = sitePaths(targets);
   const connection = siteConnection(env, project.site);
   const linkTargets: { href: string; title: string; state: "published" | "scheduled" | "draft" }[] =
@@ -274,6 +283,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
       ? { endpoint: `/p/${encodeURIComponent(project.slug)}/media/api`, accept: mediaAccept }
       : null,
     canPublish,
+    editors,
     // Dismissing a flag clears it for publish on any post, so it stays the Owner's.
     canDismiss: can(project.role, "publish"),
     canScheduleUpdate,
@@ -569,7 +579,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       | "schedule"
       | "dismiss"
       | "save-live"
-      | "unschedule";
+      | "unschedule"
+      | "publish";
     flag?: number;
   }>();
   const writer = useFetcher<ActionResult>();
@@ -634,6 +645,18 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     viaGate.current = false;
     if (result.intent !== "write") throw new Error("The site did not answer.");
     if (!result.outcome.ok) throw new Error(result.outcome.message);
+  };
+
+  const unpublish = async () => {
+    try {
+      await writeThrough("unpublish");
+    } catch (error) {
+      return say(`Could not unpublish: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    say(`Unpublished from ${data.project.site}.`, {
+      undo: () => writeThrough("publish", { confirm: "first-publish" }),
+      undone: `Published to ${data.project.site} again.`,
+    });
   };
 
   // Results of the buttons Carrel owns are said in the message region; the gate says its own.
@@ -825,7 +848,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
       | "schedule"
       | "dismiss"
       | "save-live"
-      | "unschedule",
+      | "unschedule"
+      | "publish",
     opener: HTMLElement | null,
     flag?: number,
   ) => asking.ask({ kind, flag }, opener);
@@ -1183,15 +1207,26 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               content: (
                 <div className="app-stack">
                   {onSite && data.canPublish && hydrated ? (
-                    <PublishGate
-                      label="Publish checks"
-                      sites={[gateSite]}
-                      checks={gateChecks}
-                      publish={() => writeThrough("publish", { confirm: "first-publish" })}
-                      unpublish={() => writeThrough("unpublish")}
-                      say={say}
-                      fail={(text) => say(text)}
-                    />
+                    <>
+                      <PublishButton
+                        gateId="publish-gate"
+                        site={gateSite}
+                        state={gateStates([gateSite], gateChecks).overall}
+                        busy={busy}
+                        summaryId="publish-gate-sum"
+                        size="default"
+                        onPublish={() => ask("publish", null)}
+                        onUnpublish={() => void unpublish()}
+                      />
+                      <PublishGate
+                        id="publish-gate"
+                        summaryId="publish-gate-sum"
+                        label="Publish checks"
+                        sites={[gateSite]}
+                        checks={gateChecks}
+                        actions="none"
+                      />
+                    </>
                   ) : null}
                   {data.flags.length > 0 ||
                   data.aiDrafts.length > 0 ||
@@ -1290,6 +1325,30 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         open={asking.subject?.kind === "drop-draft"}
         perform={async () => {
           await send("drop-own-draft", { confirmed: "1" });
+        }}
+      />
+      <ConfirmDialog
+        {...asking.props}
+        open={asking.subject?.kind === "publish"}
+        title={`Publish to ${data.project.site}?`}
+        lead={
+          data.everPublished
+            ? "The post goes public at once."
+            : "Publishing for the first time cannot be taken back quietly: it goes public at once."
+        }
+        body={[
+          data.editors.length > 0
+            ? `Edited since the last publish by ${data.editors.join(", ")}.`
+            : "No one has edited it since the last publish.",
+        ]}
+        action={`Publish to ${data.project.site}`}
+        perform={async () => {
+          try {
+            await writeThrough("publish", { confirm: "first-publish" });
+            say(`Published to ${data.project.site}.`);
+          } catch (error) {
+            say(`Could not publish: ${error instanceof Error ? error.message : String(error)}`);
+          }
         }}
       />
       <ConfirmDialog
