@@ -17,13 +17,16 @@ export function connectedEnv(overrides: Partial<Env> = {}): Env {
   return { ...testEnv, SITE_DUSTINEDWARDS_KEY: SITE_KEY, ...overrides };
 }
 
+/** `budget`: how many requests the site's limiter lets through before it answers 429; unlimited by default. */
 export function fakeSite<A extends SiteAdapter = ReturnType<typeof memoryAdapter>>(
   adapter: A = memoryAdapter() as SiteAdapter as A,
+  { budget = Infinity }: { budget?: number } = {},
 ) {
+  let spent = 0;
   const api = createSiteApi({
     adapter,
     key: SITE_KEY,
-    limiter: { limit: async () => ({ success: true }) },
+    limiter: { limit: async () => ({ success: ++spent <= budget }) },
     log: () => {},
   });
   const requests: string[] = [];
