@@ -5,11 +5,11 @@
 // feature image is picked from the media library with its alt text, which a publish needs unless the
 // image is marked decorative (missingAltFields, shown on its box and in the publish gate).
 
-import { useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { isImeEnter } from "capsomer/behavior/shortcuts";
 import { Button } from "capsomer/react/button";
 import { Check, Field } from "capsomer/react/field";
-import { useTyped, type TypedBox } from "capsomer/react/frontmatter-fields";
+import { typedProps, useTyped, type TypedBox } from "capsomer/react/frontmatter-fields";
 import { SortableList } from "capsomer/react/sortable-list";
 
 import { joinSource, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
@@ -42,20 +42,6 @@ type Props = {
   /** Carrel's media endpoint for the picker; null on a site without a library, where the address is typed. */
   media: { endpoint: string } | null;
 };
-
-/** A box's props: its typing kept, and each change written through `write`. */
-export function typedProps(box: TypedBox, locked: boolean, write: (text: string) => void) {
-  return {
-    className: "cap-input",
-    value: box.value,
-    readOnly: locked,
-    onBlur: box.done,
-    onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      box.keep(event.target.value);
-      write(event.target.value);
-    },
-  };
-}
 
 export function PostFields({ source, onChange, readOnly, listed, origin, media }: Props) {
   const parts = splitSource(source);
