@@ -516,6 +516,25 @@ export const sentDocs = sqliteTable("sent_docs", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
+/** A book file brought in from a Google Doc, and when the two last met (lib/google/book-docs.server.ts). */
+export const docLinks = sqliteTable(
+  "doc_links",
+  {
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    itemId: text("item_id").notNull(),
+    docId: text("doc_id").notNull(),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    brought: text("brought").notNull().default("[]"),
+    revisionId: text("revision_id"),
+    syncedAt: text("synced_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.itemId] })],
+);
+
 export const searchConsolePages = sqliteTable(
   "search_console_pages",
   {

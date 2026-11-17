@@ -206,7 +206,7 @@ async function build(base: Env): Promise<World> {
         modifiedTime: "2026-09-28T14:02:00Z",
       },
       {
-        id: "m2",
+        id: "docPaluxy0002",
         name: "Paluxy Portal, chapters 1 to 4",
         mimeType: "application/vnd.google-apps.document",
         parent: "folderRoot1",
@@ -232,15 +232,44 @@ async function build(base: Env): Promise<World> {
     ],
   });
 
+  // The chapters Doc, to bring into a book file with a coauthor's suggestion and comment.
+  const chapters = google.addDoc("docPaluxy0002", {
+    title: "Paluxy Portal, chapters 1 to 4",
+    paragraphs: [
+      { heading: 1, segs: [{ t: "The crossing" }] },
+      {
+        segs: [
+          { t: "The truck quit a mile past the crossing" },
+          { t: ", and the river kept rising", ins: true, id: "suggest.rosa1" },
+          { t: "." },
+        ],
+      },
+      { segs: [{ t: "Nobody came that night." }] },
+    ],
+  });
+  chapters.suggestions.push({
+    suggestionId: "suggest.rosa1",
+    status: "OPEN",
+    by: "Rosa Park",
+    posts: [],
+  });
+  chapters.comments.push({
+    commentId: "c.1",
+    status: "OPEN",
+    quote: "Nobody came",
+    by: "Rosa Park",
+    // "The crossing\n" is 1 to 14 and the next paragraph, suggestion and newline included, 14 to 82.
+    anchor: [82, 93],
+    posts: [{ content: "Not even the sheriff?" }],
+  });
+
   // One fetch for everything the app reaches: the fake site, the fake GitHub, the fake Google.
   const real = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new Request(input, init).url;
     if (url.startsWith(SITE_ORIGIN)) return site.fetch(input, init);
     if (url.startsWith("https://api.github.com")) return gh.fetch(input, init);
-    if (
-      /^https:\/\/(oauth2|www)\.googleapis\.com|^https:\/\/searchconsole\.googleapis\.com/.test(url)
-    )
+    if (/^https:\/\/(oauth2|www|docs|searchconsole)\.googleapis\.com/.test(url))
       return google.fetch(input, init);
     return real(input, init);
   }) as typeof fetch;

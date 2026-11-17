@@ -80,9 +80,30 @@ export async function serviceAccountKey() {
 export type FakeDoc = {
   title: string;
   revisionId: string;
-  paragraphs: { heading?: number; segs: { t: string; ins?: boolean; del?: boolean }[] }[];
-  suggestions: { suggestionId: string; status: string; posts: { content: string }[] }[];
-  comments: { commentId: string; status: string; quote: string; posts: { content: string }[] }[];
+  paragraphs: {
+    heading?: number;
+    /** A list item: the list's id and nesting level; `lists` says which are numbered. */
+    bullet?: { listId: string; level?: number };
+    /** `id` names the pending suggestion a piece belongs to, "suggest.pending" when unnamed. */
+    segs: { t: string; ins?: boolean; del?: boolean; id?: string; bold?: boolean }[];
+  }[];
+  lists?: Record<string, { ordered?: boolean }>;
+  /** `by` is the suggestion's author in Google, "Carrel Robot" when unnamed. */
+  suggestions: {
+    suggestionId: string;
+    status: string;
+    by?: string;
+    posts: { content: string }[];
+  }[];
+  /** `anchor` is the thread's range in Google's positions, as commentAnchors gives it. */
+  comments: {
+    commentId: string;
+    status: string;
+    quote: string;
+    by?: string;
+    anchor?: [number, number];
+    posts: { content: string }[];
+  }[];
   /** Every batchUpdate body the Doc received, for the tests to read. */
   batches: Record<string, unknown>[];
 };
@@ -350,8 +371,9 @@ export function fakeGoogle(opts: {
               endIndex: at + text.length,
               textRun: {
                 content: text,
-                ...(seg.ins ? { suggestedInsertionIds: ["suggest.pending"] } : {}),
-                ...(seg.del ? { suggestedDeletionIds: ["suggest.pending"] } : {}),
+                ...(seg.ins ? { suggestedInsertionIds: [seg.id ?? "suggest.pending"] } : {}),
+                ...(seg.del ? { suggestedDeletionIds: [seg.id ?? "suggest.pending"] } : {}),
+                ...(seg.bold ? { textStyle: { bold: true } } : {}),
               },
             };
             at += text.length;
@@ -362,6 +384,9 @@ export function fakeGoogle(opts: {
             endIndex: at,
             paragraph: {
               elements,
+              ...(p.bullet
+                ? { bullet: { listId: p.bullet.listId, nestingLevel: p.bullet.level ?? 0 } }
+                : {}),
               paragraphStyle: {
                 namedStyleType: p.heading ? `HEADING_${p.heading}` : "NORMAL_TEXT",
               },
@@ -373,13 +398,46 @@ export function fakeGoogle(opts: {
           title: doc.title,
           revisionId: doc.revisionId,
           tabs: [
-            { tabProperties: { tabId: "t.0", title: "Tab 1" }, documentTab: { body: { content } } },
+            {
+              tabProperties: { tabId: "t.0", title: "Tab 1" },
+              documentTab: {
+                body: { content },
+                lists: Object.fromEntries(
+                  Object.entries(doc.lists ?? {}).map(([id, l]) => [
+                    id,
+                    {
+                      listProperties: {
+                        nestingLevels: [
+                          l.ordered ? { glyphType: "DECIMAL" } : { glyphSymbol: "●" },
+                        ],
+                      },
+                    },
+                  ]),
+                ),
+                commentAnchors: Object.fromEntries(
+                  doc.comments
+                    .filter((t) => t.anchor)
+                    .map((t) => [
+                      `a.${t.commentId}`,
+                      {
+                        ranges: [
+                          { tabId: "t.0", startIndex: t.anchor![0], endIndex: t.anchor![1] },
+                        ],
+                      },
+                    ]),
+                ),
+              },
+            },
           ],
           suggestions: doc.suggestions.map((t) => ({
             suggestionId: t.suggestionId,
             status: t.status,
             summaryText: "",
-            headPost: { content: "", author: { displayName: "Carrel Robot" } },
+            headPost: {
+              content: "",
+              author: { displayName: t.by ?? "Carrel Robot" },
+              createTime: "2026-11-01T10:00:00Z",
+            },
             replies: t.posts.map((p) => ({
               content: p.content,
               author: { displayName: "Carrel Robot" },
@@ -389,13 +447,15 @@ export function fakeGoogle(opts: {
             commentId: t.commentId,
             status: t.status,
             plainTextQuote: t.quote,
+            ...(t.anchor ? { anchorId: `a.${t.commentId}` } : {}),
             headPost: {
               content: t.posts[0]?.content ?? "",
-              author: { displayName: "Carrel Robot" },
+              author: { displayName: t.by ?? "Carrel Robot" },
             },
-            replies: t.posts
-              .slice(1)
-              .map((p) => ({ content: p.content, author: { displayName: "Carrel Robot" } })),
+            replies: t.posts.slice(1).map((p) => ({
+              content: p.content,
+              author: { displayName: t.by ?? "Carrel Robot" },
+            })),
           })),
         });
       }
@@ -428,6 +488,13 @@ export function fakeGoogle(opts: {
             if (!thread || thread.status !== "OPEN")
               return json(400, { error: { code: 400, message: "No such open suggestion." } });
             thread.status = r.acceptSuggestion ? "ACCEPTED" : "REJECTED";
+            // The decided pieces become plain text or go, as in Google.
+            const keep = (seg: { ins?: boolean; del?: boolean }) =>
+              r.acceptSuggestion ? seg.ins : seg.del;
+            for (const p of doc.paragraphs)
+              p.segs = p.segs.flatMap((seg) =>
+                seg.id !== decided.suggestionId ? [seg] : keep(seg) ? [{ t: seg.t }] : [],
+              );
             if (r.deleteSuggestion) doc.suggestions.splice(doc.suggestions.indexOf(thread), 1);
             changed = true;
           }

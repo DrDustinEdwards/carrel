@@ -16,6 +16,7 @@ import { comments, rooms } from "~/db/schema";
 import { listComments } from "~/lib/comments.server";
 import {
   META,
+  anchorAt,
   isSeeded,
   loadMarkdown,
   markSaved,
@@ -39,12 +40,14 @@ const model = {
   readMeta,
   markSaved,
   markdown: roomMarkdown,
-  // The door's seed carries the dialect the text is read in.
+  // The door's seed carries the dialect the text is read in; a Doc brought in carries the editor's JSON (`doc`).
   load: (doc: Y.Doc, input: Record<string, unknown>) =>
     loadMarkdown(doc, input as Parameters<typeof loadMarkdown>[1]),
   json: roomJson,
   settle: (json: unknown) => settle(roomSchema(), json as JsonDoc),
   suggestionCounts: (json: unknown) => suggestionCounts(roomSchema(), json as JsonDoc),
+  // A thread brought in with a Google Doc (lib/google/book-docs.server.ts) is anchored on its words here.
+  anchor: anchorAt,
 };
 
 export class DocRoom extends Room<Env> {

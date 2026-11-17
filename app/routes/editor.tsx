@@ -1082,7 +1082,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         <Alert tone="crit">{google.message}</Alert>
                       )
                     ) : null}
-                    <div className="app-actions">
+                    <div className="cap-cluster">
                       {!onSite && maySave ? (
                         <Button
                           variant="primary"
@@ -1135,7 +1135,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       ) : null}
                     </div>
                     {data.canSend && data.googleConnected ? (
-                      <div className="app-actions">
+                      <div className="cap-cluster">
                         <Button
                           variant="quiet"
                           pending={busy}

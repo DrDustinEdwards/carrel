@@ -41,6 +41,7 @@
     "0036_doc_actions.sql": "b821e885dc73de1fb1cacb276e4eec9b841b35fe736973b13a52d57028ea27f5",
     "0037_ai_usage_effort.sql": "4e50611748922399071339f05500e3f3ce34bf37452636addbb724f1d4c60c20",
     "0038_google_folder.sql": "3c43afbea428bec118dfa351d6c1a58f6ce6d3c62d4d6ef3789259ffb273b395",
-    "0039_drive_watch.sql": "c2eb376b402f0107fd53e8611804ebb6b663746a373d1ac61fce8ae07245d0f0"
+    "0039_drive_watch.sql": "c2eb376b402f0107fd53e8611804ebb6b663746a373d1ac61fce8ae07245d0f0",
+    "0040_doc_links.sql": "25af5c275bd213e339c798e847de8114153984de824c3d43a4f919dcd77dddca"
   }
 }

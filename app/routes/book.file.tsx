@@ -3,7 +3,7 @@
 // comments and suggestions, and Save, which commits the room's text to Git with the version it started
 // from. Beside a scene: its flags and the bible entries it names.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFetcher, useSearchParams, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Link, ButtonLink, routerRenderLink } from "capsomer/react/link";
 import { RowList } from "capsomer/react/row-list";
@@ -13,6 +13,8 @@ import { Button } from "capsomer/react/button";
 import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
 import { Disclosure } from "capsomer/react/disclosure";
+import { Field } from "capsomer/react/field";
+import { Select } from "capsomer/react/select";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import { Pill, Status } from "capsomer/react/status";
@@ -40,7 +42,11 @@ import {
   saveBookFile,
   type BookWrite,
 } from "~/lib/books.server";
-import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
+import { AiRefusal, listAiDrafts, readAiDraft } from "~/lib/ai.server";
+import { bringInDoc, readDocLink, sendToDoc } from "~/lib/google/book-docs.server";
+import { GOOGLE_DOC } from "~/lib/google/docs.server";
+import { listManuscripts } from "~/lib/google/drive.server";
+import { ServiceAccountRefused } from "~/lib/google/service-account.server";
 import { roomNames } from "~/lib/comments.server";
 import { discardDraft, readDraft, readOwnDraft } from "~/lib/content.server";
 import type { RoomViewer } from "@dustinedwards/site-runtime/doc-room";
@@ -161,8 +167,26 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     );
   }
 
+  // The Owner's Google Docs, to bring one in as this file's working copy, and the Doc it came from.
+  const docs =
+    viewer.isOwner && canEdit && opened
+      ? (await listManuscripts(env.DB, viewer))
+          .filter((m) => m.mimeType === GOOGLE_DOC)
+          .map((m) => ({ id: m.fileId, name: m.name, url: m.webViewLink }))
+      : null;
+  const link = docs ? await readDocLink(env.DB, project.id, path) : null;
+
   return {
     project: { slug: project.slug, name: project.name, book: project.book },
+    docs,
+    docLink: link
+      ? {
+          id: link.docId,
+          name: docs?.find((d) => d.id === link.docId)?.name ?? "the Doc",
+          url: docs?.find((d) => d.id === link.docId)?.url ?? null,
+          syncedAt: link.syncedAt,
+        }
+      : null,
     path,
     kind,
     label: labelFor(path),
@@ -198,12 +222,28 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   };
 }
 
+/** What Google or the Docs rules refused, to say on the page; anything else is a fault and goes on up. */
+function refusalOf(error: unknown): string {
+  if (error instanceof AiRefusal || error instanceof ServiceAccountRefused) return error.message;
+  throw error;
+}
+
 type ActionResult =
   | { intent: "discard"; discarded: true }
   | { intent: "check"; findings: Finding[] }
   | { intent: "dismiss"; dismissed: number }
   | { intent: "use-ai-draft"; used: number }
-  | { intent: "save"; outcome: BookWrite };
+  | { intent: "save"; outcome: BookWrite }
+  | {
+      intent: "bring-in-doc";
+      brought?: Awaited<ReturnType<typeof bringInDoc>>;
+      refused?: string;
+    }
+  | {
+      intent: "send-to-doc";
+      sent?: Awaited<ReturnType<typeof sendToDoc>>;
+      refused?: string;
+    };
 
 export async function action({
   params,
@@ -278,6 +318,25 @@ export async function action({
       );
       return { intent, used: id };
     }
+    case "bring-in-doc": {
+      if (!confirmationSatisfied(form)) throw confirmationRequired();
+      const doc = String(form.get("doc") ?? "");
+      if (!doc) throw new Response("Bad request", { status: 400 });
+      try {
+        const brought = await bringInDoc(env, project, viewer, path, doc);
+        // The Doc's words came in, not typed here, so they never count toward the day (ruling 6).
+        await addUntyped(env.DB, project.id, viewer.id, path, countProseWords(brought.text));
+        return { intent, brought };
+      } catch (error) {
+        return { intent, refused: refusalOf(error) };
+      }
+    }
+    case "send-to-doc":
+      try {
+        return { intent, sent: await sendToDoc(env, project, viewer, path) };
+      } catch (error) {
+        return { intent, refused: refusalOf(error) };
+      }
     case "save": {
       const { repo, detail } = bookRepo(env);
       if (!repo)
@@ -322,7 +381,7 @@ export default function BookFileRoute({ loaderData }: Route.ComponentProps) {
 }
 
 type Ask = {
-  kind: "discard" | "drop-draft" | "put-draft" | "dismiss" | "use-ai";
+  kind: "discard" | "drop-draft" | "put-draft" | "dismiss" | "use-ai" | "bring-doc";
   id?: number;
 };
 
@@ -389,6 +448,44 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       `Saved to Git (${outcome.commit.slice(0, 7)}). ${outcome.findings.length === 0 ? "Nothing flagged." : `${plural(outcome.findings.length, "flag")}; see the list.`}`,
     );
   }, [outcome, writer.state, say]);
+
+  // A Doc brought in or sent back, said once as it finishes.
+  const docs = useFetcher<ActionResult>();
+  const [chosen, setChosen] = useState(data.docLink?.id ?? "");
+  const docSaid = useRef<unknown>(null);
+  useEffect(() => {
+    const r = docs.data;
+    if (docs.state !== "idle" || !r || docSaid.current === r) return;
+    docSaid.current = r;
+    // The Doc's text replaced the room's, and what was pasted into it went with it.
+    if (r.intent === "bring-in-doc" && r.brought) untyped.current = 0;
+    if (r.intent === "bring-in-doc")
+      say(
+        r.refused ??
+          (r.brought
+            ? `Brought in ${r.brought.title}: ${plural(r.brought.suggestions, "suggestion")} and ${plural(r.brought.threads, "comment thread")} from Google${r.brought.dropped ? `; ${plural(r.brought.dropped, "image or other piece")} the editor has no place for stayed in the Doc` : ""}. Nothing is in Git until you save.`
+            : ""),
+      );
+    if (r.intent === "send-to-doc" && (r.refused || r.sent)) {
+      const s = r.sent;
+      say(
+        r.refused ??
+          [
+            `Sent to the Doc: ${plural(s!.suggested, "edit")} suggested, ${plural(s!.commented, "comment")} added`,
+            s!.accepted || s!.rejected
+              ? `, ${s!.accepted} of Google's suggestions accepted and ${s!.rejected} rejected as you did here`
+              : "",
+            s!.undecided
+              ? `; ${plural(s!.undecided, "suggestion")} left open, as the text did not say which way`
+              : "",
+            s!.skipped.length
+              ? `; ${plural(s!.skipped.length, "change")} Google could not place`
+              : "",
+            ".",
+          ].join(""),
+      );
+    }
+  }, [docs.state, docs.data, say]);
 
   // Before a save the room is asked to confirm it has every change made here, so the save holds them.
   const send = async (intent: string, extra: Record<string, string> = {}) => {
@@ -538,7 +635,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         ]}
                       />
                     ) : null}
-                    <div className="app-actions">
+                    <div className="cap-cluster">
                       <Button
                         variant="primary"
                         pending={busy}
@@ -566,6 +663,76 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           onClick={(event) => asking.ask({ kind: "discard" }, event.currentTarget)}
                         >
                           Discard unsaved changes
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                </Panel>
+              ) : null}
+              {data.docs ? (
+                <Panel
+                  title="Google Doc"
+                  src={
+                    data.docLink ? (
+                      <>
+                        Last met <Time at={data.docLink.syncedAt} />
+                      </>
+                    ) : (
+                      "For a coauthor who works in Docs"
+                    )
+                  }
+                >
+                  <div className="app-stack" data-tight>
+                    {data.docLink ? (
+                      <p className="app-note">
+                        Brought in from{" "}
+                        {data.docLink.url ? (
+                          <a href={data.docLink.url} target="_blank" rel="noopener noreferrer">
+                            {data.docLink.name}
+                          </a>
+                        ) : (
+                          data.docLink.name
+                        )}
+                        . Sending lays what changed here into it as suggestions, and threads started
+                        here as comments.
+                      </p>
+                    ) : (
+                      <p className="app-note">
+                        A Doc comes in as this file's working copy, its suggestions and comments as
+                        Carrel's.
+                      </p>
+                    )}
+                    <Field label="Doc" size="short">
+                      <Select
+                        name="doc"
+                        value={chosen}
+                        onChange={(event) => setChosen(event.currentTarget.value)}
+                        options={[
+                          { value: "", label: "Choose a Doc", disabled: true },
+                          ...data.docs.map((d) => ({ value: d.id, label: d.name })),
+                        ]}
+                      />
+                    </Field>
+                    <div className="cap-cluster">
+                      <Button
+                        pending={docs.state !== "idle"}
+                        disabledReason={chosen ? undefined : "Choose a Doc first."}
+                        onClick={(event) => asking.ask({ kind: "bring-doc" }, event.currentTarget)}
+                      >
+                        Bring in the Doc
+                      </Button>
+                      {data.docLink ? (
+                        <Button
+                          pending={docs.state !== "idle"}
+                          onClick={() =>
+                            void room
+                              .flush()
+                              .then(() =>
+                                docs.submit({ intent: "send-to-doc" }, { method: "post" }),
+                              )
+                          }
+                        >
+                          Send to the Doc
                         </Button>
                       ) : null}
                     </div>
@@ -664,7 +831,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                           >
                             {d.note ? <p>{d.note}</p> : null}
                             <p className="app-bible-body">{d.source}</p>
-                            <div className="app-actions">
+                            <div className="cap-cluster">
                               <ButtonLink
                                 size="sm"
                                 to={`${base}/h/${data.path}?compare=ai&ai=${d.id}`}
@@ -786,6 +953,20 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               { intent: "dismiss", finding: String(asking.subject.id), confirmed: "1" },
               { method: "post" },
             );
+        }}
+      />
+      <ConfirmDialog
+        {...asking.props}
+        open={asking.subject?.kind === "bring-doc"}
+        title="Bring in the Doc?"
+        lead="Its text replaces the text everyone here is working on, with Google's open suggestions and comments as Carrel's, which you then edit and save as usual. Changes since the last save are not kept, and comments from an earlier bring-in are replaced."
+        body={[data.docs?.find((d) => d.id === chosen)?.name ?? ""]}
+        action="Replace the text"
+        perform={async () => {
+          await docs.submit(
+            { intent: "bring-in-doc", doc: chosen, confirmed: "1" },
+            { method: "post" },
+          );
         }}
       />
       <ConfirmDialog
