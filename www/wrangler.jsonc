@@ -6,6 +6,7 @@
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "carrel",
   "compatibility_date": "2026-10-02",
+  "compatibility_flags": ["enable_request_signal"],
   "main": "./worker.mjs",
   "assets": {
     "directory": "./dist",

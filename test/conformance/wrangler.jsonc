@@ -6,7 +6,7 @@
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	"name": "carrel-conformance",
 	"compatibility_date": "2026-10-02",
-	"compatibility_flags": ["global_fetch_strictly_public"],
+	"compatibility_flags": ["global_fetch_strictly_public", "enable_request_signal"],
 	// The app's own tsconfig, for its ~/ path alias.
 	"tsconfig": "../../tsconfig.cloudflare.json",
 	"workers_dev": false,
