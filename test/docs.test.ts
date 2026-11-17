@@ -127,6 +127,22 @@ describe("read", () => {
   });
 });
 
+describe("export", () => {
+  it("exports a Doc in the index as text here, and as a Desk download link for Word and PDF", async () => {
+    const c = await connect();
+    const md = (await c.call("carrel_export_doc", { doc: DOC, format: "md" }))
+      .structuredContent as {
+      text: string;
+    };
+    expect(md.text).toContain("The river was wide and the water was cold.");
+    const word = (await c.call("carrel_export_doc", { doc: DOC, format: "docx" }))
+      .structuredContent as { url: string };
+    expect(word.url).toMatch(new RegExp(`/manuscripts/${DOC}/export/docx$`));
+    const outside = await c.call("carrel_export_doc", { doc: "docElsewhere1", format: "md" });
+    expect(outside.isError).toBe(true);
+  });
+});
+
 describe("suggest", () => {
   it("lays edits in as suggestions, last position first, and labels each with the AI and the reason", async () => {
     const c = await connect("owner@test.invalid", "Grok Bot");

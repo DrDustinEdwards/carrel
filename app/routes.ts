@@ -39,6 +39,7 @@ export default [
     route("social", "routes/social.tsx"),
     route("ai", "routes/ai.tsx"),
   ]),
+  route("manuscripts/:doc/export/:format", "routes/manuscripts.export.ts"),
   route("p/:project/media/api", "routes/media.api.ts"),
   route("p/:project/posts/api", "routes/posts.api.ts"),
   route("p/:project/mentions/api", "routes/mentions.api.ts"),

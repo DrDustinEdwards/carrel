@@ -225,6 +225,18 @@ export function fakeGoogle(opts: {
 
     const exported = /^\/drive\/v3\/files\/([^/]+)\/export$/.exec(url.pathname);
     if (url.origin === "https://www.googleapis.com" && exported && request.method === "GET") {
+      if (auth === `Bearer ${SA_TOKEN}`) {
+        // The robot exports a Doc it can read: its text, as the type asked for.
+        const shared = docApi.get(decodeURIComponent(exported[1]!));
+        if (!shared) return json(404, { error: { code: 404 } });
+        const type = url.searchParams.get("mimeType") ?? "";
+        return new Response(
+          shared.paragraphs.map((p) => p.segs.map((g) => g.t).join("")).join("\n"),
+          {
+            headers: { "Content-Type": type },
+          },
+        );
+      }
       if (auth !== `Bearer ${USER_TOKEN}`) return json(401, { error: { code: 401 } });
       if (url.searchParams.get("mimeType") !== "text/markdown")
         return json(400, { error: "mimeType" });

@@ -126,9 +126,10 @@ describe("the service account", () => {
     expect(google.assertions[0]).toMatchObject({ iss: CLIENT_EMAIL, scope: SA_SCOPES.join(" ") });
   });
 
-  it("never asks for drive.readonly or a Drive scope that writes; the Docs scope that writes is walled to suggestions and comments", () => {
+  it("never asks for a Drive scope that writes; drive.readonly is walled to exports, and the Docs scope that writes to suggestions and comments", () => {
     expect(SA_SCOPES).toEqual([
       "https://www.googleapis.com/auth/drive.metadata.readonly",
+      "https://www.googleapis.com/auth/drive.readonly",
       "https://www.googleapis.com/auth/webmasters.readonly",
       "https://www.googleapis.com/auth/documents",
     ]);
@@ -143,9 +144,16 @@ describe("the service account", () => {
       ["DELETE", "https://www.googleapis.com/drive/v3/files/m1?supportsAllDrives=true"],
       ["POST", "https://www.googleapis.com/drive/v3/files/m1/copy"],
       ["POST", "https://www.googleapis.com/drive/v3/files/m1/permissions"],
-      // Reading a file's text is not the service account's either.
-      ["GET", "https://www.googleapis.com/drive/v3/files/m1/export?mimeType=text/plain"],
-      ["GET", "https://www.googleapis.com/drive/v3/files/m1?alt=media"],
+      // A file's bytes, and an export to any type but the four Carrel offers, are not the service account's either.
+      ["GET", "https://www.googleapis.com/drive/v3/files/docTestAAAA1?alt=media"],
+      [
+        "GET",
+        "https://www.googleapis.com/drive/v3/files/docTestAAAA1/export?mimeType=application%2Fzip",
+      ],
+      [
+        "GET",
+        "https://www.googleapis.com/drive/v3/files/docTestAAAA1/export?mimeType=text%2Fmarkdown&alt=media",
+      ],
       ["PUT", "https://searchconsole.googleapis.com/webmasters/v3/sites/x/sitemaps/y"],
     ];
     for (const [method, url] of attempts) {
