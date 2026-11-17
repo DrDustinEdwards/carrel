@@ -989,6 +989,30 @@ async function carrelSuggestions(env: Env, docId: string) {
 }
 
 /**
+ * How many of the suggestions AIs laid in a Doc through Carrel are still open (slice 7, Home's "suggestions wait"),
+ * or null when Google would not give the Doc. A Doc locked "no AI" is not read and counts none.
+ */
+export async function waitingIn(env: Env, docId: string, fetcher?: Fetch): Promise<number | null> {
+  const ours = new Set((await carrelSuggestions(env, docId)).map((s) => s.id));
+  if (ours.size === 0) return 0;
+  const lock = await drizzle(env.DB)
+    .select()
+    .from(docLocks)
+    .where(eq(docLocks.fileId, docId))
+    .get();
+  if (lock?.lock === "no-ai") return 0;
+  try {
+    const doc = await fetchDoc(env, docId, fetcher);
+    return (doc.suggestions ?? []).filter(
+      (t) => (t.status ?? "OPEN") === "OPEN" && t.suggestionId && ours.has(t.suggestionId),
+    ).length;
+  } catch (error) {
+    logEvent("docs_waiting_unread", { docId, error: String(error) }, { level: "warn" });
+    return null;
+  }
+}
+
+/**
  * Accepts, rejects or withdraws open suggestions, named by id or as "every open one this AI made" (`by`). Accepting
  * is a direct change to the text, so it is refused on a Doc locked "suggest only"; withdrawing takes back only the
  * calling AI's own suggestions, as Google lets only a suggestion's author delete it.

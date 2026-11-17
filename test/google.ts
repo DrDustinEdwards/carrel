@@ -47,9 +47,9 @@ function pem(bytes: ArrayBuffer): string {
   return `-----BEGIN PRIVATE KEY-----\n${btoa(s).replace(/(.{64})/g, "$1\n")}\n-----END PRIVATE KEY-----\n`;
 }
 
-/** A service account key file as Google downloads it, and the public half to verify with. */
-export async function serviceAccountKey() {
-  const pair = (await crypto.subtle.generateKey(
+/** A fresh RS256 key pair, as Google signs with. */
+export async function rsaPair() {
+  return (await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
       modulusLength: 2048,
@@ -59,6 +59,11 @@ export async function serviceAccountKey() {
     true,
     ["sign", "verify"],
   )) as CryptoKeyPair;
+}
+
+/** A service account key file as Google downloads it, and the public half to verify with. */
+export async function serviceAccountKey() {
+  const pair = await rsaPair();
   const json = JSON.stringify({
     type: "service_account",
     project_id: "carrel-test",
@@ -114,6 +119,8 @@ export function fakeGoogle(opts: {
     /** What Dustin's grant shared, and the Docs it uploaded with their metadata. */
     shared: [] as Record<string, unknown>[],
     uploads: [] as { id: string; name: string; parents?: string[]; description?: string }[],
+    /** Every change channel opened or stopped. */
+    channels: [] as Record<string, unknown>[],
   };
 
   const json = (status: number, body: unknown) =>
@@ -215,6 +222,20 @@ export function fakeGoogle(opts: {
       const id = `folderMade${files.length + 1}`;
       files.push({ id, name: meta.name, mimeType: meta.mimeType, parent: "root" });
       return json(200, { id });
+    }
+    // Drive's change channel (watch.server.ts), on the service account's own change log.
+    if (url.origin === "https://www.googleapis.com" && url.pathname.startsWith("/drive/v3/c")) {
+      if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
+      if (url.pathname === "/drive/v3/changes/startPageToken")
+        return json(200, { startPageToken: "42" });
+      const body = (await request.json()) as Record<string, unknown>;
+      state.channels.push({ path: url.pathname, ...body });
+      if (url.pathname === "/drive/v3/changes/watch")
+        return json(200, {
+          resourceId: `res-${state.channels.length}`,
+          expiration: String(body.expiration),
+        });
+      return new Response(null, { status: 204 });
     }
     const permissions = /^\/drive\/v3\/files\/([^/]+)\/permissions$/.exec(url.pathname);
     if (url.origin === "https://www.googleapis.com" && permissions && request.method === "POST") {

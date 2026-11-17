@@ -18,7 +18,7 @@ import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 
-import { exportGoogleDoc, GOOGLE_DOC } from "./docs.server";
+import { exportGoogleDoc, GOOGLE_DOC, waitingIn } from "./docs.server";
 import { userAccessToken } from "./oauth.server";
 import { GoogleNotConnected, saClient } from "./service-account.server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
@@ -34,6 +34,8 @@ const FILE_FIELDS =
   "id,name,mimeType,webViewLink,createdTime,modifiedTime,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress)";
 /** How many folders one refresh walks; a manuscripts folder is far smaller. */
 const MAX_FOLDERS = 200;
+/** The Docs one walk reads to count their open AI suggestions (Docs API: 300 reads a minute per user). */
+const MAX_RECOUNTS = 25;
 
 /** The folder Dustin shares with the service account. A var, read loosely like CARREL_ORIGIN. */
 export function manuscriptsFolder(env: Env): string | null {
@@ -115,6 +117,25 @@ export async function refreshManuscripts(
     }
   }
   const d = drizzle(env.DB);
+  // The Docs that changed since the last walk have their open AI suggestions counted again (slice 7), a few a walk; one
+  // not counted keeps the modified time it had, so the next walk counts it.
+  const before = new Map(
+    (
+      await d
+        .select({ id: manuscripts.fileId, at: manuscripts.modifiedTime })
+        .from(manuscripts)
+        .all()
+    ).map((r) => [r.id, r.at]),
+  );
+  const recount = files.filter(
+    (f) => f.mimeType === GOOGLE_DOC && before.get(f.id) !== (f.modifiedTime ?? null),
+  );
+  const waiting = new Map<string, number>();
+  for (const f of recount.slice(0, MAX_RECOUNTS)) {
+    const n = await waitingIn(env, f.id, fetcher);
+    if (n !== null) waiting.set(f.id, n);
+  }
+  const later = new Set(recount.filter((f) => !waiting.has(f.id)).map((f) => f.id));
   for (const f of files) {
     const values = {
       name: f.name,
@@ -123,8 +144,9 @@ export async function refreshManuscripts(
       folder: f.folder,
       people: JSON.stringify(peopleOf(f)),
       createdTime: f.createdTime ?? null,
-      modifiedTime: f.modifiedTime ?? null,
+      modifiedTime: later.has(f.id) ? (before.get(f.id) ?? null) : (f.modifiedTime ?? null),
       syncedAt: at,
+      ...(waiting.has(f.id) ? { waiting: waiting.get(f.id)! } : {}),
     };
     await d
       .insert(manuscripts)

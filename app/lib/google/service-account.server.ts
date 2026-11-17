@@ -87,6 +87,16 @@ const ALLOWED: { method: string; url: RegExp }[] = [
       `^https://www\\.googleapis\\.com/drive/v3/files/[A-Za-z0-9_-]{10,100}/export\\?mimeType=(${EXPORT_MIME})$`,
     ),
   },
+  // Awareness (watch.server.ts): one channel on the service account's own change log, and stopping the one it replaces.
+  {
+    method: "GET",
+    url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/changes\/startPageToken(\?|$)/,
+  },
+  {
+    method: "POST",
+    url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/changes\/watch\?pageToken=[A-Za-z0-9_-]{1,200}$/,
+  },
+  { method: "POST", url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/channels\/stop$/ },
   {
     method: "POST",
     url: /^https:\/\/searchconsole\.googleapis\.com\/webmasters\/v3\/sites\/[^/]+\/searchAnalytics\/query$/,
