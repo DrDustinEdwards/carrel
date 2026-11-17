@@ -7,7 +7,7 @@
 
 import { Alert } from "capsomer/react/banner";
 import { Check, Field } from "capsomer/react/field";
-import { useTyped, type TypedBox } from "capsomer/react/frontmatter-fields";
+import { typedProps, useTyped, type TypedBox } from "capsomer/react/frontmatter-fields";
 import { SerpWidthMeter } from "capsomer/react/share-preview";
 
 import { joinSource, readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
@@ -18,7 +18,6 @@ import {
   type SearchValues,
 } from "@dustinedwards/site-api/frontmatter";
 import { ImageField } from "capsomer/react/media-picker";
-import { typedProps } from "~/components/editor/post-fields";
 import { searchFieldFaults, titleSuffixOf } from "~/lib/seo-checks";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 import "capsomer/drop-zone.css";
