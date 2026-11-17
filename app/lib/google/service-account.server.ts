@@ -68,7 +68,7 @@ export class ServiceAccountRefused extends Error {
 }
 
 // Every request the service account may make: listing files (metadata), exporting one Doc as Markdown, Word, PDF or
-// plain text, Search Console's query (a POST that reads), and the Docs API's read and batchUpdate on one Doc. Not
+// plain text, Search Console's list of properties and its query (a POST that reads), and the Docs API's read and batchUpdate on one Doc. Not
 // Drive's files.get, whose alt=media returns any file's content. A batchUpdate also passes docBatchProblem.
 export const EXPORT_TYPES = {
   md: "text/markdown",
@@ -97,6 +97,8 @@ const ALLOWED: { method: string; url: RegExp }[] = [
     url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/changes\/watch\?pageToken=[A-Za-z0-9_-]{1,200}$/,
   },
   { method: "POST", url: /^https:\/\/www\.googleapis\.com\/drive\/v3\/channels\/stop$/ },
+  // Search Console: the list of properties the account is a user on (no ids, no data), and the query, a POST that reads.
+  { method: "GET", url: /^https:\/\/searchconsole\.googleapis\.com\/webmasters\/v3\/sites$/ },
   {
     method: "POST",
     url: /^https:\/\/searchconsole\.googleapis\.com\/webmasters\/v3\/sites\/[^/]+\/searchAnalytics\/query$/,

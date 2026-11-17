@@ -112,7 +112,8 @@ export function fakeGoogle(opts: {
     saRevoked: false,
     userRevoked: false,
     grantedScope: "https://www.googleapis.com/auth/drive.file",
-    scStatus: 200,
+    /** The Search Console properties the service account is a user on; any other refuses its query with 403. */
+    scShared: new Set(["sc-domain:dustinedwards.info"]),
     docEdits: new Map<string, string>(),
     /** Google saves a suggestion's text but not its reply: commentUpdateState says so. */
     labelFails: false,
@@ -308,12 +309,26 @@ export function fakeGoogle(opts: {
       });
     }
 
+    if (
+      url.origin === "https://searchconsole.googleapis.com" &&
+      url.pathname === "/webmasters/v3/sites" &&
+      request.method === "GET"
+    ) {
+      if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
+      return json(200, {
+        siteEntry: [...state.scShared].map((siteUrl) => ({
+          siteUrl,
+          permissionLevel: "siteFullUser",
+        })),
+      });
+    }
+
     const sc = /^\/webmasters\/v3\/sites\/([^/]+)\/searchAnalytics\/query$/.exec(url.pathname);
     if (url.origin === "https://searchconsole.googleapis.com" && sc && request.method === "POST") {
       if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
-      if (state.scStatus !== 200)
-        return json(state.scStatus, {
-          error: { code: state.scStatus, message: "User does not have sufficient permission" },
+      if (!state.scShared.has(decodeURIComponent(sc[1]!)))
+        return json(403, {
+          error: { code: 403, message: "User does not have sufficient permission" },
         });
       return json(200, { rows: opts.scRows ?? [], responseAggregationType: "byPage" });
     }
