@@ -70,7 +70,7 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
   const done = actionData?.ok;
   const busy = useNavigation().state !== "idle";
   return (
-    <div className="app-page" data-narrow>
+    <div className="cap-admin-page" data-width="narrow">
       <PageHead
         renderLink={routerRenderLink}
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: item.title }]}

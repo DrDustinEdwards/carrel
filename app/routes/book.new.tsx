@@ -38,7 +38,7 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
   const [name, setName] = useState("");
   const [folder, setFolder] = useState("");
   return (
-    <div className="app-page" data-narrow>
+    <div className="cap-admin-page" data-width="narrow">
       <PageHead
         renderLink={routerRenderLink}
         crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]}

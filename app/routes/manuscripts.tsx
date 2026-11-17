@@ -188,7 +188,7 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
   const refreshing =
     navigation.state === "submitting" && navigation.formData?.get("intent") === null;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="Manuscripts"
         lead="The shared Drive folder. Open goes to Google Docs; search runs in Drive, so the text stays there. An AI changes a Doc only through Carrel, under the lock you set here."

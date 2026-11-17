@@ -14,7 +14,7 @@
 import { viewerRequest } from "@dustinedwards/site-runtime/doc-room";
 import { getServerByName } from "partyserver";
 import { chunked, inList, rowsPerInsert } from "@dustinedwards/site-runtime/d1";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changeContributors, changes, drafts, people, rooms } from "~/db/schema";
@@ -290,6 +290,68 @@ export async function coauthorsOf(
     if (r.id !== saver.get(r.changeId))
       out.set(r.changeId, [...(out.get(r.changeId) ?? []), r.name || r.email]);
   return out;
+}
+
+/**
+ * Everyone who edited a post since its last publish, for the publish confirmation: whoever pressed
+ * Save, everyone credited beside them (`change_contributors`), and whoever has typed in the room since
+ * the last save, whom the publish will credit. Before any publish, everyone who ever edited it.
+ */
+export async function editorsSincePublish(
+  env: Env,
+  project: Where,
+  itemId: string,
+): Promise<string[]> {
+  const db = drizzle(env.DB);
+  const mine = and(eq(changes.projectId, project.id), eq(changes.itemId, itemId));
+  const last = await db
+    .select({ at: changes.createdAt })
+    .from(changes)
+    .where(and(mine, eq(changes.action, "publish")))
+    .orderBy(desc(changes.createdAt))
+    .limit(1)
+    .get();
+  const saves = await db
+    .select({ id: changes.id, saver: changes.personId })
+    .from(changes)
+    .where(
+      and(
+        mine,
+        inList(changes.action, ["save", "schedule"]),
+        last ? gt(changes.createdAt, last.at) : undefined,
+      ),
+    )
+    .orderBy(changes.createdAt)
+    .all();
+  const credited = new Map<string, number[]>();
+  const rows = saves.length
+    ? await db
+        .select({ changeId: changeContributors.changeId, id: changeContributors.personId })
+        .from(changeContributors)
+        .where(
+          inList(
+            changeContributors.changeId,
+            saves.map((s) => s.id),
+          ),
+        )
+        .all()
+    : [];
+  for (const r of rows) credited.set(r.changeId, [...(credited.get(r.changeId) ?? []), r.id]);
+  const typing = (await (await stub(env, project.id, itemId)).snapshot()).contributors;
+  const ids = [
+    ...new Set([...saves.flatMap((s) => [s.saver, ...(credited.get(s.id) ?? [])]), ...typing]),
+  ];
+  if (ids.length === 0) return [];
+  const named = new Map(
+    (
+      await db
+        .select({ id: people.id, name: people.name, email: people.email })
+        .from(people)
+        .where(inList(people.id, ids))
+        .all()
+    ).map((r) => [r.id, r.name || r.email]),
+  );
+  return ids.flatMap((id) => named.get(id) ?? []);
 }
 
 /** A save's author with the others who wrote its text: "Dustin with Ana, Ben". */

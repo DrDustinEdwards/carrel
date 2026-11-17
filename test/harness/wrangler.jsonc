@@ -6,7 +6,7 @@
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	"name": "carrel-harness",
 	"compatibility_date": "2026-10-02",
-	"compatibility_flags": ["global_fetch_strictly_public"],
+	"compatibility_flags": ["global_fetch_strictly_public", "enable_request_signal"],
 	"main": "./entry.ts",
 	"tsconfig": "../../tsconfig.cloudflare.json",
 	"workers_dev": false,

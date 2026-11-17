@@ -83,7 +83,7 @@ export default function TranscriptDraft({ loaderData, actionData }: Route.Compon
   const changes = compared?.changes;
   const moved = changes ? changes.added + changes.removed + changes.retimed : 0;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <DraftHead
         project={project}
         itemId={itemId}

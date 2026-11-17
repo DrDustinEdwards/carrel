@@ -38,7 +38,7 @@ import { useBrowserZone } from "capsomer/react/hooks";
 import { visibleProjects } from "~/lib/people.server";
 
 import type { Route } from "./+types/home";
-import "capsomer/attention-list.css";
+import "capsomer/needs-list.css";
 
 export function meta() {
   return [{ title: "Home · Carrel" }];
@@ -145,7 +145,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <Link to={href}>{children}</Link>
   );
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="Home"
         lead="What waits on you, and where you left off."
@@ -191,7 +191,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </Suspense>
           </Panel>
 
-          <div className="app-split" data-even>
+          <div className="cap-panes" data-even>
             <Panel title="Continue writing" flush>
               {resume.length === 0 ? (
                 <Empty kind="nothing-yet" flush title="No drafts in progress">

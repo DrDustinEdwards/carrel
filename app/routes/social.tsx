@@ -126,7 +126,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
     (p) => p.source === "template" && p.status === "sent" && !p.acknowledgedAt,
   );
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="Social"
         lead="Posts only announce pieces that went live. Carrel never replies or messages."

@@ -115,7 +115,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
   const { project, chapter, canEdit, scenes } = loaderData;
   const base = `/b/${project.slug}`;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         renderLink={routerRenderLink}
         crumbs={[{ label: project.name, href: base }, { label: chapter.title }]}
@@ -125,7 +125,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
 
       {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
 
-      <div className="app-split app-chapter-split" data-aside data-flip>
+      <div className="cap-panes app-chapter-split" data-flip>
         <Panel
           title="Scenes"
           count={scenes.length}

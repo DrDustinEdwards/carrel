@@ -313,7 +313,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
     submit(fields, { method: "post", navigate: false });
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="People"
         lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page."

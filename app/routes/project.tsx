@@ -119,7 +119,7 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
   const submit = useKitSubmit(`${base}/posts/api`);
   const result = actionData && "ok" in actionData ? actionData : null;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title={project.name}
         lead={`Everything on ${project.site}, as the site lists it.`}

@@ -81,11 +81,11 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
   const file = (path: string) => `/b/${head.slug}/f/${path}`;
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <BookHead book={head} section="bible" />
       {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
 
-      <div className="app-split" data-aside>
+      <div className="cap-panes">
         <Panel
           title="Bible"
           count={bible.length}

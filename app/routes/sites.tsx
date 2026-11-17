@@ -61,7 +61,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 export default function Sites({ loaderData }: Route.ComponentProps) {
   const { sites } = loaderData;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead title="Sites" lead="Each site Desk writes to, and what it holds." />
       {sites.length === 0 ? (
         <Empty kind="nothing-yet" title="No sites yet">

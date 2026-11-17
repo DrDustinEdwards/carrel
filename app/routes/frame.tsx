@@ -52,7 +52,7 @@ export function ErrorBoundary() {
         : "Nothing you wrote is lost. Try again, or go back to Home.";
   return (
     <Frame data={data}>
-      <div className="app-page">
+      <div className="cap-admin-page">
         <Empty
           kind="failed"
           title={status ? `${status}: ${title}` : title}

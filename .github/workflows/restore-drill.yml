@@ -16,11 +16,11 @@ concurrency:
 
 jobs:
   drill:
-    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@90efbee8e78a1b07b334d5058d19cb0e2a9828d0 # v0.48.0
+    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@9e40afbad5fa778718b9aac65bc205b3c0a9c101 # v0.51.0
     with:
       bucket: carrel-backups
       # The same d1-dump release the nightly dump runs (package.json).
-      d1-dump-ref: v0.16.0
+      d1-dump-ref: v0.16.1
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

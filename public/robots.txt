@@ -1,0 +1,3 @@
+# Desk and the AI door are private: no crawler should fetch from either. A static asset, served before the Worker.
+User-agent: *
+Disallow: /

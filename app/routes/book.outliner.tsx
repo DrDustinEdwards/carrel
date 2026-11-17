@@ -120,7 +120,7 @@ export default function Outliner({ loaderData }: Route.ComponentProps) {
   const filterName = chips.find((o) => o.value === filter)?.label ?? filter;
 
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <BookHead book={head} section="manuscript" view="outliner" />
 
       <div className="app-chip-filter">

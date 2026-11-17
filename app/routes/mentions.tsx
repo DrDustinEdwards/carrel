@@ -65,7 +65,7 @@ export default function Mentions({ loaderData, actionData }: Route.ComponentProp
   const base = `/p/${encodeURIComponent(project.slug)}/mentions`;
   const submit = useKitSubmit(`${base}/api`);
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title={project.name}
         lead={`Webmentions about posts on ${project.site}. Approving one shows it on the post within seconds.`}
