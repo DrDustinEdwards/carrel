@@ -24,7 +24,11 @@ function askForDoc() {
     .setHeader(CardService.newCardHeader().setTitle("Carrel"))
     .addSection(
       CardService.newCardSection()
-        .addWidget(CardService.newTextParagraph().setText("Carrel needs this Doc open to it before it can work here."))
+        .addWidget(
+          CardService.newTextParagraph().setText(
+            "Carrel needs this Doc open to it before it can work here.",
+          ),
+        )
         .addWidget(
           CardService.newTextButton()
             .setText("Open this Doc to Carrel")
@@ -35,7 +39,9 @@ function askForDoc() {
 }
 
 function requestDoc() {
-  return CardService.newEditorFileScopeActionResponseBuilder().requestFileScopeForActiveDocument().build();
+  return CardService.newEditorFileScopeActionResponseBuilder()
+    .requestFileScopeForActiveDocument()
+    .build();
 }
 
 /** The words selected in the Doc, if Docs gives them to the add-on; else empty, and Dustin can paste them. */
@@ -49,7 +55,9 @@ function selectedText() {
         var element = part.getElement();
         if (!element.editAsText) return "";
         var text = element.asText().getText();
-        return part.isPartial() ? text.slice(part.getStartOffset(), part.getEndOffsetInclusive() + 1) : text;
+        return part.isPartial()
+          ? text.slice(part.getStartOffset(), part.getEndOffsetInclusive() + 1)
+          : text;
       })
       .join("\n")
       .slice(0, 5000);
@@ -86,7 +94,10 @@ function form(selection, note) {
         .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
         .setOnClickAction(CardService.newAction().setFunctionName("send")),
     );
-  return CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Carrel")).addSection(section).build();
+  return CardService.newCardBuilder()
+    .setHeader(CardService.newCardHeader().setTitle("Carrel"))
+    .addSection(section)
+    .build();
 }
 
 function value(e, name) {
@@ -119,7 +130,11 @@ function send(e) {
     ? "Carrel could not do it: " + answer.error
     : answer.engine === "subscription"
       ? "Carrel's routine is doing it. The changes appear in this Doc in a few minutes."
-      : "Done. " + (answer.note || "") + (answer.skipped && answer.skipped.length ? " " + answer.skipped.length + " could not be placed." : "");
+      : "Done. " +
+        (answer.note || "") +
+        (answer.skipped && answer.skipped.length
+          ? " " + answer.skipped.length + " could not be placed."
+          : "");
   return CardService.newActionResponseBuilder()
     .setNavigation(CardService.newNavigation().updateCard(form(body.selection, note)))
     .build();
