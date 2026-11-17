@@ -111,6 +111,9 @@ export function fakeGoogle(opts: {
     docEdits: new Map<string, string>(),
     /** Google saves a suggestion's text but not its reply: commentUpdateState says so. */
     labelFails: false,
+    /** What Dustin's grant shared, and the Docs it uploaded with their metadata. */
+    shared: [] as Record<string, unknown>[],
+    uploads: [] as { id: string; name: string; parents?: string[]; description?: string }[],
   };
 
   const json = (status: number, body: unknown) =>
@@ -202,6 +205,24 @@ export function fakeGoogle(opts: {
       });
     }
 
+    // Dustin's grant makes a folder and shares it (drive.file reaches what Carrel made).
+    if (
+      url.href === "https://www.googleapis.com/drive/v3/files?fields=id" &&
+      request.method === "POST"
+    ) {
+      if (auth !== `Bearer ${USER_TOKEN}`) return json(401, { error: { code: 401 } });
+      const meta = (await request.json()) as { name: string; mimeType: string };
+      const id = `folderMade${files.length + 1}`;
+      files.push({ id, name: meta.name, mimeType: meta.mimeType, parent: "root" });
+      return json(200, { id });
+    }
+    const permissions = /^\/drive\/v3\/files\/([^/]+)\/permissions$/.exec(url.pathname);
+    if (url.origin === "https://www.googleapis.com" && permissions && request.method === "POST") {
+      if (auth !== `Bearer ${USER_TOKEN}`) return json(401, { error: { code: 401 } });
+      state.shared.push({ file: permissions[1]!, ...((await request.json()) as object) });
+      return json(200, { id: "perm1" });
+    }
+
     if (
       url.href.startsWith(
         "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
@@ -214,13 +235,31 @@ export function fakeGoogle(opts: {
         .split(`--${boundary}`)
         .slice(1, -1)
         .map((p) => p.replace(/^\r\n/, "").split("\r\n\r\n"));
-      const meta = JSON.parse(parts[0]![1]!.trim()) as { name: string; mimeType: string };
+      const meta = JSON.parse(parts[0]![1]!.trim()) as {
+        name: string;
+        mimeType: string;
+        parents?: string[];
+        description?: string;
+      };
       if (meta.mimeType !== "application/vnd.google-apps.document")
         return json(400, { error: "expected a Doc" });
       const content = parts[1]!.slice(1).join("\r\n\r\n").replace(/\r\n$/, "");
       const id = `doc${docs.size + 1}`;
       docs.set(id, { name: meta.name, content });
-      return json(200, { id, webViewLink: `https://docs.google.com/document/d/${id}/edit` });
+      if (meta.parents)
+        files.push({
+          id,
+          name: meta.name,
+          mimeType: meta.mimeType,
+          parent: meta.parents[0]!,
+          content,
+        });
+      state.uploads.push({ id, ...meta });
+      return json(200, {
+        id,
+        name: meta.name,
+        webViewLink: `https://docs.google.com/document/d/${id}/edit`,
+      });
     }
 
     const exported = /^\/drive\/v3\/files\/([^/]+)\/export$/.exec(url.pathname);

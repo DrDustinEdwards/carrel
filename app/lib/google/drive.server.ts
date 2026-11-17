@@ -10,13 +10,15 @@ import { notInList } from "@dustinedwards/site-runtime/d1";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { manuscripts, sentDocs } from "~/db/schema";
+import { googleTokens, manuscripts, sentDocs } from "~/db/schema";
+import { AiRefusal } from "~/lib/ai.server";
 import { autosave, readDoc, readDraft } from "~/lib/content.server";
 import { hasRoom, replaceRoom } from "~/lib/rooms.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
 
+import { exportGoogleDoc, GOOGLE_DOC } from "./docs.server";
 import { userAccessToken } from "./oauth.server";
 import { GoogleNotConnected, saClient } from "./service-account.server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
@@ -98,14 +100,9 @@ export async function refreshManuscripts(
   fetcher?: Fetch,
   now = new Date(),
 ): Promise<ManuscriptRefresh> {
-  const root = manuscriptsFolder(env);
-  if (!root)
-    throw new GoogleNotConnected(
-      "GOOGLE_MANUSCRIPTS_FOLDER_ID is not set to the shared folder's id.",
-    );
+  const queue = await indexRoots(env);
   const sa = saClient(env, fetcher);
   const at = now.toISOString();
-  const queue: { id: string; path: string }[] = [{ id: root, path: "" }];
   const files: (DriveFile & { folder: string })[] = [];
   let folders = 0;
   while (queue.length > 0 && folders < MAX_FOLDERS) {
@@ -217,6 +214,157 @@ function splitFrontmatter(source: string): { frontmatter: string; body: string }
   return { frontmatter: fence.endsWith("\n") ? fence : `${fence}\n`, body: s.body };
 }
 
+/**
+ * A new Google Doc in Dustin's Drive from Markdown or a Word file, through his drive.file grant: Google converts the
+ * content on upload (its own Markdown and Word import).
+ */
+async function uploadAsDoc(
+  token: string,
+  file: {
+    name: string;
+    type: string;
+    body: string | ArrayBuffer;
+    parents?: string[];
+    description?: string;
+  },
+  fetcher: Fetch,
+): Promise<Response> {
+  const boundary = `carrel-${crypto.randomUUID()}`;
+  const meta = {
+    name: file.name,
+    mimeType: GOOGLE_DOC,
+    ...(file.parents ? { parents: file.parents } : {}),
+    ...(file.description ? { description: file.description } : {}),
+  };
+  const head = [
+    `--${boundary}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    JSON.stringify(meta),
+    `--${boundary}`,
+    `Content-Type: ${file.type}${typeof file.body === "string" ? "; charset=UTF-8" : ""}`,
+    "",
+    "",
+  ].join("\r\n");
+  return fetcher(
+    `${UPLOAD}?uploadType=multipart&fields=id,name,webViewLink,createdTime,modifiedTime`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body: new Blob([head, file.body, `\r\n--${boundary}--\r\n`]),
+    },
+  );
+}
+
+/** Where Carrel's new Docs go, and how the index names that folder. */
+export const CARREL_FOLDER = "Made in Carrel";
+
+/**
+ * The folder for the Docs Carrel creates, made once in Dustin's Drive with his drive.file grant (which reaches only
+ * what Carrel made) and shared with the service account as an editor, so the Docs tools reach every Doc in it.
+ */
+async function carrelFolder(env: Env, viewer: Viewer, token: string, fetcher: Fetch) {
+  const d = drizzle(env.DB);
+  const row = await d
+    .select({ folderId: googleTokens.folderId })
+    .from(googleTokens)
+    .where(eq(googleTokens.personId, viewer.id))
+    .get();
+  if (row?.folderId) return row.folderId;
+  const auth = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const made = await fetcher(`${DRIVE}?fields=id`, {
+    method: "POST",
+    headers: auth,
+    body: JSON.stringify({ name: CARREL_FOLDER, mimeType: FOLDER }),
+  });
+  if (!made.ok)
+    throw new GoogleNotConnected(`Google did not make Carrel's folder (${made.status}).`);
+  const { id } = (await made.json()) as { id: string };
+  const shared = await fetcher(
+    `${DRIVE}/${encodeURIComponent(id)}/permissions?sendNotificationEmail=false`,
+    {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        role: "writer",
+        type: "user",
+        emailAddress: saClient(env).key.clientEmail,
+      }),
+    },
+  );
+  if (!shared.ok)
+    throw new GoogleNotConnected(
+      `Google made Carrel's folder but did not share it with the service account (${shared.status}).`,
+    );
+  await d.update(googleTokens).set({ folderId: id }).where(eq(googleTokens.personId, viewer.id));
+  return id;
+}
+
+/** The folders the index walks: the shared Manuscripts folder, and the one Carrel made for new Docs, if any. */
+async function indexRoots(env: Env): Promise<{ id: string; path: string }[]> {
+  const root = manuscriptsFolder(env);
+  if (!root)
+    throw new GoogleNotConnected(
+      "GOOGLE_MANUSCRIPTS_FOLDER_ID is not set to the shared folder's id.",
+    );
+  const made = await drizzle(env.DB)
+    .select({ folderId: googleTokens.folderId })
+    .from(googleTokens)
+    .all();
+  return [
+    { id: root, path: "" },
+    ...made.flatMap((r) => (r.folderId ? [{ id: r.folderId, path: CARREL_FOLDER }] : [])),
+  ];
+}
+
+/**
+ * A new Google Doc on Dustin's ask, from Markdown or as a copy of a Doc in the index (Google's Word export and
+ * import, so formatting carries over; suggestions and comments do not). It goes in Carrel's folder, joins the index
+ * at once so the Docs tools reach it, and says in its Drive description which AI made it and why.
+ */
+export async function createGoogleDoc(
+  env: Env,
+  viewer: Viewer,
+  input: { title: string; text?: string; copyOf?: string; label: string },
+  fetcher: Fetch = timedFetch,
+) {
+  requireOwner(viewer);
+  const title = input.title.trim().slice(0, 200);
+  if (!title) throw new AiRefusal("title is the new Doc's name.");
+  if (input.copyOf && input.text) throw new AiRefusal("Give text or copy_of, not both.");
+  const token = await userAccessToken(env, viewer.id, fetcher);
+  const content = input.copyOf
+    ? await exportGoogleDoc(env, viewer, input.copyOf, "docx", fetcher)
+    : { type: "text/markdown", body: input.text ?? "" };
+  const folder = await carrelFolder(env, viewer, token, fetcher);
+  const res = await uploadAsDoc(
+    token,
+    { name: title, ...content, parents: [folder], description: input.label },
+    fetcher,
+  );
+  if (!res.ok) throw new AiRefusal(`Google did not create the Doc (${res.status}).`);
+  const f = (await res.json()) as DriveFile;
+  const url = f.webViewLink ?? `https://docs.google.com/document/d/${f.id}/edit`;
+  const values = {
+    name: f.name || title,
+    mimeType: GOOGLE_DOC,
+    webViewLink: url,
+    folder: CARREL_FOLDER,
+    people: "[]",
+    createdTime: f.createdTime ?? null,
+    modifiedTime: f.modifiedTime ?? null,
+    syncedAt: new Date().toISOString(),
+  };
+  await drizzle(env.DB)
+    .insert(manuscripts)
+    .values({ fileId: f.id, ...values })
+    .onConflictDoUpdate({ target: manuscripts.fileId, set: values });
+  return { docId: f.id, title: values.name, url };
+}
+
 /** Sending outside Carrel is the Owner's (design section 3, "Roles": send externally). */
 function requireSend(project: SiteProject) {
   if (!can(project.role, "send_external")) throw new Response("Forbidden", { status: 403 });
@@ -242,30 +390,11 @@ export async function sendToDocs(
   const title = /^title:\s*"?(.*?)"?\s*$/m.exec(frontmatter)?.[1] || doc?.title || itemId;
 
   const token = await userAccessToken(env, viewer.id, fetcher);
-  const boundary = `carrel-${crypto.randomUUID()}`;
-  const multipart = [
-    `--${boundary}`,
-    "Content-Type: application/json; charset=UTF-8",
-    "",
-    JSON.stringify({
-      name: `${title} (from Carrel)`,
-      mimeType: "application/vnd.google-apps.document",
-    }),
-    `--${boundary}`,
-    "Content-Type: text/markdown; charset=UTF-8",
-    "",
-    body,
-    `--${boundary}--`,
-    "",
-  ].join("\r\n");
-  const res = await fetcher(`${UPLOAD}?uploadType=multipart&fields=id,webViewLink`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": `multipart/related; boundary=${boundary}`,
-    },
-    body: multipart,
-  });
+  const res = await uploadAsDoc(
+    token,
+    { name: `${title} (from Carrel)`, type: "text/markdown", body },
+    fetcher,
+  );
   if (!res.ok)
     return { ok: false as const, message: `Google Docs did not accept the post (${res.status}).` };
   const created = (await res.json()) as { id: string; webViewLink?: string };

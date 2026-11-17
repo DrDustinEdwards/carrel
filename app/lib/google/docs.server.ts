@@ -432,7 +432,7 @@ function tabIdOf(doc: GoogleDoc, tab: string | undefined): string | undefined {
 }
 
 /** "Claude (Opus 5.5), through Carrel: tightened for length": which AI, and why. */
-function labelOf(session: AiSession, model: string | undefined, said: string): string {
+export function labelOf(session: AiSession, model: string | undefined, said: string): string {
   const who = model?.trim() ? `${session.client} (${model.trim().slice(0, 60)})` : session.client;
   const why = said.trim().slice(0, MAX.label);
   return why ? `${who}, through Carrel: ${why}` : `${who}, through Carrel`;
