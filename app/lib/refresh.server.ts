@@ -1,11 +1,13 @@
 // The cron's index refresh: every project that is a connected site. A site that is not connected yet
-// is skipped quietly; one that fails is logged, and the health check is where it gets reported.
+// is skipped quietly; one that fails is logged, and the health check is where it gets reported. A site
+// whose rate limit refuses the refresh is the limiter doing its job: logged at warn, and the next quarter
+// hour, well past the site's one-minute window (site-api answers no Retry-After), carries on.
 
 import { isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { projects } from "~/db/schema";
-import { refreshIndex, type RefreshResult } from "~/lib/index.server";
+import { isRateLimited, refreshIndex, type RefreshResult } from "~/lib/index.server";
 import { isSiteId, siteConnection } from "~/lib/sites.server";
 
 import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
@@ -26,9 +28,17 @@ export async function refreshAllSites(
       continue;
     }
     try {
-      out[row.slug] = await refreshIndex(env, { id: row.id, site: row.site }, fetcher);
+      const result = await refreshIndex(env, { id: row.id, site: row.site }, fetcher);
+      if (result.limited)
+        logEvent("refresh.rate-limited", { project: row.slug, ...result }, { level: "warn" });
+      out[row.slug] = result;
     } catch (error) {
       const message = errorMessage(error);
+      if (isRateLimited(error)) {
+        logEvent("refresh.rate-limited", { project: row.slug, error: message }, { level: "warn" });
+        out[row.slug] = `rate-limited: ${message}`;
+        continue;
+      }
       logEvent("refresh.failed", { project: row.slug, error: message }, { level: "error" });
       out[row.slug] = `failed: ${message}`;
     }

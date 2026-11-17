@@ -2,6 +2,7 @@
 // and body, refreshed on every save and by the 15-minute cron. The site stays the authority.
 
 import type { ContentDoc, ContentStatus, ContentSummary } from "@dustinedwards/site-api";
+import { SiteApiError } from "@dustinedwards/site-api/client";
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -106,12 +107,26 @@ export async function removeFromIndex(
   ]);
 }
 
-export type RefreshResult = { listed: number; fetched: number; removed: number; pending: number };
+/** `limited`: the site's rate limit refused a body read, so the reads stopped there and the rest are pending. */
+export type RefreshResult = {
+  listed: number;
+  fetched: number;
+  removed: number;
+  pending: number;
+  limited: boolean;
+};
+
+/** The site's limiter refused the request (site-api's `rate-limited`, 429): its budget, not a fault. */
+export function isRateLimited(error: unknown): boolean {
+  return error instanceof SiteApiError && error.status === 429;
+}
 
 /**
  * Lists every item, upserts the summaries, drops items the site no longer lists, and fetches the
  * body of up to MAX_BODY_FETCHES items whose updatedAt moved since their body was read. The rest are
- * reported as pending and caught up on the next run.
+ * reported as pending and caught up on the next run. A body read the site's rate limit refuses ends the
+ * reads for this run: every body read so far is kept, the rest stay pending, and the next run (a quarter
+ * hour later, longer than the site's one-minute window) carries on.
  */
 export async function refreshIndex(
   env: Env,
@@ -189,21 +204,32 @@ export async function refreshIndex(
     return readAt === undefined || readAt === null || readAt !== (i.updatedAt ?? "");
   });
   const due = stale.slice(0, MAX_BODY_FETCHES);
+  let fetched = 0;
+  let limited = false;
   for (const item of due) {
-    const doc = await client.get(item.id);
+    let doc: ContentDoc;
+    try {
+      doc = await client.get(item.id);
+    } catch (error) {
+      if (!isRateLimited(error)) throw error;
+      limited = true;
+      break;
+    }
     await env.DB.batch([
       ...writeBody(env.DB, project.id, doc.id, doc.title, doc.source),
       env.DB.prepare(
         "UPDATE site_items SET body_updated_at = ? WHERE project_id = ? AND item_id = ?",
       ).bind(doc.updatedAt ?? "", project.id, doc.id),
     ]);
+    fetched++;
   }
 
   return {
     listed: items.length,
-    fetched: due.length,
+    fetched,
     removed: gone.length,
-    pending: stale.length - due.length,
+    pending: stale.length - fetched,
+    limited,
   };
 }
 
