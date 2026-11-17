@@ -1,4 +1,5 @@
-// The cron's Google work: the manuscripts index (so files added to the folder appear) and each
+// The cron's Google work: the manuscripts index (so files added to the folder appear), the channel on which Google
+// tells Carrel of a change sooner (watch.server.ts), and each
 // site's Search Console rows (at most daily). Nothing runs until the service account is set up; a
 // failure is logged, and the health check is where a broken key is reported.
 
@@ -11,6 +12,7 @@ import { isSiteId, siteConnection } from "~/lib/sites.server";
 import { manuscriptsFolder, refreshManuscripts } from "./drive.server";
 import { refreshSearchConsole } from "./search-console.server";
 import { saConnection } from "./service-account.server";
+import { keepWatching } from "./watch.server";
 
 import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
 export async function refreshGoogle(
@@ -29,6 +31,11 @@ export async function refreshGoogle(
       out.manuscripts = await refreshManuscripts(env, fetcher);
     } catch (error) {
       note("manuscripts", error);
+    }
+    try {
+      out.watch = await keepWatching(env, fetcher);
+    } catch (error) {
+      note("watch", error);
     }
   }
   const sites = await drizzle(env.DB)

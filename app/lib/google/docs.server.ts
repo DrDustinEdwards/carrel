@@ -24,7 +24,7 @@ import { AiRefusal, emailDustin, type AiSession } from "~/lib/ai.server";
 import { carrelOrigin } from "~/lib/mcp/server";
 import type { Viewer } from "~/lib/people.server";
 
-import { saClient, type DocWrite } from "./service-account.server";
+import { EXPORT_TYPES, saClient, type DocWrite } from "./service-account.server";
 
 type Fetch = typeof fetch;
 
@@ -337,6 +337,33 @@ export async function readGoogleDoc(
   };
 }
 
+// ---------- slice 4: export
+
+export type ExportFormat = keyof typeof EXPORT_TYPES;
+export const EXPORT_FORMATS = Object.keys(EXPORT_TYPES) as ExportFormat[];
+
+/**
+ * A Doc in the index as Markdown, Word, PDF or plain text, through Drive's export (at most 10 MB, Google's limit).
+ * Reading it is all this does, so it needs only what a read needs: the Owner, and a Doc not locked "no AI".
+ */
+export async function exportGoogleDoc(
+  env: Env,
+  viewer: Viewer,
+  docId: string,
+  format: ExportFormat,
+  fetcher?: Fetch,
+): Promise<{ name: string; type: string; body: ArrayBuffer }> {
+  const row = await indexed(env, viewer, docId);
+  const type = EXPORT_TYPES[format];
+  if (!type) throw new AiRefusal(`format is one of ${EXPORT_FORMATS.join(", ")}.`);
+  const res = await saClient(env, fetcher).request(
+    "GET",
+    `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=${encodeURIComponent(type)}`,
+  );
+  if (!res.ok) return googleError(res, "export the Doc");
+  return { name: row.name, type, body: await res.arrayBuffer() };
+}
+
 // ---------- slice 2: suggest and comment
 
 export type EditAsked =
@@ -405,7 +432,7 @@ function tabIdOf(doc: GoogleDoc, tab: string | undefined): string | undefined {
 }
 
 /** "Claude (Opus 5.5), through Carrel: tightened for length": which AI, and why. */
-function labelOf(session: AiSession, model: string | undefined, said: string): string {
+export function labelOf(session: AiSession, model: string | undefined, said: string): string {
   const who = model?.trim() ? `${session.client} (${model.trim().slice(0, 60)})` : session.client;
   const why = said.trim().slice(0, MAX.label);
   return why ? `${who}, through Carrel: ${why}` : `${who}, through Carrel`;
@@ -959,6 +986,30 @@ async function carrelSuggestions(env: Env, docId: string) {
   return rows.flatMap((r) =>
     (JSON.parse(r.googleIds) as string[]).map((id) => ({ id, client: r.client })),
   );
+}
+
+/**
+ * How many of the suggestions AIs laid in a Doc through Carrel are still open (slice 7, Home's "suggestions wait"),
+ * or null when Google would not give the Doc. A Doc locked "no AI" is not read and counts none.
+ */
+export async function waitingIn(env: Env, docId: string, fetcher?: Fetch): Promise<number | null> {
+  const ours = new Set((await carrelSuggestions(env, docId)).map((s) => s.id));
+  if (ours.size === 0) return 0;
+  const lock = await drizzle(env.DB)
+    .select()
+    .from(docLocks)
+    .where(eq(docLocks.fileId, docId))
+    .get();
+  if (lock?.lock === "no-ai") return 0;
+  try {
+    const doc = await fetchDoc(env, docId, fetcher);
+    return (doc.suggestions ?? []).filter(
+      (t) => (t.status ?? "OPEN") === "OPEN" && t.suggestionId && ours.has(t.suggestionId),
+    ).length;
+  } catch (error) {
+    logEvent("docs_waiting_unread", { docId, error: String(error) }, { level: "warn" });
+    return null;
+  }
 }
 
 /**
