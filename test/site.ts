@@ -8,7 +8,11 @@ import { RouterContextProvider } from "react-router";
 import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
 import type { Viewer } from "~/lib/people.server";
 
-import { testEnv } from "./env";
+import { refreshManuscripts } from "~/lib/google/drive.server";
+import { clearSaTokenCache } from "~/lib/google/service-account.server";
+
+import { addPerson, mailbox, resetDb, testEnv } from "./env";
+import { fakeGoogle, serviceAccountKey, type FakeFile } from "./google";
 
 export const SITE_ORIGIN = "https://site.test";
 export const SITE_KEY = "carrel-test-site-key-0123456789abcdef";
@@ -193,4 +197,34 @@ export async function publishPostOne(site: ReturnType<typeof fakeSite>) {
     changeId: "s",
   });
   await site.adapter.content.publish("post-one", { expectedVersion: saved.version, changeId: "p" });
+}
+
+/**
+ * A fresh Desk with an Owner and an Editor, a fake Google serving `files` from the manuscripts folder, a mailbox, and
+ * the index walked once. `seed` adds each file's content to the fake before the walk, which reads it.
+ */
+let serviceKey: ReturnType<typeof serviceAccountKey> | undefined;
+
+export async function googleDesk(
+  folder: string,
+  files: FakeFile[],
+  seed: (google: ReturnType<typeof fakeGoogle>) => void,
+) {
+  const key = await (serviceKey ??= serviceAccountKey());
+  clearSaTokenCache();
+  await resetDb();
+  await addPerson("owner@test.invalid", { owner: true });
+  await addPerson("editor@test.invalid");
+  const google = fakeGoogle({ publicJwk: key.publicJwk, files });
+  seed(google);
+  const box = mailbox();
+  const env = {
+    ...connectedEnv(),
+    EMAIL: box.EMAIL,
+    GOOGLE_SA_KEY: key.json,
+    GOOGLE_MANUSCRIPTS_FOLDER_ID: folder,
+  } as Env;
+  await refreshManuscripts(env, google.fetch);
+  google.requests.length = 0;
+  return { google, env, box };
 }

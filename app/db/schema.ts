@@ -499,6 +499,21 @@ export const docLocks = sqliteTable("doc_locks", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
+/** The tabs Carrel made in a Google Sheet (migration 0041): the only tabs an AI may write cells on. */
+export const sheetTabs = sqliteTable(
+  "sheet_tabs",
+  {
+    fileId: text("file_id").notNull(),
+    sheetId: integer("sheet_id").notNull(),
+    title: text("title").notNull(),
+    client: text("client").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (t) => [primaryKey({ columns: [t.fileId, t.sheetId] })],
+);
+
 export const sentDocs = sqliteTable("sent_docs", {
   id: integer("id").primaryKey(),
   projectId: integer("project_id")

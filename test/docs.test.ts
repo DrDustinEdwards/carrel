@@ -4,7 +4,7 @@
 // assignee, are refused in code before anything is sent; a Doc outside the manuscripts index, a person who is not
 // the Owner, and a Doc locked against AI reach nothing.
 
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { base64url } from "@dustinedwards/site-runtime/encoding";
 
@@ -14,70 +14,50 @@ import { panelAnswer } from "~/lib/google/panel.server";
 import { driveNotice, keepWatching } from "~/lib/google/watch.server";
 import { needsYou } from "~/lib/desk.server";
 import { visibleProjects } from "~/lib/people.server";
-import {
-  clearSaTokenCache,
-  assertAllowed,
-  ServiceAccountRefused,
-} from "~/lib/google/service-account.server";
+import { assertAllowed, ServiceAccountRefused } from "~/lib/google/service-account.server";
 
-import { addPerson, mailbox, resetDb, testEnv } from "./env";
-import { fakeGoogle, rsaPair, serviceAccountKey } from "./google";
+import { mailbox, testEnv } from "./env";
+import { type fakeGoogle, rsaPair } from "./google";
 import { connectAs } from "./mcp-client";
-import { connectedEnv, viewerFor } from "./site";
+import { googleDesk, viewerFor } from "./site";
 
 const FOLDER = "folderRoot1";
 const DOC = "docTestAAAA1";
 const GDOC = "application/vnd.google-apps.document";
-
-let key: Awaited<ReturnType<typeof serviceAccountKey>>;
-beforeAll(async () => {
-  key = await serviceAccountKey();
-});
 
 let google: ReturnType<typeof fakeGoogle>;
 let env: Env;
 let box: ReturnType<typeof mailbox>;
 
 beforeEach(async () => {
-  clearSaTokenCache();
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  await addPerson("editor@test.invalid");
-  google = fakeGoogle({
-    publicJwk: key.publicJwk,
-    files: [
+  ({ google, env, box } = await googleDesk(
+    FOLDER,
+    [
       { id: DOC, name: "Chapter draft", mimeType: GDOC, parent: FOLDER },
       { id: "docElsewhere1", name: "Elsewhere", mimeType: GDOC, parent: "other" },
     ],
-  });
-  google.addDoc(DOC, {
-    title: "Chapter draft",
-    paragraphs: [
-      { heading: 1, segs: [{ t: "Aims" }] },
-      { segs: [{ t: "The river was wide and the water was cold." }] },
-      {
-        segs: [
-          { t: "The heron stood. " },
-          { t: "very quietly", ins: true },
-          { t: " Then it left." },
+    (g) => {
+      g.addDoc(DOC, {
+        title: "Chapter draft",
+        paragraphs: [
+          { heading: 1, segs: [{ t: "Aims" }] },
+          { segs: [{ t: "The river was wide and the water was cold." }] },
+          {
+            segs: [
+              { t: "The heron stood. " },
+              { t: "very quietly", ins: true },
+              { t: " Then it left." },
+            ],
+          },
+          { segs: [{ t: "Cold again. The water was cold." }] },
         ],
-      },
-      { segs: [{ t: "Cold again. The water was cold." }] },
-    ],
-  });
-  google.addDoc("docElsewhere1", {
-    title: "Elsewhere",
-    paragraphs: [{ segs: [{ t: "Not indexed." }] }],
-  });
-  box = mailbox();
-  env = {
-    ...connectedEnv(),
-    EMAIL: box.EMAIL,
-    GOOGLE_SA_KEY: key.json,
-    GOOGLE_MANUSCRIPTS_FOLDER_ID: FOLDER,
-  } as Env;
-  await refreshManuscripts(env, google.fetch);
-  google.requests.length = 0;
+      });
+      g.addDoc("docElsewhere1", {
+        title: "Elsewhere",
+        paragraphs: [{ segs: [{ t: "Not indexed." }] }],
+      });
+    },
+  ));
 });
 
 const connect = (email = "owner@test.invalid", client = "Claude") =>
