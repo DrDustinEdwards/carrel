@@ -40,6 +40,7 @@ import {
   saveBookAiDraft,
 } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
+import { writeInDoc } from "~/lib/ai-write.server";
 import { refreshManuscripts, listManuscripts } from "~/lib/google/drive.server";
 import {
   changeInDoc,
@@ -193,6 +194,42 @@ const LIST = { type: "array" };
 const YES = { type: "boolean" };
 const ID = { type: "integer" };
 const TEXT = { type: "string" };
+/** What "Carrel writes it" adds to a Docs answer: which engine did it, with what model, and what it could not place. */
+const CARREL_WROTE = { engine: TEXT, model: TEXT, note: TEXT, skipped: LIST, sessionUrl: ANY };
+
+/**
+ * "Carrel writes it": Dustin's request (ask) done by Carrel's own engine in the Doc, as a tool's answer: what the API
+ * laid in the Doc, or the routine it was handed to.
+ */
+async function carrelWrites(
+  args: Record<string, unknown>,
+  ctx: ToolContext,
+  job: Parameters<typeof writeInDoc>[3]["job"],
+  mode?: "suggest" | "write",
+) {
+  const ran = await writeInDoc(
+    ctx.env,
+    ctx.session,
+    str(args, "doc", { max: MAX.path }),
+    {
+      job,
+      ask: str(args, "ask", { max: MAX.message }),
+      mode,
+      tab: str(args, "tab", { optional: true, max: MAX.path }) || undefined,
+      heading: str(args, "heading", { optional: true, max: MAX.excerpt }) || undefined,
+    },
+    ctx.deps.fetcher,
+  );
+  if (!ran.ok) throw new AiRefusal(ran.error);
+  if (ran.engine === "subscription")
+    return {
+      engine: ran.engine,
+      sessionUrl: ran.sessionUrl,
+      note: "Handed to Dustin's subscription routine, which does it with these Docs tools; the result shows in the Doc when it finishes.",
+    };
+  const { ok: _ok, ...rest } = ran;
+  return rest;
+}
 const FLAGGED = shape({ flagged: YES, findingId: ID, alreadyFlagged: YES });
 
 /** The outputSchema a client sees: an answer carrying outside text also carries the notice. */
@@ -1508,7 +1545,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_change_doc",
     title: "Suggest or write changes in a Google Doc",
     scope: "write",
-    description: `Changes a Google Doc's text. By default the edits go in as SUGGESTIONS that Dustin accepts or rejects in Docs. mode "write" changes his text directly: use it ONLY when Dustin asked you, in this conversation, to write the change directly rather than suggest it; a Doc he locked "suggest only" refuses it. Each edit quotes words exactly as carrel_read_doc showed them: {find, replace} swaps them ("" deletes), {insert_after, text} adds after them. A quote must sit in one paragraph and appear once, or the call is refused and says why. Give each edit a one-line reason; Carrel replies on each suggestion in the Doc with which AI made it and why, and records a direct write with the text it replaced and emails Dustin. The answer's undo id takes it back with carrel_undo_doc. Pass model if you know yours. ${RULE} Change only what he asked for.`,
+    description: `Changes a Google Doc's text. By default the edits go in as SUGGESTIONS that Dustin accepts or rejects in Docs. mode "write" changes his text directly: use it ONLY when Dustin asked you, in this conversation, to write the change directly rather than suggest it; a Doc he locked "suggest only" refuses it. Either you write the edits, or Carrel does: give edits, or give ask instead. Each edit quotes words exactly as carrel_read_doc showed them: {find, replace} swaps them ("" deletes), {insert_after, text} adds after them. A quote must sit in one paragraph and appear once, or the call is refused and says why. With ask (Dustin's request in his words), Carrel's own model writes the edits, with the model and effort Dustin set in Desk, so the result is the same whichever AI he asked; use it when he says "have Carrel write it". Give each edit a one-line reason; Carrel replies on each suggestion in the Doc with which AI made it and why, and records a direct write with the text it replaced and emails Dustin. The answer's undo id takes it back with carrel_undo_doc. Pass model if you know yours. ${RULE} Change only what he asked for.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -1533,21 +1570,53 @@ export const TOOLS: Tool[] = [
           type: "string",
           description: "A tab's id or title when the Doc has several and a quote could be in two.",
         },
+        ask: {
+          type: "string",
+          description:
+            "Instead of edits: Dustin's request in his words, for Carrel's own model to write (\"Carrel writes it\").",
+        },
+        job: {
+          type: "string",
+          enum: ["edit", "new"],
+          description:
+            "With ask: edit (the default) changes his words; new adds new text and changes none of them.",
+        },
+        heading: {
+          type: "string",
+          description: "With ask: the exact text of a heading, so Carrel reads that section only.",
+        },
         model: { type: "string", description: "Your model, if you know it, for the label." },
       },
-      required: ["doc", "edits", "reason"],
+      required: ["doc", "reason"],
       additionalProperties: false,
     },
     annotations: CHANGE_GOOGLE,
     outputSchema: shape(
-      { mode: TEXT, changeId: ID, undo: TEXT, edits: ID },
-      { suggestionIds: LIST, labeled: YES, labelProblem: TEXT, emailed: ANY },
+      {},
+      {
+        mode: TEXT,
+        changeId: ID,
+        undo: TEXT,
+        edits: ID,
+        suggestionIds: LIST,
+        labeled: YES,
+        labelProblem: TEXT,
+        emailed: ANY,
+        ...CARREL_WROTE,
+      },
     ),
     outside: false,
     run: async (args, ctx) => {
       const mode = str(args, "mode", { optional: true, max: 10 }) || "suggest";
       if (mode !== "suggest" && mode !== "write")
         throw new AiRefusal('mode is "suggest" or "write".');
+      const ask = str(args, "ask", { optional: true, max: MAX.message });
+      if (ask && args.edits !== undefined) throw new AiRefusal("Give edits or ask, not both.");
+      if (ask) {
+        const job = str(args, "job", { optional: true, max: 10 }) || "edit";
+        if (job !== "edit" && job !== "new") throw new AiRefusal('job is "edit" or "new".');
+        return carrelWrites(args, ctx, job === "new" ? "docs-write" : "docs-edit", mode);
+      }
       return changeInDoc(
         ctx.env,
         ctx.session.viewer,
@@ -1665,7 +1734,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_comment_doc",
     title: "Comment in a Google Doc",
     scope: "write",
-    description: `Comments in a Google Doc: a new comment on quoted words (quote, text), a reply to a comment or suggestion thread (reply_to, text), or resolve or reopen a comment (reply_to, action). The comment starts with which AI wrote it, so Dustin sees it in Docs. A quote must sit in one paragraph and appear once. No assignee: assigning emails someone, which stays his. Pass model if you know yours. ${RULE}`,
+    description: `Comments in a Google Doc: a new comment on quoted words (quote, text), a reply to a comment or suggestion thread (reply_to, text), or resolve or reopen a comment (reply_to, action). Or give ask alone (Dustin's request in his words, such as "review the methods for clarity"): Carrel's own model reviews the Doc and comments, with the model and effort Dustin set in Desk, so the result is the same whichever AI he asked. The comment starts with which AI wrote it, so Dustin sees it in Docs. A quote must sit in one paragraph and appear once. No assignee: assigning emails someone, which stays his. Pass model if you know yours. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: {
@@ -1681,17 +1750,36 @@ export const TOOLS: Tool[] = [
             "For a reply, resolve or reopen: the comment's or suggestion's id from carrel_read_doc.",
         },
         action: { type: "string", enum: ["resolve", "reopen"] },
+        ask: {
+          type: "string",
+          description:
+            "Alone: Dustin's request for a review, for Carrel's own model to answer with comments.",
+        },
         tab: { type: "string" },
+        heading: {
+          type: "string",
+          description:
+            "With ask: the exact text of a heading, so Carrel reviews that section only.",
+        },
         model: { type: "string" },
       },
       required: ["doc"],
       additionalProperties: false,
     },
     annotations: WRITE_GOOGLE,
-    outputSchema: shape({ changeId: ID, labeled: YES }, { id: ANY }),
+    outputSchema: shape(
+      {},
+      { changeId: ID, labeled: YES, id: ANY, comments: LIST, ...CARREL_WROTE },
+    ),
     outside: false,
-    run: async (args, ctx) =>
-      commentInDoc(
+    run: async (args, ctx) => {
+      const ask = str(args, "ask", { optional: true, max: MAX.message });
+      if (ask) {
+        if (["text", "quote", "reply_to", "action"].some((k) => args[k] !== undefined))
+          throw new AiRefusal("ask goes alone: Carrel writes the comments.");
+        return carrelWrites(args, ctx, "docs-review");
+      }
+      return commentInDoc(
         ctx.env,
         ctx.session.viewer,
         ctx.session,
@@ -1704,7 +1792,8 @@ export const TOOLS: Tool[] = [
           ...docWhere(args),
         },
         ctx.deps.fetcher,
-      ),
+      );
+    },
   },
 
   {

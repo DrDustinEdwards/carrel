@@ -218,7 +218,7 @@ type Need = "read" | "suggest" | "write";
  * The index's row for a Doc, once the lock allows what the call needs: only a Google Doc in the shared folder is
  * reachable, never one Dustin locked "no AI", and a direct change never one he locked "suggest only".
  */
-async function indexed(env: Env, viewer: Viewer, docId: string, need: Need = "read") {
+export async function indexed(env: Env, viewer: Viewer, docId: string, need: Need = "read") {
   requireOwner(viewer);
   const lock = await drizzle(env.DB)
     .select({ lock: docLocks.lock })
@@ -542,6 +542,9 @@ function requestsOf(planned: Planned[]): { requests: Record<string, unknown>[]; 
   return { requests, owner };
 }
 
+/** An edit or comment Carrel's own engine wrote that could not be placed, and why. */
+export type Skipped = { quote: string; why: string };
+
 type SuggestResult = {
   mode: "suggest";
   changeId: number;
@@ -579,14 +582,39 @@ export async function changeInDoc(
     tab?: string;
     model?: string;
     mode?: "suggest" | "write";
+    /**
+     * Leave out an edit whose quote is not found, instead of refusing them all: for Carrel's own engine, whose quotes
+     * nobody can correct before it runs. What was left out comes back in `skipped`.
+     */
+    skipUnfound?: boolean;
   },
   fetcher?: Fetch,
-): Promise<SuggestResult | WriteResult> {
+): Promise<(SuggestResult | WriteResult) & { skipped?: Skipped[] }> {
   const write = input.mode === "write";
   const row = await indexed(env, viewer, docId, write ? "write" : "suggest");
   const doc = await fetchDoc(env, docId, fetcher);
   const paras = paragraphsOf(doc);
-  const planned = planEdits(paras, input.edits, tabIdOf(doc, input.tab));
+  const tabId = tabIdOf(doc, input.tab);
+  const skipped: Skipped[] = [];
+  let edits = input.edits;
+  if (input.skipUnfound) {
+    edits = edits.filter((edit) => {
+      try {
+        planEdits(paras, [edit], tabId);
+        return true;
+      } catch (error) {
+        if (!(error instanceof AiRefusal)) throw error;
+        skipped.push({ quote: "find" in edit ? edit.find : edit.insert_after, why: error.message });
+        return false;
+      }
+    });
+    if (edits.length === 0)
+      throw new AiRefusal(
+        `None of the edits could be placed: ${skipped.map((s) => s.why).join(" ")}`.slice(0, 1500),
+      );
+  }
+  const planned = planEdits(paras, edits, tabId);
+  const extra = skipped.length ? { skipped } : {};
   const { requests, owner } = requestsOf(planned);
   if (write) {
     const touched = new Set(planned.map((p) => p.at.tabId));
@@ -606,13 +634,14 @@ export async function changeInDoc(
       fetcher,
       { direct: true },
     );
-    return writeDone(env, viewer, session, row, {
+    const written = await writeDone(env, viewer, session, row, {
       model: input.model,
       reason: input.reason,
       edits: planned,
       revisionId: doc.revisionId,
       beforeText,
     });
+    return { ...written, ...extra };
   }
   const done = await batch(
     env,
@@ -689,6 +718,7 @@ export async function changeInDoc(
     edits: planned.length,
     labeled: labelProblem === undefined,
     ...(labelProblem ? { labelProblem } : {}),
+    ...extra,
   };
 }
 
