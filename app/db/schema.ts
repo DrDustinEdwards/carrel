@@ -427,6 +427,19 @@ export const manuscripts = sqliteTable("manuscripts", {
   createdTime: text("created_time"),
   modifiedTime: text("modified_time"),
   syncedAt: text("synced_at").notNull(),
+  /** Suggestions an AI laid in the Doc through Carrel that are still open (migration 0039). */
+  waiting: integer("waiting").notNull().default(0),
+});
+
+// The channel on which Google tells Carrel that a file changed (Drive changes.watch; migration 0039).
+export const driveWatch = sqliteTable("drive_watch", {
+  id: text("id").primaryKey(),
+  resourceId: text("resource_id").notNull(),
+  /** Google sends it back on every notice: the proof that a notice is from this channel. */
+  token: text("token").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  /** When a notice last refreshed the index, so a burst of edits refreshes it once a minute at most. */
+  refreshedAt: text("refreshed_at"),
 });
 
 // Every change an AI made in a Google Doc through Carrel (migration 0035): which AI, why, and the exact change.

@@ -22,11 +22,12 @@ export const BACKUP_CRON = "17 3 * * *";
 /**
  * Tables that hold a live credential or a one-time token, which a backup bucket must never carry.
  * google_tokens: Dustin's drive.file refresh token (encrypted, but still a live credential).
+ * drive_watch: the change channel's token, which admits Google's notices; the cron opens a new channel when none is there.
  * google_oauth_states: the one-time `state` values of an OAuth sign-in in flight.
  * Any other column whose name says credential fails the night (d1-dump's `credentials`) until it is excluded here or
  * allowed below with its reason.
  */
-export const EXCLUDED_TABLES = ["google_tokens", "google_oauth_states"] as const;
+export const EXCLUDED_TABLES = ["google_tokens", "google_oauth_states", "drive_watch"] as const;
 
 /** Tables that exist nowhere else: the authorship record and the AI drafts saved beside Dustin's. */
 export const REQUIRED_TABLES = ["authorship", "ai_drafts"] as const;

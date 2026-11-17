@@ -119,6 +119,8 @@ export function fakeGoogle(opts: {
     /** What Dustin's grant shared, and the Docs it uploaded with their metadata. */
     shared: [] as Record<string, unknown>[],
     uploads: [] as { id: string; name: string; parents?: string[]; description?: string }[],
+    /** Every change channel opened or stopped. */
+    channels: [] as Record<string, unknown>[],
   };
 
   const json = (status: number, body: unknown) =>
@@ -220,6 +222,20 @@ export function fakeGoogle(opts: {
       const id = `folderMade${files.length + 1}`;
       files.push({ id, name: meta.name, mimeType: meta.mimeType, parent: "root" });
       return json(200, { id });
+    }
+    // Drive's change channel (watch.server.ts), on the service account's own change log.
+    if (url.origin === "https://www.googleapis.com" && url.pathname.startsWith("/drive/v3/c")) {
+      if (auth !== `Bearer ${SA_TOKEN}`) return json(401, { error: { code: 401 } });
+      if (url.pathname === "/drive/v3/changes/startPageToken")
+        return json(200, { startPageToken: "42" });
+      const body = (await request.json()) as Record<string, unknown>;
+      state.channels.push({ path: url.pathname, ...body });
+      if (url.pathname === "/drive/v3/changes/watch")
+        return json(200, {
+          resourceId: `res-${state.channels.length}`,
+          expiration: String(body.expiration),
+        });
+      return new Response(null, { status: 204 });
     }
     const permissions = /^\/drive\/v3\/files\/([^/]+)\/permissions$/.exec(url.pathname);
     if (url.origin === "https://www.googleapis.com" && permissions && request.method === "POST") {

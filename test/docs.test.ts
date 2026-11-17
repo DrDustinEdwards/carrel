@@ -11,6 +11,9 @@ import { base64url } from "@dustinedwards/site-runtime/encoding";
 import { docActivity, saveDocsEmail, setDocLock } from "~/lib/google/docs.server";
 import { refreshManuscripts } from "~/lib/google/drive.server";
 import { panelAnswer } from "~/lib/google/panel.server";
+import { driveNotice, keepWatching } from "~/lib/google/watch.server";
+import { needsYou } from "~/lib/desk.server";
+import { visibleProjects } from "~/lib/people.server";
 import {
   clearSaTokenCache,
   assertAllowed,
@@ -582,6 +585,73 @@ describe("Carrel writes it", () => {
     const refused = await c.call("carrel_comment_doc", { doc: DOC, ask: "Review it." });
     expect(refused.isError).toBe(true);
     expect(asked).toEqual([]);
+  });
+});
+
+describe("awareness", () => {
+  it("counts the AI suggestions still open in a Doc that changed, lists them on the Owner's Home, and refreshes on Google's notice from its own channel only", async () => {
+    const c = await connect("owner@test.invalid", "Grok Bot");
+    await c.call("carrel_change_doc", {
+      doc: DOC,
+      reason: "tighten",
+      edits: [{ find: "wide and the water was cold", replace: "wide and cold", reason: "shorter" }],
+    });
+    google.files.find((f) => f.id === DOC)!.modifiedTime = "2026-11-17T10:00:00.000Z";
+    await refreshManuscripts(env, google.fetch);
+    const owner = await viewerFor("owner@test.invalid");
+    const visible = await visibleProjects(testEnv.DB, owner);
+    const needs = await needsYou(testEnv.DB, owner, visible);
+    expect(needs.find((n) => n.id === `doc-${DOC}`)).toMatchObject({
+      group: "ai",
+      title: "2 AI suggestions wait in a Doc",
+      detail: "Chapter draft",
+    });
+
+    // The channel opens once, and a day before its week is up a new one replaces it.
+    const now = new Date("2026-11-17T12:00:00.000Z");
+    expect(await keepWatching(env, google.fetch, now)).toBe("renewed");
+    expect(await keepWatching(env, google.fetch, now)).toBe("watching");
+    expect(await keepWatching(env, google.fetch, new Date(now.getTime() + 6.5 * 86_400_000))).toBe(
+      "renewed",
+    );
+    expect(google.state.channels.map((ch) => ch.path)).toEqual([
+      "/drive/v3/changes/watch",
+      "/drive/v3/changes/watch",
+      "/drive/v3/channels/stop",
+    ]);
+    const open = google.state.channels[1]!;
+    expect(open).toMatchObject({
+      type: "web_hook",
+      address: expect.stringMatching(/\/drive-changes$/),
+    });
+
+    const waits: Promise<unknown>[] = [];
+    const ctx = {
+      waitUntil: (p: Promise<unknown>) => waits.push(p),
+    } as unknown as ExecutionContext;
+    const notice = (id: unknown, token: unknown) =>
+      driveNotice(
+        new Request("https://carrel-mcp.test/drive-changes", {
+          method: "POST",
+          headers: {
+            "X-Goog-Channel-ID": String(id),
+            "X-Goog-Channel-Token": String(token),
+            "X-Goog-Resource-State": "change",
+          },
+        }),
+        env,
+        ctx,
+        google.fetch,
+      );
+    expect(
+      (await notice(google.state.channels[0]!.id, google.state.channels[0]!.token)).status,
+    ).toBe(404);
+    expect((await notice(open.id, "guessed")).status).toBe(404);
+    expect(waits).toHaveLength(0);
+    expect((await notice(open.id, open.token)).status).toBe(200);
+    expect((await notice(open.id, open.token)).status).toBe(200);
+    expect(waits).toHaveLength(1);
+    await Promise.all(waits);
   });
 });
 
