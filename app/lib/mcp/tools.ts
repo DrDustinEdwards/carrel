@@ -41,7 +41,12 @@ import {
 } from "~/lib/books.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { writeInDoc } from "~/lib/ai-write.server";
-import { refreshManuscripts, listManuscripts } from "~/lib/google/drive.server";
+import {
+  CARREL_FOLDER,
+  createGoogleDoc,
+  listManuscripts,
+  refreshManuscripts,
+} from "~/lib/google/drive.server";
 import {
   changeInDoc,
   commentInDoc,
@@ -50,6 +55,7 @@ import {
   exportGoogleDoc,
   GOOGLE_DOC,
   indexed,
+  labelOf,
   readGoogleDoc,
   reviewInDoc,
   undoInDoc,
@@ -1543,6 +1549,46 @@ export const TOOLS: Tool[] = [
         {
           tab: str(args, "tab", { optional: true, max: MAX.path }),
           heading: str(args, "heading", { optional: true, max: MAX.excerpt }),
+        },
+        ctx.deps.fetcher,
+      ),
+  },
+  {
+    name: "carrel_create_doc",
+    title: "Create a Google Doc",
+    scope: "write",
+    description: `Creates a new Google Doc in Dustin's Drive, in the folder "${CARREL_FOLDER}", on his ask only: from text you give (Markdown: headings, lists, links and emphasis carry over), or as a copy of a Doc in his Manuscripts (copy_of, its id; formatting carries over, suggestions and comments do not). The new Doc joins carrel_list_docs at once, so the other Docs tools reach it, and its Drive description says which AI made it and why. Nothing is shared with anyone. ${RULE}`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "The new Doc's name." },
+        text: { type: "string", description: "Its content, as Markdown." },
+        copy_of: {
+          type: "string",
+          description: "Instead of text: a Doc's id from carrel_list_docs.",
+        },
+        reason: { type: "string", description: "One line: what Dustin asked for." },
+        model: { type: "string", description: "Your model, if you know it, for the label." },
+      },
+      required: ["title", "reason"],
+      additionalProperties: false,
+    },
+    annotations: WRITE_GOOGLE,
+    outputSchema: shape({ docId: TEXT, title: TEXT, url: TEXT }),
+    outside: false,
+    run: async (args, ctx) =>
+      createGoogleDoc(
+        ctx.env,
+        ctx.session.viewer,
+        {
+          title: str(args, "title", { max: MAX.path }),
+          text: str(args, "text", { optional: true, max: MAX.source }) || undefined,
+          copyOf: str(args, "copy_of", { optional: true, max: MAX.path }) || undefined,
+          label: labelOf(
+            ctx.session,
+            str(args, "model", { optional: true, max: 60 }) || undefined,
+            str(args, "reason", { max: MAX.message }),
+          ),
         },
         ctx.deps.fetcher,
       ),

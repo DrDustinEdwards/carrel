@@ -7,6 +7,8 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { finishAuth, oauthConnection, startAuth } from "~/lib/google/oauth.server";
 import {
+  CARREL_FOLDER,
+  createGoogleDoc,
   importFromDocs,
   listManuscripts,
   refreshManuscripts,
@@ -335,6 +337,36 @@ async function connectGoogle() {
     google.fetch,
   );
 }
+
+describe("creating a Doc", () => {
+  it("makes Carrel's folder once, shares it with the service account, and indexes each new Doc in it with its label", async () => {
+    await connectGoogle();
+    const owner = await viewerFor("owner@test.invalid");
+    const label = "Claude, through Carrel: a new outline";
+    const first = await createGoogleDoc(
+      env,
+      owner,
+      { title: "Outline", text: "# Outline", label },
+      google.fetch,
+    );
+    await createGoogleDoc(env, owner, { title: "Second", text: "Two", label }, google.fetch);
+    expect(google.state.shared).toEqual([
+      expect.objectContaining({ role: "writer", type: "user", emailAddress: CLIENT_EMAIL }),
+    ]);
+    const folder = google.state.shared[0]!.file;
+    expect(google.state.uploads.map((u) => [u.parents, u.description])).toEqual([
+      [[folder], label],
+      [[folder], label],
+    ]);
+    const list = await listManuscripts(testEnv.DB, owner);
+    expect(list.find((m) => m.fileId === first.docId)).toMatchObject({ folder: CARREL_FOLDER });
+    // The index walks Carrel's folder beside Manuscripts, so a refresh keeps them.
+    await refreshManuscripts(env, google.fetch);
+    expect((await listManuscripts(testEnv.DB, owner)).map((m) => m.name)).toEqual(
+      expect.arrayContaining(["Outline", "Second", "Grant proposal"]),
+    );
+  });
+});
 
 describe("connecting drive.file", () => {
   it("asks Google for drive.file alone, offline, back to Carrel's own callback", async () => {

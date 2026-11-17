@@ -403,6 +403,8 @@ export const googleTokens = sqliteTable("google_tokens", {
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   lastError: text("last_error"),
+  /** The folder Carrel made for new Docs, shared with the service account (migration 0038). */
+  folderId: text("folder_id"),
 });
 
 export const googleOauthStates = sqliteTable("google_oauth_states", {

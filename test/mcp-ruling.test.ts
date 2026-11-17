@@ -64,6 +64,7 @@ describe("names and hints", () => {
       "carrel_comment_doc",
       "carrel_review_doc",
       "carrel_undo_doc",
+      "carrel_create_doc",
     ];
     for (const tool of tools)
       expect(hints[tool.name]!.readOnlyHint, tool.name).toBe(!writes.includes(tool.name));
@@ -103,12 +104,20 @@ describe("names and hints", () => {
           "carrel_comment_doc",
           "carrel_review_doc",
           "carrel_undo_doc",
+          "carrel_create_doc",
+          "carrel_export_doc",
         ].includes(t.name),
     )) {
       expect(hints[tool.name]!.destructiveHint, tool.name).toBe(false);
       expect(hints[tool.name]!.openWorldHint, tool.name).toBe(false);
     }
-    for (const tool of ["carrel_list_docs", "carrel_read_doc", "carrel_comment_doc"])
+    for (const tool of [
+      "carrel_list_docs",
+      "carrel_read_doc",
+      "carrel_comment_doc",
+      "carrel_create_doc",
+      "carrel_export_doc",
+    ])
       expect(hints[tool], tool).toMatchObject({ destructiveHint: false, openWorldHint: true });
     for (const tool of ["carrel_change_doc", "carrel_review_doc", "carrel_undo_doc"])
       expect(hints[tool], tool).toMatchObject({ destructiveHint: true, openWorldHint: true });

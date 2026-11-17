@@ -93,7 +93,7 @@ describe("the protocol", () => {
       deps: { fetcher: site.fetch, carrelOrigin: CARREL },
       era: "legacy",
     });
-    expect((await legacy.list()).length).toBe(29);
+    expect((await legacy.list()).length).toBe(31);
     expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({
       projects: [{ slug: SLUG, role: "reader" }],
     });
