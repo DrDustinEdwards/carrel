@@ -22,7 +22,6 @@ import { can } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.chapter";
-import { plural } from "@drdustinedwards/site-helpers/text";
 import "capsomer/prose.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
@@ -129,7 +128,6 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
         renderLink={routerRenderLink}
         crumbs={[{ label: project.name, href: base }, { label: chapter.title }]}
         title={chapter.title}
-        lead={`${plural(scenes.length, "scene")}, ${scenes.reduce((n, s) => n + s.words, 0).toLocaleString()} words.`}
       />
 
       {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}

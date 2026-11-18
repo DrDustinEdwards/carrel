@@ -45,7 +45,6 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
     <div className="app-page">
       <PageHead
         title="Docs activity"
-        lead="To take a change back, ask an AI to undo it by its id."
         actions={<ButtonLink to="/manuscripts">Manuscripts</ButtonLink>}
       />
       <Panel title="Changes" count={changes.length} flush>

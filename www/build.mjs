@@ -135,7 +135,6 @@ function heroHtml() {
       title: "One desk for everything you write.",
       lead: "Carrel is an open-source writing app you run on Cloudflare. Write and publish posts for several websites from one place, keep your books in a Git repository, and work with AI that drafts beside you and never over you.",
       actions: signs,
-      note: "This instance is Dustin Edwards's; to use Carrel, run your own.",
       aside: cue,
     }),
   );

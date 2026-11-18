@@ -20,7 +20,6 @@ import {
   type GateCheck,
   type GateSite,
 } from "capsomer/react/publish-gate";
-import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { exact, parse } from "capsomer/behavior/time";
 
@@ -904,20 +903,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           { label: kindWord(data.kind) },
         ]}
         title={data.title || data.itemId}
-        lead={
-          <>
-            {data.status === "published" ? (
-              <Pill tone="ok">Published</Pill>
-            ) : data.status === "scheduled" ? (
-              <Pill tone="info">Scheduled</Pill>
-            ) : data.status === "draft" ? (
-              <Pill variant="secondary">Draft</Pill>
-            ) : (
-              <Pill variant="outline">Not on the site yet</Pill>
-            )}{" "}
-            {data.path ? <span className="cap-mono">{data.path}</span> : null}
-          </>
-        }
         actions={<LayoutSwitch value={layout} onChange={chooseLayout} />}
       />
 

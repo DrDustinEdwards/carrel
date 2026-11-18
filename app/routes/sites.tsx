@@ -64,9 +64,7 @@ export default function Sites({ loaderData }: Route.ComponentProps) {
     <div className="cap-admin-page">
       <PageHead title="Sites" />
       {sites.length === 0 ? (
-        <Empty kind="nothing-yet" title="No sites yet">
-          A site appears here once its key is set.
-        </Empty>
+        <Empty kind="nothing-yet" title="No sites yet" />
       ) : (
         <Table caption="Sites" captionHidden>
           <thead>

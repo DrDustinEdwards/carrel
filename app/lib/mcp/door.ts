@@ -144,7 +144,6 @@ const login = loginHandler<DoorEnv>({
   about:
     "<p>It can read as you. With changes allowed it can also save AI drafts beside yours and flag problems. Either way it can do only what your role in Carrel allows. Publishing, the site's text or the session's own AI draft, is for Dustin's own sessions only, and never while a flag is open.</p>",
   admits: {
-    consent: "Only people Carrel already knows are let in.",
     refusal: "This person is not in Carrel.",
   },
   // Access let them in, but Carrel must know them too: no row, no access (design section 3). The

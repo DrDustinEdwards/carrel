@@ -4,12 +4,12 @@
 
 import { Form, useNavigation } from "react-router";
 import { ButtonLink, routerRenderLink } from "capsomer/react/link";
-import { Alert, Banner } from "capsomer/react/banner";
+import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { ActionResult } from "~/components/action-result";
 import { lastAiPublication, publishedByLine } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -75,32 +75,13 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
         renderLink={routerRenderLink}
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: item.title }]}
         title={item.title}
-        lead={
-          <>
-            {item.status === "published" ? (
-              <Pill tone="ok">Published</Pill>
-            ) : item.status === "scheduled" ? (
-              <Pill tone="info">Scheduled</Pill>
-            ) : (
-              <Pill variant="secondary">Draft</Pill>
-            )}{" "}
-            on {project.site}
-            {item.path ? <span className="cap-mono"> {item.path}</span> : null}
-          </>
-        }
       />
       {publishedBy ? (
         <Banner tone="info">
           {publishedBy.line} <Time at={publishedBy.at} format="exact" />
         </Banner>
       ) : null}
-      {actionData ? (
-        actionData.ok ? (
-          <Banner tone="ok">{actionData.message}</Banner>
-        ) : (
-          <Alert tone="crit">{actionData.message}</Alert>
-        )
-      ) : null}
+      <ActionResult result={actionData} />
       <div className="cap-cluster" data-gap="3">
         {!done && item.status !== "draft" ? (
           <Form method="post">

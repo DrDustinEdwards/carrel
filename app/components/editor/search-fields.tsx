@@ -28,7 +28,6 @@ import "capsomer/media-library.css";
 const PICK_WORDS = {
   label: "Choose from library",
   title: "Choose the share image",
-  lead: "Pick an image already on the site, then describe it. The description is the share image's alt text.",
 };
 
 type Props = {

@@ -288,9 +288,7 @@ export default function BookHistory({ loaderData }: Route.ComponentProps) {
 
       <Panel title="Versions" count={versions.length}>
         {versions.length === 0 ? (
-          <Empty kind="nothing-yet" title="No history to show">
-            {notice ? "Git is not answering." : "No versions yet."}
-          </Empty>
+          <Empty kind="nothing-yet" title="No history to show" />
         ) : (
           <RevisionPicker
             revisions={versions.map((v) => ({

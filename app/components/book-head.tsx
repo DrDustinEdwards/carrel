@@ -44,7 +44,6 @@ export function BookHead({
     <>
       <PageHead
         title={book.name}
-        lead={<span className="cap-mono">{book.book}/</span>}
         actions={
           <>
             {book.connected ? (
