@@ -73,6 +73,26 @@ function edit(doc: Y.Doc, change: (state: EditorState) => EditorState) {
 const typeAtEnd = (text: string) => (state: EditorState) =>
   state.apply(state.tr.insertText(text, state.doc.child(0).nodeSize - 1));
 
+/** A suggestion typed at the end of the first paragraph by person `by`, as their editor in suggest mode sends it. */
+function suggestAtEnd(doc: Y.Doc, by: number, text: string) {
+  const suggest = suggestingDispatch({ by: String(by), clientId: doc.clientID, round: () => null });
+  edit(doc, (start) => {
+    let on = start;
+    enableSuggestChanges(on, (tr) => (on = on.apply(tr)));
+    return on.apply(suggest(on, on.tr.insertText(text, on.doc.child(0).nodeSize - 1)));
+  });
+}
+
+/** A new post's room, opened by the Owner on "The cat sat."; its item id. */
+async function catRoom() {
+  const itemId = item();
+  await openRoom(testEnv, project("owner"), await viewerFor("owner@test.invalid"), itemId, {
+    dialect: "site",
+    current: { source: "The cat sat.\n", version: "v1" },
+  });
+  return itemId;
+}
+
 describe("the shared copy", () => {
   for (const [name, source] of Object.entries(corpus)) {
     it(`PLANT: gives back ${name.replace("./fixtures/markdown/", "")} byte for byte after a trip through Yjs, for a site and for a book`, () => {
@@ -235,12 +255,7 @@ describe("a room", () => {
 
 describe("a coauthor who suggests", () => {
   it("PLANT: cannot change the text itself, and their suggestion stays out of the save until accepted", async () => {
-    const itemId = item();
-    const owner = await viewerFor("owner@test.invalid");
-    await openRoom(testEnv, project("owner"), owner, itemId, {
-      dialect: "site",
-      current: { source: "The cat sat.\n", version: "v1" },
-    });
+    const itemId = await catRoom();
     const coauthor = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
     const owners = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
 
@@ -253,16 +268,7 @@ describe("a coauthor who suggests", () => {
 
     // A suggestion goes through, marked as theirs, and a save leaves it out.
     const theirs = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
-    const suggest = suggestingDispatch({
-      by: String(ids.reader),
-      clientId: theirs.doc.clientID,
-      round: () => null,
-    });
-    edit(theirs.doc, (start) => {
-      let on = start;
-      enableSuggestChanges(on, (tr) => (on = on.apply(tr)));
-      return on.apply(suggest(on, on.tr.insertText(" On the mat.", on.doc.child(0).nodeSize - 1)));
-    });
+    suggestAtEnd(theirs.doc, ids.reader, " On the mat.");
     await theirs.flush();
     await owners.flush();
     expect(theirs.said.some((m) => m.t === "refused")).toBe(false);
@@ -272,6 +278,29 @@ describe("a coauthor who suggests", () => {
       { by: String(ids.reader), inserted: " On the mat." },
     ]);
     for (const c of [coauthor, theirs, owners]) c.close();
+  });
+
+  it("PLANT: cannot reword someone else's suggestion, even keeping its length", async () => {
+    const itemId = await catRoom();
+    const editors = await join(projectId, itemId, as(ids.editor, "editor", "editor", "suggest"));
+    suggestAtEnd(editors.doc, ids.editor, " On the mat.");
+    await editors.flush();
+
+    // The Reader swaps one letter inside the Editor's suggestion: the same count, still marked as the Editor's.
+    const reader = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));
+    edit(reader.doc, (state) => {
+      const at = state.doc.textContent.indexOf("mat") + 1;
+      return state.apply(state.tr.insertText("h", at, at + 1));
+    });
+    await reader.flush();
+    expect(reader.said.some((m) => m.t === "refused")).toBe(true);
+    const owners = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
+    await owners.flush();
+    const { doc: pm } = initProseMirrorDoc(owners.doc.getXmlFragment(FRAGMENT), roomSchema());
+    expect(listSuggestions(pm).map((s) => ({ by: s.by, inserted: s.inserted }))).toEqual([
+      { by: String(ids.editor), inserted: " On the mat." },
+    ]);
+    for (const c of [editors, reader, owners]) c.close();
   });
 
   it("keeps each person's changes their own when one types against another's", () => {
@@ -307,12 +336,7 @@ describe("a person whose role changes while the file is open", () => {
   afterEach(() => vi.useRealTimers());
 
   it("PLANT: is closed out when removed, and has plain edits refused when made a Reader", async () => {
-    const itemId = item();
-    const owner = await viewerFor("owner@test.invalid");
-    await openRoom(testEnv, project("owner"), owner, itemId, {
-      dialect: "site",
-      current: { source: "The cat sat.\n", version: "v1" },
-    });
+    const itemId = await catRoom();
     const owners = await join(projectId, itemId, as(ids.owner, "owner", "owner", "edit"));
     const editor = await join(projectId, itemId, as(ids.editor, "editor", "editor", "edit"));
     const reader = await join(projectId, itemId, as(ids.reader, "reader", "reader", "suggest"));

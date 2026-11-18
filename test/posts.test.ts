@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mayPublishItem, writeToSite } from "~/lib/content.server";
 import { searchItems } from "~/lib/index.server";
+import { postsSource } from "~/lib/posts.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as projectAction } from "~/routes/project";
 import { action as writingAction } from "~/routes/writing";
@@ -135,6 +136,22 @@ describe("the posts list's writes", () => {
     const author = { id: projectId, role: "author" } as const;
     expect(await mayPublishItem(env.DB, author, viewer, "mine")).toBe(false);
     expect(await mayPublishItem(env.DB, author, viewer, "mine2")).toBe(true);
+  });
+
+  it("records who made a preview link, which writes nothing to the post", async () => {
+    const viewer = await viewerFor("owner@test.invalid");
+    const project = await requireSiteProject(env.DB, viewer, SLUG, "publish");
+    await postsSource(env, project, viewer).record!({
+      kind: "post-preview-link",
+      ids: ["link-me"],
+      changeId: "change-1",
+    });
+    const made = await testEnv.DB.prepare(
+      "SELECT r.change_id AS changeId, r.item_id AS itemId, p.email FROM preview_link_records r JOIN people p ON p.id = r.person_id",
+    ).all();
+    expect(made.results).toEqual([
+      { changeId: "change-1", itemId: "link-me", email: "owner@test.invalid" },
+    ]);
   });
 
   it("PLANT: refuses every intent a Reader posts, and the site and the record do not move", async () => {

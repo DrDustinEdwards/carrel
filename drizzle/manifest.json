@@ -44,6 +44,7 @@
     "0039_drive_watch.sql": "c2eb376b402f0107fd53e8611804ebb6b663746a373d1ac61fce8ae07245d0f0",
     "0040_doc_links.sql": "25af5c275bd213e339c798e847de8114153984de824c3d43a4f919dcd77dddca",
     "0041_sheet_tabs.sql": "dd18b47dc66b79f8df92b6c0875b2580044dbe40f4c4a95a16d87af5972d73da",
-    "0042_ai_publish_requests.sql": "91cd6cbd297941dc2b05d43cabb9611a286b013b7fecaffef562772345e2fa54"
+    "0042_ai_publish_requests.sql": "91cd6cbd297941dc2b05d43cabb9611a286b013b7fecaffef562772345e2fa54",
+    "0043_preview_link_records.sql": "ab26366d290c0030e2531c8ca836e571aef035660fb18836be67c9e31c4835c9"
   }
 }
