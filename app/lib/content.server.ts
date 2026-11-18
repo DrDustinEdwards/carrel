@@ -4,7 +4,7 @@
 
 import type { ContentDoc } from "@dustinedwards/site-api";
 import { SiteApiError } from "@dustinedwards/site-api/client";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { changes, drafts, rooms } from "~/db/schema";
@@ -163,9 +163,10 @@ export async function discardDraft(
 
 /**
  * Who wrote a post: the person whose save created it in Carrel, read from the authorship record (the
- * save with no version before it). After a delete and a new post under the same id, the newest
- * creation counts, and a renamed post keeps the Author of the id it was renamed from. null for a post
- * made anywhere else, which then has no Author, only the Owner.
+ * save with no version before it). For each id the newest of its creation and the rename onto it
+ * counts, so a rename onto an id that once held another post replaces that post's Author, and a
+ * renamed post keeps the Author of the id it was renamed from as that id stood before the rename.
+ * null for a post made anywhere else, which then has no Author, only the Owner.
  */
 async function itemAuthor(
   db: D1Database,
@@ -173,34 +174,40 @@ async function itemAuthor(
   itemId: string,
 ): Promise<number | null> {
   const d = drizzle(db);
+  let before: { at: string; rowid: number } | null = null;
   for (let id: string | null = itemId, hops = 0; id !== null && hops < 10; hops++) {
-    const row = await d
-      .select({ personId: changes.personId })
+    const row: {
+      action: string;
+      personId: number;
+      from: string | null;
+      at: string;
+      rowid: number;
+    } | undefined = await d
+      .select({
+        action: changes.action,
+        personId: changes.personId,
+        from: changes.renamedFrom,
+        at: changes.createdAt,
+        rowid: sql<number>`rowid`,
+      })
       .from(changes)
       .where(
         and(
           eq(changes.projectId, projectId),
           eq(changes.itemId, id),
-          eq(changes.action, "save"),
-          isNull(changes.versionBefore),
+          or(
+            and(eq(changes.action, "save"), isNull(changes.versionBefore)),
+            eq(changes.action, "content-rename"),
+          ),
+          before ? sql`(${changes.createdAt}, rowid) < (${before.at}, ${before.rowid})` : undefined,
         ),
       )
-      .orderBy(desc(changes.createdAt))
+      .orderBy(desc(changes.createdAt), desc(sql`rowid`))
       .get();
-    if (row) return row.personId;
-    const renamed = await d
-      .select({ from: changes.renamedFrom })
-      .from(changes)
-      .where(
-        and(
-          eq(changes.projectId, projectId),
-          eq(changes.itemId, id),
-          eq(changes.action, "content-rename"),
-        ),
-      )
-      .orderBy(desc(changes.createdAt))
-      .get();
-    id = renamed?.from ?? null;
+    if (!row) return null;
+    if (row.action === "save") return row.personId;
+    id = row.from;
+    before = { at: row.at, rowid: row.rowid };
   }
   return null;
 }

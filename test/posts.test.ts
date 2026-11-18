@@ -41,9 +41,9 @@ const record = () =>
     .all()
     .then((r) => r.results);
 
-/** A draft the Author wrote in Carrel, so the authorship record names them. */
-async function draft(id: string) {
-  const viewer = await viewerFor("author@test.invalid");
+/** A draft `email` (the Author by default) wrote in Carrel, so the authorship record names them. */
+async function draft(id: string, email = "author@test.invalid") {
+  const viewer = await viewerFor(email);
   const project = await requireSiteProject(env.DB, viewer, SLUG, "edit");
   const saved = await writeToSite(env, project, viewer, id, {
     action: "save",
@@ -122,6 +122,19 @@ describe("the posts list's writes", () => {
     expect(
       await mayPublishItem(env.DB, { id: projectId, role: "author" }, viewer, "second-name"),
     ).toBe(true);
+  });
+
+  it("does not let an Author take over the Owner's draft by renaming it onto an id they once used", async () => {
+    const mine = await draft("mine");
+    const owners = await draft("owners-draft", "owner@test.invalid");
+    const rename = (ids: string, versions: string, newId: string) =>
+      post("author@test.invalid", { intent: "rename", ids, versions, newId });
+    expect(await rename("mine", mine, "mine2")).toMatchObject({ ok: true });
+    expect(await rename("owners-draft", owners, "mine")).toMatchObject({ ok: true });
+    const viewer = await viewerFor("author@test.invalid");
+    const author = { id: projectId, role: "author" } as const;
+    expect(await mayPublishItem(env.DB, author, viewer, "mine")).toBe(false);
+    expect(await mayPublishItem(env.DB, author, viewer, "mine2")).toBe(true);
   });
 
   it("PLANT: refuses every intent a Reader posts, and the site and the record do not move", async () => {
