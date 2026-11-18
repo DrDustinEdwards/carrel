@@ -542,14 +542,24 @@ export async function action({
       // The site's ceremony, kept: a post that has never been public is published only on a second, explicit ask.
       if (current && !current.publishedAt && form.get("confirm") !== "first-publish")
         return { intent, needsConfirm: true };
+      // The text the publisher was shown when they opened Publish, as a hash: anyone typing in the room after that is
+      // not published under their name unseen (the publishing review, finding 4).
+      const shown = form.get("shown");
       return {
         intent: "write",
-        outcome: await fromRoom((source, expectedVersion) =>
-          writeToSite(env, project, viewer, itemId, {
-            action: "publish",
-            source,
-            expectedVersion: onSiteVersion(expectedVersion),
-          }),
+        outcome: await fromRoom(async (source, expectedVersion) =>
+          typeof shown === "string" && shown !== (await sha256Hex(source))
+            ? {
+                ok: false,
+                reason: "refused",
+                message:
+                  "Someone changed the text after you opened Publish, so nothing was published. Read it again, then publish.",
+              }
+            : writeToSite(env, project, viewer, itemId, {
+                action: "publish",
+                source,
+                expectedVersion: onSiteVersion(expectedVersion),
+              }),
         ),
       };
     }
@@ -617,6 +627,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     hideFrontMatter: true,
   });
   const { room } = editing;
+  // The room's text when this person opened Publish; the publish is refused if it changed while the dialog was open.
+  const shownAtPublish = useRef("");
   const source = data.room ? room.source : data.source;
   const setSource = (next: string) => {
     const patched = room.setSource(next);
@@ -1240,7 +1252,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         busy={busy}
                         summaryId="publish-gate-sum"
                         size="default"
-                        onPublish={() => ask("publish", null)}
+                        onPublish={() => {
+                          shownAtPublish.current = source;
+                          ask("publish", null);
+                        }}
                         onUnpublish={() => void unpublish()}
                       />
                       <PublishGate
@@ -1369,7 +1384,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         action={`Publish to ${data.project.site}`}
         perform={async () => {
           try {
-            await writeThrough("publish", { confirm: "first-publish" });
+            await writeThrough("publish", {
+              confirm: "first-publish",
+              shown: await sha256Hex(shownAtPublish.current),
+            });
             say(`Published to ${data.project.site}.`);
           } catch (error) {
             say(`Could not publish: ${error instanceof Error ? error.message : String(error)}`);
