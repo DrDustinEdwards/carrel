@@ -106,13 +106,17 @@
     "oxlint": "1.93.0",
     "oxlint-tsgolint": "7.0.2007",
     "playwright": "1.65.1",
+    "playwright-core": "1.65.1",
     "typescript": "7.0.2",
     "vite": "8.3.8",
     "vitest": "5.1.0",
     "wrangler": "4.162.0"
   },
   "overrides": {
-    "@cloudflare/workers-types": "5.20261115.1"
+    "@cloudflare/workers-types": "5.20261115.1",
+    "@drdustinedwards/site-helpers": {
+      "playwright-core": "$playwright-core"
+    }
   },
   "engines": {
     "node": ">=26.11.1"
