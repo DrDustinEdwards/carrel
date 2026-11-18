@@ -47,7 +47,7 @@
     "@drdustinedwards/site-helpers": "github:DrDustinEdwards/prelum#v0.63.1",
     "@dustinedwards/d1-dump": "github:DrDustinEdwards/d1-dump#v0.16.1",
     "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.45.0",
-    "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#v0.168.0",
+    "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#v0.169.1",
     "@handlewithcare/prosemirror-suggest-changes": "0.1.8",
     "@lezer/highlight": "1.2.5",
     "@modelcontextprotocol/server": "2.4.0",
@@ -108,7 +108,7 @@
     "playwright": "1.65.1",
     "typescript": "7.0.2",
     "vite": "8.3.8",
-    "vitest": "4.1.12",
+    "vitest": "5.1.0",
     "wrangler": "4.162.0"
   },
   "overrides": {

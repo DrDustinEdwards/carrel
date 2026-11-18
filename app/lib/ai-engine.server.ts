@@ -18,6 +18,7 @@ import {
   type CallRecord,
 } from "@dustinedwards/site-runtime/anthropic";
 import { sendEmail } from "@dustinedwards/site-runtime/email";
+import { recordAiOutcome } from "@dustinedwards/site-runtime/health";
 import { WRITING_RULES } from "@dustinedwards/site-runtime/prose";
 import {
   joinSource,
@@ -336,6 +337,8 @@ export function meteredOptions(env: Env, feature: FeatureKey, effort: Effort): C
   return {
     feature,
     onResult: async (r: CallRecord) => {
+      // /health's ai-writing check: the last real call's outcome, kept apart from the meter so neither can fail the other.
+      await recordAiOutcome(env.OAUTH_KV, "writing", r);
       await drizzle(db)
         .insert(aiUsage)
         .values({

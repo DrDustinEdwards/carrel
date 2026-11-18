@@ -19,6 +19,7 @@ import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
 import { deployedAt, deployedSha } from "@dustinedwards/site-runtime/deploy";
 import {
+  aiOutcomeCheck,
   durableObjectCheck,
   emailCheck,
   healthResponse,
@@ -552,6 +553,8 @@ export function healthAnswer(env: Env): Promise<Response> {
       // AUDIT_BUCKET answers: a head of one key (no list), warn like the rest; a throw (an unbound binding included) fails it.
       { ...r2Check("audit-bucket", env.AUDIT_BUCKET), level: "warn" },
       emailCheck("email", env.EMAIL),
+      // The last real AI writing call failed (a spend cap, a revoked key): the settings above still look fine then.
+      aiOutcomeCheck("writing", env.OAUTH_KV),
       // Each job with its own interval, so one that never ran (a trigger that does not fire it) warns too. Held back
       // until its window has passed since this version was deployed.
       cronCheck(env.DB, { jobs: ALL_JOBS, deployedAt: deployedAt(env) }),
