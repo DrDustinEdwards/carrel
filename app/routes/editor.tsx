@@ -53,6 +53,7 @@ import {
   lastAiPublication,
   listAiDrafts,
   publishedByLine,
+  waitingAiPublishes,
 } from "~/lib/ai.server";
 import { roomNames } from "~/lib/comments.server";
 import { listTranscriptDrafts } from "~/lib/transcripts.server";
@@ -213,18 +214,29 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     }
   }
 
-  const [targets, flags, aiPublished, sentDoc, googleConnected, search, sections, canPublish] =
-    await Promise.all([
-      searchItems(env.DB, project.id, {}),
-      itemFindings(env.DB, project, itemId),
-      lastAiPublication(env.DB, project, itemId),
-      lastSentDoc(env.DB, project, itemId),
-      can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
-      pageStats(env, project, doc?.path ?? null),
-      listSections(env.DB),
-      // The Owner publishes any post; an Author only one they wrote (roles.ts).
-      mayPublishItem(env.DB, project, viewer, itemId),
-    ]);
+  const [
+    targets,
+    flags,
+    aiPublished,
+    aiAsks,
+    sentDoc,
+    googleConnected,
+    search,
+    sections,
+    canPublish,
+  ] = await Promise.all([
+    searchItems(env.DB, project.id, {}),
+    itemFindings(env.DB, project, itemId),
+    lastAiPublication(env.DB, project, itemId),
+    // Asks from this person's AI sessions to publish, waiting for their click.
+    waitingAiPublishes(env.DB, project, viewer, itemId),
+    lastSentDoc(env.DB, project, itemId),
+    can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
+    pageStats(env, project, doc?.path ?? null),
+    listSections(env.DB),
+    // The Owner publishes any post; an Author only one they wrote (roles.ts).
+    mayPublishItem(env.DB, project, viewer, itemId),
+  ]);
   // Images go in only for someone who may edit, and only on a site with a media library; scheduling an
   // update to a live post only on a site that keeps it live meanwhile. A site that does not answer
   // leaves the editor without them rather than failing the page.
@@ -338,8 +350,15 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     aiDrafts,
     transcriptDrafts,
     aiPublished: aiPublished
-      ? { line: publishedByLine(aiPublished.client), at: aiPublished.publishedAt }
+      ? {
+          line: publishedByLine(aiPublished.client, aiPublished.person),
+          at: aiPublished.publishedAt,
+        }
       : null,
+    aiAsks: aiAsks.map((a) => ({
+      client: a.client,
+      href: `/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(itemId)}/ai-publish/${a.id}`,
+    })),
     canSend: can(project.role, "send_external"),
     googleConnected,
     sentDoc: sentDoc ? { url: sentDoc.url, at: sentDoc.createdAt } : null,
@@ -523,14 +542,24 @@ export async function action({
       // The site's ceremony, kept: a post that has never been public is published only on a second, explicit ask.
       if (current && !current.publishedAt && form.get("confirm") !== "first-publish")
         return { intent, needsConfirm: true };
+      // The text the publisher was shown when they opened Publish, as a hash: anyone typing in the room after that is
+      // not published under their name unseen (the publishing review, finding 4).
+      const shown = form.get("shown");
       return {
         intent: "write",
-        outcome: await fromRoom((source, expectedVersion) =>
-          writeToSite(env, project, viewer, itemId, {
-            action: "publish",
-            source,
-            expectedVersion: onSiteVersion(expectedVersion),
-          }),
+        outcome: await fromRoom(async (source, expectedVersion) =>
+          typeof shown === "string" && shown !== (await sha256Hex(source))
+            ? {
+                ok: false,
+                reason: "refused",
+                message:
+                  "Someone changed the text after you opened Publish, so nothing was published. Read it again, then publish.",
+              }
+            : writeToSite(env, project, viewer, itemId, {
+                action: "publish",
+                source,
+                expectedVersion: onSiteVersion(expectedVersion),
+              }),
         ),
       };
     }
@@ -598,6 +627,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     hideFrontMatter: true,
   });
   const { room } = editing;
+  // The room's text when this person opened Publish; the publish is refused if it changed while the dialog was open.
+  const shownAtPublish = useRef("");
   const source = data.room ? room.source : data.source;
   const setSource = (next: string) => {
     const patched = room.setSource(next);
@@ -946,6 +977,12 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             replaces the text everyone here is working on.
           </Banner>
         ) : null}
+        {data.aiAsks.map((ask) => (
+          <Banner key={ask.href} tone="info">
+            {ask.client} asks to publish this. It waits for you:{" "}
+            <a href={ask.href}>review and publish</a>.
+          </Banner>
+        ))}
         {data.aiPublished && data.status === "published" ? (
           <Banner tone="info">
             {data.aiPublished.line} <Time at={data.aiPublished.at} format="exact" />
@@ -1215,7 +1252,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         busy={busy}
                         summaryId="publish-gate-sum"
                         size="default"
-                        onPublish={() => ask("publish", null)}
+                        onPublish={() => {
+                          shownAtPublish.current = source;
+                          ask("publish", null);
+                        }}
                         onUnpublish={() => void unpublish()}
                       />
                       <PublishGate
@@ -1344,7 +1384,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         action={`Publish to ${data.project.site}`}
         perform={async () => {
           try {
-            await writeThrough("publish", { confirm: "first-publish" });
+            await writeThrough("publish", {
+              confirm: "first-publish",
+              shown: await sha256Hex(shownAtPublish.current),
+            });
             say(`Published to ${data.project.site}.`);
           } catch (error) {
             say(`Could not publish: ${error instanceof Error ? error.message : String(error)}`);

@@ -47,7 +47,7 @@ export async function loader(args: Route.LoaderArgs) {
       path: doc.path,
       version: doc.version,
     },
-    publishedBy: ai ? { line: publishedByLine(ai.client), at: ai.publishedAt } : null,
+    publishedBy: ai ? { line: publishedByLine(ai.client, ai.person), at: ai.publishedAt } : null,
   };
 }
 

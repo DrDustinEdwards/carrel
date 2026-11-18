@@ -126,6 +126,15 @@ describe("publishing from the editor", () => {
     expect(ask).toEqual({ intent: "publish", needsConfirm: true });
     expect(site.adapter.store.get("post-one")!.doc.status).toBe("draft");
 
+    // PLANT: the text changed after the publisher opened Publish, so nothing goes to the site.
+    const changed = await post("owner@test.invalid", env, {
+      intent: "publish",
+      confirm: "first-publish",
+      shown: "0".repeat(64),
+    });
+    expect(changed).toMatchObject({ intent: "write", outcome: { ok: false } });
+    expect(site.adapter.store.get("post-one")!.doc.status).toBe("draft");
+
     const done = await post("owner@test.invalid", env, {
       intent: "publish",
       confirm: "first-publish",
