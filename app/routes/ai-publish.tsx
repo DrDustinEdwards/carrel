@@ -88,6 +88,11 @@ export default function AiPublish({ loaderData, actionData }: Route.ComponentPro
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: title }]}
         title={`Publish "${title}"?`}
       />
+      <div className="cap-cluster" data-gap="3">
+        <span>{project.site}</span>
+        <span>Asked by {request.client}</span>
+        <Time at={request.createdAt} format="exact" />
+      </div>
       {request.outcome !== null && !actionData ? (
         <Banner tone="info">
           {request.outcome === "published" ? "Published" : "Declined"}{" "}

@@ -8,6 +8,7 @@ import { Suspense, lazy, useRef, useState, type ReactNode } from "react";
 import { Form, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
 import { PageHead } from "capsomer/react/page-head";
+import { Time } from "capsomer/react/time";
 
 const loadConfirm = () => import("capsomer/react/confirm-dialog");
 const ConfirmDialog = lazy(() => loadConfirm().then((m) => ({ default: m.ConfirmDialog })));
@@ -77,6 +78,12 @@ export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
           </>
         }
       />
+      <div className="cap-cluster" data-gap="3">
+        <span>
+          Saved <Time at={draft.createdAt} format="exact" />
+        </span>
+        {draft.note ? <span>{draft.note}</span> : null}
+      </div>
       {use && asked ? (
         <Suspense fallback={null}>
           <ConfirmDialog

@@ -10,6 +10,7 @@ import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
 import { ActionResult } from "~/components/action-result";
+import { ItemStatus } from "~/components/item-status";
 import { lastAiPublication, publishedByLine } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -76,6 +77,11 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: item.title }]}
         title={item.title}
       />
+      <div className="cap-cluster" data-gap="3">
+        <ItemStatus status={item.status} />
+        <span>{project.site}</span>
+        {item.path ? <span className="cap-mono">{item.path}</span> : null}
+      </div>
       {publishedBy ? (
         <Banner tone="info">
           {publishedBy.line} <Time at={publishedBy.at} format="exact" />

@@ -24,6 +24,7 @@ import { useState } from "react";
 import { Form, useNavigate } from "react-router";
 
 import { ScopeChip } from "capsomer/react/scope-chip";
+import { ItemStatus } from "~/components/item-status";
 import { getEnv, getViewer } from "~/lib/context";
 import { writingRows } from "~/lib/desk.server";
 import { readForm } from "~/lib/form.server";
@@ -45,7 +46,6 @@ const LABEL = {
   scheduled: "Scheduled",
   published: "Published",
 } as const;
-const TONE = { draft: "secondary", scheduled: "outline", published: "default" } as const;
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
@@ -104,8 +104,6 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Wr
   const names = new Map(rows.map((r) => [postKey(r.siteSlug, r.itemId), `${r.title} · ${r.site}`]));
   return runWritingIntent(env, viewer, form, (key) => names.get(key) ?? key);
 }
-
-const PEEK_STATUS = { draft: "Draft", scheduled: "Scheduled", published: "Published" } as const;
 
 export default function Writing({ loaderData, actionData }: Route.ComponentProps) {
   const { sites, site, status, q, waitingAi, counts, rows, newHref, peek, inspect } = loaderData;
@@ -299,9 +297,7 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
                   </span>
                 </th>
                 <td>
-                  <Pill variant={TONE[r.status]}>
-                    {LABEL[r.status === "draft" ? "draft" : r.status].replace(/s$/, "")}
-                  </Pill>
+                  <ItemStatus status={r.status} />
                 </td>
                 <td data-drop="2" data-num>
                   {r.at ? <Time at={r.at} /> : null}
@@ -326,7 +322,7 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
           title={peek.title}
           kind={`${peek.kind} · ${peek.site}`}
           identifier={peek.itemId}
-          badge={<Pill variant={TONE[peek.status]}>{PEEK_STATUS[peek.status]}</Pill>}
+          badge={<ItemStatus status={peek.status} />}
         >
           <div className="cap-detail-controls">
             <ButtonLink variant="primary" to={peek.editHref}>

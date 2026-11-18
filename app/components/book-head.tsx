@@ -73,6 +73,7 @@ export function BookHead({
           </>
         }
       />
+      <p className="cap-mono">{book.book}/</p>
       <TabsNav aria-label="Sections of this book" variant="line">
         {SECTIONS.map((s) => (
           <Link
