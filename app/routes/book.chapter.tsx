@@ -22,6 +22,7 @@ import { can } from "~/lib/roles";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/book.chapter";
+import { plural } from "@drdustinedwards/site-helpers/text";
 import "capsomer/prose.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
@@ -129,6 +130,10 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
         crumbs={[{ label: project.name, href: base }, { label: chapter.title }]}
         title={chapter.title}
       />
+      <div className="cap-cluster" data-gap="3">
+        <span>{plural(scenes.length, "scene")}</span>
+        <span>{scenes.reduce((n, s) => n + s.words, 0).toLocaleString()} words</span>
+      </div>
 
       {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
 

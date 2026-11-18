@@ -21,6 +21,7 @@ import {
   type GateSite,
 } from "capsomer/react/publish-gate";
 import { Time } from "capsomer/react/time";
+import { ItemStatus } from "~/components/item-status";
 import { exact, parse } from "capsomer/behavior/time";
 
 import { FlagsPanel } from "~/components/editor/flags-panel";
@@ -905,6 +906,10 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         title={data.title || data.itemId}
         actions={<LayoutSwitch value={layout} onChange={chooseLayout} />}
       />
+      <div className="cap-cluster" data-gap="3">
+        <ItemStatus status={data.status} />
+        {data.path ? <span className="cap-mono">{data.path}</span> : null}
+      </div>
 
       <div className="app-notices" data-cap-recede="">
         {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
