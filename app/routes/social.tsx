@@ -188,7 +188,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
           pending={busy}
           textLabel={(item) => `Post text for ${item.who}`}
           findingsLabel="What the lint held it for"
-          empty={{ title: <Status tone="ok">All clear</Status>, text: "Nothing is waiting." }}
+          empty={{ title: <Status tone="ok">All clear</Status> }}
           items={open.map((p) => ({
             id: String(p.id),
             who: p.accountKey,

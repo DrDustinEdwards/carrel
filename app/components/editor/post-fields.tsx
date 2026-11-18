@@ -30,7 +30,6 @@ import "capsomer/media-library.css";
 const PICK_WORDS = {
   label: "Choose from library",
   title: "Choose the feature image",
-  lead: "Pick an image already on the site, then describe it. The description is the feature image's alt text.",
 };
 
 type Props = {

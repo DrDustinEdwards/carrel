@@ -373,9 +373,7 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
 
       <Panel title="Revisions" count={revisions.length}>
         {revisions.length === 0 ? (
-          <Empty kind="nothing-yet" title="No history to show">
-            No revisions yet.
-          </Empty>
+          <Empty kind="nothing-yet" title="No history to show" />
         ) : (
           <RevisionPicker
             revisions={revisions}

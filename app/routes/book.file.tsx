@@ -17,7 +17,7 @@ import { Field } from "capsomer/react/field";
 import { Select } from "capsomer/react/select";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
-import { Pill, Status } from "capsomer/react/status";
+import { Status } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
@@ -543,14 +543,6 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         renderLink={routerRenderLink}
         crumbs={crumbs}
         title={data.label}
-        lead={
-          <>
-            <span className="cap-mono">
-              {data.project.book}/{data.path}
-            </span>{" "}
-            {data.version ? null : <Pill variant="outline">Not in Git yet</Pill>}
-          </>
-        }
         actions={
           data.version ? <ButtonLink to={`${base}/h/${data.path}`}>History</ButtonLink> : undefined
         }

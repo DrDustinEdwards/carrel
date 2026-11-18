@@ -6,7 +6,6 @@ import { Form, useNavigation } from "react-router";
 import { ButtonLink, routerRenderLink } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
-import { Pill } from "capsomer/react/status";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
@@ -75,19 +74,6 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
         renderLink={routerRenderLink}
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: item.title }]}
         title={item.title}
-        lead={
-          <>
-            {item.status === "published" ? (
-              <Pill tone="ok">Published</Pill>
-            ) : item.status === "scheduled" ? (
-              <Pill tone="info">Scheduled</Pill>
-            ) : (
-              <Pill variant="secondary">Draft</Pill>
-            )}{" "}
-            on {project.site}
-            {item.path ? <span className="cap-mono"> {item.path}</span> : null}
-          </>
-        }
       />
       {publishedBy ? (
         <Banner tone="info">

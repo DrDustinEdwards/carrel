@@ -152,9 +152,12 @@ export default function Outliner({ loaderData }: Route.ComponentProps) {
         {total === 0 ? (
           <Empty kind="nothing-yet" flush title="No scenes in the index yet" />
         ) : rows.length === 0 ? (
-          <Empty kind="no-match" flush title={`No scenes have the status ${filterName}.`}>
-            <Link to={base + "/outliner"}>Show every scene</Link>
-          </Empty>
+          <Empty
+            kind="no-match"
+            flush
+            title={`No scenes have the status ${filterName}.`}
+            action={<Link to={base + "/outliner"}>Show every scene</Link>}
+          />
         ) : (
           <Table
             caption={

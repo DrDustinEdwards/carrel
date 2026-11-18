@@ -86,12 +86,6 @@ export default function AiPublish({ loaderData, actionData }: Route.ComponentPro
         renderLink={routerRenderLink}
         crumbs={[{ label: project.name, href: `/p/${project.slug}` }, { label: title }]}
         title={`Publish "${title}"?`}
-        lead={
-          <>
-            {request.client} asked to publish on {project.site}{" "}
-            <Time at={request.createdAt} format="exact" />.
-          </>
-        }
       />
       {request.outcome !== null && !actionData ? (
         <Banner tone="info">

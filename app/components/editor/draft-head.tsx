@@ -8,7 +8,6 @@ import { Suspense, lazy, useRef, useState, type ReactNode } from "react";
 import { Form, useNavigation } from "react-router";
 import { Button } from "capsomer/react/button";
 import { PageHead } from "capsomer/react/page-head";
-import { Time } from "capsomer/react/time";
 
 const loadConfirm = () => import("capsomer/react/confirm-dialog");
 const ConfirmDialog = lazy(() => loadConfirm().then((m) => ({ default: m.ConfirmDialog })));
@@ -54,12 +53,6 @@ export function DraftHead({ project, itemId, kind, draft, use, links }: Props) {
           { label: kind },
         ]}
         title={`${kind} from ${draft.client}`}
-        lead={
-          <>
-            Saved <Time at={draft.createdAt} format="exact" />
-            {draft.note ? ` · ${draft.note}` : ""}
-          </>
-        }
         actions={
           <>
             {use ? (
