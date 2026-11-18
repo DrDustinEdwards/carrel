@@ -7,6 +7,7 @@
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { decideAiPublish, readAiPublishRequest } from "~/lib/ai.server";
 import { autosave, readDraft } from "~/lib/content.server";
 import { runHealth } from "~/lib/health.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -48,6 +49,21 @@ beforeEach(async () => {
 
 async function connect(email: string, client = "Claude", e: Env = env) {
   return connectAs(email, client, { env: e, deps: { fetcher: site.fetch, carrelOrigin: CARREL } });
+}
+
+/** The Owner's click on the page an ask to publish emails him, as the page's action makes it. */
+async function click(
+  item: string,
+  requestId: unknown,
+  decision: "publish" | "decline" = "publish",
+) {
+  const owner = await viewerFor("owner@test.invalid");
+  const project = await requireSiteProject(testEnv.DB, owner, SLUG, "publish");
+  const request = await readAiPublishRequest(testEnv.DB, project, owner, item, Number(requestId));
+  return decideAiPublish(env, project, owner, request, decision, {
+    fetcher: site.fetch,
+    carrelOrigin: CARREL,
+  });
 }
 
 /** A post the Owner saved on the site through the buttons' own function, returned with its version. */
@@ -434,8 +450,8 @@ describe("publish by instruction (decision 2)", () => {
     expect(box.sent).toEqual([]);
   });
 
-  it("the Owner's AI publish with clean checks publishes, credits the client, and emails Dustin an unpublish link", async () => {
-    const version = await seedPost();
+  it("the Owner's AI republish of a live post with clean checks publishes at once, credits the client, and emails Dustin an unpublish link", async () => {
+    const version = await seedPost("published");
     const result = await (
       await connect("owner@test.invalid", "Claude")
     ).call("carrel_publish_item", { project: SLUG, item: "post-one", expected_version: version });
@@ -443,7 +459,7 @@ describe("publish by instruction (decision 2)", () => {
     expect((await site.adapter.content.get("post-one"))?.status).toBe("published");
 
     const change = await testEnv.DB.prepare(
-      "SELECT action, client FROM changes WHERE item_id = 'post-one'",
+      "SELECT action, client FROM changes WHERE item_id = 'post-one' AND action = 'publish'",
     ).first();
     expect(change).toEqual({ action: "publish", client: "Claude" });
     const record = await testEnv.DB.prepare(
@@ -457,7 +473,8 @@ describe("publish by instruction (decision 2)", () => {
       to: "owner@test.invalid",
       subject: 'Carrel: Claude published "Post one"',
     });
-    expect(box.sent[0]!.text).toContain("Published by Claude on Dustin's instruction.");
+    // The line names the person whose instruction it was (the person's first name), so a co-owner's never reads as Dustin's.
+    expect(box.sent[0]!.text).toContain("Published by Claude on owner's instruction.");
     expect(box.sent[0]!.text).toContain(`Unpublish it: ${CARREL}/p/${SLUG}/e/post-one/unpublish`);
   });
 
@@ -483,7 +500,19 @@ describe("publish by instruction (decision 2)", () => {
       expected_version: version,
       ai_draft_id: aiDraftId,
     });
-    expect(result.structuredContent).toMatchObject({ published: true });
+    // PLANT: AI-written text never goes live from the call; it waits for Dustin's click on the page the email links to.
+    expect(result.structuredContent).toMatchObject({ published: false, asked: true });
+    expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
+    expect(box.sent[0]).toMatchObject({
+      subject: "Carrel: Claude asks to publish on dustinedwards.info",
+    });
+    const requestId = result.structuredContent?.requestId;
+    expect(box.sent[0]!.text).toContain(`${CARREL}/p/${SLUG}/e/post-one/ai-publish/${requestId}`);
+    expect(await click("post-one", requestId)).toEqual({
+      ok: true,
+      message: "Published. It is live on the site.",
+    });
+    expect((await click("post-one", requestId)).ok).toBe(false);
     const live = await site.adapter.content.get("post-one");
     expect(live).toMatchObject({
       status: "published",
@@ -492,7 +521,7 @@ describe("publish by instruction (decision 2)", () => {
     expect((await readDraft(testEnv.DB, project, owner, "post-one"))?.source).toBe(
       "Dustin unsaved.",
     );
-    expect(box.sent[0]!.text).toContain(
+    expect(box.sent[1]!.text).toContain(
       `Earlier versions, to restore one: ${CARREL}/p/${SLUG}/e/post-one/history`,
     );
 
@@ -540,7 +569,7 @@ describe("publish by instruction (decision 2)", () => {
   });
 
   it("keeps the publish when the email fails, records why, and the health check reports it", async () => {
-    const version = await seedPost();
+    const version = await seedPost("published");
     const failing = mailbox(true);
     const e = { ...env, EMAIL: failing.EMAIL };
     const result = await (
@@ -616,13 +645,15 @@ describe("transcripts (site-api v0.36.0)", () => {
       item: "post-one",
       edits: [{ find: "Wheel's", replace: "Weil's" }],
     });
-    const done = await owner.call("carrel_publish_item", {
+    const asked = await owner.call("carrel_publish_item", {
       project: SLUG,
       item: "post-one",
       expected_version: version,
       transcript_draft_id: String(mine.structuredContent?.transcriptDraftId),
     });
-    expect(done.structuredContent).toMatchObject({ published: true, version, dustinEmailed: true });
+    expect(asked.structuredContent).toMatchObject({ published: false, asked: true });
+    expect(transcripts().get("post-one")).toBe(VTT("Wheel's disease"));
+    expect((await click("post-one", asked.structuredContent?.requestId)).ok).toBe(true);
     expect(transcripts().get("post-one")).toBe(VTT("Weil's disease"));
     expect((await site.adapter.content.get("post-one"))?.version).toBe(version);
     expect(
@@ -630,17 +661,18 @@ describe("transcripts (site-api v0.36.0)", () => {
         "SELECT client FROM transcript_changes WHERE item_id = 'post-one'",
       ).first(),
     ).toEqual({ client: "Claude" });
-    const kept = done.structuredContent?.putBackWithTranscriptDraftId;
-    expect(box.sent[0]!.text).toContain(`${CARREL}/p/${SLUG}/e/post-one/transcript/${kept}`);
+    expect(box.sent[1]!.text).toMatch(new RegExp(`${CARREL}/p/${SLUG}/e/post-one/transcript/\\d+`));
 
-    // A draft written from the transcript before is refused now, and the site keeps the fix.
+    // A draft written from the transcript before is refused at the click now, and the site keeps the fix.
     const again = await owner.call("carrel_publish_item", {
       project: SLUG,
       item: "post-one",
       expected_version: version,
       transcript_draft_id: String(mine.structuredContent?.transcriptDraftId),
     });
-    expect(again.content[0]!.text).toContain("written from another transcript");
+    expect((await click("post-one", again.structuredContent?.requestId)).message).toContain(
+      "written from another transcript",
+    );
     expect(transcripts().get("post-one")).toBe(VTT("Weil's disease"));
   });
 });

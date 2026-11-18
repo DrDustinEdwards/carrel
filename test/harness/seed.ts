@@ -317,7 +317,6 @@ async function build(base: Env): Promise<World> {
   await share(siteId, sam, "reader");
   const owner = await viewer(db, env, HARNESS_OWNER);
   const rosaV = await viewer(db, env, HARNESS_EDITOR);
-  void dustin;
   void sam;
 
   // Media, then posts (one uses a picture), then the index.
@@ -753,6 +752,17 @@ async function build(base: Env): Promise<World> {
     },
     site.fetch,
   );
+  // Claude's ask to publish that AI draft, waiting for Dustin's click (the ai-publish screen).
+  await db
+    .prepare(
+      "INSERT INTO ai_publish_requests (project_id, item_id, person_id, client, expected_version, ai_draft_id) VALUES (?, 'counting-what-the-build-skips', ?, 'Claude', ?, 1)",
+    )
+    .bind(
+      siteId,
+      dustin,
+      (await site.adapter.content.get("counting-what-the-build-skips"))!.version,
+    )
+    .run();
   void rosaV;
 
   // One draft with a history, a working copy that has moved on from the site, and an AI draft beside it:

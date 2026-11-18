@@ -486,7 +486,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_save_draft",
     title: "Save an AI draft",
     scope: "write",
-    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text by being saved. It goes live only through carrel_publish_item with its ai_draft_id, when Dustin asked for the change to be live; otherwise he reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. Pass the same sources here: they are saved with the draft for Dustin to check, and the answer carries the same scan on what was saved, with the search and sharing checks. ${RULE} Save a draft only when he asked for one.`,
+    description: `Saves a draft of a post written by you, as a new AI draft beside Dustin's own. It never replaces his draft or the site's text by being saved. It goes live only through carrel_publish_item with its ai_draft_id, when Dustin asked for the change to be live, and then only once he presses Publish in Carrel; otherwise he reads it in Carrel and decides whether to use it. Before writing, read carrel_voice_brief: read the guide and the excerpts, and write from them. Then run carrel_check_post_text and fix only the spans it names, as its instruction says, leaving every other sentence as it is. Pass the same sources here: they are saved with the draft for Dustin to check, and the answer carries the same scan on what was saved, with the search and sharing checks. ${RULE} Save a draft only when he asked for one.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -547,7 +547,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_save_transcript",
     title: "Save a transcript draft",
     scope: "write",
-    description: `Saves a corrected transcript of an episode as a draft beside the site's, for a machine-made transcript that misheard names and terms ("Wheel's disease" for Weil's disease). Send either edits, each find replaced everywhere it occurs in the site's transcript (a find that is not there is refused), or the whole WebVTT. Fix the words only: keep every cue and its timing, since chapters and key moments point at them. It never changes the site by being saved. It goes live only through carrel_publish_item with its transcript_draft_id, when Dustin asked for the change to be live. The answer lists each cue whose words changed, and how many cues were added, removed or retimed. ${RULE}`,
+    description: `Saves a corrected transcript of an episode as a draft beside the site's, for a machine-made transcript that misheard names and terms ("Wheel's disease" for Weil's disease). Send either edits, each find replaced everywhere it occurs in the site's transcript (a find that is not there is refused), or the whole WebVTT. Fix the words only: keep every cue and its timing, since chapters and key moments point at them. It never changes the site by being saved. It goes live only through carrel_publish_item with its transcript_draft_id, when Dustin asked for the change to be live, and then only once he presses Publish in Carrel. The answer lists each cue whose words changed, and how many cues were added, removed or retimed. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: {
@@ -827,7 +827,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_publish_item",
     title: "Publish a post (Owner only)",
     scope: "write",
-    description: `Publishes a post on Dustin's instruction in this conversation: asking for a change on the live site is that instruction. Without ai_draft_id it publishes the post as it stands on the site at expected_version. With ai_draft_id it publishes that AI draft's text, which must be one your own sessions saved with carrel_save_draft from expected_version; Dustin's own working draft in Carrel is left as it is. With transcript_draft_id instead it puts that transcript draft live as the episode's transcript, which must be one your own sessions saved with carrel_save_transcript from the transcript the site holds now, while the post is at expected_version; the post's text and version stay, and the transcript it replaced is kept as a transcript draft that puts it back. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. The site keeps every earlier version. Carrel records "published by <this client> on Dustin's instruction" and emails him links to unpublish and to restore an earlier version. ${RULE}`,
+    description: `Publishes a post on Dustin's instruction in this conversation: asking for a change on the live site is that instruction. Without ai_draft_id it publishes the post as it stands on the site at expected_version. With ai_draft_id it publishes that AI draft's text, which must be one your own sessions saved with carrel_save_draft from expected_version; Dustin's own working draft in Carrel is left as it is. With transcript_draft_id instead it puts that transcript draft live as the episode's transcript, which must be one your own sessions saved with carrel_save_transcript from the transcript the site holds now, while the post is at expected_version; the post's text and version stay, and the transcript it replaced is kept as a transcript draft that puts it back. An AI draft, a transcript draft and a post that was never published do not go live from this call: the answer is asked: true, and Carrel emails Dustin a link to a page in Carrel where he presses Publish (or Decline). Tell him it is waiting for his click; do not call again. Republishing a post that was live before goes at once. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. The site keeps every earlier version. Carrel records "published by <this client> on <the person>'s instruction" and emails him links to unpublish and to restore an earlier version. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: {
@@ -866,11 +866,11 @@ export const TOOLS: Tool[] = [
     outputSchema: shape(
       { published: YES },
       {
+        asked: ANY,
+        requestId: ANY,
         version: ANY,
         changeId: ANY,
         dustinEmailed: ANY,
-        transcriptVersion: ANY,
-        putBackWithTranscriptDraftId: ANY,
       },
     ),
     outside: false,
@@ -883,7 +883,7 @@ export const TOOLS: Tool[] = [
           throw new AiRefusal("Send ai_draft_id or transcript_draft_id, not both.");
         if (!/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(Number(raw)))
           throw new AiRefusal("transcript_draft_id is the number carrel_save_transcript returned.");
-        const done = await aiPublishTranscript(
+        const asked = await aiPublishTranscript(
           ctx.env,
           p,
           ctx.session,
@@ -893,12 +893,10 @@ export const TOOLS: Tool[] = [
           { fetcher: ctx.deps.fetcher, carrelOrigin: ctx.deps.carrelOrigin },
         );
         return {
-          published: true,
-          version: done.version,
-          changeId: done.changeId,
-          transcriptVersion: done.transcriptVersion,
-          putBackWithTranscriptDraftId: done.keptDraftId,
-          dustinEmailed: done.emailed,
+          published: false,
+          asked: true,
+          requestId: asked.requestId,
+          dustinEmailed: asked.emailed,
         };
       }
       const raw = args.ai_draft_id;
@@ -921,6 +919,13 @@ export const TOOLS: Tool[] = [
         },
       );
       if (!result.ok) throw new AiRefusal(result.message);
+      if ("asked" in result)
+        return {
+          published: false,
+          asked: true,
+          requestId: result.requestId,
+          dustinEmailed: result.emailed,
+        };
       return {
         published: true,
         version: result.version,

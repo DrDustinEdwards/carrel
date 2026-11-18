@@ -31,6 +31,7 @@ export default [
     route("b/:project/h/*", "routes/book.history.tsx"),
     route("b/:project/f/*", "routes/book.file.tsx"),
     route("p/:project/e/:item/unpublish", "routes/unpublish.tsx"),
+    route("p/:project/e/:item/ai-publish/:id", "routes/ai-publish.tsx"),
     route("p/:project/e/:item/ai/:id", "routes/ai-draft.tsx"),
     route("p/:project/e/:item/transcript/:id", "routes/transcript-draft.tsx"),
     route("p/:project/e/:item/history", "routes/history.tsx"),

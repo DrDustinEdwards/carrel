@@ -94,15 +94,25 @@ export const drafts = sqliteTable(
   (t) => [primaryKey({ columns: [t.projectId, t.itemId, t.personId] })],
 );
 
+/**
+ * The columns a record of something a person did to an item starts with: the project, the item and the person, kept
+ * when the person row goes. Fresh per table.
+ */
+function recordOf() {
+  return {
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    itemId: text("item_id").notNull(),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id),
+  };
+}
+
 export const changes = sqliteTable("changes", {
   id: text("id").primaryKey(),
-  projectId: integer("project_id")
-    .notNull()
-    .references(() => projects.id, { onDelete: "cascade" }),
-  itemId: text("item_id").notNull(),
-  personId: integer("person_id")
-    .notNull()
-    .references(() => people.id),
+  ...recordOf(),
   // Media actions since migration 0007: item_id is then the site's media id, and a file has no version.
   // content-delete since migration 0009: item_id is the post's id, version_before the version deleted, version_after null.
   // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.
@@ -202,13 +212,7 @@ export const aiDrafts = sqliteTable("ai_drafts", {
 
 export const aiPublications = sqliteTable("ai_publications", {
   changeId: text("change_id").primaryKey(),
-  projectId: integer("project_id")
-    .notNull()
-    .references(() => projects.id, { onDelete: "cascade" }),
-  itemId: text("item_id").notNull(),
-  personId: integer("person_id")
-    .notNull()
-    .references(() => people.id),
+  ...recordOf(),
   client: text("client").notNull(),
   version: text("version").notNull(),
   publishedAt: text("published_at")
@@ -216,6 +220,23 @@ export const aiPublications = sqliteTable("ai_publications", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   emailedAt: text("emailed_at"),
   emailError: text("email_error"),
+});
+
+// An AI session's ask to publish, waiting for the click of the person who asked (migration 0042): an AI draft, a
+// transcript draft, or a post never published before. outcome and decided_at stay null until Publish or Decline.
+export const aiPublishRequests = sqliteTable("ai_publish_requests", {
+  id: integer("id").primaryKey(),
+  ...recordOf(),
+  client: text("client").notNull(),
+  expectedVersion: text("expected_version").notNull(),
+  aiDraftId: integer("ai_draft_id"),
+  transcriptDraftId: integer("transcript_draft_id"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  decidedAt: text("decided_at"),
+  outcome: text("outcome", { enum: ["published", "declined"] }),
+  changeId: text("change_id"),
 });
 
 // An episode's whole WebVTT transcript beside the site's (migration 0032): an AI session's fix, or the transcript a
@@ -252,13 +273,7 @@ export const needLater = sqliteTable(
 // transcript's own, and the item's version does not move.
 export const transcriptChanges = sqliteTable("transcript_changes", {
   id: text("id").primaryKey(),
-  projectId: integer("project_id")
-    .notNull()
-    .references(() => projects.id, { onDelete: "cascade" }),
-  itemId: text("item_id").notNull(),
-  personId: integer("person_id")
-    .notNull()
-    .references(() => people.id),
+  ...recordOf(),
   client: text("client"),
   draftId: integer("draft_id"),
   versionBefore: text("version_before"),
