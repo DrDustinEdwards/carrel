@@ -4,11 +4,12 @@
 
 import { Form, useNavigation } from "react-router";
 import { ButtonLink, routerRenderLink } from "capsomer/react/link";
-import { Alert, Banner } from "capsomer/react/banner";
+import { Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { ActionResult } from "~/components/action-result";
 import { lastAiPublication, publishedByLine } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
@@ -80,13 +81,7 @@ export default function Unpublish({ loaderData, actionData }: Route.ComponentPro
           {publishedBy.line} <Time at={publishedBy.at} format="exact" />
         </Banner>
       ) : null}
-      {actionData ? (
-        actionData.ok ? (
-          <Banner tone="ok">{actionData.message}</Banner>
-        ) : (
-          <Alert tone="crit">{actionData.message}</Alert>
-        )
-      ) : null}
+      <ActionResult result={actionData} />
       <div className="cap-cluster" data-gap="3">
         {!done && item.status !== "draft" ? (
           <Form method="post">

@@ -10,6 +10,7 @@ import { Button } from "capsomer/react/button";
 import { Time } from "capsomer/react/time";
 import { PageHead } from "capsomer/react/page-head";
 
+import { ActionResult } from "~/components/action-result";
 import { draftIdParam } from "~/components/editor/draft-head";
 import { decideAiPublish, readAiPublishRequest } from "~/lib/ai.server";
 import { readDoc } from "~/lib/content.server";
@@ -93,13 +94,7 @@ export default function AiPublish({ loaderData, actionData }: Route.ComponentPro
           {request.decidedAt ? <Time at={request.decidedAt} format="exact" /> : null}
         </Banner>
       ) : null}
-      {actionData ? (
-        actionData.ok ? (
-          <Banner tone="ok">{actionData.message}</Banner>
-        ) : (
-          <Alert tone="crit">{actionData.message}</Alert>
-        )
-      ) : null}
+      <ActionResult result={actionData} />
       {open && !request.current ? (
         <Alert tone="warn">
           The post changed on the site since this was asked, so Publish will be refused. Ask again

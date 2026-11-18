@@ -14,6 +14,7 @@ import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
 
+import { ActionResult } from "~/components/action-result";
 import { DraftLinks } from "~/components/history/draft-links";
 import {
   ComparePanel,
@@ -329,13 +330,7 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
       {siteError ? <Banner tone="warn">{siteError}</Banner> : null}
 
       {view.kind === "problem" ? <Alert tone="warn">{view.message}</Alert> : null}
-      {actionData ? (
-        actionData.ok ? (
-          <Banner tone="ok">{actionData.message}</Banner>
-        ) : (
-          <Alert tone="crit">{actionData.message}</Alert>
-        )
-      ) : null}
+      <ActionResult result={actionData} />
 
       {view.kind === "source" ? (
         <SourcePanel
