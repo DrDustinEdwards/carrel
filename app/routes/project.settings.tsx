@@ -1,7 +1,6 @@
 // A site's Share and connection tab: whether Desk can reach the site, what Desk's index holds of it and
 // when it last read it, and (for the Owner) sharing the site's project with a coauthor.
 
-import { Link } from "capsomer/react/link";
 import { PageHead } from "capsomer/react/page-head";
 import { Panel } from "capsomer/react/panel";
 import { Status } from "capsomer/react/status";
@@ -63,18 +62,15 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 
 const STATE = {
   connected: <Status tone="ok">Connected</Status>,
-  "not-connected": <Status tone="warn">Not connected: the site's key is not set yet</Status>,
-  misconfigured: <Status tone="crit">Set up wrong: the health check says what to fix</Status>,
+  "not-connected": <Status tone="warn">Not connected</Status>,
+  misconfigured: <Status tone="crit">Set up wrong</Status>,
 } as const;
 
 export default function SiteSettings({ loaderData }: Route.ComponentProps) {
   const { project, connection, indexed, lastRead } = loaderData;
   return (
     <div className="cap-admin-page">
-      <PageHead
-        title={project.name}
-        lead={`How Desk reaches ${project.site}, and who shares it.`}
-      />
+      <PageHead title={project.name} />
       <ProjectTabs slug={project.slug} current="settings" />
 
       <Panel title="Connection">
@@ -102,18 +98,11 @@ export default function SiteSettings({ loaderData }: Route.ComponentProps) {
               {plural(indexed, "post", undefined, { grouped: true })} and pages
               {lastRead ? (
                 <>
-                  , last read <Time at={lastRead} />. Desk reads every site again every 15 minutes;
-                  a save in Desk shows at once.
+                  , last read <Time at={lastRead} />
                 </>
               ) : (
                 ", not read yet."
               )}
-            </dd>
-          </div>
-          <div>
-            <dt>Everything on it</dt>
-            <dd>
-              <Link to={`/writing?site=${project.slug}`}>Its posts in Writing</Link>
             </dd>
           </div>
         </dl>

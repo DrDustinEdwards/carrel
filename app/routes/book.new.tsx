@@ -43,9 +43,8 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
         renderLink={routerRenderLink}
         crumbs={[{ label: "Home", href: "/" }, { label: "New book" }]}
         title="New book"
-        lead="A book is a folder in the writing repository. Nothing is written to Git until its first file is saved."
       />
-      <Panel title="The book">
+      <Panel>
         <Form method="post" className="cap-stack">
           <Field label="Name" required>
             <input
@@ -61,7 +60,7 @@ export default function NewBook({ actionData }: Route.ComponentProps) {
           <SlugField
             label="Folder in the writing repository"
             required
-            help="Lower-case letters, digits and single hyphens, such as paluxy-portal. An existing folder is picked up at the first refresh."
+            help="Lower-case letters, digits and hyphens, such as paluxy-portal."
             error={actionData?.error}
             announce
             name="folder"

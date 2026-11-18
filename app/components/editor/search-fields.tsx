@@ -75,10 +75,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
       <div className="cap-fields cap-fm-grid">
         {has("searchTitle") ? (
           <div className="cap-fm-field" data-wide="">
-            <Field
-              label="Search title"
-              help="The title a search result shows. Empty: the post's title."
-            >
+            <Field label="Search title" help="Empty: the post's title.">
               <input {...typed(title, "searchTitle")} type="text" placeholder={postTitle} />
             </Field>
             <SerpWidthMeter
@@ -89,10 +86,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
         ) : null}
         {has("description") ? (
           <div className="cap-fm-field" data-wide="">
-            <Field
-              label="Description"
-              help="The text under the title in a search result, and on a shared link."
-            >
+            <Field label="Description">
               <textarea {...typed(description, "description")} rows={3} />
             </Field>
             <SerpWidthMeter
@@ -123,7 +117,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
               {has("imageAlt") ? (
                 <Field
                   label="Alt text"
-                  help="What the image shows, for someone who cannot see it. Required with a share image."
+                  help="Required with a share image."
                   error={fault("imageAlt")}
                 >
                   <input {...typed(alt, "imageAlt")} type="text" />
@@ -136,7 +130,7 @@ export function SearchFields({ source, onChange, readOnly, listed, site, origin,
           <div className="cap-fm-field" data-wide="">
             <Field
               label="Canonical address"
-              help="Only for a post that first appeared elsewhere: the full https:// address of the original. Empty: the post's own address."
+              help="Only for a post first published elsewhere. Empty: its own address."
               error={fault("canonical")}
             >
               <input {...typed(canonical, "canonical")} type="url" inputMode="url" />

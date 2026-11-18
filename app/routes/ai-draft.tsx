@@ -5,7 +5,6 @@
 import { useState } from "react";
 import { redirect, useSearchParams } from "react-router";
 import { ButtonLink } from "capsomer/react/link";
-import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { Panel } from "capsomer/react/panel";
 import { Row, RowList } from "capsomer/react/row-list";
@@ -106,11 +105,6 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
           </>
         }
       />
-      <Banner tone="info">
-        Written by an AI session, beside your own draft. It has not changed your draft or the site.
-        Using it replaces your working draft in Carrel with this text, which you then edit and save
-        to the site as usual.
-      </Banner>
       <div className="app-editor-grid">
         <div className="app-editor-main">
           <Panel
@@ -156,17 +150,9 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
               count: checks.findings.length,
               content: (
                 <div className="cap-stack" data-gap="6">
-                  <Panel
-                    title="Writing checks"
-                    count={checks.findings.length}
-                    src="Against excerpts of your published posts"
-                    flush
-                  >
+                  <Panel title="Writing checks" count={checks.findings.length} flush>
                     {checks.findings.length === 0 ? (
-                      <Empty kind="all-clear" flush title="Nothing flagged">
-                        Nothing reads unlike your own posts. Read it anyway: the scan catches
-                        habits, not whether it says something.
-                      </Empty>
+                      <Empty kind="all-clear" flush title="Nothing flagged" />
                     ) : (
                       <RowList label="Writing checks on this draft">
                         {checks.findings.map((f, i) => (
@@ -181,18 +167,10 @@ export default function AiDraft({ loaderData }: Route.ComponentProps) {
                     )}
                   </Panel>
                   {draft.sources?.length === 0 ? (
-                    <p className="app-note">
-                      The session gave no sources, so nothing in the draft can be checked against
-                      one.
-                    </p>
+                    <p className="app-note">No sources given.</p>
                   ) : null}
                   {draft.sources?.length ? (
-                    <Panel
-                      title="Sources"
-                      count={draft.sources.length}
-                      src="What the session says the draft drew on"
-                      flush
-                    >
+                    <Panel title="Sources" count={draft.sources.length} flush>
                       <RowList label="Sources of this draft">
                         {draft.sources.map((s, i) => (
                           <Row

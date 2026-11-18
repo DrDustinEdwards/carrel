@@ -7,7 +7,7 @@ import { FrontmatterFields } from "capsomer/react/frontmatter-fields";
 
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { FIELDS } from "~/lib/frontmatter";
-import { kindNoun, kindWord } from "~/lib/kind-words";
+import { kindWord } from "~/lib/kind-words";
 import { legalTypeOf, marker, sectionsUsed } from "~/lib/legal";
 
 type SectionChoice = { key: string; title: string };
@@ -41,12 +41,7 @@ export function ItemDetails({
         onChange={onChange}
         readOnly={readOnly}
         legend={`${kindWord(kind)} details`}
-      >
-        <p className="cap-field-help cap-fm-field" data-wide="">
-          The site's own keys for this {kindNoun(kind)}, as it stores them. The site checks them
-          when you save.
-        </p>
-      </FrontmatterFields>
+      />
     );
   }
   const fields = FIELDS.filter(
@@ -70,7 +65,7 @@ export function ItemDetails({
         <div className="cap-fm-field" data-wide="">
           <Field
             label="Add a shared section"
-            help="Written at the end of the text. It is filled in from the details above each time the page is saved to the site; edit its wording on the Legal tab, not here."
+            help="Added at the end. Edit its wording on the Legal tab."
           >
             {(control) => (
               <div className="cap-select-wrap">

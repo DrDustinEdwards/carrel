@@ -37,7 +37,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     canShare: can(project.role, "manage"),
     connectionDetail: bookRepo(env).detail,
     labels: status.labels,
-    edited: status.edited,
   };
 }
 
@@ -61,7 +60,7 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 }
 
 export default function BookSettings({ loaderData, actionData }: Route.ComponentProps) {
-  const { head, canEdit, canShare, connectionDetail, labels, edited } = loaderData;
+  const { head, canEdit, canShare, connectionDetail, labels } = loaderData;
   const navigation = useNavigation();
   const saving = navigation.state !== "idle" && navigation.formData?.get("intent") === "labels";
   const base = `/b/${head.slug}`;
@@ -72,17 +71,10 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
       <BookHead book={head} section="settings" />
 
       <div className="cap-panes">
-        <Panel
-          title="Scene statuses"
-          count={labels.length}
-          src={edited ? "This book's own" : "The starting list for books"}
-        >
+        <Panel title="Scene statuses" count={labels.length}>
           <div className="cap-stack" data-gap="4">
-            <LabelColorList labels={labels} label="Statuses, in order" />
-            <p className="cap-muted app-note">
-              A scene takes one with status: in its header. A status not on the list still shows, as
-              written.
-            </p>
+            <LabelColorList labels={labels} label="Statuses" />
+            <p className="cap-muted app-note">A scene takes one with status: in its header.</p>
             {result?.error ? (
               <Alert tone="crit">{result.error}</Alert>
             ) : result?.saved ? (
@@ -93,8 +85,8 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
                 <Form method="post" className="cap-stack" data-gap="4">
                   <input type="hidden" name="intent" value="labels" />
                   <p className="cap-muted app-note">
-                    In order. Clear a label to remove it; renaming one does not change the scenes
-                    that carry the old word.
+                    Clear a label to remove it; renaming one does not change the scenes that carry
+                    the old word.
                   </p>
                   <LabelColorEditor labels={labels} />
                   <div className="cap-cluster" data-gap="3">
@@ -137,7 +129,7 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
             <div>
               <dt>People</dt>
               <dd>
-                <Link to="/people">Every person and role</Link>
+                <Link to="/people">All people</Link>
               </dd>
             </div>
           </dl>

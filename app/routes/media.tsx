@@ -111,7 +111,6 @@ export default function MediaPage({ loaderData, actionData }: Route.ComponentPro
     <div className="cap-admin-page">
       <PageHead
         title="Media"
-        lead={`The files on ${project.site}, kept and served by the site. Carrel only shows them here.`}
         actions={
           <ScopeChip
             options={project.sites.map((s) => ({ value: s.slug, label: s.name }))}

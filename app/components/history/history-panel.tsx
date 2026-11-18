@@ -13,8 +13,6 @@ type Props = {
   revisionCount: number;
   historyError: string | null;
   historyPath: string;
-  /** "post", "page": what the revisions are of. */
-  noun: string;
   /** Whether a draft in Carrel can be compared against the site's copy. */
   againstSite: boolean;
   aiDrafts: AiDraftLink[];
@@ -25,7 +23,6 @@ export function HistoryPanel({
   revisionCount,
   historyError,
   historyPath,
-  noun,
   againstSite,
   aiDrafts,
 }: Props) {
@@ -34,7 +31,6 @@ export function HistoryPanel({
       title="History"
       id="history"
       count={revisionCount}
-      src="Saves and publishes on the site"
       actions={
         revisionCount > 0 ? (
           <ButtonLink size="sm" to={historyPath}>
@@ -52,7 +48,7 @@ export function HistoryPanel({
             label="Recent revisions"
           />
         ) : revisions ? (
-          <p className="cap-muted">The site has no saved revisions of this {noun} yet.</p>
+          <p className="cap-muted">No revisions yet.</p>
         ) : null}
         <DraftLinks historyPath={historyPath} againstSite={againstSite} aiDrafts={aiDrafts} />
       </div>

@@ -127,18 +127,14 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
   );
   return (
     <div className="cap-admin-page">
-      <PageHead
-        title="Social"
-        lead="Posts only announce pieces that went live. Carrel never replies or messages."
-      />
+      <PageHead title="Social" />
 
       {actionData && "error" in actionData && actionData.error ? (
         <Alert tone="crit">{actionData.error}</Alert>
       ) : null}
       {routineMissing ? (
         <Banner tone="warn" title="Drafting is not connected">
-          A piece that goes live gets its account's template post until drafting is connected.{" "}
-          <Link to="/ai">See the AI engine page</Link>.
+          Posts use the template. <Link to="/ai">AI engine page</Link>
         </Banner>
       ) : null}
 
@@ -171,7 +167,6 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
               <Row
                 key={p.id}
                 title={p.text}
-                detail={<>Posted to {p.accountKey} from the template.</>}
                 actions={
                   <Form method="post">
                     <input type="hidden" name="id" value={p.id} />
@@ -236,9 +231,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
       {tab === "accounts" ? (
         <Panel title="Accounts" count={accounts.length}>
           {accounts.length === 0 ? (
-            <Empty kind="nothing-yet" flush title="No accounts yet">
-              Add one below. It starts off, in approval mode.
-            </Empty>
+            <Empty kind="nothing-yet" flush title="No accounts yet" />
           ) : (
             <div className="cap-stack" data-gap="5">
               {accounts.map((a) => (
@@ -299,7 +292,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
                       placeholder="New: {title}. {summary} {link}"
                     />
                   </Field>
-                  <Field label="Voice guide, for whoever drafts">
+                  <Field label="Voice guide">
                     <textarea
                       className="cap-input"
                       name="voiceGuide"
@@ -399,9 +392,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
       {tab === "posts" ? (
         <Panel title="Every post" count={posts.length} flush>
           {posts.length === 0 ? (
-            <Empty kind="nothing-yet" flush title="No posts yet">
-              Posts appear here once a piece goes live.
-            </Empty>
+            <Empty kind="nothing-yet" flush title="No posts yet" />
           ) : (
             <Table caption="Every post" captionHidden>
               <thead>
@@ -450,11 +441,7 @@ export default function Social({ loaderData, actionData }: Route.ComponentProps)
 
       {tab === "runs" ? (
         <Panel title="Drafting routine runs" count={runs.length} flush>
-          {runs.length === 0 ? (
-            <Empty kind="nothing-yet" flush title="No runs yet">
-              The routine runs when a piece goes live and drafting is connected.
-            </Empty>
-          ) : null}
+          {runs.length === 0 ? <Empty kind="nothing-yet" flush title="No runs yet" /> : null}
           <RowList label="Drafting routine runs">
             {runs.map((r) => (
               <Row

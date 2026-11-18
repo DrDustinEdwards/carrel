@@ -123,10 +123,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
 
   return (
     <div className="cap-admin-page">
-      <PageHead
-        title={project.name}
-        lead={`The privacy and terms pages on ${project.site}, and the text every site shares.`}
-      />
+      <PageHead title={project.name} />
       <ProjectTabs slug={project.slug} current="legal" />
 
       {siteError ? (
@@ -135,12 +132,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
         </Banner>
       ) : null}
       {actionData?.error ? <Alert tone="crit">{actionData.error}</Alert> : null}
-      {actionData?.saved ? (
-        <Banner tone="ok">
-          Saved "{actionData.saved}". A page picks up the new wording when it is next saved to the
-          site, and its date changes when the Owner publishes it.
-        </Banner>
-      ) : null}
+      {actionData?.saved ? <Banner tone="ok">Saved "{actionData.saved}".</Banner> : null}
       {actionData?.confirm ? (
         <ConfirmModal
           title={`Remove the shared section "${actionData.confirm.key}"?`}
@@ -162,14 +154,9 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
           <input type="hidden" name="confirmed" value="1" />
         </ConfirmModal>
       ) : null}
-      {actionData?.deleted ? (
-        <Banner tone="ok">
-          Removed "{actionData.deleted}". A page that still names it is refused at publish until the
-          marker is removed.
-        </Banner>
-      ) : null}
+      {actionData?.deleted ? <Banner tone="ok">Removed "{actionData.deleted}".</Banner> : null}
 
-      <Panel title="Pages" count={pages.length} src={`${project.site}'s content`} flush>
+      <Panel title="Pages" count={pages.length} flush>
         <Table caption={<>Legal pages on {project.site}</>} captionHidden>
           <thead>
             <tr>
@@ -217,18 +204,13 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
         </Table>
       </Panel>
 
-      <Panel title="Shared sections" count={sections.length} src="Carrel, used by every site">
+      <Panel title="Shared sections" count={sections.length}>
         <p>
-          Write a part once and every site's page can carry it. Put <code>{"{{site_name}}"}</code>,{" "}
-          <code>{"{{operator_name}}"}</code>, <code>{"{{contact}}"}</code>,{" "}
-          <code>{"{{jurisdiction}}"}</code> or <code>{"{{data_held}}"}</code> in the text and each
-          page fills in its own.
+          Placeholders: <code>{"{{site_name}}"}</code>, <code>{"{{operator_name}}"}</code>,{" "}
+          <code>{"{{contact}}"}</code>, <code>{"{{jurisdiction}}"}</code>,{" "}
+          <code>{"{{data_held}}"}</code>.
         </p>
-        {sections.length === 0 ? (
-          <Empty kind="nothing-yet" title="No shared sections yet">
-            The parts every site says alike go here.
-          </Empty>
-        ) : null}
+        {sections.length === 0 ? <Empty kind="nothing-yet" title="No shared sections yet" /> : null}
         {sections.map((section) => (
           <Form
             method="post"
@@ -288,9 +270,7 @@ export default function Legal({ loaderData, actionData }: Route.ComponentProps) 
               </Button>
             </div>
           </Form>
-        ) : (
-          <p>Only the Owner changes shared text.</p>
-        )}
+        ) : null}
       </Panel>
     </div>
   );

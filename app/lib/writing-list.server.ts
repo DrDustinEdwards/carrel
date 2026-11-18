@@ -41,7 +41,6 @@ export type Peek = {
   updateAt: string | null;
   publishedAt: string | null;
   updatedAt: string | null;
-  syncedAt: string;
   aiDrafts: number;
   ownDraft: boolean;
   flags: number;
@@ -106,7 +105,6 @@ export async function peekOf(
     updateAt: row.updateAt,
     publishedAt: row.publishedAt,
     updatedAt: row.updatedAt,
-    syncedAt: row.syncedAt,
     aiDrafts: w?.aiDrafts ?? 0,
     ownDraft: w?.ownDraft ?? false,
     flags: open?.n ?? 0,

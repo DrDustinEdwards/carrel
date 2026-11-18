@@ -112,7 +112,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       };
       view = sides(
         "Your working draft against the site's version",
-        "Your autosaved copy in Carrel, set against what the site holds now.",
         `${itemId}.md`,
         before,
         after,
@@ -141,9 +140,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
       };
       view = sides(
         `Your ${draft ? "draft" : noun} against the AI draft from ${ai.client}`,
-        draft
-          ? "Your autosaved copy in Carrel, set against the AI draft saved beside it."
-          : "You have no working draft, so this is the site's text against the AI draft saved beside it.",
         `${itemId}.md`,
         mine,
         theirs,
@@ -187,7 +183,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     } else {
       picked = [pair.from.version, pair.to.version];
       const heading = `${utc(Date.parse(pair.from.at))} to ${utc(Date.parse(pair.to.at))}`;
-      const lead = `What changed on the site between the revision by ${pair.from.author} and the one by ${pair.to.author}.`;
       if (by === "line") {
         const patch = await revisionPatch(env, project, itemId, pair.from.version, pair.to.version);
         view =
@@ -196,7 +191,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
                 kind: "problem",
                 message: "The site could not give the changes between those revisions.",
               }
-            : { kind: "compare", heading, lead, patch, before: null, after: null };
+            : { kind: "compare", heading, patch, before: null, after: null };
       } else {
         const [before, after] = await Promise.all([
           readRevision(env, project, itemId, pair.from.version),
@@ -212,7 +207,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
             : {
                 kind: "compare",
                 heading,
-                lead,
                 patch: null,
                 before: {
                   title: "Earlier revision",
@@ -329,7 +323,6 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
           { label: "History" },
         ]}
         title={`History of ${title || itemId}`}
-        lead={`What the site remembers of this ${noun}, newest first. Looking here changes nothing.`}
         actions={<ButtonLink to={editor}>Back to the editor</ButtonLink>}
       />
 
@@ -373,17 +366,15 @@ export default function History({ loaderData, actionData }: Route.ComponentProps
       ) : null}
 
       {againstSite || aiDrafts.length > 0 ? (
-        <Panel title="Your draft" src="Your autosaved copy in Carrel">
+        <Panel title="Your draft">
           <DraftLinks historyPath={historyPath} againstSite={againstSite} aiDrafts={aiDrafts} />
         </Panel>
       ) : null}
 
-      <Panel title="Revisions" count={revisions.length} src="Saves and publishes on the site">
+      <Panel title="Revisions" count={revisions.length}>
         {revisions.length === 0 ? (
           <Empty kind="nothing-yet" title="No history to show">
-            {siteError
-              ? "The site is not answering."
-              : `The site has no saved revisions of this ${noun} yet.`}
+            No revisions yet.
           </Empty>
         ) : (
           <RevisionPicker

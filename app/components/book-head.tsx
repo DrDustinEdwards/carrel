@@ -44,11 +44,7 @@ export function BookHead({
     <>
       <PageHead
         title={book.name}
-        lead={
-          <>
-            <span className="cap-mono">{book.book}/</span> in the writing repository.
-          </>
-        }
+        lead={<span className="cap-mono">{book.book}/</span>}
         actions={
           <>
             {book.connected ? (
@@ -65,7 +61,8 @@ export function BookHead({
                   <ButtonLink href={`${base}/export/epub`}>ePub</ButtonLink>
                   <ButtonLink href={`${base}/export/docx`}>Word</ButtonLink>
                   <ButtonLink href={`${base}/export/print`} newTab>
-                    Print or PDF<span className="cap-sr-only"> (opens in a new tab)</span>
+                    Print or PDF
+                    <span className="cap-sr-only"> (opens in a new tab)</span>
                   </ButtonLink>
                 </ButtonGroup>
               ) : (

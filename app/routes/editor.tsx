@@ -973,8 +973,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               </>
             }
           >
-            It was saved <Time at={data.ownDraft.updatedAt} format="exact" />. Putting it in
-            replaces the text everyone here is working on.
+            Saved <Time at={data.ownDraft.updatedAt} format="exact" />.
           </Banner>
         ) : null}
         {data.aiAsks.map((ask) => (
@@ -990,8 +989,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         ) : null}
         {data.canEdit && live && !data.canPublish ? (
           <Banner tone="info">
-            This {kindNoun(data.kind)} is live. Changes stay in Carrel, where everyone on it sees
-            them; sending them to the site is the Owner's step, or its Author's.
+            Changes stay in Carrel until the Owner or an Author sends them to the site.
           </Banner>
         ) : null}
         {data.pendingUpdate && data.status === "published" ? (
@@ -1022,8 +1020,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
               ) : undefined
             }
           >
-            The live {kindNoun(data.kind)} stays as it is until then, when the site publishes the
-            scheduled text.
+            The live {kindNoun(data.kind)} stays as it is until then.
           </Banner>
         ) : null}
       </div>
@@ -1084,26 +1081,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           head={
             <>
               {data.canEdit ? (
-                <Panel
-                  title="This draft"
-                  src={
-                    data.version
-                      ? data.status === "draft"
-                        ? "Draft on the site"
-                        : "On the site"
-                      : "Only in Carrel so far"
-                  }
-                >
+                <Panel title="This draft">
                   <div className="app-stack" data-tight>
                     <p role="status" className="app-savestate">
                       {saveState}
                     </p>
-                    {data.pendingUpdate && data.status === "published" ? (
-                      <p className="app-note">
-                        An update waits to go live{" "}
-                        <Time at={data.pendingUpdate.publishAt} format="exact" />.
-                      </p>
-                    ) : null}
                     {failure ? <Alert tone="crit">{failure.message}</Alert> : null}
                     {google ? (
                       google.ok ? (
@@ -1279,12 +1261,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       onDismiss={(button, flag) => ask("dismiss", button, flag)}
                     />
                   ) : null}
-                  {!(onSite && data.canPublish) &&
-                  data.flags.length === 0 &&
-                  data.aiDrafts.length === 0 &&
-                  data.transcriptDrafts.length === 0 ? (
-                    <p className="app-note">Nothing is flagged on this {kindNoun(data.kind)}.</p>
-                  ) : null}
                 </div>
               ),
             },
@@ -1336,12 +1312,11 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       revisionCount={data.revisionCount}
                       historyError={data.historyError}
                       historyPath={historyPath}
-                      noun={kindNoun(data.kind)}
                       againstSite={room.unsaved && onSite}
                       aiDrafts={data.aiDrafts}
                     />
                   ) : null}
-                  <Panel title="Binder" src="This site's writing">
+                  <Panel title="Binder">
                     <SiteBinder nodes={data.binder} current={data.itemId} />
                   </Panel>
                 </div>
@@ -1472,7 +1447,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         description={
           scheduleUpdate
             ? `The live ${kindNoun(data.kind)} stays as it is. The site publishes the text in the editor at the time you choose${pendingAt ? ", in place of the update scheduled now" : ""}. You can cancel it before then.`
-            : "The site publishes it at the time you choose. Revert to draft takes it back."
+            : undefined
         }
         confirm={
           scheduleUpdate ? (pendingAt ? "Replace the update" : "Schedule update") : "Schedule"

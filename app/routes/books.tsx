@@ -62,7 +62,6 @@ export default function Books({ loaderData }: Route.ComponentProps) {
     <div className="cap-admin-page">
       <PageHead
         title="Books"
-        lead="Manuscripts kept in the writing repository."
         actions={
           isOwner ? (
             <ButtonLink to="/books/new" variant="primary">
@@ -72,9 +71,7 @@ export default function Books({ loaderData }: Route.ComponentProps) {
         }
       />
       {books.length === 0 ? (
-        <Empty kind="nothing-yet" title="No books yet">
-          A book appears here once it is made or shared with you.
-        </Empty>
+        <Empty kind="nothing-yet" title="No books yet" />
       ) : (
         <Table caption="Books" captionHidden>
           <thead>

@@ -73,14 +73,13 @@ export default function NewPost({ loaderData, actionData }: Route.ComponentProps
           { label: "New post" },
         ]}
         title="New post"
-        lead="A new post starts as a draft in Carrel, under the address you give it."
       />
-      <Panel title="Address">
+      <Panel>
         <Form method="post" className="cap-stack">
           <SlugField
-            label="Slug, the post's address on the site"
+            label="Slug"
             required
-            help="Lower-case letters, digits and single hyphens, such as my-new-post. The site gives it its address when it is published. It stays a draft in Carrel until you save it to the site."
+            help="Lower-case letters, digits and hyphens, such as my-new-post."
             error={actionData?.error}
             announce
             name="slug"

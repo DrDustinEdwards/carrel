@@ -126,7 +126,6 @@ export default function Outliner({ loaderData }: Route.ComponentProps) {
       <div className="app-chip-filter">
         <LinkChips
           label="Status"
-          showLabel
           chips={chips.map((c) => ({
             href: c.value
               ? `${base}/outliner?status=${encodeURIComponent(c.value)}`
@@ -151,16 +150,19 @@ export default function Outliner({ loaderData }: Route.ComponentProps) {
             : `${total} scenes.`}
         </p>
         {total === 0 ? (
-          <Empty kind="nothing-yet" flush title="No scenes in the index yet">
-            Start a chapter in the List view, or refresh from Git.
-          </Empty>
+          <Empty kind="nothing-yet" flush title="No scenes in the index yet" />
         ) : rows.length === 0 ? (
           <Empty kind="no-match" flush title={`No scenes have the status ${filterName}.`}>
             <Link to={base + "/outliner"}>Show every scene</Link>
           </Empty>
         ) : (
           <Table
-            caption={<>Scenes in reading order{filter ? `, with the status ${filterName}` : ""}</>}
+            caption={
+              <>
+                Scenes in reading order
+                {filter ? `, with the status ${filterName}` : ""}
+              </>
+            }
             captionHidden
           >
             <thead>

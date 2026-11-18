@@ -66,10 +66,7 @@ export default function Mentions({ loaderData, actionData }: Route.ComponentProp
   const submit = useKitSubmit(`${base}/api`);
   return (
     <div className="cap-admin-page">
-      <PageHead
-        title={project.name}
-        lead={`Webmentions about posts on ${project.site}. Approving one shows it on the post within seconds.`}
-      />
+      <PageHead title={project.name} />
       {unavailable || !data ? (
         <Banner tone="warn" title="Mentions are not available for this site yet">
           {unavailable}

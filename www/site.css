@@ -11,13 +11,6 @@
   --hero-gap: var(--space-7-5);
   margin-block-end: var(--space-8);
 }
-.hero-card-note {
-  max-inline-size: 36rem;
-  margin: 0;
-  padding: var(--space-4) var(--space-5) var(--space-5);
-  color: var(--muted);
-  font-size: var(--fs-body);
-}
 .hero-card .cap-cue-title {
   font-family: var(--prose);
 }

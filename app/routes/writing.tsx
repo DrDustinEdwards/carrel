@@ -149,7 +149,6 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
     <div className="cap-admin-page">
       <PageHead
         title="Writing"
-        lead="Every post and page, on every site."
         actions={
           <>
             <ScopeChip
@@ -243,11 +242,7 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
         </Form>
       ) : null}
       {rows.length === 0 ? (
-        <Empty kind="nothing-yet" title={q || waitingAi ? "Nothing matches" : "No posts yet"}>
-          {q || waitingAi
-            ? "Try fewer words, another status or all sites."
-            : "A post appears here once a site you can open lists it."}
-        </Empty>
+        <Empty kind="nothing-yet" title={q || waitingAi ? "Nothing matches" : "No posts yet"} />
       ) : (
         <Table caption="Posts" captionHidden className="app-writing-wrap" reflow>
           <thead>
@@ -333,28 +328,23 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
           identifier={peek.itemId}
           badge={<Pill variant={TONE[peek.status]}>{PEEK_STATUS[peek.status]}</Pill>}
         >
-          <DetailSection title="Open it">
-            <div className="cap-detail-controls">
-              <ButtonLink variant="primary" to={peek.editHref}>
-                Open in the editor
+          <div className="cap-detail-controls">
+            <ButtonLink variant="primary" to={peek.editHref}>
+              Open in the editor
+            </ButtonLink>
+            {peek.liveUrl ? (
+              <ButtonLink href={peek.liveUrl} away newTab>
+                View on the site
               </ButtonLink>
-              {peek.liveUrl ? (
-                <ButtonLink href={peek.liveUrl} away newTab>
-                  View on the site
-                </ButtonLink>
-              ) : null}
-              <ButtonLink to={peek.historyHref}>History</ButtonLink>
-            </div>
-          </DetailSection>
+            ) : null}
+            <ButtonLink to={peek.historyHref}>History</ButtonLink>
+          </div>
           {peek.aiDrafts > 0 || peek.ownDraft || peek.flags > 0 ? (
             <DetailSection title="Waiting">
               <ul className="app-peek-waiting">
-                {peek.ownDraft ? <li>Your draft is saved beside the site's text.</li> : null}
+                {peek.ownDraft ? <li>Your draft</li> : null}
                 {peek.aiDrafts > 0 ? (
-                  <li>
-                    {peek.aiDrafts === 1 ? "1 AI draft" : `${peek.aiDrafts} AI drafts`} waiting to
-                    be read.
-                  </li>
+                  <li>{peek.aiDrafts === 1 ? "1 AI draft" : `${peek.aiDrafts} AI drafts`}</li>
                 ) : null}
                 {peek.flags > 0 ? (
                   <li>
@@ -366,51 +356,46 @@ export default function Writing({ loaderData, actionData }: Route.ComponentProps
               </ul>
             </DetailSection>
           ) : null}
-          <DetailSection title="Record">
-            <dl className="cap-detail-record">
-              <dt>Site</dt>
-              <dd>
-                <Link to={peek.siteHref}>{peek.site}</Link>
-              </dd>
-              <dt>Address</dt>
-              <dd>{peek.path ?? "Not on the site yet"}</dd>
-              {peek.publishAt && peek.status === "scheduled" ? (
-                <>
-                  <dt>Goes live</dt>
-                  <dd>
-                    <Time at={peek.publishAt} />
-                  </dd>
-                </>
-              ) : null}
-              {peek.updateAt ? (
-                <>
-                  <dt>Update goes live</dt>
-                  <dd>
-                    <Time at={peek.updateAt} />
-                  </dd>
-                </>
-              ) : null}
-              {peek.publishedAt ? (
-                <>
-                  <dt>Published</dt>
-                  <dd>
-                    <Time at={peek.publishedAt} />
-                  </dd>
-                </>
-              ) : null}
-              {peek.updatedAt ? (
-                <>
-                  <dt>Updated</dt>
-                  <dd>
-                    <Time at={peek.updatedAt} />
-                  </dd>
-                </>
-              ) : null}
-            </dl>
-          </DetailSection>
-          <p className="cap-detail-source">
-            From Desk's index of {peek.site}, read from the site <Time at={peek.syncedAt} />.
-          </p>
+          <dl className="cap-detail-record">
+            <dt>Site</dt>
+            <dd>
+              <Link to={peek.siteHref}>{peek.site}</Link>
+            </dd>
+            <dt>Address</dt>
+            <dd>{peek.path ?? "Not on the site yet"}</dd>
+            {peek.publishAt && peek.status === "scheduled" ? (
+              <>
+                <dt>Goes live</dt>
+                <dd>
+                  <Time at={peek.publishAt} />
+                </dd>
+              </>
+            ) : null}
+            {peek.updateAt ? (
+              <>
+                <dt>Update goes live</dt>
+                <dd>
+                  <Time at={peek.updateAt} />
+                </dd>
+              </>
+            ) : null}
+            {peek.publishedAt ? (
+              <>
+                <dt>Published</dt>
+                <dd>
+                  <Time at={peek.publishedAt} />
+                </dd>
+              </>
+            ) : null}
+            {peek.updatedAt ? (
+              <>
+                <dt>Updated</dt>
+                <dd>
+                  <Time at={peek.updatedAt} />
+                </dd>
+              </>
+            ) : null}
+          </dl>
         </DetailPanel>
       ) : null}
     </div>

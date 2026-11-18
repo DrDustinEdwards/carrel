@@ -120,18 +120,11 @@ export default function Project({ loaderData, actionData }: Route.ComponentProps
   const result = actionData && "ok" in actionData ? actionData : null;
   return (
     <div className="cap-admin-page">
-      <PageHead
-        title={project.name}
-        lead={`Everything on ${project.site}, as the site lists it.`}
-      />
+      <PageHead title={project.name} />
       <ProjectTabs slug={project.slug} current="posts" />
 
       {fresh.length > 0 ? (
-        <Panel
-          title="Only in Carrel"
-          count={fresh.length}
-          src="Drafts for posts the site does not have yet"
-        >
+        <Panel title="Only in Carrel" count={fresh.length}>
           <RowList label="Only in Carrel">
             {fresh.map((w) => (
               <Row

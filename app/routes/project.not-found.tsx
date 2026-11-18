@@ -63,10 +63,7 @@ export default function ProjectNotFound({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="cap-admin-page">
-      <PageHead
-        title={project.name}
-        lead={`Paths on ${project.site} that answered 404 in the last ${days} days, and who linked to them.`}
-      />
+      <PageHead title={project.name} />
 
       <ProjectTabs slug={project.slug} current="not-found" />
 
