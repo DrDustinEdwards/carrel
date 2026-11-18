@@ -21,7 +21,7 @@ import {
 import type { SiteClient } from "@dustinedwards/site-api/client";
 import { drizzle } from "drizzle-orm/d1";
 
-import { changes } from "~/db/schema";
+import { changes, previewLinkRecords } from "~/db/schema";
 import { readDraft } from "~/lib/content.server";
 import { indexDoc, refreshIndex, removeFromIndex } from "~/lib/index.server";
 import type { Viewer } from "~/lib/people.server";
@@ -141,7 +141,14 @@ export function postsSource(
         .first();
       return used !== null;
     },
-    async record({ kind, changeId }) {
+    async record({ kind, ids, changeId }) {
+      // A preview link writes nothing to the post, so the client's writes do not hold it.
+      if (kind === "post-preview-link" && ids[0]) {
+        await drizzle(env.DB)
+          .insert(previewLinkRecords)
+          .values({ changeId, projectId: project.id, itemId: ids[0], personId: viewer.id });
+        return;
+      }
       const action = ACTIONS[kind];
       const write = writes.get(changeId);
       if (!action || !write) return;

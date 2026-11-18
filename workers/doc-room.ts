@@ -25,7 +25,7 @@ import {
   roomMarkdown,
   roomSchema,
   settle,
-  suggestionCounts,
+  suggestions,
   type JsonDoc,
 } from "capsomer/behavior/collab-editor";
 import { parseRoomName, roomViewer } from "~/lib/editor/room-protocol";
@@ -45,7 +45,7 @@ const model = {
     loadMarkdown(doc, input as Parameters<typeof loadMarkdown>[1]),
   json: roomJson,
   settle: (json: unknown) => settle(roomSchema(), json as JsonDoc),
-  suggestionCounts: (json: unknown) => suggestionCounts(roomSchema(), json as JsonDoc),
+  suggestions: (json: unknown) => suggestions(roomSchema(), json as JsonDoc),
   // A thread brought in with a Google Doc (lib/google/book-docs.server.ts) is anchored on its words here.
   anchor: anchorAt,
 };

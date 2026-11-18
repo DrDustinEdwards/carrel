@@ -222,6 +222,15 @@ export const aiPublications = sqliteTable("ai_publications", {
   emailError: text("email_error"),
 });
 
+// Who made each preview link of a post (migration 0043): a link sends the post out, so it is recorded as a publish is.
+export const previewLinkRecords = sqliteTable("preview_link_records", {
+  changeId: text("change_id").primaryKey(),
+  ...recordOf(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});
+
 // An AI session's ask to publish, waiting for the click of the person who asked (migration 0042): an AI draft, a
 // transcript draft, or a post never published before. outcome and decided_at stay null until Publish or Decline.
 export const aiPublishRequests = sqliteTable("ai_publish_requests", {
