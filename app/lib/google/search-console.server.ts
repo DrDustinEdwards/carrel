@@ -44,7 +44,8 @@ export async function searchConsoleAccess(env: Env, fetcher?: Fetch) {
   const sites = [];
   for (const row of rows)
     if (isSiteId(row.site) && siteConnection(env, row.site).state === "connected") {
-      const property = siteEntry(row.site).searchConsoleProperty(env);
+      const property = siteEntry(row.site).searchConsoleProperty?.(env);
+      if (!property) continue;
       sites.push({ ...row, property, shared: readable.includes(property) });
     }
   return { email: sa.key.clientEmail, sites };

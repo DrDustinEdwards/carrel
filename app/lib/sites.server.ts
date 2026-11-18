@@ -29,8 +29,8 @@ type SiteEntry = {
    * named by the Dataset JSON-LD and the Link header on every download, so Carrel never takes them down.
    */
   keepPublic: readonly string[];
-  /** The Search Console property the service account reads for the site's pages. */
-  searchConsoleProperty: (env: Env) => string;
+  /** The Search Console property the service account reads for the site's pages. Absent for a site that is not indexed. */
+  searchConsoleProperty?: (env: Env) => string;
 };
 
 const SITES: Record<SiteId, SiteEntry> = {
@@ -146,9 +146,7 @@ const SITES: Record<SiteId, SiteEntry> = {
     keyName: "SITE_BSW_KEY",
     // Its pages are code in its own repository, so the site lists no items: Carrel reaches it for its media library.
     keepPublic: [],
-    // A URL-prefix property until the site has its own domain (it answers noindex until then).
-    searchConsoleProperty: (env) =>
-      env.SEARCH_CONSOLE_PROPERTY_BSW?.trim() || "https://bsw.dustin-edwards.workers.dev/",
+    // No Search Console property: it answers noindex on workers.dev until it has its own domain.
   },
 };
 
