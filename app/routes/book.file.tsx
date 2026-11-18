@@ -634,7 +634,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
             <>
               {data.canEdit ? (
                 <Panel>
-                  <div className="app-stack" data-tight>
+                  <div className="cap-stack" data-gap="4">
                     <p role="status" className="app-savestate">
                       {saveState}
                     </p>
@@ -697,7 +697,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     ) : undefined
                   }
                 >
-                  <div className="app-stack" data-tight>
+                  <div className="cap-stack" data-gap="4">
                     {data.docLink ? (
                       <p className="app-note">
                         Brought in from{" "}
@@ -772,9 +772,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Checks",
               count: openFlags,
               content: (
-                <div className="app-stack">
+                <div className="cap-stack" data-gap="6">
                   <Panel title="Flags" count={openFlags} id="flags">
-                    <div className="app-stack" data-tight>
+                    <div className="cap-stack" data-gap="4">
                       {data.findings.length === 0 ? (
                         <p>None.</p>
                       ) : (
@@ -794,7 +794,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         </RowList>
                       )}
                       {checked ? (
-                        <div role="status" className="app-stack" data-tight>
+                        <div role="status" className="cap-stack" data-gap="4">
                           <h3 className="app-subhead">This text, checked now</h3>
                           {checked.length === 0 ? (
                             <p>Nothing flagged.</p>
@@ -816,7 +816,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   </Panel>
                   {data.aiDrafts.length > 0 ? (
                     <Panel title="AI drafts" count={data.aiDrafts.length}>
-                      <div className="app-stack" data-tight>
+                      <div className="cap-stack" data-gap="4">
                         {data.aiDrafts.map((d) => (
                           <Disclosure
                             key={d.id}
@@ -864,13 +864,13 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Bible",
               content:
                 data.kind !== "scene" ? null : (
-                  <div className="app-stack">
+                  <div className="cap-stack" data-gap="6">
                     {data.kind === "scene" ? (
                       <Panel title="From the bible" count={data.bible.length}>
                         {data.bible.length === 0 ? (
                           <p className="cap-muted">No entries.</p>
                         ) : (
-                          <div className="app-stack" data-tight>
+                          <div className="cap-stack" data-gap="4">
                             {data.bible.map((b) => (
                               <Disclosure
                                 key={b.path}

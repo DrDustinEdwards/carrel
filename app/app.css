@@ -443,10 +443,6 @@
   font-weight: var(--weight-regular);
 }
 
-.app-filter {
-  max-width: 32rem;
-}
-
 /* Desk's status tabs with counts, and the list toolbar. */
 .app-tab-count {
   margin-inline-start: var(--space-1);
