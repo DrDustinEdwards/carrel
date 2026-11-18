@@ -1,10 +1,11 @@
 // The words for a kind the site reports, so a recipe is called a recipe and not a post. Carrel has no
 // list of kinds: these are made from the site's own kind name, whatever it is.
 
+import { capitalize } from "@drdustinedwards/site-helpers/text";
+
 /** The kind as a heading word: "recipe" is "Recipe". An item with no kind is a post. */
 export function kindWord(kind: string | null | undefined): string {
-  const k = kind || "post";
-  return `${k.charAt(0).toUpperCase()}${k.slice(1)}`;
+  return capitalize(kind || "post");
 }
 
 /** The kind in the plural, as a heading word: "Posts", "Dictionaries", "Addresses". */
