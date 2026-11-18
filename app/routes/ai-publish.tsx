@@ -113,7 +113,7 @@ export default function AiPublish({ loaderData, actionData }: Route.ComponentPro
         </Alert>
       ) : null}
       <p>
-        What goes live: <a href={request.what.href}>{request.what.label}</a>. Read it first.
+        <a href={request.what.href}>{request.what.label}</a>
       </p>
       <div className="cap-cluster" data-gap="3">
         {open ? (

@@ -114,13 +114,7 @@ export default function TranscriptDraft({ loaderData, actionData }: Route.Compon
           The site&apos;s transcript changed after this draft was saved, so it cannot be published.
           The changes below are against the transcript as it is now.
         </Banner>
-      ) : (
-        <Banner tone="info">
-          A whole transcript kept beside the site&apos;s. It has not changed the site. Publishing it
-          replaces the episode&apos;s transcript at once; the one it replaces is kept here as a
-          draft that puts it back.
-        </Banner>
-      )}
+      ) : null}
       {changes && moved > 0 ? (
         <Banner tone="warn">
           It also adds {changes.added}, removes {changes.removed} and retimes {changes.retimed} cue
@@ -136,9 +130,7 @@ export default function TranscriptDraft({ loaderData, actionData }: Route.Compon
           flush
         >
           {changes.changed.length === 0 ? (
-            <Empty kind="nothing-yet" flush title="No words changed">
-              The draft&apos;s cues say what the site&apos;s say.
-            </Empty>
+            <Empty kind="nothing-yet" flush title="No words changed" />
           ) : (
             <RowList label="Cues this draft changes">
               {changes.changed.map((c) => (

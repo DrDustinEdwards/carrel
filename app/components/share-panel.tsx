@@ -15,10 +15,7 @@ export function SharePanel({ site }: { site: boolean }) {
   const fetcher = useFetcher<{ share?: ShareAnswer }>();
   const answer = fetcher.state === "idle" ? fetcher.data?.share : undefined;
   return (
-    <Panel
-      title="Share"
-      src="A coauthor sees this project only. The People page lists everyone and every role."
-    >
+    <Panel title="Share">
       {answer && !answer.ok ? (
         <Alert tone="crit" title="Not shared">
           {answer.message}
@@ -41,10 +38,7 @@ export function SharePanel({ site }: { site: boolean }) {
           <Field label="Email" required>
             <input className="cap-input" type="email" name="email" required autoComplete="off" />
           </Field>
-          <Field
-            label="Name"
-            help="For someone new to Carrel. An existing person keeps their name."
-          >
+          <Field label="Name">
             <input className="cap-input" type="text" name="name" autoComplete="off" />
           </Field>
           <Field label="Role">

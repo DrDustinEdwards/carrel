@@ -30,28 +30,20 @@ export type View =
   | {
       kind: "compare";
       heading: string;
-      lead: string;
       patch: string | null;
       before: Side | null;
       after: Side | null;
     };
 
 /** Both texts are in Carrel: line by line is a patch built here, word by word the two texts side by side. */
-export function sides(
-  heading: string,
-  lead: string,
-  fileName: string,
-  before: Side,
-  after: Side,
-  by: By,
-): View {
-  if (by === "word") return { kind: "compare", heading, lead, patch: null, before, after };
+export function sides(heading: string, fileName: string, before: Side, after: Side, by: By): View {
+  if (by === "word") return { kind: "compare", heading, patch: null, before, after };
   const patch = unifiedPatch(
     fileName,
     { text: before.text, label: before.title },
     { text: after.text, label: after.title },
   );
-  return { kind: "compare", heading, lead, patch, before: null, after: null };
+  return { kind: "compare", heading, patch, before: null, after: null };
 }
 
 /** The switch moves at once, while the other view loads; the loader's answer confirms it. */
@@ -138,7 +130,6 @@ export function ComparePanel({
   return (
     <Panel
       title={view.heading}
-      description={view.lead}
       actions={
         <Segmented
           legend="Compare by"

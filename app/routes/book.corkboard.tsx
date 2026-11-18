@@ -115,7 +115,10 @@ export async function action({
   } else if (intent === "move-to") {
     const path = String(form.get("path") ?? "");
     const target = String(form.get("target") ?? "");
-    desired = now.map((c) => ({ chapter: c.chapter, scenes: c.scenes.filter((s) => s !== path) }));
+    desired = now.map((c) => ({
+      chapter: c.chapter,
+      scenes: c.scenes.filter((s) => s !== path),
+    }));
     const into = desired.find((c) => c.chapter === target);
     if (!into || !now.some((c) => c.scenes.includes(path)))
       throw new Response("Bad request", { status: 400 });
@@ -126,7 +129,13 @@ export async function action({
 
   const { repo, detail } = bookRepo(env);
   if (!repo)
-    return { result: { ok: false, reason: "failed", message: `${detail} Nothing was moved.` } };
+    return {
+      result: {
+        ok: false,
+        reason: "failed",
+        message: `${detail} Nothing was moved.`,
+      },
+    };
   return { result: await reorderBook(env.DB, repo, project, viewer, desired) };
 }
 
@@ -177,7 +186,8 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
           <FormMenu
             label={
               <>
-                Move to<span className="cap-sr-only"> another chapter: {c.title}</span>
+                Move to
+                <span className="cap-sr-only"> another chapter: {c.title}</span>
               </>
             }
             form={moveForm(c)}
@@ -197,8 +207,7 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
       <BookHead book={head} section="manuscript" view="corkboard" />
       <div className="cap-stack" data-gap="4">
         <p className="cap-muted app-note">
-          Each chapter's scenes as cards, in reading order. Moving a card or a chapter renumbers the
-          files after it, in one commit.
+          Moving a card renumbers the files after it, in one commit.
         </p>
 
         <p role="status" className="app-note">
@@ -213,15 +222,11 @@ export default function Corkboard({ loaderData, actionData }: Route.ComponentPro
       </div>
       {result && !result.ok ? <Alert tone="crit">{result.message}</Alert> : null}
       {!canMove ? (
-        <Banner tone="info">
-          The order is shown as it stands. Moving needs an Editor or the Owner, and Git connected.
-        </Banner>
+        <Banner tone="info">Moving needs an Editor or the Owner, and Git connected.</Banner>
       ) : null}
 
       {chapters.length === 0 ? (
-        <Empty kind="nothing-yet" title="No scenes yet">
-          Start a chapter in the List view, or refresh from Git.
-        </Empty>
+        <Empty kind="nothing-yet" title="No scenes yet" />
       ) : (
         <>
           <Panel title="Chapters" count={chapters.length}>

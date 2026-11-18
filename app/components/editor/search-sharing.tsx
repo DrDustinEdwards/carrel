@@ -16,18 +16,10 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
   const host = preview.host ?? "the site";
   const address = preview.url ? preview.url.replace(/^https?:\/\//, "") : host;
   return (
-    <Panel
-      title="Search and sharing"
-      id="seo"
-      count={findings.length}
-      src="As a search result and a shared link"
-    >
+    <Panel title="Search and sharing" id="seo" count={findings.length}>
       <div className="cap-stack" data-gap="6">
         {findings.length === 0 ? (
-          <Empty kind="all-clear" flush title="Nothing flagged">
-            The title and description fit a search result, every image has alt text, and the post
-            has a card image.
-          </Empty>
+          <Empty kind="all-clear" flush title="Nothing flagged" />
         ) : (
           <RowList label="Search and sharing checks" gap="xs">
             {findings.map((f, i) => (
@@ -45,11 +37,6 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
             url={address.replace(/\//g, " › ")}
             title={preview.search.title || "No title"}
             description={preview.search.description || "No description"}
-            note={
-              preview.url
-                ? undefined
-                : "The address is the site's to give when it publishes the post."
-            }
           />
           <OgCardPreview
             image={
@@ -67,15 +54,10 @@ export function SearchSharingPanel({ check }: { check: SeoCheck }) {
             host={host}
             title={preview.card.title || "No title"}
             description={preview.card.description}
-            note={
-              preview.card.image
-                ? undefined
-                : "With no card image of its own, the post shares with the site's default image, or with none."
-            }
           />
           <dl className="app-facts">
             <dt>Canonical URL</dt>
-            <dd className="cap-mono">{preview.url ?? "Not yet: set when the site publishes it"}</dd>
+            <dd className="cap-mono">{preview.url ?? "Not yet"}</dd>
             <dt>Image URL</dt>
             <dd className="cap-mono">{preview.card.image ?? "None"}</dd>
           </dl>

@@ -191,7 +191,6 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
     <div className="cap-admin-page">
       <PageHead
         title="Manuscripts"
-        lead="The shared Drive folder. Open goes to Google Docs; search runs in Drive, so the text stays there. An AI changes a Doc only through Carrel, under the lock you set here."
         actions={
           <>
             <ButtonLink to="/manuscripts/activity">Docs activity</ButtonLink>
@@ -220,13 +219,6 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
                 <Status tone="nodata">Not connected</Status>
               )
             }
-            detail={
-              !google.configured
-                ? "Send to Docs is not set up yet."
-                : google.connected
-                  ? "Connected with drive.file only."
-                  : "Connect Google to send a post to Docs."
-            }
             actions={
               google.configured ? (
                 <ButtonLink href="/auth/google/start">
@@ -237,7 +229,7 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
           />
           <Row
             title="Direct writes by AI"
-            detail="Suggestions send no email. A direct write is one an AI makes in a Doc only when you ask it to."
+            detail="Suggestions send no email."
             actions={
               <ChoiceForm
                 intent="docs-email"
@@ -274,22 +266,11 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
         </Banner>
       ) : null}
 
-      <Panel
-        title="Manuscripts"
-        count={files.length}
-        src="Carrel's index of the Drive folder"
-        flush
-      >
+      <Panel title="Manuscripts" count={files.length} flush>
         <div className="cap-panel-pad">
           <Form method="get" role="search" aria-label="Search manuscripts" className="app-filters">
             <Field label="Search the text">
-              <input
-                className="cap-input"
-                type="search"
-                name="q"
-                defaultValue={q}
-                placeholder="Words in a manuscript"
-              />
+              <input className="cap-input" type="search" name="q" defaultValue={q} />
             </Field>
             <div className="cap-cluster" data-gap="3">
               <Button type="submit" variant="primary">
@@ -305,11 +286,7 @@ export default function Manuscripts({ loaderData, actionData }: Route.ComponentP
             flush
             title={q ? "No manuscript matches" : "No manuscripts in the index yet"}
             action={q ? <ButtonLink to=".">Clear the search</ButtonLink> : undefined}
-          >
-            {q
-              ? "Try other words, or fewer of them."
-              : "Refresh from Drive to read the shared folder."}
-          </Empty>
+          />
         ) : (
           <Table caption="Manuscripts" captionHidden>
             <thead>

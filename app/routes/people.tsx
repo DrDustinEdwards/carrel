@@ -148,8 +148,7 @@ function AccessStatus({ access, busy }: { access: AccessState; busy: boolean }) 
   if (last?.ok) {
     return (
       <Banner tone="ok" title="Cloudflare Access is in step">
-        Desk lets in each person with a role on a project, and no one else but you. Synced{" "}
-        <Time at={last.syncedAt} />.
+        Synced <Time at={last.syncedAt} />.
       </Banner>
     );
   }
@@ -161,11 +160,7 @@ function AccessStatus({ access, busy }: { access: AccessState; busy: boolean }) 
       </Alert>
     );
   }
-  return (
-    <Banner tone="info" title="Cloudflare Access has not been synced yet" actions={retry}>
-      Every change to a role syncs it. Sync now to bring Access in step with the people below.
-    </Banner>
-  );
+  return <Banner tone="info" title="Cloudflare Access has not been synced yet" actions={retry} />;
 }
 
 type Project = Route.ComponentProps["loaderData"]["projects"][number];
@@ -227,19 +222,8 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
       <fieldset className="cap-field">
         <legend className="cap-field-label">Kind</legend>
         <div className="cap-field-options">
-          <Check
-            type="radio"
-            name="reviewer"
-            value="no"
-            defaultChecked
-            label="A person, given a role on each project under Access"
-          />
-          <Check
-            type="radio"
-            name="reviewer"
-            value="yes"
-            label="A reviewer: another company's AI agent, which reads and flags only, through the AI door"
-          />
+          <Check type="radio" name="reviewer" value="no" defaultChecked label="Person" />
+          <Check type="radio" name="reviewer" value="yes" label="Reviewer (another company's AI)" />
         </div>
       </fieldset>
       <div className="cap-cluster">
@@ -251,10 +235,6 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
   );
   const agent = (
     <Form method="post" action="/people" className="app-form" data-cap="field">
-      <p className="cap-muted app-note">
-        For an agent that cannot sign in with OAuth. It reaches the AI door with its own key, never
-        as you.
-      </p>
       <div className="cap-fields">
         <Field label="Agent name" required help="Lower case, such as grok.">
           <input
@@ -321,7 +301,6 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
     <div className="cap-admin-page">
       <PageHead
         title="People"
-        lead="Who is in Carrel, and what each person may do on each project. Only the Owner sees this page."
         actions={
           <>
             <ButtonLink to="/people?add=agent" preventScrollReset>
@@ -351,10 +330,8 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         <Alert tone="warn" title={`Added ${actionData.agent}. It has no key and no role yet.`}>
           <div className="app-steps">
             <p>
-              An agent reaches the AI door with a key, a Worker secret named <code>AGENT_KEY_</code>{" "}
-              and the agent's name in capitals. Carrel never shows or stores the key. The key says
-              which agent is knocking and grants nothing: what the agent may do is the role you set
-              for it below, and it can never publish.
+              The key is a Worker secret named <code>AGENT_KEY_</code> and the agent's name in
+              capitals.
             </p>
             <ol>
               <li>
@@ -373,24 +350,11 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
           </div>
         </Alert>
       ) : actionData?.ok && actionData.added && access.configured ? (
-        <Alert tone="info" title={`Added ${actionData.added}. Share a project with them below.`}>
-          <p>
-            Cloudflare Access lets them into Desk once they hold a role on a project, and keeps them
-            out again when they are disabled or have no role left. Access emails a login code only
-            if <em>One-time PIN</em> is set up (Zero Trust &gt; Integrations &gt; Identity
-            providers); without it, a person with no Cloudflare account cannot sign in. The AI door
-            (carrel-mcp.dustinedwards.info) is still allowed by hand, in its policy{" "}
-            <em>Carrel people</em>.
-          </p>
-        </Alert>
+        <Alert tone="info">Added {actionData.added}. Share a project with them below.</Alert>
       ) : actionData?.ok && actionData.added ? (
         <Alert tone="warn" title={`Added ${actionData.added}. They cannot sign in yet.`}>
           <div className="app-steps">
-            <p>
-              Carrel decides what a person may do once they are in. Cloudflare Access decides
-              whether they get in at all, and Carrel does not manage it. Allow the same email in
-              both places:
-            </p>
+            <p>Allow the same email in both places:</p>
             <ol>
               <li>
                 <strong>Desk</strong> (desk.dustinedwards.info). In Workers &amp; Pages &gt; carrel
@@ -414,10 +378,6 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
               providers &gt; Add new identity provider &gt; One-time PIN. Without it, a person with
               no Cloudflare account has no way to sign in.
             </p>
-            <p>
-              Then share a project with them below. A person with no role on a project sees nothing
-              of it.
-            </p>
           </div>
         </Alert>
       ) : actionData?.ok && actionData.intent === "role" ? (
@@ -427,14 +387,13 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
       <Panel
         title="Access"
         count={people.length}
-        src="A disabled person is refused at both doors on their next request, whatever Access says. Their roles are kept."
+        src="A disabled person is refused at both doors on their next request. Roles are kept."
         flush
       >
         <p className="cap-muted app-note cap-panel-pad">
           A Reader reads and comments. An Editor also writes and saves drafts. An Author on a site's
           project also publishes, schedules and unpublishes the posts they wrote in Carrel. Only the
           Owner publishes anyone else's post, sends anything else outside Carrel and manages people.
-          A role saves as soon as you change it.
         </p>
         <RoleGrid
           people={people.map(gridPerson)}

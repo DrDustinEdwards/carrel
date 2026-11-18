@@ -75,7 +75,11 @@ import "capsomer/editor-workspace.css";
 import "capsomer/ai-job-buttons.css";
 import "capsomer/inspector.css";
 export function meta({ loaderData: data }: Route.MetaArgs) {
-  return [{ title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel" }];
+  return [
+    {
+      title: data ? `${data.label} · ${data.project.name} · Carrel` : "Carrel",
+    },
+  ];
 }
 
 function starter(path: string, name: string | null, bookName: string): string {
@@ -267,8 +271,13 @@ export async function action({
       const git = repo ? await repo.read(`${project.book}/${path}`).catch(() => null) : null;
       const file = git ?? (await indexedFile(env.DB, project, path));
       if (!file)
-        throw new Response("Only a file in Git has a version to go back to.", { status: 400 });
-      await replaceRoom(env, project, viewer, path, { markdown: file.source, version: file.sha });
+        throw new Response("Only a file in Git has a version to go back to.", {
+          status: 400,
+        });
+      await replaceRoom(env, project, viewer, path, {
+        markdown: file.source,
+        version: file.sha,
+      });
       await clearUntyped(env.DB, project.id, viewer.id, path);
       return { intent, discarded: true };
     }
@@ -289,7 +298,10 @@ export async function action({
       await discardDraft(env.DB, project, viewer, path);
       return { intent: "discard", discarded: true };
     case "check":
-      return { intent, findings: await checkDraft(env.DB, project, path, source) };
+      return {
+        intent,
+        findings: await checkDraft(env.DB, project, path, source),
+      };
     case "dismiss": {
       if (!confirmationSatisfied(form)) throw confirmationRequired();
       const id = Number(form.get("finding"));
@@ -492,7 +504,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     await room.flush();
     if (intent === "save") untypedSent.current = untyped.current;
     return writer.submit(
-      { intent, untyped: String(intent === "save" ? untyped.current : 0), ...extra },
+      {
+        intent,
+        untyped: String(intent === "save" ? untyped.current : 0),
+        ...extra,
+      },
       { method: "post" },
     );
   };
@@ -601,7 +617,10 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               dialect="plain"
               room={
                 data.room
-                  ? { rich: editing.rich, markdownLocked: editing.markdownLocked }
+                  ? {
+                      rich: editing.rich,
+                      markdownLocked: editing.markdownLocked,
+                    }
                   : undefined
               }
               onEditor={editing.setEditor}
@@ -616,7 +635,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
           head={
             <>
               {data.canEdit ? (
-                <Panel title="This file" src={data.version ? "In Git" : "Only in Carrel so far"}>
+                <Panel>
                   <div className="app-stack" data-tight>
                     <p role="status" className="app-savestate">
                       {saveState}
@@ -677,9 +696,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                       <>
                         Last met <Time at={data.docLink.syncedAt} />
                       </>
-                    ) : (
-                      "For a coauthor who works in Docs"
-                    )
+                    ) : undefined
                   }
                 >
                   <div className="app-stack" data-tight>
@@ -693,15 +710,9 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         ) : (
                           data.docLink.name
                         )}
-                        . Sending lays what changed here into it as suggestions, and threads started
-                        here as comments.
+                        .
                       </p>
-                    ) : (
-                      <p className="app-note">
-                        A Doc comes in as this file's working copy, its suggestions and comments as
-                        Carrel's.
-                      </p>
-                    )}
+                    ) : null}
                     <Field label="Doc" size="short">
                       <Select
                         name="doc"
@@ -709,7 +720,10 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                         onChange={(event) => setChosen(event.currentTarget.value)}
                         options={[
                           { value: "", label: "Choose a Doc", disabled: true },
-                          ...data.docs.map((d) => ({ value: d.id, label: d.name })),
+                          ...data.docs.map((d) => ({
+                            value: d.id,
+                            label: d.name,
+                          })),
                         ]}
                       />
                     </Field>
@@ -751,11 +765,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   onChange={setSource}
                   readOnly={readOnly || !data.canEdit}
                   legend="Header"
-                  empty={
-                    <p className="app-note">
-                      This file has no header, so it has no details to set.
-                    </p>
-                  }
+                  empty={<p className="app-note">No header.</p>}
                 />
               ),
             },
@@ -765,12 +775,8 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               count: openFlags,
               content: (
                 <div className="app-stack">
-                  <Panel title="Flags" count={openFlags} src="From the last save" id="flags">
+                  <Panel title="Flags" count={openFlags} id="flags">
                     <div className="app-stack" data-tight>
-                      <p className="cap-muted app-note">
-                        A flag never stops a save; it holds export until it is fixed or the Owner
-                        dismisses it.
-                      </p>
                       {data.findings.length === 0 ? (
                         <p>None.</p>
                       ) : (
@@ -811,11 +817,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     </div>
                   </Panel>
                   {data.aiDrafts.length > 0 ? (
-                    <Panel
-                      title="AI drafts beside yours"
-                      count={data.aiDrafts.length}
-                      src="None has touched the text or Git"
-                    >
+                    <Panel title="AI drafts" count={data.aiDrafts.length}>
                       <div className="app-stack" data-tight>
                         {data.aiDrafts.map((d) => (
                           <Disclosure
@@ -868,7 +870,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     {data.kind === "scene" ? (
                       <Panel title="From the bible" count={data.bible.length}>
                         {data.bible.length === 0 ? (
-                          <p className="cap-muted">No entries match this scene's header.</p>
+                          <p className="cap-muted">No entries.</p>
                         ) : (
                           <div className="app-stack" data-tight>
                             {data.bible.map((b) => (
@@ -895,7 +897,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               value: "binder",
               label: "Binder",
               content: (
-                <Panel title="Binder" src="The book in reading order">
+                <Panel>
                   <Binder
                     nodes={data.binder}
                     book={data.project.slug}
@@ -950,7 +952,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         perform={async () => {
           if (asking.subject?.id !== undefined)
             await writer.submit(
-              { intent: "dismiss", finding: String(asking.subject.id), confirmed: "1" },
+              {
+                intent: "dismiss",
+                finding: String(asking.subject.id),
+                confirmed: "1",
+              },
               { method: "post" },
             );
         }}
@@ -979,7 +985,11 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         perform={async () => {
           if (asking.subject?.id !== undefined)
             await writer.submit(
-              { intent: "use-ai-draft", draft: String(asking.subject.id), confirmed: "1" },
+              {
+                intent: "use-ai-draft",
+                draft: String(asking.subject.id),
+                confirmed: "1",
+              },
               { method: "post" },
             );
         }}

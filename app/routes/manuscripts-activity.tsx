@@ -45,14 +45,12 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
     <div className="app-page">
       <PageHead
         title="Docs activity"
-        lead="What AIs changed in your Google Docs through Carrel. Accept or reject suggestions in the Doc itself; to take a change back, ask any AI to undo it by its id."
+        lead="To take a change back, ask an AI to undo it by its id."
         actions={<ButtonLink to="/manuscripts">Manuscripts</ButtonLink>}
       />
-      <Panel title="Changes" count={changes.length} src="Carrel's record" flush>
+      <Panel title="Changes" count={changes.length} flush>
         {changes.length === 0 ? (
-          <Empty kind="nothing-yet" flush title="No AI has changed a Doc yet">
-            A suggestion or comment an AI makes through Carrel shows here.
-          </Empty>
+          <Empty kind="nothing-yet" flush title="No AI has changed a Doc yet" />
         ) : (
           <div
             className="cap-table-wrap"

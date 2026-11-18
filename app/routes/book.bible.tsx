@@ -25,7 +25,11 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
   return [{ title: data ? `Bible and notes · ${data.head.name} · Carrel` : "Carrel" }];
 }
 
-const BIBLE_FOLDERS = { character: "characters", place: "places", rule: "rules" } as const;
+const BIBLE_FOLDERS = {
+  character: "characters",
+  place: "places",
+  rule: "rules",
+} as const;
 const KINDS = [
   { kind: "character", heading: "Characters" },
   { kind: "place", heading: "Places" },
@@ -47,7 +51,14 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     canEdit: can(project.role, "edit"),
     bible: files.flatMap(({ path, meta }) =>
       meta.kind === "character" || meta.kind === "place" || meta.kind === "rule"
-        ? [{ path, kind: meta.kind, name: meta.entry.name, flags: flags.get(path) ?? 0 }]
+        ? [
+            {
+              path,
+              kind: meta.kind,
+              name: meta.entry.name,
+              flags: flags.get(path) ?? 0,
+            },
+          ]
         : [],
     ),
     others: files
@@ -104,13 +115,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
                   />
                 </Field>
                 <Field label="Name">
-                  <input
-                    className="cap-input"
-                    name="name"
-                    required
-                    placeholder="Name"
-                    autoComplete="off"
-                  />
+                  <input className="cap-input" name="name" required autoComplete="off" />
                 </Field>
               </InlineAddForm>
             ) : undefined
@@ -149,13 +154,7 @@ export default function BookBible({ loaderData, actionData }: Route.ComponentPro
             canEdit ? (
               <InlineAddForm Form={Form} hidden={{ intent: "new-outline" }} submit="Start it">
                 <Field label="New outline file">
-                  <input
-                    className="cap-input"
-                    name="name"
-                    required
-                    placeholder="Name"
-                    autoComplete="off"
-                  />
+                  <input className="cap-input" name="name" required autoComplete="off" />
                 </Field>
               </InlineAddForm>
             ) : undefined

@@ -80,7 +80,13 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     const slug = chapterOf(file.path)!;
     let chapter = chapters.at(-1);
     if (!chapter || chapter.slug !== slug) {
-      chapter = { slug, title: titleFromSegment(slug), words: 0, flags: 0, scenes: [] };
+      chapter = {
+        slug,
+        title: titleFromSegment(slug),
+        words: 0,
+        flags: 0,
+        scenes: [],
+      };
       chapters.push(chapter);
     }
     const header = file.meta.kind === "scene" ? file.meta.header : null;
@@ -148,7 +154,10 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     const { repo, detail } = bookRepo(env);
     if (!repo) return { refreshed: null, error: detail };
     try {
-      return { refreshed: await refreshBook(env.DB, repo, project), error: null };
+      return {
+        refreshed: await refreshBook(env.DB, repo, project),
+        error: null,
+      };
     } catch (error) {
       return { refreshed: null, error: errorMessage(error) };
     }
@@ -158,7 +167,11 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   if (!can(project.role, "edit")) throw new Response("Forbidden", { status: 403 });
   const name = String(form.get("name") ?? "").trim();
   const slug = slugify(name, { max: 60 });
-  if (!slug) return { refreshed: null, error: "Give it a name with at least one letter or digit." };
+  if (!slug)
+    return {
+      refreshed: null,
+      error: "Give it a name with at least one letter or digit.",
+    };
   const files = await listFiles(env.DB, project);
 
   if (intent === "new-chapter") {
@@ -188,28 +201,15 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
           detail={`${plural(chapters.length, "chapter")}`}
         />
         {open === 0 ? (
-          <StatTile
-            label="Open flags"
-            tone="ok"
-            word="Clear"
-            figure="0"
-            detail="Nothing holds export."
-          />
+          <StatTile label="Open flags" tone="ok" word="Clear" figure="0" />
         ) : (
-          <StatTile
-            label="Open flags"
-            tone="warn"
-            word="Open"
-            figure={open}
-            detail="They hold export until fixed or dismissed."
-          />
+          <StatTile label="Open flags" tone="warn" word="Open" figure={open} />
         )}
       </StatTiles>
 
       {!head.connected ? (
         <Banner tone="warn" title="Git is not connected yet">
-          {connectionDetail} The book shows Carrel's last index of it, and saving waits for the
-          connection.
+          {connectionDetail} Saving waits for the connection.
         </Banner>
       ) : null}
 
@@ -232,7 +232,6 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
                 title={<span className="cap-mono">{p}</span>}
                 href={file(p)}
                 renderLink={routerRenderLink}
-                detail="Started here; nothing is in Git until the first Save."
               />
             ))}
           </RowList>
@@ -247,32 +246,17 @@ export default function Book({ loaderData, actionData }: Route.ComponentProps) {
           canEdit ? (
             <InlineAddForm Form={Form} hidden={{ intent: "new-chapter" }} submit="Start it">
               <Field label="New chapter">
-                <input
-                  className="cap-input"
-                  name="name"
-                  required
-                  placeholder="Chapter name"
-                  autoComplete="off"
-                />
+                <input className="cap-input" name="name" required autoComplete="off" />
               </Field>
               <Field label="First scene">
-                <input
-                  className="cap-input"
-                  name="scene"
-                  placeholder="Scene name"
-                  autoComplete="off"
-                />
+                <input className="cap-input" name="scene" autoComplete="off" />
               </Field>
             </InlineAddForm>
           ) : undefined
         }
       >
         {chapters.length === 0 ? (
-          <Empty kind="nothing-yet" flush title="No chapters in the index yet">
-            {canEdit
-              ? "Start the first chapter below, or refresh from Git."
-              : "Refresh from Git to read the book's folder."}
-          </Empty>
+          <Empty kind="nothing-yet" flush title="No chapters in the index yet" />
         ) : (
           chapters.map((chapter) => (
             <section

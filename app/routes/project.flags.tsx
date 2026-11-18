@@ -77,23 +77,13 @@ export default function ProjectFlags({ loaderData, actionData }: Route.Component
 
   return (
     <div className="cap-admin-page">
-      <PageHead
-        title={project.name}
-        lead={`${open} open of ${flags.length} flags on ${project.site}. An open flag holds publish until the text is fixed or the Owner dismisses it.`}
-      />
+      <PageHead title={project.name} />
 
       {dismissed ? <Banner tone="ok">Dismissed flag {dismissed}.</Banner> : null}
 
-      <Panel
-        title="Flags"
-        count={open}
-        src={`${open} open, ${flags.length - open} dismissed`}
-        flush
-      >
+      <Panel title="Flags" count={open} flush>
         {flags.length === 0 ? (
-          <Empty kind="all-clear" flush title={<Status tone="ok">All clear</Status>}>
-            No flags on this project.
-          </Empty>
+          <Empty kind="all-clear" flush title={<Status tone="ok">All clear</Status>} />
         ) : (
           <RowList label="Flags on this project">
             {flags.map((flag) => {

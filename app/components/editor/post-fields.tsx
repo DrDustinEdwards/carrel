@@ -77,10 +77,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
       <div className="cap-fields cap-fm-grid">
         {has("excerpt") ? (
           <div className="cap-fm-field" data-wide="">
-            <Field
-              label="Excerpt"
-              help="The short text the site's lists and feeds show for this post."
-            >
+            <Field label="Excerpt">
               <textarea {...typed(excerpt, "excerpt")} rows={3} />
             </Field>
           </div>
@@ -90,9 +87,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
             <span className="cap-field-label" id="post-authors">
               Authors
             </span>
-            <p className="cap-field-help">
-              Everyone credited, in order. The first is the primary author.
-            </p>
+            <p className="cap-field-help">The first is the primary author.</p>
             {authors.length === 0 ? (
               <p className="cap-muted">No author named: the site credits its own default.</p>
             ) : locked ? (
@@ -148,14 +143,14 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
         ) : null}
         {has("series") ? (
           <div className="cap-fm-field">
-            <Field label="Series" help="The series this post belongs to. Empty: none.">
+            <Field label="Series">
               <input {...typed(series, "series")} type="text" />
             </Field>
           </div>
         ) : null}
         {has("seriesPart") ? (
           <div className="cap-fm-field">
-            <Field label="Part" help="Its place in the series: 1, 2, 3.">
+            <Field label="Part">
               <input
                 className="cap-input"
                 type="number"
@@ -202,7 +197,7 @@ export function PostFields({ source, onChange, readOnly, listed, origin, media }
                 <>
                   <Field
                     label="Alt text"
-                    help="What the image shows, for someone who cannot see it. Required unless it is only decoration."
+                    help="Required unless the image is decoration."
                     error={fault ? `${fault}.` : undefined}
                   >
                     <input {...typed(alt, "featureImageAlt")} type="text" />

@@ -63,7 +63,9 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     writingDays: form.getAll("writingDays").map(String),
     allowNegative: form.get("allowNegative") === "1",
   });
-  return { goal: saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error } };
+  return {
+    goal: saved.ok ? { saved: true, error: null } : { saved: false, error: saved.error },
+  };
 }
 
 export default function BookProgress({ loaderData, actionData }: Route.ComponentProps) {

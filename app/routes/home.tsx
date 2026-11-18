@@ -148,7 +148,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <div className="cap-admin-page">
       <PageHead
         title="Home"
-        lead="What waits on you, and where you left off."
         actions={
           hasProjects ? (
             <>
@@ -165,9 +164,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       {googleMessage ? <Banner tone="info">{googleMessage}</Banner> : null}
 
       {!hasProjects ? (
-        <Empty kind="nothing-yet" title="No projects yet">
-          A project appears here once it is shared with you.
-        </Empty>
+        <Empty kind="nothing-yet" title="No projects yet" />
       ) : (
         <>
           <Panel title="Needs you">
@@ -194,9 +191,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <div className="cap-panes" data-even>
             <Panel title="Continue writing" flush>
               {resume.length === 0 ? (
-                <Empty kind="nothing-yet" flush title="No drafts in progress">
-                  Start from Writing or Books.
-                </Empty>
+                <Empty kind="nothing-yet" flush title="No drafts in progress" />
               ) : (
                 <RowList label="Continue writing">
                   {resume.map((r) => (
@@ -214,9 +209,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </Panel>
             <Panel title="Typed in the last day" flush>
               {typed.length === 0 ? (
-                <Empty kind="nothing-yet" flush title="Nothing typed yet">
-                  Words you type in the editor count here.
-                </Empty>
+                <Empty kind="nothing-yet" flush title="Nothing typed yet" />
               ) : (
                 <RowList label="Typed in the last day">
                   {typed.map((t) => (

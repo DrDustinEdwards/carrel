@@ -11,7 +11,6 @@ import type { ReactNode } from "react";
 
 import type { AiDraftSummary, ItemFinding } from "~/lib/ai.server";
 import type { TranscriptDraftSummary } from "~/lib/transcripts.server";
-import { plural } from "@drdustinedwards/site-helpers/text";
 import "capsomer/flag-list.css";
 
 type Props = {
@@ -77,14 +76,8 @@ export function FlagRow({
 
 export function FlagsPanel({ flags, aiDrafts, transcriptDrafts, canPublish, onDismiss }: Props) {
   const openFlags = flags.filter((f) => f.status === "open").length;
-  const drafts = aiDrafts.length + transcriptDrafts.length;
   return (
-    <Panel
-      title="Flags and AI drafts"
-      id="flags"
-      count={openFlags}
-      src={`${plural(drafts, "draft")} beside yours`}
-    >
+    <Panel title="Flags and AI drafts" id="flags" count={openFlags}>
       <div className="cap-stack" data-gap="4">
         {flags.length > 0 ? (
           <RowList label="Flags" gap="xs">

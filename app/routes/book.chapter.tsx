@@ -26,7 +26,11 @@ import { plural } from "@drdustinedwards/site-helpers/text";
 import "capsomer/prose.css";
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
-  return [{ title: data ? `${data.chapter.title} · ${data.project.name} · Carrel` : "Carrel" }];
+  return [
+    {
+      title: data ? `${data.chapter.title} · ${data.project.name} · Carrel` : "Carrel",
+    },
+  ];
 }
 
 export async function loader({ params, context }: Route.LoaderArgs) {
@@ -64,8 +68,13 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 export async function action({ params, request, context }: Route.ActionArgs) {
   const env = getEnv(context);
   const project = await requireBookProject(env.DB, getViewer(context), params.project, "edit");
-  const slug = slugify(String((await readForm(request)).get("name") ?? ""), { max: 60 });
-  if (!slug) return { error: "Give the scene a name with at least one letter or digit." };
+  const slug = slugify(String((await readForm(request)).get("name") ?? ""), {
+    max: 60,
+  });
+  if (!slug)
+    return {
+      error: "Give the scene a name with at least one letter or digit.",
+    };
   const scenes = (await listFiles(env.DB, project))
     .filter((f) => chapterOf(f.path) === params.chapter)
     .map((f) => f.path.split("/")[2]!.replace(/\.md$/, ""));
@@ -134,13 +143,7 @@ export default function Chapter({ loaderData, actionData }: Route.ComponentProps
             canEdit ? (
               <InlineAddForm Form={Form} submit="Start it">
                 <Field label="New scene">
-                  <input
-                    className="cap-input"
-                    name="name"
-                    required
-                    placeholder="Scene name"
-                    autoComplete="off"
-                  />
+                  <input className="cap-input" name="name" required autoComplete="off" />
                 </Field>
               </InlineAddForm>
             ) : undefined

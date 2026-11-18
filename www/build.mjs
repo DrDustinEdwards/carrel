@@ -110,12 +110,6 @@ function heroHtml() {
   const cue = h(
     "section",
     { className: "cap-cue hero-card", "aria-labelledby": "cue-title" },
-    h(
-      "p",
-      { className: "cap-cue-strip" },
-      h("span", null, "Post \u00b7 Checks"),
-      h("span", null, "As you type"),
-    ),
     h("h2", { className: "cap-cue-title", id: "cue-title" }, "How AI changed peer review"),
     h(
       "ul",
@@ -129,11 +123,6 @@ function heroHtml() {
         ),
       ),
     ),
-    h(
-      "p",
-      { className: "hero-card-note" },
-      "An example post. Two flags, and Publish still works: checks flag, the writer decides.",
-    ),
   );
   const signs = h(
     "nav",
@@ -146,7 +135,7 @@ function heroHtml() {
       title: "One desk for everything you write.",
       lead: "Carrel is an open-source writing app you run on Cloudflare. Write and publish posts for several websites from one place, keep your books in a Git repository, and work with AI that drafts beside you and never over you.",
       actions: signs,
-      note: "Desk is the signed-in app, where you write. This instance is Dustin Edwards's; to use Carrel, run your own.",
+      note: "This instance is Dustin Edwards's; to use Carrel, run your own.",
       aside: cue,
     }),
   );
@@ -168,43 +157,37 @@ const TOOL_COUNT = [
 if (SITES.length === 0 || TOOL_COUNT === 0)
   throw new Error("www/build.mjs: could not read the sites or the tools");
 
-/** A feature with no section of its own on the page has no href and shows its name unlinked. @param {{ name: string, href?: string, kind: string, note: string }} item */
-const checklistItem = ({ name, href, kind, note }) =>
-  `<li class="cap-checklist-item"><div class="cap-checklist-line">${href ? `<a href="${href}">${esc(name)}</a>` : `<strong>${esc(name)}</strong>`}<span class="cap-checklist-dots" aria-hidden="true"></span><span class="cap-checklist-kind">${esc(kind)}</span></div><p class="cap-checklist-note">${esc(note)}</p></li>`;
+/** A feature with no section of its own on the page has no href and shows its name unlinked. @param {{ name: string, href?: string, note: string }} item */
+const checklistItem = ({ name, href, note }) =>
+  `<li class="cap-checklist-item"><div class="cap-checklist-line">${href ? `<a href="${href}">${esc(name)}</a>` : `<strong>${esc(name)}</strong>`}</div><p class="cap-checklist-note">${esc(note)}</p></li>`;
 
 const FEATURES = [
   {
     name: "Every post on every site",
     href: "#path",
-    kind: "Sites",
     note: "Each site's posts in one list, with search and filters. Write in a prose editor that saves as you type, and preview in the site's own design.",
   },
   {
     name: "Books in Git",
-    kind: "Books",
     note: "Chapters, scenes, outlines and the story bible in a private Git repository. Export to ePub and Word, or print to PDF.",
   },
   {
     name: "Checks that flag",
     href: "#checks",
-    kind: "Checks",
     note: "Search and sharing checks on every post; continuity, timeline and voice checks on every scene. They flag. You decide.",
   },
   {
     name: "AI drafts beside yours",
     href: "#ai",
-    kind: "AI",
     note: `${TOOL_COUNT} tools for Claude and other MCP clients: read, search, preview, draft and flag. An AI draft never replaces your text.`,
   },
   {
     name: "Who wrote what",
     href: "#ai",
-    kind: "Record",
     note: "Every change is recorded as yours or an AI's, and a book's record exports as a report.",
   },
   {
     name: "Manuscripts in Google Drive",
-    kind: "Drive",
     note: "An index and search of your manuscripts, read-only, with Send to Docs and Import.",
   },
 ];
@@ -236,7 +219,7 @@ const page = () => {
     unit: "sites",
   });
   const center = `<div class="cap-family-footer-center">
-<div><p class="cap-family-footer-center-name">Carrel</p><p class="cap-family-footer-about">An open-source writing app for posts across several websites and for books. You run it on Cloudflare; this page is its public front.</p></div>
+<div><p class="cap-family-footer-center-name">Carrel</p><p class="cap-family-footer-about">An open-source writing app.</p></div>
 <div class="cap-family-footer-columns">
 <ul class="cap-family-footer-links"><li><a href="#what">What it does</a></li><li><a href="#path">From draft to live</a></li><li><a href="#ai">AI that stays beside you</a></li><li><a href="#run">Run your own</a></li></ul>
 <ul class="cap-family-footer-links"><li><a href="${REPO}" rel="external">Source, MIT licensed</a></li><li><a href="${REPO}#develop" rel="external">Install it</a></li></ul>
@@ -254,10 +237,9 @@ ${heroHtml()}
 </dl>
 
 <section class="cap-part" id="what" aria-labelledby="what-title">
-<h2 class="cap-part-title" id="what-title"><span class="cap-part-no">1.1</span>What it does</h2>
-<p class="cap-part-lead">A carrel is a library study desk. Carrel is one place to write for every site you run and every book you are working on.</p>
+<h2 class="cap-part-title" id="what-title">What it does</h2>
+<p class="cap-part-lead">A carrel is a library study desk.</p>
 <section class="cap-checklist" aria-label="What Carrel does">
-<p class="cap-checklist-strip" aria-hidden="true"><span>Carrel · Features</span><span>${FEATURES.length} cards</span></p>
 <ol class="cap-checklist-items">
 ${FEATURES.map(checklistItem).join("\n")}
 </ol>
@@ -265,16 +247,14 @@ ${FEATURES.map(checklistItem).join("\n")}
 </section>
 
 <section class="cap-part" id="path" aria-labelledby="path-title">
-<h2 class="cap-part-title" id="path-title"><span class="cap-part-no">1.2</span>From draft to live</h2>
-<p class="cap-part-lead">Each site keeps its own content and design. Carrel reaches it through one shared API, so a post looks the same in the preview as on the site.</p>
+<h2 class="cap-part-title" id="path-title">From draft to live</h2>
 <ol class="cap-timeline">
 ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</span><div class="cap-timeline-body"><p><b>${esc(mark)}.</b> ${esc(text)}</p></div></li>`).join("\n")}
 </ol>
 </section>
 
 <section class="cap-part" id="checks" aria-labelledby="checks-title">
-<h2 class="cap-part-title" id="checks-title"><span class="cap-part-no">1.3</span>Checks that flag</h2>
-<p class="cap-part-lead">A check points at a problem and leaves the choice to you. Nothing holds a save.</p>
+<h2 class="cap-part-title" id="checks-title">Checks that flag</h2>
 <dl class="cap-form-boxes">
 <div class="cap-form-boxes-box"><dt>Search title</dt><dd>Empty or over 60 characters</dd></div>
 <div class="cap-form-boxes-box"><dt>Description</dt><dd>Missing, under 50 or over 155 characters</dd></div>
@@ -286,8 +266,7 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 </section>
 
 <section class="cap-part" id="ai" aria-labelledby="ai-title">
-<h2 class="cap-part-title" id="ai-title"><span class="cap-part-no">1.4</span>AI that stays beside you</h2>
-<p class="cap-part-lead">Connect Claude or any MCP client. It can read, search, preview and draft, under the same roles as a person.</p>
+<h2 class="cap-part-title" id="ai-title">AI that stays beside you</h2>
 <div class="rules">
 <p><b>Your prose is yours.</b> An AI never rewrites your text unless you ask. Its draft is saved next to yours, and you choose what to use.</p>
 <p><b>Flags, not verdicts.</b> AI reviewers and checks raise flags. A post with an open flag cannot be published by an AI.</p>
@@ -297,16 +276,15 @@ ${PATH.map(([mark, text], i) => `<li><span class="cap-timeline-mark">${i + 1}</s
 </section>
 
 <section class="cap-part" id="run" aria-labelledby="run-title">
-<h2 class="cap-part-title" id="run-title"><span class="cap-part-no">1.5</span>Run your own</h2>
-<p class="cap-part-lead">Carrel is one Cloudflare Worker with a D1 database, behind Cloudflare Access. Each site connects through <a href="https://github.com/DrDustinEdwards/site-api" rel="external">site-api</a>.</p>
+<h2 class="cap-part-title" id="run-title">Run your own</h2>
 <div class="run">
 <ol class="cap-leader-index">
-<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">1</span><span class="cap-leader-index-name">Create the database and add yourself as Owner</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">D1</span></span></li>
-<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">2</span><span class="cap-leader-index-name">Deploy with no public address</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">Workers</span></span></li>
-<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">3</span><span class="cap-leader-index-name">Turn on Access for the Worker</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">Access</span></span></li>
-<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">4</span><span class="cap-leader-index-name">Add your domain and connect your sites</span><span class="cap-leader-index-dots" aria-hidden="true"></span><span class="cap-leader-index-fact">site-api</span></span></li>
+<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">1</span><span class="cap-leader-index-name">Create the database and add yourself as Owner</span></span></li>
+<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">2</span><span class="cap-leader-index-name">Deploy with no public address</span></span></li>
+<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">3</span><span class="cap-leader-index-name">Turn on Access for the Worker</span></span></li>
+<li><span class="cap-leader-index-link"><span class="cap-leader-index-no">4</span><span class="cap-leader-index-name">Add your domain and connect your <a href="https://github.com/DrDustinEdwards/site-api" rel="external">sites</a></span></span></li>
 </ol>
-<figure class="patch">${patch}<figcaption>This Desk publishes to ${SITES.length} sites: ${esc(SITES.join(", "))}.</figcaption></figure>
+<figure class="patch">${patch}<figcaption>${esc(SITES.join(", "))}</figcaption></figure>
 </div>
 <nav class="cap-signs" aria-label="Install"><a class="cap-sign" rel="next" href="${REPO}#develop">The steps on GitHub</a></nav>
 </section>

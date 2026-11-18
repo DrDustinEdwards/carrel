@@ -173,7 +173,6 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
     <div className="cap-admin-page">
       <PageHead
         title="AI engine"
-        lead="Choose whether Carrel's AI work runs on your Claude subscription or on the Claude API."
         actions={
           <FormMenu
             label="Run now"
@@ -208,7 +207,6 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
               ? "Until the subscription's drafting routine is connected, Subscription drafts nothing (posts get the template) and Automatic uses the API. "
               : ""}
             {apiKeyMissing ? "Without an API key the API engine cannot draft anything. " : ""}
-            Both are Carrel secrets, set where Carrel is deployed.
           </>
         }
         spentMicros={spent}
@@ -218,13 +216,13 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
           calls: u.calls,
           micros: u.micros,
         }))}
-        capHelp="At the cap the API closes: Subscription is used instead, and Automatic stops falling back. 0 is no cap. Using the API for a few days lifts it until then. Saved with the table."
-        costNote="Costs are Anthropic's list prices times the tokens each call used. A higher effort spends more tokens for the same job, so the spend is split by effort. The subscription has no meter Carrel can read; claude.ai/settings/usage shows it."
+        capHelp="0 is no cap. At the cap the API closes and Subscription is used."
+        costNote="The subscription has no meter Carrel can read: claude.ai/settings/usage."
         Form={Form}
         pending={busy}
       />
 
-      <Panel title="Alt text" src="Pictures without it">
+      <Panel title="Alt text">
         <Form method="post" className="cap-stack" data-gap="4">
           <Field label="Site">
             <Select name="site" options={sites} />
@@ -244,7 +242,6 @@ export default function Ai({ loaderData, actionData }: Route.ComponentProps) {
               Write the missing alt text
             </Button>
           </div>
-          <p className="cap-muted app-note">It sets alt only on files that have none.</p>
         </Form>
       </Panel>
     </div>

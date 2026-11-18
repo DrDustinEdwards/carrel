@@ -37,11 +37,10 @@ export default function ProgressDemo({ loaderData }: Route.ComponentProps) {
   return (
     <Frame data={FRAME}>
       <div className="cap-admin-page">
-        <PageHead title="Sample book" lead="A book's page in Desk, with its writing progress." />
+        <PageHead title="Sample book" />
         <div className="cap-stack" data-gap="6">
           <Banner tone="info" title="Demo with sample data">
-            This is how the page looks for a signed-in writer. The numbers are made up, and nothing
-            here belongs to a real account.
+            Sample data.
           </Banner>
           <WritingProgress {...loaderData} canEdit={false} />
         </div>

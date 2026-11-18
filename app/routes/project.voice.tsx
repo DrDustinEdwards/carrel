@@ -86,10 +86,7 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
 
   return (
     <div className="cap-admin-page">
-      <PageHead
-        title={project.name}
-        lead={`What an AI session reads before it drafts a post for ${project.site}, and what its drafts are scanned against. Drafts are written from your own writing, and you still edit every one.`}
-      />
+      <PageHead title={project.name} />
 
       <ProjectTabs slug={project.slug} current="voice" />
 
@@ -112,21 +109,11 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
           </Form>
         }
       >
-        {fromOwn ? (
-          <p>
-            Chosen from the own writing below. Your published posts are not read while there is any.
-          </p>
-        ) : brief.builtAt ? (
+        {!fromOwn && brief.builtAt ? (
           <p>
             Read from the newest {limits.posts} published posts, <Time at={brief.builtAt} />.
-            Rebuild after publishing a few more.
           </p>
-        ) : (
-          <p>
-            Built from the newest {limits.posts} published posts the first time a session asks for
-            it, or now with Rebuild.
-          </p>
-        )}
+        ) : null}
         {brief.builtAt && brief.excerpts.length === 0 ? (
           <p>{fromOwn ? "No piece" : "No post"} had enough prose for an excerpt yet.</p>
         ) : null}
@@ -143,20 +130,14 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
         ) : null}
       </Panel>
 
-      <Panel
-        title="Your guide and writing"
-        src={canManage ? "Yours to edit" : "The Owner edits it"}
-      >
+      <Panel title="Your guide and writing">
         <Form
           method="post"
           className="cap-stack"
           data-gap="5"
           aria-label="Voice guide and own writing"
         >
-          <Field
-            label="Guide"
-            help="Anything a session should know about how you write here: who reads it, what you never say, how you open and close."
-          >
+          <Field label="Guide" help="Who reads it, what you never say, how you open and close.">
             <textarea
               className="cap-input"
               name="guide"
@@ -167,7 +148,7 @@ export default function ProjectVoice({ loaderData, actionData }: Route.Component
           </Field>
           <Field
             label="Your own writing"
-            help="Things you wrote yourself, with no AI help: papers, letters, old posts. Put a line holding only --- between pieces. While there is any, the excerpts come from it and not from the published posts."
+            help="Your own writing, no AI help. A line of --- between pieces."
           >
             <textarea
               className="cap-input"
