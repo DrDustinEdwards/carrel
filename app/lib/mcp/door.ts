@@ -340,7 +340,7 @@ export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext):
     if (agent) return agentHandler(request, env, ctx, agent);
   }
   if (pathname === REGISTER_PATH && request.method === "POST") {
-    const limited = await registrationLimited(request, env.OAUTH_KV);
+    const limited = await registrationLimited(request, env.OAUTH_KV, registrationAllowlist(env));
     if (limited) return limited;
   }
   return providerFor(env).fetch(request, env, ctx);
