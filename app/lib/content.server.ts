@@ -176,13 +176,15 @@ async function itemAuthor(
   const d = drizzle(db);
   let before: { at: string; rowid: number } | null = null;
   for (let id: string | null = itemId, hops = 0; id !== null && hops < 10; hops++) {
-    const row: {
-      action: string;
-      personId: number;
-      from: string | null;
-      at: string;
-      rowid: number;
-    } | undefined = await d
+    const row:
+      | {
+          action: string;
+          personId: number;
+          from: string | null;
+          at: string;
+          rowid: number;
+        }
+      | undefined = await d
       .select({
         action: changes.action,
         personId: changes.personId,
