@@ -210,7 +210,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
   // backdrop press or swipe (Esc and Cancel still close).
   useEffect(() => enhance(document), [hydrated, adding]);
   const person = (
-    <Form method="post" action="/people" className="app-form" data-cap="field">
+    <Form method="post" action="/people" className="cap-stack" data-gap="5" data-cap="field">
       <div className="cap-fields">
         <Field label="Email" required>
           <input className="cap-input" type="email" name="email" required autoComplete="off" />
@@ -234,7 +234,7 @@ function AddDialogs({ adding, busy }: { adding: string | null; busy: boolean }) 
     </Form>
   );
   const agent = (
-    <Form method="post" action="/people" className="app-form" data-cap="field">
+    <Form method="post" action="/people" className="cap-stack" data-gap="5" data-cap="field">
       <div className="cap-fields">
         <Field label="Agent name" required help="Lower case, such as grok.">
           <input
