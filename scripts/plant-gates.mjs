@@ -75,7 +75,7 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/ai.server.ts",
-    find: "    if (draft.baseVersion !== expectedVersion) {",
+    find: "  if (draft.baseVersion !== expectedVersion) {",
     replace: "    if (false) {",
     label: "an AI draft from an older version may be published over newer text",
   },
