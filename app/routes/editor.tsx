@@ -53,7 +53,6 @@ import {
   lastAiPublication,
   listAiDrafts,
   publishedByLine,
-  waitingAiPublishes,
 } from "~/lib/ai.server";
 import { roomNames } from "~/lib/comments.server";
 import { listTranscriptDrafts } from "~/lib/transcripts.server";
@@ -216,7 +215,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     targets,
     flags,
     aiPublished,
-    aiAsks,
     sentDoc,
     googleConnected,
     search,
@@ -226,8 +224,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     searchItems(env.DB, project.id, {}),
     itemFindings(env.DB, project, itemId),
     lastAiPublication(env.DB, project, itemId),
-    // Asks from this person's AI sessions to publish, waiting for their click.
-    waitingAiPublishes(env.DB, project, viewer, itemId),
     lastSentDoc(env.DB, project, itemId),
     can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
     pageStats(env, project, doc?.path ?? null),
@@ -353,10 +349,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
           at: aiPublished.publishedAt,
         }
       : null,
-    aiAsks: aiAsks.map((a) => ({
-      client: a.client,
-      href: `/p/${encodeURIComponent(project.slug)}/e/${encodeURIComponent(itemId)}/ai-publish/${a.id}`,
-    })),
     canSend: can(project.role, "send_external"),
     googleConnected,
     sentDoc: sentDoc ? { url: sentDoc.url, at: sentDoc.createdAt } : null,
@@ -964,12 +956,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             Saved <Time at={data.ownDraft.updatedAt} format="exact" />.
           </Banner>
         ) : null}
-        {data.aiAsks.map((ask) => (
-          <Banner key={ask.href} tone="info">
-            {ask.client} asks to publish this. It waits for you:{" "}
-            <a href={ask.href}>review and publish</a>.
-          </Banner>
-        ))}
         {data.aiPublished && data.status === "published" ? (
           <Banner tone="info">
             {data.aiPublished.line} <Time at={data.aiPublished.at} format="exact" />

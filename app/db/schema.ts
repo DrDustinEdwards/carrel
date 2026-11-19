@@ -231,23 +231,6 @@ export const previewLinkRecords = sqliteTable("preview_link_records", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// An AI session's ask to publish, waiting for the click of the person who asked (migration 0042): an AI draft, a
-// transcript draft, or a post never published before. outcome and decided_at stay null until Publish or Decline.
-export const aiPublishRequests = sqliteTable("ai_publish_requests", {
-  id: integer("id").primaryKey(),
-  ...recordOf(),
-  client: text("client").notNull(),
-  expectedVersion: text("expected_version").notNull(),
-  aiDraftId: integer("ai_draft_id"),
-  transcriptDraftId: integer("transcript_draft_id"),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-  decidedAt: text("decided_at"),
-  outcome: text("outcome", { enum: ["published", "declined"] }),
-  changeId: text("change_id"),
-});
-
 // An episode's whole WebVTT transcript beside the site's (migration 0032): an AI session's fix, or the transcript a
 // publish replaced, kept so it can be put back. Published only from base_transcript_version.
 export const transcriptDrafts = sqliteTable("transcript_drafts", {
