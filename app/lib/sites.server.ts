@@ -127,8 +127,8 @@ const SITES: Record<SiteId, SiteEntry> = {
     key: (env) => env.SITE_TXASM_KEY,
     keyName: "SITE_TXASM_KEY",
     keepPublic: ["home", "award-nominations"],
-    searchConsoleProperty: (env) =>
-      env.SEARCH_CONSOLE_PROPERTY_TXASM?.trim() || "sc-domain:txasm.org",
+    // No Search Console property until txasm.org is on Cloudflare DNS and verified (cutover): add
+    // `searchConsoleProperty: (env) => env.SEARCH_CONSOLE_PROPERTY_TXASM?.trim() || "sc-domain:txasm.org"` then.
   },
   julieedwards: {
     name: "julieedwards.info",
