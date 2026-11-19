@@ -211,26 +211,18 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     }
   }
 
-  const [
-    targets,
-    flags,
-    aiPublished,
-    sentDoc,
-    googleConnected,
-    search,
-    sections,
-    canPublish,
-  ] = await Promise.all([
-    searchItems(env.DB, project.id, {}),
-    itemFindings(env.DB, project, itemId),
-    lastAiPublication(env.DB, project, itemId),
-    lastSentDoc(env.DB, project, itemId),
-    can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
-    pageStats(env, project, doc?.path ?? null),
-    listSections(env.DB),
-    // The Owner publishes any post; an Author only one they wrote (roles.ts).
-    mayPublishItem(env.DB, project, viewer, itemId),
-  ]);
+  const [targets, flags, aiPublished, sentDoc, googleConnected, search, sections, canPublish] =
+    await Promise.all([
+      searchItems(env.DB, project.id, {}),
+      itemFindings(env.DB, project, itemId),
+      lastAiPublication(env.DB, project, itemId),
+      lastSentDoc(env.DB, project, itemId),
+      can(project.role, "send_external") ? isConnected(env.DB, viewer) : Promise.resolve(false),
+      pageStats(env, project, doc?.path ?? null),
+      listSections(env.DB),
+      // The Owner publishes any post; an Author only one they wrote (roles.ts).
+      mayPublishItem(env.DB, project, viewer, itemId),
+    ]);
   // Images go in only for someone who may edit, and only on a site with a media library; scheduling an
   // update to a live post only on a site that keeps it live meanwhile. A site that does not answer
   // leaves the editor without them rather than failing the page.
