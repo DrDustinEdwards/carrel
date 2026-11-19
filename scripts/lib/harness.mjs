@@ -462,11 +462,6 @@ export const SCREENS = [
     },
   },
   { name: "unpublish", viewer: "owner", path: `/p/${SITE}/e/alerts-wait/unpublish` },
-  {
-    name: "ai-publish",
-    viewer: "owner",
-    path: `/p/${SITE}/e/counting-what-the-build-skips/ai-publish/1`,
-  },
   { name: "not-found", viewer: "owner", path: "/p/nowhere" },
 
   // The states a person reaches by acting: dialogs, menus and the publish controls.

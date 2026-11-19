@@ -3,13 +3,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { addFinding, aiPublish, saveAiDraft } from "~/lib/ai.server";
+import { addFinding, saveAiDraft } from "~/lib/ai.server";
 import { readDraft } from "~/lib/content.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { action as aiDraftAction, loader as aiDraftLoader } from "~/routes/ai-draft";
 import { action as editorAction, loader as editorLoader } from "~/routes/editor";
 import { action as unpublishAction, loader as unpublishLoader } from "~/routes/unpublish";
-import { action as askAction, loader as askLoader } from "~/routes/ai-publish";
 import { action as transcriptAction, loader as transcriptLoader } from "~/routes/transcript-draft";
 import { saveTranscriptDraft } from "~/lib/transcripts.server";
 import type { memoryAdapter } from "@dustinedwards/site-api/testing";
@@ -88,55 +87,6 @@ describe("the unpublish page", () => {
         )) as Response
       ).status,
     ).toBe(403);
-    expect((await site.adapter.content.get("post-one"))?.status).toBe("published");
-  });
-});
-
-describe("the page an AI ask to publish links to", () => {
-  it("opens without changing anything, refuses an Editor, and Publish puts the post live", async () => {
-    const draft = await site.adapter.content.saveDraft("post-one", {
-      source: "---\ntitle: Post one\n---\nWords.\n",
-      expectedVersion: null,
-      changeId: "seed",
-    });
-    const { viewer, project } = await as("owner@test.invalid");
-    const asked = await aiPublish(
-      env,
-      project,
-      { viewer, client: "Claude" },
-      "post-one",
-      draft.version,
-      { fetcher: site.fetch, carrelOrigin: "https://carrel.test" },
-    );
-    expect(asked).toMatchObject({ ok: true, asked: true });
-    const params = {
-      project: SLUG,
-      item: "post-one",
-      id: String("requestId" in asked ? asked.requestId : 0),
-    };
-    const page = (await askLoader({
-      request: new Request("https://carrel.test/"),
-      params,
-      context: await context("owner@test.invalid"),
-    } as never)) as Awaited<ReturnType<typeof askLoader>>;
-    expect(page.request).toMatchObject({ client: "Claude", outcome: null, current: true });
-    expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
-
-    const post = (email: string) =>
-      context(email).then((c) =>
-        askAction({
-          request: new Request("https://carrel.test/", {
-            method: "POST",
-            body: new URLSearchParams({ intent: "publish" }),
-          }),
-          params,
-          context: c,
-        } as never),
-      );
-    // PLANT: only the person who asked presses Publish.
-    expect(((await settle(post("editor@test.invalid"))) as Response).status).toBe(403);
-    expect((await site.adapter.content.get("post-one"))?.status).toBe("draft");
-    expect(await post("owner@test.invalid")).toMatchObject({ ok: true });
     expect((await site.adapter.content.get("post-one"))?.status).toBe("published");
   });
 });

@@ -827,7 +827,7 @@ export const TOOLS: Tool[] = [
     name: "carrel_publish_item",
     title: "Publish a post (Owner only)",
     scope: "write",
-    description: `Publishes a post on Dustin's instruction in this conversation: asking for a change on the live site is that instruction. Without ai_draft_id it publishes the post as it stands on the site at expected_version. With ai_draft_id it publishes that AI draft's text, which must be one your own sessions saved with carrel_save_draft from expected_version; Dustin's own working draft in Carrel is left as it is. With transcript_draft_id instead it puts that transcript draft live as the episode's transcript, which must be one your own sessions saved with carrel_save_transcript from the transcript the site holds now, while the post is at expected_version; the post's text and version stay, and the transcript it replaced is kept as a transcript draft that puts it back. An AI draft, a transcript draft and a post that was never published do not go live from this call: the answer is asked: true, and Carrel emails Dustin a link to a page in Carrel where he presses Publish (or Decline). Tell him it is waiting for his click; do not call again. Republishing a post that was live before goes at once. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. The site keeps every earlier version. Carrel records "published by <this client> on <the person>'s instruction" and emails him links to unpublish and to restore an earlier version. ${RULE}`,
+    description: `Publishes a post on Dustin's instruction in this conversation: asking for a change on the live site is that instruction. Without ai_draft_id it publishes the post as it stands on the site at expected_version. With ai_draft_id it publishes that AI draft's text, which must be one your own sessions saved with carrel_save_draft from expected_version; Dustin's own working draft in Carrel is left as it is. With transcript_draft_id instead it puts that transcript draft live as the episode's transcript, which must be one your own sessions saved with carrel_save_transcript from the transcript the site holds now, while the post is at expected_version; the post's text and version stay, and the transcript it replaced is kept as a transcript draft that puts it back. It goes live at once, a post's first publication included, so call it only after Dustin has approved this publish in the conversation. Only Dustin's own sessions may publish; a shared person's or a reviewer's never can. It is refused while any flag on the post is open. The site keeps every earlier version. Carrel records "published by <this client> on <the person>'s instruction" and emails him links to unpublish and to restore an earlier version. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: {
@@ -866,8 +866,6 @@ export const TOOLS: Tool[] = [
     outputSchema: shape(
       { published: YES },
       {
-        asked: ANY,
-        requestId: ANY,
         version: ANY,
         changeId: ANY,
         dustinEmailed: ANY,
@@ -883,7 +881,7 @@ export const TOOLS: Tool[] = [
           throw new AiRefusal("Send ai_draft_id or transcript_draft_id, not both.");
         if (!/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(Number(raw)))
           throw new AiRefusal("transcript_draft_id is the number carrel_save_transcript returned.");
-        const asked = await aiPublishTranscript(
+        const published = await aiPublishTranscript(
           ctx.env,
           p,
           ctx.session,
@@ -893,10 +891,9 @@ export const TOOLS: Tool[] = [
           { fetcher: ctx.deps.fetcher, carrelOrigin: ctx.deps.carrelOrigin },
         );
         return {
-          published: false,
-          asked: true,
-          requestId: asked.requestId,
-          dustinEmailed: asked.emailed,
+          published: true,
+          changeId: published.changeId,
+          dustinEmailed: published.emailed,
         };
       }
       const raw = args.ai_draft_id;
@@ -919,13 +916,6 @@ export const TOOLS: Tool[] = [
         },
       );
       if (!result.ok) throw new AiRefusal(result.message);
-      if ("asked" in result)
-        return {
-          published: false,
-          asked: true,
-          requestId: result.requestId,
-          dustinEmailed: result.emailed,
-        };
       return {
         published: true,
         version: result.version,
