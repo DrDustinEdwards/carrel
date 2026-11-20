@@ -116,6 +116,9 @@
     "@cloudflare/workers-types": "5.20261115.1",
     "@drdustinedwards/site-helpers": {
       "playwright-core": "$playwright-core"
+    },
+    "micromark-extension-math": {
+      "katex": "0.18.2"
     }
   },
   "engines": {
