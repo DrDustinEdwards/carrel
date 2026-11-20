@@ -42,7 +42,7 @@ const THREAD = new Set(["comment", "reply", "resolve", "reopen"]);
 export default function DocsActivity({ loaderData }: Route.ComponentProps) {
   const { changes } = loaderData;
   return (
-    <div className="app-page">
+    <div className="cap-admin-page">
       <PageHead
         title="Docs activity"
         actions={<ButtonLink to="/manuscripts">Manuscripts</ButtonLink>}
