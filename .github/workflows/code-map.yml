@@ -35,9 +35,10 @@ jobs:
       include: app/ workers/
       # The tests run in workerd, where only istanbul coverage works. Its provider is installed for this run only, at the
       # exact version of the installed vitest, so package.json and the lockfile stay as they are and a vitest bump needs no
-      # edit here.
+      # edit here. --legacy-peer-deps because Prelum pins its peers exactly, one release behind the versions package.json
+      # holds between a Prelum release and its pin; the lockfile already made that tree, and this install only adds a package.
       coverage-command: >-
-        npm i --no-save --no-package-lock --ignore-scripts
+        npm i --no-save --no-package-lock --legacy-peer-deps --ignore-scripts
         "@vitest/coverage-istanbul@$(node -p "require('./node_modules/vitest/package.json').version")" &&
         npx vitest run --coverage.enabled --coverage.provider=istanbul --coverage.reporter=json
         --coverage.include='app/**' --coverage.include='workers/**'
