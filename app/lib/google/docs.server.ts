@@ -1465,7 +1465,6 @@ export async function commentInFile(
   return { changeId, id, labeled: true };
 }
 
-/** A comment on quoted words in a Doc. */
 export function commentInDoc(
   env: Env,
   viewer: Viewer,

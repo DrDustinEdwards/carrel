@@ -1,4 +1,4 @@
-// The Author role (Dustin's ruling, 2026-10-29): an Author publishes and unpublishes the posts they
+// The Author role (Dustin's ruling): an Author publishes and unpublishes the posts they
 // wrote, and nothing of anyone else's. Planted: an Author's publish of the Owner's post, through the
 // function and through the editor's route, is refused before the site is asked to change anything.
 

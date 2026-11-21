@@ -1,5 +1,5 @@
 // Named agent keys, for AI agents that cannot complete the door's OAuth sign-in (Grok Build could
-// not do CIMD as of 2026-09-07). The pattern is dustinedwards-mcp's: one Worker secret per agent,
+// not do CIMD). The pattern is dustinedwards-mcp's: one Worker secret per agent,
 // and the secret's NAME is the agent. AGENT_KEY_GROK is the key for the agent "grok".
 //
 // The name is never taken from the request. It is a property of WHICH configured secret the

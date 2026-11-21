@@ -1,6 +1,6 @@
 // The webmention queue, through the content kit and Capsomer's MentionsList. The kit's own rules
 // (intents, versions, Undo) are tested in site-api; these are Carrel's: the queue is the Owner's alone
-// (Dustin's ruling, 2026-09-26), every decision the site carried out is a row in mention_decisions,
+// (Dustin's ruling), every decision the site carried out is a row in mention_decisions,
 // and the sweep asks first. Planted: an Editor who opens or decides, refused before the site is asked.
 
 import { memoryAdapter } from "@dustinedwards/site-api/testing";

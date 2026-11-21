@@ -57,5 +57,4 @@ export const CRON_JOBS: Record<string, ScheduledJob[]> = {
   ],
 };
 
-/** Every job on every trigger, for the cron check. */
 export const ALL_JOBS: ScheduledJob[] = Object.values(CRON_JOBS).flat();

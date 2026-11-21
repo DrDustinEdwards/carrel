@@ -159,7 +159,7 @@ const PLANTS = [
     replace: "if (!row) return null;",
     label: "a disabled person (or agent) is still found",
   },
-  // The MCP ruling of 2026-10-10: the security floor (rule 12), the tightened
+  // The MCP ruling: the security floor (rule 12), the tightened
   // registration (rule 13), honest hints and a cursor.
   {
     gate: "tests",

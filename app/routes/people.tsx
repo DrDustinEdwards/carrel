@@ -5,7 +5,7 @@
 // in at all. With CAPSID_AGENT_KEY set, every change to a role or to disabled is synced to Desk's
 // Access group through Capsid (access-sync.server.ts, docs/coauthors.md), and the page says whether
 // Access is in step. Without it, after an add the page says where the same email must also be
-// allowed by hand. The dashboard paths are from Cloudflare's docs as read on 2026-09-27: developers.cloudflare.com/workers/
+// allowed by hand. The dashboard paths are from Cloudflare's docs: developers.cloudflare.com/workers/
 // configuration/cloudflare-access/ (the Worker's Access tab offers only "Cloudflare account" and
 // "Email domain"; anything more is edited in Zero Trust), .../cloudflare-one/access-controls/policies/
 // policy-management/ (Zero Trust > Access controls > Policies), and .../cloudflare-one/integrations/

@@ -292,7 +292,6 @@ export function checkVoice(
   }));
 }
 
-/** Every check that applies to a file of this kind. */
 export function checkFile(path: string, source: string, context: BookContext): Finding[] {
   const kind = fileKindOf(path);
   const parsed = parseFile(source);

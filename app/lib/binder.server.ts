@@ -171,7 +171,6 @@ export async function movesOf(db: D1Database, projectId: number, paths: string[]
     .all();
 }
 
-/** The index rows the corkboard needs for one chapter. */
 export async function chapterSources(db: D1Database, projectId: number, paths: string[]) {
   if (paths.length === 0) return new Map<string, string>();
   const rows = await drizzle(db)

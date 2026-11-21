@@ -8,8 +8,7 @@
 //   Carrel keeps the text it replaced (doc_actions) and emails Dustin by his Docs email setting; only a Doc has undo.
 // - Sheets never changes his cells. An AI writes cells only on a tab Carrel made (sheet_tabs), created on the first write
 //   under the title asked for; naming one of his tabs is refused. A new tab starts with a comment saying which AI made it.
-// - Comments go through Google's own comment requests in the Slides and Sheets batchUpdate (general availability
-//   2026-09-30), not Drive's comments, which the editors do not show when anchored.
+// - Comments go through Google's own comment requests in the Slides and Sheets batchUpdate not Drive's comments, which the editors do not show when anchored.
 // Quotes name text as in Docs: Carrel finds the quote in a fresh read and refuses one that is missing or repeated.
 
 import { eq } from "drizzle-orm";
@@ -66,7 +65,6 @@ const SHEET_MAX = {
   title: 100,
 } as const;
 
-/** The kind a tool call names in its answer. */
 export function fileKind(mimeType: string): "doc" | "slides" | "sheet" {
   return mimeType === GOOGLE_SLIDES ? "slides" : mimeType === GOOGLE_SHEET ? "sheet" : "doc";
 }

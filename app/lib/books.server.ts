@@ -1,7 +1,7 @@
 // Books in the writing repository (design stage 4): the book behind a URL, Carrel's index of its
 // files, a save that commits to Git with the version it expects to replace, the checks that run on
 // every save, their findings, and the authorship record. Roles are checked here, not only in the
-// routes, so every door (the UI now, MCP tools in stage 5) is held to the same rule.
+// routes, so every door (the UI and the MCP tools) is held to the same rule.
 
 import { inList } from "@dustinedwards/site-runtime/d1";
 import { and, asc, desc, eq, inArray, like, notInArray } from "drizzle-orm";

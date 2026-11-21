@@ -3,7 +3,7 @@
 // Mentions are text strangers chose, so the list shows them as text; each decision is one site write,
 // in order, and one failing never stops the rest.
 //
-// Roles: the inbox belongs to Dustin alone (his design decision, 2026-09-26), so reading the queue
+// Roles: the inbox belongs to Dustin alone (his design decision), so reading the queue
 // (read_mentions) and deciding (decide_mention) are both the Owner's, refused before the site is asked.
 // Change roles.ts, not this file, to open it wider.
 //

@@ -1,4 +1,4 @@
-// Carrel's MCP endpoint, inside the Carrel Worker (design decision 7, corrected 2026-09-27): Carrel
+// Carrel's MCP endpoint, inside the Carrel Worker (design decision 7): Carrel
 // has several people with different roles, so it verifies each token itself and maps the identity to
 // its own people. The protocol is the official MCP SDK v2 through `agents`, stateless: no session is
 // kept between requests, and a fresh server answers each one.
@@ -98,7 +98,7 @@ function buildServer(env: Env, who: Who, deps: ToolDeps) {
     });
     // Only the tools this grant can call are listed (checklist T7, site-runtime's toolsForGrant over the scopes as
     // scopes.ts reads them; the test key is listed the read tools), each with the server's icon (T9). site-runtime's
-    // registerTools does the same, but it sets its own scopeChallenge from the token's raw scopes, and a pre-2026-10-10
+    // registerTools does the same, but it sets its own scopeChallenge from the token's raw scopes, and a legacy
     // "carrel" token must read as both. Every Carrel tool has a fixed scope, so a listed tool is always one the grant
     // can call and no step-up is left to offer; invokeTool still checks the scope on every call.
     const listed = toolsForGrant(

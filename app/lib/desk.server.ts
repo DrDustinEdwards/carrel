@@ -289,7 +289,6 @@ export async function setLater(
   ]);
 }
 
-/** Brings a row this person set aside back to Home at once. */
 export async function bringBack(db: D1Database, viewer: Viewer, needId: string): Promise<void> {
   await drizzle(db)
     .delete(needLater)

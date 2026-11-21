@@ -4,8 +4,7 @@
 import { figureMarkup } from "@drdustinedwards/site-helpers/source";
 import type { Scaffold } from "capsomer/react/markdown-editor";
 
-/** The sites whose Markdown has Prelum's figure directive; the others get plain Markdown. germomics renders with Prelum
- *  too, since germomics#186. */
+/** The sites whose Markdown has Prelum's figure directive; the others get plain Markdown. */
 const FIGURE_SITES: ReadonlySet<string> = new Set(["dustinedwards", "germomics"]);
 
 /** How the site places an image with its alt text and, when it has one, its caption, in the site's own dialect. An empty

@@ -1,4 +1,4 @@
-// The AI door: everything on carrel-mcp.dustinedwards.info (design decision 7, corrected 2026-09-27).
+// The AI door: everything on carrel-mcp.dustinedwards.info (design decision 7).
 //
 // That hostname is exempt from Desk's Access (a hostname Bypass app, setup in the PR),
 // because an MCP client must reach the OAuth endpoints before anyone has signed in. So nothing here
@@ -122,7 +122,7 @@ async function rateLimited(env: Env, personId: number, caller: string): Promise<
 }
 
 /**
- * Grok and Gemini still register (as of 2026-10-09; ruling capsid/rulings/mcp-2026-10-10.md, rule 13).
+ * Grok and Gemini still register (ruling capsid/rulings/mcp-2026-10-10.md, rule 13).
  * A registration names only callbacks listed exactly: the ones every user shares (DCR_CALLBACKS) and
  * any exact https callback in DCR_REDIRECT_URIS (a per-connector id), read loosely because an older
  * wrangler.jsonc has no such var. Registration grants nothing: the consent page, Access and the
@@ -284,7 +284,7 @@ function providerFor(env: Env): OAuthProvider<Env> {
         resource_name: "Carrel",
       },
       // CIMD first. claude.ai, Claude Code and ChatGPT send their client_id as a metadata URL and
-      // never register (measured in dustinedwards-mcp, 2026-07-30). Needs global_fetch_strictly_public
+      // never register (measured in dustinedwards-mcp). Needs global_fetch_strictly_public
       // in wrangler.jsonc.
       clientIdMetadataDocumentEnabled: true,
       // Tightened registration beside it, for Grok and Gemini (rule 13): exact callbacks only, rate
@@ -315,7 +315,6 @@ async function storedReport(env: Env, name: string): Promise<Response> {
   });
 }
 
-/** Serves one request that arrived on the AI door's hostname. */
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
   if (pathname === "/health") return healthAnswer(env);
