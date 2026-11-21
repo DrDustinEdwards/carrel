@@ -8,6 +8,7 @@ import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Panel } from "capsomer/react/panel";
 import { Status } from "capsomer/react/status";
+import { DataTable } from "capsomer/react/table";
 import { Time } from "capsomer/react/time";
 
 import { getEnv, getViewer } from "~/lib/context";
@@ -51,59 +52,54 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
         {changes.length === 0 ? (
           <Empty kind="nothing-yet" flush title="No AI has changed a Doc yet" />
         ) : (
-          <div
-            className="cap-table-wrap"
-            role="region"
-            aria-labelledby="docs-activity-caption"
-            tabIndex={0}
-          >
-            <table className="cap-table">
-              <caption id="docs-activity-caption" className="cap-sr-only">
-                Changes AIs made in Google Docs
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">When</th>
-                  <th scope="col">AI</th>
-                  <th scope="col">What</th>
-                  <th scope="col" data-drop="1">
-                    Doc
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {changes.map((c) => (
-                  <tr key={c.ref}>
-                    <th scope="row">
-                      <Time at={c.createdAt} />
-                    </th>
-                    <td>
-                      {c.client}
-                      {c.model ? <span className="cap-table-aside">{c.model}</span> : null}
-                    </td>
-                    <td>
-                      {WHAT[c.mode] ?? c.mode}
-                      {THREAD.has(c.mode) ? "" : ` (${c.changes})`}
-                      <span className="cap-table-aside">{c.ref}</span>
-                      {c.reason ? <span className="cap-table-aside">{c.reason}</span> : null}
-                      {c.labeled ? null : <Status tone="warn">No label in the Doc</Status>}
-                      {c.undoneAt ? <Status tone="nodata">Taken back</Status> : null}
-                    </td>
-                    <td data-drop="1">
-                      {c.link ? (
-                        <a href={c.link} target="_blank" rel="noreferrer">
-                          {c.name}
-                          <span className="cap-sr-only"> (opens in a new tab)</span>
-                        </a>
-                      ) : (
-                        "A Doc no longer in the index"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            caption="Changes AIs made in Google Docs"
+            captionHidden
+            rows={changes}
+            rowKey={(c) => c.ref}
+            empty="No AI has changed a Doc yet"
+            columns={[
+              { key: "when", header: "When", cell: (c) => <Time at={c.createdAt} /> },
+              {
+                key: "ai",
+                header: "AI",
+                cell: (c) => (
+                  <>
+                    {c.client}
+                    {c.model ? <span className="cap-table-aside">{c.model}</span> : null}
+                  </>
+                ),
+              },
+              {
+                key: "what",
+                header: "What",
+                cell: (c) => (
+                  <>
+                    {WHAT[c.mode] ?? c.mode}
+                    {THREAD.has(c.mode) ? "" : ` (${c.changes})`}
+                    <span className="cap-table-aside">{c.ref}</span>
+                    {c.reason ? <span className="cap-table-aside">{c.reason}</span> : null}
+                    {c.labeled ? null : <Status tone="warn">No label in the Doc</Status>}
+                    {c.undoneAt ? <Status tone="nodata">Taken back</Status> : null}
+                  </>
+                ),
+              },
+              {
+                key: "doc",
+                header: "Doc",
+                drop: 1,
+                cell: (c) =>
+                  c.link ? (
+                    <a href={c.link} target="_blank" rel="noreferrer">
+                      {c.name}
+                      <span className="cap-sr-only"> (opens in a new tab)</span>
+                    </a>
+                  ) : (
+                    "A Doc no longer in the index"
+                  ),
+              },
+            ]}
+          />
         )}
       </Panel>
     </div>
