@@ -95,6 +95,53 @@ describe("site health", () => {
     });
   });
 
+  it("runs the probe post once a day, and a failure it found stays in every report until the next one", async () => {
+    const site = fakeSite();
+    let probes = 0;
+    let refuse = true;
+    const counted = async (url: string, init?: RequestInit) => {
+      // A probe creates its post once: the write that sends no earlier version.
+      if (
+        init?.method === "PUT" &&
+        /\/content\/carrel-conformance-[0-9a-f]{8}\/draft/.test(url) &&
+        String(init.body).includes('"expectedVersion":null')
+      ) {
+        probes++;
+        if (refuse) return Response.json({ error: "refused" }, { status: 422 });
+      }
+      return through(site)(url, init);
+    };
+    const env = { ...connectedEnv(), EMAIL: mailbox().EMAIL };
+    const start = new Date("2026-11-21T00:00:00Z");
+    const at = (minutes: number) => () => new Date(start.getTime() + minutes * 60_000);
+    const report = async () => {
+      const body = (await (
+        await aiDoor(
+          new Request("https://carrel-mcp.test/reports/conformance.json"),
+          env,
+          createExecutionContext(),
+        )
+      ).json()) as { sites: Record<string, { status: string; findings: { detail: string }[] }> };
+      return body.sites[SITE_ORIGIN]!;
+    };
+    const check = (run: Awaited<ReturnType<typeof runHealth>>) =>
+      run.results.find((r) => r.name === "site-dustinedwards")!;
+
+    expect(check(await runHealth(env, counted, at(0))).ok).toBe(false);
+    expect((await report()).findings[0]!.detail).toMatch(
+      /probe post: created as a draft failed: create: 422/,
+    );
+    refuse = false;
+    // Fifteen minutes later: no probe, and the failure still counts.
+    expect(check(await runHealth(env, counted, at(15))).ok).toBe(false);
+    expect(probes).toBe(1);
+    expect((await report()).status).toBe("fail");
+    // A day later: the probe runs again, passes, and the report clears.
+    expect(check(await runHealth(env, counted, at(24 * 60))).ok).toBe(true);
+    expect(probes).toBe(2);
+    expect(await report()).toEqual({ status: "pass", findings: [] });
+  });
+
   it("PLANT: flags a key too short to be the site's", async () => {
     const box = mailbox();
     await runHealth(

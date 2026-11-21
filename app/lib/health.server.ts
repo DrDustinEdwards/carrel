@@ -66,6 +66,16 @@ export type CheckResult = {
   conformance?: { origin: string } & SiteConformance;
 };
 
+/**
+ * The probe post publishes, renames and deletes a post on the site, and every one of those purges the site's stored
+ * pages. Health runs every 15 minutes, so the probe runs once a day: its failures are kept (reports, "probe-posts") and
+ * carried into every report until the next probe replaces them.
+ */
+const PROBE_REPORT = "probe-posts";
+const PROBE_EVERY_MS = 24 * 60 * 60 * 1000;
+const PROBE_STEP = "probe post:";
+type ProbeRecord = { at: string; sites: Record<string, SiteConformance["findings"]> };
+
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 const PLACEHOLDER = /example\.(com|cloudflareaccess\.com)/i;
@@ -133,7 +143,12 @@ async function checkAccessKeys(env: Env, fetcher: Fetch): Promise<CheckResult> {
  * real mention, and a sweep with no change id refused; a site without the group must answer 501. The suite's real
  * upload round trip stays off: the health check never puts a file into a site's storage.
  */
-async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckResult> {
+async function checkSite(
+  env: Env,
+  id: SiteId,
+  fetcher: Fetch,
+  probeDue: boolean,
+): Promise<CheckResult> {
   const name = `site-${id}`;
   const site = siteEntry(id).name;
   const connection = siteConnection(env, id);
@@ -151,8 +166,11 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
       baseUrl: connection.origin,
       key: connection.key,
       probeMediaUpload: false,
-      // The probe post: its 301, 410 and trash checks run live. A site that cannot delete content skips it.
-      probePosts: true,
+      // The probe post: its 301, 410 and trash checks run live, once a day. A site that cannot delete content skips it.
+      probePosts: probeDue,
+      // The site's own starting source, as New post sends it: a site may require a slug or a date.
+      newSource: (itemId) =>
+        siteEntry(id).newSource?.(itemId, new Date().toISOString().slice(0, 10)) ?? "",
       fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
         fetcher(
           typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
@@ -180,7 +198,7 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
         findings: failed.map((c) => ({
           severity: "error",
           check: "M1",
-          detail: `${api} ${c.name} failed${c.name.startsWith("probe post:") ? `: ${c.detail.slice(0, 160)}` : ""}`,
+          detail: `${api} ${c.name} failed${c.name.startsWith(PROBE_STEP) ? `: ${c.detail.slice(0, 160)}` : ""}`,
         })),
       },
     };
@@ -420,11 +438,13 @@ export async function runChecks(
   fetcher: Fetch = (url, init) => timedFetch(url, init),
   now: Date = new Date(),
 ): Promise<CheckResult[]> {
-  return Promise.all([
+  const last = await lastProbe(env);
+  const probeDue = !last || now.getTime() - Date.parse(last.at) >= PROBE_EVERY_MS;
+  const results = await Promise.all([
     checkConfig(env),
     checkOwner(env),
     checkAccessKeys(env, fetcher),
-    ...SITE_IDS.map((id) => checkSite(env, id, fetcher)),
+    ...SITE_IDS.map((id) => checkSite(env, id, fetcher, probeDue)),
     checkNovels(env, fetcher),
     checkAiPublishEmails(env),
     checkBackup(env, now),
@@ -433,6 +453,58 @@ export async function runChecks(
     checkDriveFile(env, fetcher),
     checkSocialTemplates(env),
   ]);
+  return probeDue ? await recordProbe(env, results, now) : carryProbe(results, last);
+}
+
+async function lastProbe(env: Env): Promise<ProbeRecord | null> {
+  try {
+    const row = await drizzle(env.DB)
+      .select()
+      .from(reports)
+      .where(eq(reports.name, PROBE_REPORT))
+      .get();
+    return row ? (JSON.parse(row.body) as ProbeRecord) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A day's probe ran: keep each site's probe-post findings until the next one. */
+async function recordProbe(env: Env, results: CheckResult[], now: Date): Promise<CheckResult[]> {
+  const sites: ProbeRecord["sites"] = {};
+  for (const r of results)
+    if (r.conformance)
+      sites[r.conformance.origin] = r.conformance.findings.filter((f) =>
+        f.detail.includes(PROBE_STEP),
+      );
+  const body = JSON.stringify({ at: now.toISOString(), sites } satisfies ProbeRecord);
+  try {
+    await drizzle(env.DB)
+      .insert(reports)
+      .values({ name: PROBE_REPORT, body, at: now.toISOString() })
+      .onConflictDoUpdate({ target: reports.name, set: { body, at: now.toISOString() } });
+  } catch (error) {
+    logEvent("health.probe-record-failed", { error: errorMessage(error) }, { level: "error" });
+  }
+  return results;
+}
+
+/** Between probes: the last probe's failures still count, so a site that failed it stays failing until the next. */
+function carryProbe(results: CheckResult[], last: ProbeRecord | null): CheckResult[] {
+  return results.map((r) => {
+    const carried = r.conformance ? (last?.sites[r.conformance.origin] ?? []) : [];
+    if (!r.conformance || carried.length === 0) return r;
+    return {
+      ...r,
+      ok: false,
+      detail: `${r.detail}${r.ok ? ` ${carried.length} probe post step(s) failed at the last daily probe.` : ""}`,
+      conformance: {
+        origin: r.conformance.origin,
+        status: "fail",
+        findings: [...r.conformance.findings, ...carried],
+      },
+    };
+  });
 }
 
 /**
