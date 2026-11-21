@@ -41,8 +41,6 @@ export class AiRefusal extends Error {
   }
 }
 
-// ---------- flags on an item
-
 export type ItemFinding = {
   id: number;
   check: string;
@@ -178,8 +176,6 @@ export async function dismissItemFinding(
   if (result.length === 0) throw new Response("Not found", { status: 404 });
 }
 
-// ---------- AI drafts, beside the person's own
-
 export async function saveAiDraft(
   env: Env,
   project: SiteProject,
@@ -279,8 +275,6 @@ export async function readAiDraft(
   if (!row) throw new Response("Not found", { status: 404 });
   return { ...row, sources: row.sources === null ? null : (JSON.parse(row.sources) as string[]) };
 }
-
-// ---------- publish by instruction
 
 export type AiPublishResult =
   | { ok: true; version: string; changeId: string; emailed: boolean }
@@ -526,8 +520,6 @@ export async function lastAiPublication(db: D1Database, project: SiteProject, it
       .get()) ?? null
   );
 }
-
-// ---------- social posts, drafted by the session that finished the piece (decision 5)
 
 /**
  * Stores an AI session's drafted social post for the queue, by the event id the routine was given or

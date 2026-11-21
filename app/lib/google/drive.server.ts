@@ -227,8 +227,6 @@ export async function searchManuscripts(
   return { files: all.filter((m) => ids.has(m.fileId)), searched };
 }
 
-// ---------- Send to Docs and Import, over drive.file
-
 function splitFrontmatter(source: string): { frontmatter: string; body: string } {
   const s = splitSource(normalizeNewlines(source));
   if (s.front === null) return { frontmatter: "", body: source };

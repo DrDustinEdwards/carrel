@@ -71,8 +71,6 @@ export function fileKind(mimeType: string): "doc" | "slides" | "sheet" {
   return mimeType === GOOGLE_SLIDES ? "slides" : mimeType === GOOGLE_SHEET ? "sheet" : "doc";
 }
 
-// ---------- Slides
-
 type TextElement = { textRun?: { content?: string } };
 type PageElement = {
   objectId: string;
@@ -280,8 +278,6 @@ async function writeInSlides(
     undoable: false,
   });
 }
-
-// ---------- Sheets
 
 type SheetProps = {
   sheetId: number;
@@ -564,8 +560,6 @@ async function writeInSheet(
     ...(labelProblem ? { labelProblem } : {}),
   };
 }
-
-// ---------- the three kinds behind one set of tools
 
 /** A Doc, a Slides file or a Sheet in the index, read as the tools show it. */
 export async function readFile(

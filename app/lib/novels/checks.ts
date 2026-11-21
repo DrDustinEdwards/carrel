@@ -42,8 +42,6 @@ export type BookContext = {
   examples: { path: string; text: string }[];
 };
 
-// ---------- helpers
-
 const DATE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?$/;
 
 /** A story date, normalized so two compare as strings; null when it is not one. */
@@ -87,8 +85,6 @@ function matchesIn(body: string, bodyLine: number, re: RegExp): { line: number; 
   });
   return out;
 }
-
-// ---------- the checks
 
 /** The header is where the other checks get their facts; a missing field makes them silent, so it is flagged. */
 function checkHeader(

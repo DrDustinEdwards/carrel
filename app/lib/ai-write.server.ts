@@ -296,8 +296,6 @@ async function writeText(
   return { ok: true, text: out, note: result.value.note.trim().slice(0, 500) };
 }
 
-// ---------- "Carrel writes it" in a Google Doc (the Docs plan, slice 5)
-
 type DocJob = "docs-edit" | "docs-write" | "docs-review";
 
 const QUOTE_RULE =

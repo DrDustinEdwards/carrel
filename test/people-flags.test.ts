@@ -280,8 +280,6 @@ describe("PLANT: a reviewer given the Editor role", () => {
   });
 });
 
-// ---------- the project flags list
-
 async function flag(path: string, message: string, check = "ai") {
   const row = await testEnv.DB.prepare(
     "INSERT INTO findings (project_id, path, check_name, message, fingerprint) VALUES (?, ?, ?, ?, ?) RETURNING id",

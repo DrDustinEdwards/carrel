@@ -39,8 +39,6 @@ const ONE = "chapters/01-arrival/01-the-gate.md";
 const TWO = "chapters/01-arrival/02-supper.md";
 const THREE = "chapters/02-the-crossing/01-the-chain.md";
 
-// ---------- pure
-
 describe("the header keys", () => {
   it("reads status, summary, target and limit on a scene, and target and deadline on the title page", () => {
     const scene = readMeta(ONE, parseFile(HEADER("Drafting", "limit: 3_000\n")).data, true);
@@ -75,8 +73,6 @@ describe("the header keys", () => {
     expect(describeFile(ONE, `${HEADER("Idea")}Three words here.\n`).words).toBe(3);
   });
 });
-
-// ---------- D1, the save path and the routes
 
 let key: string;
 beforeAll(async () => {

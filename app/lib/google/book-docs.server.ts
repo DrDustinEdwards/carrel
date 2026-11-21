@@ -61,8 +61,6 @@ function requireDocs(project: Where, viewer: Viewer) {
     throw new Response("Not found", { status: 404 });
 }
 
-// ---------- the Doc as the editor's document
-
 type Built = {
   doc: JsonDoc;
   threads: BroughtThread[];
@@ -318,8 +316,6 @@ function findOnce(
   return hits.length === 1 ? hits[0]! : null;
 }
 
-// ---------- the link between a file and its Doc
-
 export async function readDocLink(db: D1Database, projectId: number, itemId: string) {
   return (
     (await drizzle(db)
@@ -402,8 +398,6 @@ export async function bringInDoc(
     text: built.text,
   };
 }
-
-// ---------- the file back into its Doc
 
 const isGoogle = (m: Mark) => String(m.attrs?.id ?? "").startsWith(GOOGLE);
 

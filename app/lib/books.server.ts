@@ -122,8 +122,6 @@ export async function createBook(
   return { ok: true as const, slug: input.folder };
 }
 
-// ---------- the index
-
 export type IndexedFile = {
   path: string;
   kind: Meta["kind"];
@@ -255,8 +253,6 @@ export async function bookVoice(db: D1Database, project: BookProject, path: stri
   };
 }
 
-// ---------- findings
-
 /**
  * Replaces the findings for each file with what the checks found now. A dismissed finding that is
  * found again stays dismissed; one that is no longer found is gone, whatever its state.
@@ -381,8 +377,6 @@ export async function dismissFinding(
   if (result.length === 0) throw new Response("Not found", { status: 404 });
 }
 
-// ---------- refresh from Git
-
 export type BookRefresh = {
   files: number;
   read: number;
@@ -473,8 +467,6 @@ export async function refreshBook(
     more: stale.length > batch.length,
   };
 }
-
-// ---------- saving
 
 export type BookWrite =
   | { ok: true; version: string; commit: string; changeId: string; findings: Finding[] }
@@ -641,8 +633,6 @@ export async function checkDraft(
   const context = await bookContext(db, project.id);
   return checkFile(path, source, context);
 }
-
-// ---------- export and the authorship record
 
 /** What scripts/import-docx.mjs writes where it could not convert something. */
 const IMPORT_MARKER = "<!-- import:";

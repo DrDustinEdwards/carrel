@@ -35,8 +35,6 @@ const B1 = "chapters/02-the-crossing/01-the-chain.md";
 const B2 = "chapters/02-the-crossing/02-the-bank.md";
 const PATHS = [A1, A2, B1, B2, "book.md", "bible/characters/wade.md"];
 
-// ---------- pure
-
 describe("planning a reorder", () => {
   it("renumbers both chapters when a scene moves from one to the other", () => {
     const plan = planRenames(PATHS, [
@@ -185,8 +183,6 @@ describe("the binder's tree", () => {
     expect(firstSentence("x".repeat(300)).length).toBe(162);
   });
 });
-
-// ---------- the repository, the server and the routes
 
 let key: string;
 beforeAll(async () => {

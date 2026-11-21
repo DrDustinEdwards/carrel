@@ -56,8 +56,6 @@ function requireOwner(viewer: Viewer): void {
   if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
 }
 
-// ---------- what Google returns, as far as Carrel reads it
-
 type Run = {
   content?: string;
   suggestedInsertionIds?: string[];
@@ -124,8 +122,6 @@ export type GoogleDoc = {
   comments?: Thread[];
   suggestions?: Thread[];
 };
-
-// ---------- text with positions
 
 type Seg = {
   start: number;
@@ -221,8 +217,6 @@ function paraText(p: Para): string {
     .join("");
   return text.replace(/\n$/, "");
 }
-
-// ---------- fetching
 
 export type Posts = { author: string; at: string | null; text: string; action?: string }[];
 
@@ -322,8 +316,6 @@ export async function fetchDoc(env: Env, docId: string, fetcher?: Fetch): Promis
   return (await res.json()) as GoogleDoc;
 }
 
-// ---------- slice 1: read
-
 export type DocRead = {
   docId: string;
   title: string;
@@ -405,8 +397,6 @@ export async function readGoogleDoc(
   };
 }
 
-// ---------- slice 4: export
-
 export type ExportFormat = keyof typeof EXPORT_TYPES;
 export const EXPORT_FORMATS = Object.keys(EXPORT_TYPES) as ExportFormat[];
 
@@ -431,8 +421,6 @@ export async function exportGoogleDoc(
   if (!res.ok) return googleError(res, "export the Doc");
   return { name: row.name, type, body: await res.arrayBuffer() };
 }
-
-// ---------- slice 2: suggest and comment
 
 export type EditAsked =
   | { find: string; replace: string; reason?: string }
@@ -935,8 +923,6 @@ async function emailWrites(
   return true;
 }
 
-// ---------- the Docs email setting: each direct write, a daily summary, or off (on, each, until Dustin changes it)
-
 const DOCS_EMAIL = ["each", "daily", "off"] as const;
 export type DocsEmail = (typeof DOCS_EMAIL)[number];
 
@@ -1059,8 +1045,6 @@ async function recordAction(
   }
   return saved.id;
 }
-
-// ---------- slice 3: review (accept, reject, withdraw) and undo
 
 const REVIEW = {
   accept: "acceptSuggestion",
@@ -1376,8 +1360,6 @@ export async function undoInDoc(
     undoes: { id, table: "doc_actions" },
   });
 }
-
-// ---------- the per-Doc lock, set on Desk's Manuscripts page
 
 export async function readDocLocks(
   db: D1Database,

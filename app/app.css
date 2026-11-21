@@ -257,8 +257,6 @@
   color: var(--muted);
 }
 
-/* ---------- The editor screens: one page of writing, with saving and publishing beside it. */
-
 .app-notices {
   display: grid;
   gap: var(--space-3);

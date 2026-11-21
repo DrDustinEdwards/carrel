@@ -97,8 +97,6 @@ export function parseProse(body: string): Block[] {
   return blocks;
 }
 
-// ---------- XHTML, for ePub and the print page
-
 function inlineHtml(inlines: Inline[]): string {
   return inlines
     .map((i) => {
@@ -147,8 +145,6 @@ h1 + p, h2 + p, .scene-break + p, blockquote + p { text-indent: 0; }
 .scene-break { text-align: center; text-indent: 0; margin: 1em 0; }
 blockquote { margin: 1em 2em; font-style: italic; }
 `;
-
-// ---------- ePub 3
 
 export function buildEpub(
   book: Assembled,
@@ -226,8 +222,6 @@ ${chapterFiles.map((c) => `<li><a href="${c.file}">${escapeHtml(c.chapter.title)
   return new Uint8Array(zipSync(files));
 }
 
-// ---------- Word
-
 function runs(inlines: Inline[]): TextRun[] {
   return inlines.map((i) => new TextRun({ text: i.text, italics: i.em, bold: i.strong }));
 }
@@ -272,8 +266,6 @@ export async function buildDocx(book: Assembled): Promise<ArrayBuffer> {
   const doc = new Document({ creator: book.author, title: book.title, sections: [{ children }] });
   return Packer.toArrayBuffer(doc);
 }
-
-// ---------- the print page, for PDF from the browser
 
 export function printHtml(book: Assembled): string {
   const chapters = book.chapters

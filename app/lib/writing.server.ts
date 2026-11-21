@@ -24,8 +24,6 @@ function forbid(): never {
   throw new Response("Forbidden", { status: 403 });
 }
 
-// ---------- status lists
-
 /** The project's list, or the starting list for books while it has none of its own. */
 export async function statusList(
   db: D1Database,
@@ -63,8 +61,6 @@ export async function saveStatusList(
   ]);
   return clean;
 }
-
-// ---------- goals
 
 export async function readGoal(
   db: D1Database,
@@ -123,8 +119,6 @@ export async function saveGoal(
   return { ok: true as const };
 }
 
-// ---------- words that were not typed
-
 /** Adds words that reached a file without being typed: a paste, a drop, an AI draft taken as the working draft. */
 export async function addUntyped(
   db: D1Database,
@@ -177,8 +171,6 @@ export function untypedField(value: FormDataEntryValue | null): number {
   const n = Number(value ?? 0);
   return Number.isInteger(n) && n > 0 && n < 10_000_000 ? n : 0;
 }
-
-// ---------- the saves a day is counted from
 
 /**
  * This person's own saves in the project over the streak horizon, as typed and removed words. An AI
