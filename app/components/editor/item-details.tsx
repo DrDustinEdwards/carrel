@@ -4,6 +4,7 @@
 
 import { Field } from "capsomer/react/field";
 import { FrontmatterFields } from "capsomer/react/frontmatter-fields";
+import { Select } from "capsomer/react/select";
 
 import { splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { FIELDS } from "~/lib/frontmatter";
@@ -68,24 +69,18 @@ export function ItemDetails({
             help="Added at the end. Edit its wording on the Legal tab."
           >
             {(control) => (
-              <div className="cap-select-wrap">
-                <select
-                  {...control}
-                  className="cap-select"
-                  value=""
-                  onChange={(event) => {
-                    const key = event.target.value;
-                    if (key) onChange(`${source.replace(/\n*$/, "")}\n\n${marker(key)}\n`);
-                  }}
-                >
-                  <option value="">Choose a section</option>
-                  {unused.map((s) => (
-                    <option key={s.key} value={s.key}>
-                      {s.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                {...control}
+                value=""
+                onChange={(event) => {
+                  const key = event.target.value;
+                  if (key) onChange(`${source.replace(/\n*$/, "")}\n\n${marker(key)}\n`);
+                }}
+                options={[
+                  { value: "", label: "Choose a section" },
+                  ...unused.map((s) => ({ value: s.key, label: s.title })),
+                ]}
+              />
             )}
           </Field>
         </div>
