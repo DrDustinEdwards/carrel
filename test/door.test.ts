@@ -1,4 +1,4 @@
-// The two doors (design decision 7, corrected 2026-09-27). The browser door is desk.dustinedwards.info
+// The two doors (design decision 7). The browser door is desk.dustinedwards.info
 // behind Access; the AI door is carrel-mcp.dustinedwards.info, an OAuth authorization server of its
 // own with Cloudflare Access for SaaS as the sign-in. They are told apart by hostname, never by email.
 //
@@ -64,8 +64,6 @@ const doorEnv = (): Env => ({
   ACCESS_SAAS_CLIENT_SECRET: "saas-secret",
 });
 
-// ---------- the browser door
-
 function accessToken(aud: string, email = "owner@test.invalid", signer = access) {
   return signer.token({ aud, email });
 }
@@ -127,8 +125,6 @@ describe("which door", () => {
     }
   });
 });
-
-// ---------- the AI door
 
 type Jar = Map<string, string>;
 
@@ -546,8 +542,6 @@ describe("signing in through Access for SaaS", () => {
   });
 });
 
-// ---------- tightened registration (ruling 2026-10-10, rule 13)
-
 const GROK_CALLBACK = "https://grok.com/connectors/oauth/callback";
 let address = 0;
 
@@ -694,8 +688,6 @@ describe("tightened registration", () => {
   });
 });
 
-// ---------- least scope (rule 12.3)
-
 describe("least scope", () => {
   async function seeded() {
     await addProject("de-info", "dustinedwards");
@@ -836,8 +828,6 @@ describe("least scope", () => {
     ).toBeTruthy();
   });
 });
-
-// ---------- the token's audience (rule 12.2, RFC 8707)
 
 describe("the token's audience", () => {
   it("PLANT: an authorization asking for another server's resource gets no code", async () => {

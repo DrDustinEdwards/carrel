@@ -1,4 +1,4 @@
-// The Docs panel (the Docs plan, slice 6): Carrel's add-on in Google Docs, an Apps Script Workspace add-on installed
+// The Docs panel: Carrel's add-on in Google Docs, an Apps Script Workspace add-on installed
 // in Dustin's account alone (addon/). It sends the Doc, his request and the words he selected here, on the AI door's
 // host, and Carrel's own engine does the work through writeInDoc, the same path every AI's "Carrel writes it" takes.
 //

@@ -98,7 +98,6 @@ export async function openRoom(
       dialect: input.dialect,
       ...(own || !input.current ? { saved: input.current?.source ?? "" } : {}),
     });
-    // The draft now lives in the room, where everyone sees it.
     if (own)
       await drizzle(env.DB)
         .delete(drafts)

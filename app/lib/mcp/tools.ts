@@ -1124,8 +1124,6 @@ export const TOOLS: Tool[] = [
     },
   },
 
-  // ---------- webmentions, through the same functions as the mentions page (Owner only)
-
   {
     name: "carrel_review_mentions",
     title: "Review a site's webmentions (Owner only)",
@@ -1274,8 +1272,6 @@ export const TOOLS: Tool[] = [
       };
     },
   },
-
-  // ---------- books (stage 4), through the same functions as the book pages
 
   {
     name: "carrel_list_book_files",
@@ -1460,10 +1456,6 @@ export const TOOLS: Tool[] = [
       return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };
     },
   },
-
-  // ---------- social (stage 9)
-
-  // ---------- Google Docs (the Docs plan, slices 1 to 3), through the service account and the same functions for every AI
 
   {
     name: "carrel_list_docs",

@@ -101,7 +101,7 @@ export async function needsYou(
       : Promise.resolve([] as { n: number; since: string | null }[]),
     laterMarks(db, viewer, now),
   ]);
-  // The Owner's Docs where suggestions an AI laid through Carrel wait (the Docs plan, slice 7).
+  // The Owner's Docs where suggestions an AI laid through Carrel wait.
   const docs = viewer.isOwner
     ? await d
         .select({
@@ -289,7 +289,6 @@ export async function setLater(
   ]);
 }
 
-/** Brings a row this person set aside back to Home at once. */
 export async function bringBack(db: D1Database, viewer: Viewer, needId: string): Promise<void> {
   await drizzle(db)
     .delete(needLater)

@@ -1,7 +1,7 @@
 // Books in the writing repository (design stage 4): the book behind a URL, Carrel's index of its
 // files, a save that commits to Git with the version it expects to replace, the checks that run on
 // every save, their findings, and the authorship record. Roles are checked here, not only in the
-// routes, so every door (the UI now, MCP tools in stage 5) is held to the same rule.
+// routes, so every door (the UI and the MCP tools) is held to the same rule.
 
 import { inList } from "@dustinedwards/site-runtime/d1";
 import { and, asc, desc, eq, inArray, like, notInArray } from "drizzle-orm";
@@ -121,8 +121,6 @@ export async function createBook(
   await d.insert(projects).values({ slug: input.folder, name, book: input.folder });
   return { ok: true as const, slug: input.folder };
 }
-
-// ---------- the index
 
 export type IndexedFile = {
   path: string;
@@ -255,8 +253,6 @@ export async function bookVoice(db: D1Database, project: BookProject, path: stri
   };
 }
 
-// ---------- findings
-
 /**
  * Replaces the findings for each file with what the checks found now. A dismissed finding that is
  * found again stays dismissed; one that is no longer found is gone, whatever its state.
@@ -381,8 +377,6 @@ export async function dismissFinding(
   if (result.length === 0) throw new Response("Not found", { status: 404 });
 }
 
-// ---------- refresh from Git
-
 export type BookRefresh = {
   files: number;
   read: number;
@@ -473,8 +467,6 @@ export async function refreshBook(
     more: stale.length > batch.length,
   };
 }
-
-// ---------- saving
 
 export type BookWrite =
   | { ok: true; version: string; commit: string; changeId: string; findings: Finding[] }
@@ -641,8 +633,6 @@ export async function checkDraft(
   const context = await bookContext(db, project.id);
   return checkFile(path, source, context);
 }
-
-// ---------- export and the authorship record
 
 /** What scripts/import-docx.mjs writes where it could not convert something. */
 const IMPORT_MARKER = "<!-- import:";

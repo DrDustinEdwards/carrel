@@ -1,4 +1,4 @@
-// A Doc in the manuscripts index, downloaded as Markdown, Word, PDF or plain text (the Docs plan, slice 4): the link
+// A Doc in the manuscripts index, downloaded as Markdown, Word, PDF or plain text: the link
 // carrel_export_doc gives an AI to hand Dustin, and the Owner's alone, like every Docs tool.
 
 import { attachmentResponse } from "@dustinedwards/site-runtime/r2-object";

@@ -28,7 +28,7 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  // The Owner's alone, as Dustin ruled for the inbox (2026-09-26): anyone else is refused before the site is asked.
+  // The Owner's alone, as Dustin ruled for the inbox: anyone else is refused before the site is asked.
   const project = await requireSiteProject(env.DB, viewer, params.project, "read_mentions");
   const head = { slug: project.slug, name: project.name, site: siteEntry(project.site).name };
   const search = new URL(request.url).searchParams;

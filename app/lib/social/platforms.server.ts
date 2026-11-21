@@ -73,8 +73,6 @@ async function send(
   });
 }
 
-// ---------- Bluesky (from Recova)
-
 const bskySessions = new Map<string, { accessJwt: string; did: string; expiresAt: number }>();
 
 export function clearBlueskySessions(): void {
@@ -140,8 +138,6 @@ async function postToBluesky(
   if (!res.ok) throw new Error(`Bluesky post ${res.status}`);
   return ((await res.json()) as { uri: string }).uri;
 }
-
-// ---------- X (OAuth 1.0a, Web Crypto)
 
 /** RFC 3986 percent-encoding, which OAuth 1.0a requires (encodeURIComponent leaves !'()* alone). */
 export function percentEncode(value: string): string {

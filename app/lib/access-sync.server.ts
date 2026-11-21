@@ -1,5 +1,4 @@
-// Keeping Cloudflare Access in step with Carrel's people (Dustin's ruling of 2026-10-10, point 2b:
-// coauthor accounts scoped to one project). Carrel never holds a Cloudflare token: it posts its whole
+// Keeping Cloudflare Access in step with Carrel's people (coauthor accounts scoped to one project). Carrel never holds a Cloudflare token: it posts its whole
 // allow list to Capsid's POST /ops/access-sync with its own Capsid agent key (CAPSID_AGENT_KEY), and
 // Capsid makes the Access group pinned for namespace "carrel" hold exactly those emails (capsid
 // src/access-sync.ts). Each sync sends the whole list, so a missed one is mended by the next.

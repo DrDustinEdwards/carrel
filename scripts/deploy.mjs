@@ -22,7 +22,7 @@
 //
 // --prepare runs every step but the last and stops before `wrangler deploy`. CI runs it as the pre-deploy
 // guard of devkit's shared deploy workflow (.github/workflows/ci.yml), which then deploys the build this
-// left, verifies it live and rolls it back on a refusal. Without the flag it deploys, as before.
+// left, verifies it live and rolls it back on a refusal. Without the flag it deploys.
 //
 // WRANGLER_ENTRY, BUILD_ENTRY and CARREL_ROOT exist for scripts/check-deploy.mjs, which stands stubs
 // in for wrangler and the build.

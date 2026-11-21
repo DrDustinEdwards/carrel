@@ -1,7 +1,7 @@
 // The search and sharing checks on a post's text, and the link card it will make: the title a search
 // result shows, the description under it, images in the body with no alt text, and a post with no card
 // image. They flag; the writer decides. The one exception is alt text: an image without it blocks a
-// publish (Dustin approved, 2026-10-31), so writeToSite refuses one and the editor's gate shows why.
+// publish (Dustin approved), so writeToSite refuses one and the editor's gate shows why.
 // Pure, so the editor runs them as Dustin types and the MCP tools run the same code on a draft.
 //
 // The limits are Prelum's (@drdustinedwards/site-helpers/head), the numbers the sites' own head tags and

@@ -180,8 +180,7 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// mcp_calls (0012_mcp_calls.sql) holds the tool calls logged before the call log moved to site-runtime's
-// ToolCallLog. Nothing writes it now, and its triggers still refuse UPDATE and DELETE.
+// mcp_calls (0012_mcp_calls.sql) is kept for the old tool-call log; its triggers refuse UPDATE and DELETE.
 
 /** The columns every draft kept beside a person's own starts with: whose, of what, and from which client. Fresh per table. */
 function draftOwner() {
@@ -685,9 +684,8 @@ export const bookMoves = sqliteTable("book_moves", {
 });
 
 // The voice pack (0018_voice.sql, 0019_voice_own.sql, voice.server.ts): the Owner's guide, the author's own
-// writing and the excerpts. phrases, allow, profile and voice_cuts are no longer read or written (the scan
-// replaced word lists and averages). They stay so the lists the Owner typed are not lost: a migration dropping them runs before the deploy, and a
-// rollback of the code would not bring them back.
+// writing and the excerpts. phrases, allow, profile and voice_cuts are unused; they stay so the lists the Owner typed
+// are not lost, as a rollback of the code would not bring them back.
 export const voicePacks = sqliteTable("voice_packs", {
   projectId: integer("project_id")
     .primaryKey()

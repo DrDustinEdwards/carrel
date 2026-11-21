@@ -1,4 +1,4 @@
-// Scheduling an update to a live post (site-api v0.10.0, DrDustinEdwards/site-api#59): the post stays
+// Scheduling an update to a live post: the post stays
 // live and the site holds the new text until its time. Planted: on a site without scheduled updates,
 // which would take the post down until then, Carrel refuses before asking the site anything.
 

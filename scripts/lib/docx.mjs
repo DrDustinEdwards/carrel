@@ -9,8 +9,6 @@
  * @typedef {{ paragraph: number, what: string, detail: string }} DocFlag  paragraph: the paragraph it belongs to, or the next one when it sits between paragraphs
  */
 
-// ---------- the ZIP container
-
 /**
  * @param {Uint8Array} bytes
  * @param {number} at
@@ -83,8 +81,6 @@ export async function readZip(bytes) {
   }
   return files;
 }
-
-// ---------- WordprocessingML
 
 /** @param {string} s */
 function decodeEntities(s) {

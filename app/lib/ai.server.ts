@@ -8,7 +8,7 @@
 // - publish is the Owner's own sessions only, refused while any flag on the item is open, recorded
 //   as "published by <client> on <person>'s instruction", and emailed with links to undo it.
 //   It publishes the site's text as it stands or the session's own AI draft, first publications
-//   included, at once on Dustin's word in the conversation (his ruling, 2026-11-19). The site keeps
+//   included, at once on Dustin's word in the conversation. The site keeps
 //   every earlier version, so the history page can restore the one before.
 
 import { sendEmail } from "@dustinedwards/site-runtime/email";
@@ -40,8 +40,6 @@ export class AiRefusal extends Error {
     this.name = "AiRefusal";
   }
 }
-
-// ---------- flags on an item
 
 export type ItemFinding = {
   id: number;
@@ -178,8 +176,6 @@ export async function dismissItemFinding(
   if (result.length === 0) throw new Response("Not found", { status: 404 });
 }
 
-// ---------- AI drafts, beside the person's own
-
 export async function saveAiDraft(
   env: Env,
   project: SiteProject,
@@ -280,8 +276,6 @@ export async function readAiDraft(
   return { ...row, sources: row.sources === null ? null : (JSON.parse(row.sources) as string[]) };
 }
 
-// ---------- publish by instruction
-
 export type AiPublishResult =
   | { ok: true; version: string; changeId: string; emailed: boolean }
   | { ok: false; message: string };
@@ -344,7 +338,7 @@ const itemBase = (origin: string, project: SiteProject, itemId: string) =>
  * edit on the site is never overwritten unseen. Every refusal comes before the site is asked anything.
  *
  * It goes live at once, first publications and AI drafts included: Dustin's approval in the conversation is the
- * instruction (his ruling of 2026-11-19, replacing the click of 2026-11-18). Every version is kept, and the email
+ * instruction. Every version is kept, and the email
  * after it links to unpublish and restore.
  */
 export async function aiPublish(
@@ -526,8 +520,6 @@ export async function lastAiPublication(db: D1Database, project: SiteProject, it
       .get()) ?? null
   );
 }
-
-// ---------- social posts, drafted by the session that finished the piece (decision 5)
 
 /**
  * Stores an AI session's drafted social post for the queue, by the event id the routine was given or

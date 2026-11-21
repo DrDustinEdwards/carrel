@@ -1,4 +1,4 @@
-// Awareness (the Docs plan, slice 7): Google tells Carrel when a file the service account can see changes, through one
+// Awareness: Google tells Carrel when a file the service account can see changes, through one
 // Drive changes.watch channel, and the manuscripts index refreshes then, recounting the AI suggestions still open in
 // each Doc that changed (drive.server.ts refreshManuscripts), so Home's "suggestions wait" row is current. The quarter
 // hour refresh stays the floor: a lost notice delays the index, never loses it.

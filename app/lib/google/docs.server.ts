@@ -1,4 +1,4 @@
-// Google Docs through the service account (the Docs plan, slices 1 to 3): read a Doc with its pending suggestions and
+// Google Docs through the service account: read a Doc with its pending suggestions and
 // its comments, lay edits in as suggestions, comment, and, on Dustin's own ask, write directly, accept or reject, and
 // take a change back. One path for every AI: the MCP tools call these functions and nothing else reaches a Doc. The
 // rules live here and in service-account.server.ts:
@@ -55,8 +55,6 @@ const OBJECT = "￼";
 function requireOwner(viewer: Viewer): void {
   if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
 }
-
-// ---------- what Google returns, as far as Carrel reads it
 
 type Run = {
   content?: string;
@@ -124,8 +122,6 @@ export type GoogleDoc = {
   comments?: Thread[];
   suggestions?: Thread[];
 };
-
-// ---------- text with positions
 
 type Seg = {
   start: number;
@@ -221,8 +217,6 @@ function paraText(p: Para): string {
     .join("");
   return text.replace(/\n$/, "");
 }
-
-// ---------- fetching
 
 export type Posts = { author: string; at: string | null; text: string; action?: string }[];
 
@@ -322,8 +316,6 @@ export async function fetchDoc(env: Env, docId: string, fetcher?: Fetch): Promis
   return (await res.json()) as GoogleDoc;
 }
 
-// ---------- slice 1: read
-
 export type DocRead = {
   docId: string;
   title: string;
@@ -405,8 +397,6 @@ export async function readGoogleDoc(
   };
 }
 
-// ---------- slice 4: export
-
 export type ExportFormat = keyof typeof EXPORT_TYPES;
 export const EXPORT_FORMATS = Object.keys(EXPORT_TYPES) as ExportFormat[];
 
@@ -431,8 +421,6 @@ export async function exportGoogleDoc(
   if (!res.ok) return googleError(res, "export the Doc");
   return { name: row.name, type, body: await res.arrayBuffer() };
 }
-
-// ---------- slice 2: suggest and comment
 
 export type EditAsked =
   | { find: string; replace: string; reason?: string }
@@ -935,8 +923,6 @@ async function emailWrites(
   return true;
 }
 
-// ---------- the Docs email setting: each direct write, a daily summary, or off (on, each, until Dustin changes it)
-
 const DOCS_EMAIL = ["each", "daily", "off"] as const;
 export type DocsEmail = (typeof DOCS_EMAIL)[number];
 
@@ -1060,8 +1046,6 @@ async function recordAction(
   return saved.id;
 }
 
-// ---------- slice 3: review (accept, reject, withdraw) and undo
-
 const REVIEW = {
   accept: "acceptSuggestion",
   reject: "rejectSuggestion",
@@ -1082,7 +1066,7 @@ async function carrelSuggestions(env: Env, docId: string) {
 }
 
 /**
- * How many of the suggestions AIs laid in a Doc through Carrel are still open (slice 7, Home's "suggestions wait"),
+ * How many of the suggestions AIs laid in a Doc through Carrel are still open (Home's "suggestions wait"),
  * or null when Google would not give the Doc. A Doc locked "no AI" is not read and counts none.
  */
 export async function waitingIn(env: Env, docId: string, fetcher?: Fetch): Promise<number | null> {
@@ -1377,8 +1361,6 @@ export async function undoInDoc(
   });
 }
 
-// ---------- the per-Doc lock, set on Desk's Manuscripts page
-
 export async function readDocLocks(
   db: D1Database,
   viewer: Viewer,
@@ -1483,7 +1465,6 @@ export async function commentInFile(
   return { changeId, id, labeled: true };
 }
 
-/** A comment on quoted words in a Doc. */
 export function commentInDoc(
   env: Env,
   viewer: Viewer,

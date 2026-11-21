@@ -22,7 +22,6 @@ export type Waiting = {
   at: string;
 };
 
-/** The title from a source's frontmatter, or "" when it has none. */
 export function titleOf(source: string): string {
   return readKey(splitSource(source).front, "title").trim();
 }

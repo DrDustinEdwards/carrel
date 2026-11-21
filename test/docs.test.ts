@@ -1,4 +1,4 @@
-// The Docs tools (the Docs plan, slices 1 to 3): read a Doc, lay suggestions and comments in it, write directly on
+// The Docs tools: read a Doc, lay suggestions and comments in it, write directly on
 // the Owner's ask, decide suggestions and take changes back, for every AI alike, against the fake Google's Docs API.
 // Planted: a change to a Doc's text that is not a suggestion or marked as the Owner's ask, and a comment with an
 // assignee, are refused in code before anything is sent; a Doc outside the manuscripts index, a person who is not

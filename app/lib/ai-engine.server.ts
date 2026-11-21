@@ -355,8 +355,6 @@ export function meteredOptions(env: Env, feature: FeatureKey, effort: Effort): C
   };
 }
 
-// ---------- social post drafts through the API
-
 const POST_SCHEMA = {
   type: "object",
   properties: { text: { type: "string" } },
@@ -406,8 +404,6 @@ export async function draftPostViaApi(env: Env, item: SocialItem, fetcher?: type
     { ...meteredOptions(env, "social", run.output_config.effort), ...(fetcher ? { fetcher } : {}) },
   );
 }
-
-// ---------- an episode's summary and chapters through the API
 
 const EPISODE_SCHEMA = {
   type: "object",
@@ -540,8 +536,6 @@ export async function draftEpisodeViaApi(
   });
   return { ok: true };
 }
-
-// ---------- search title and description through the API
 
 const SEO_SCHEMA = {
   type: "object",

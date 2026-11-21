@@ -4,7 +4,7 @@
 //
 // This is the only door on desk.dustinedwards.info. The AI door is a different hostname,
 // carrel-mcp.dustinedwards.info, served by app/lib/mcp/door.ts and chosen in app.ts by the host
-// alone (design decision 7, corrected 2026-09-27). So a browser session is never treated as AI, and
+// alone (design decision 7). So a browser session is never treated as AI, and
 // an AI session never reaches the buttons: /mcp here is just a page that does not exist, behind
 // Access like every other.
 

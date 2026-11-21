@@ -1,6 +1,6 @@
 // Every read and write of a site's content that Carrel performs for a person: autosave to D1, and
 // the writes it sends through site-api. Roles are checked here, not only in the route, so every
-// door (the UI now, MCP tools in stage 5) is held to the same rule.
+// door (the UI and the MCP tools) is held to the same rule.
 
 import type { ContentDoc } from "@dustinedwards/site-api";
 import { SiteApiError } from "@dustinedwards/site-api/client";
@@ -291,7 +291,7 @@ export async function writeToSite(
   if ("source" in request && request.source !== undefined)
     request = { ...request, source: legal.source };
 
-  // An image with no alt text blocks the text going out (Dustin approved, 2026-10-31): a publish, a
+  // An image with no alt text blocks the text going out (Dustin approved): a publish, a
   // schedule, or a save to a post the public already sees. The refusal names each image. So do the two
   // broken search fields (a share image with no alt text, a canonical that is not a full https address)
   // and a feature image with no alt text that is not marked decorative.

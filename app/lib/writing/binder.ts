@@ -138,7 +138,6 @@ export function orderFromTree(nodes: readonly BinderNode[]): ChapterOrder[] {
   }));
 }
 
-/** The order the index holds now. */
 export function currentOrder(paths: string[]): ChapterOrder[] {
   const out: ChapterOrder[] = [];
   for (const scene of readingOrder(paths.map((path) => ({ path })))) {

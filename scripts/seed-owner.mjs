@@ -4,7 +4,7 @@
 //
 // Without --remote it writes the local development database. The SQL goes through a temporary
 // file, not --command: on Windows, spawnSync with a shell joins argv unquoted, and a SQL string
-// with spaces becomes a program name (recorded in the site's rulings, 2026-09-04).
+// with spaces becomes a program name.
 
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";

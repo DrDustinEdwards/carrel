@@ -449,8 +449,8 @@ const HEADERS_BIN = join(
 );
 
 /**
- * The accessibility statement (devkit-a11y S6), Prelum's, with this site's facts. devkit-a11y's run of 2026-11-01 found
- * nothing open on the page itself (its webmanifest findings are the scan reading a JSON file as a page).
+ * The accessibility statement (devkit-a11y S6), Prelum's, with this site's facts. Its webmanifest findings are the scan
+ * reading a JSON file as a page.
  */
 const STATEMENT = accessibilityStatement({
   siteName: "Carrel's public site",

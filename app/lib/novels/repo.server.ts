@@ -70,8 +70,6 @@ export interface NovelsRepo {
   readAt(path: string, commit: string): Promise<RepoFile | null>;
 }
 
-// ---------- the connection
-
 export type NovelsConnection =
   | { state: "connected"; appId: string; privateKey: string }
   | { state: "not-connected" | "misconfigured"; detail: string };
@@ -99,8 +97,6 @@ export function novelsConnection(env: Env): NovelsConnection {
   }
   return { state: "connected", appId, privateKey: key };
 }
-
-// ---------- GitHub App authentication (site-runtime ./github installationToken)
 
 type Fetch = typeof fetch;
 
@@ -135,8 +131,6 @@ export async function installationToken(
 export function clearTokenCache(): void {
   tokenCache.clear();
 }
-
-// ---------- the GitHub contents client
 
 function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");

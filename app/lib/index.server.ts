@@ -11,7 +11,7 @@ import { siteClient, type SiteId } from "~/lib/sites.server";
 
 /**
  * Workers Paid allows 10,000 subrequests per invocation by default, and a D1 call counts as one
- * (developers.cloudflare.com/workers/platform/limits/#subrequests, checked 2026-09-27; Workers Free
+ * (developers.cloudflare.com/workers/platform/limits/#subrequests; Workers Free
  * stays at 50). Carrel is on Workers Paid.
  */
 export const SUBREQUEST_LIMIT = 10_000;

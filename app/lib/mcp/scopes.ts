@@ -2,7 +2,7 @@
 // mcpScopes("carrel"): carrel.read and carrel.write. Least scope first (checklist A11): every grant holds
 // read, and write only when the person ticks it on the consent page. The box starts ticked only when the client asked
 // for carrel.write; a client that asks for carrel.read, or names no Carrel scope at all, starts unticked, and the person
-// can tick it. (This replaces the 2026-10-10 default, where naming no scope started the box ticked.)
+// can tick it.
 // What a session may do is still decided by the person's role below this layer: a scope can only narrow that, never
 // widen it.
 //

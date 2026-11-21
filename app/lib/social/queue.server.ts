@@ -59,8 +59,6 @@ function monthStart(now: Date): string {
   return `${monthKey(now)}-01T00:00:00.000Z`;
 }
 
-// ---------- accounts and switches
-
 export type AccountInput = {
   key: string;
   name: string;
@@ -132,8 +130,6 @@ export async function setSwitches(
     await d.update(socialAccounts).set(set).where(eq(socialAccounts.id, id));
   return { ok: true as const };
 }
-
-// ---------- events and drafts
 
 /** The description line in a post's frontmatter: Dustin's one-line summary, for templates and the routine. */
 export function summaryFrom(source: string): string {
@@ -285,8 +281,6 @@ function fillTemplate(
     .replace(/\.\./g, ".")
     .trim();
 }
-
-// ---------- the tick
 
 export type TickResult = {
   linted: number;
@@ -696,8 +690,6 @@ export async function processSocial(
   return result;
 }
 
-// ---------- Dustin's decisions
-
 export async function decidePost(
   db: D1Database,
   viewer: Viewer,
@@ -782,8 +774,6 @@ export async function decidePost(
       return { ok: true as const };
   }
 }
-
-// ---------- reading
 
 export async function socialOverview(db: D1Database, viewer: Viewer) {
   requireOwner(viewer);
