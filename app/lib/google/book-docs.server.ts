@@ -1,4 +1,4 @@
-// A book file and a Google Doc, both ways (the Docs plan, slice 8, and the writing-tools ruling of 2026-10-10: Word
+// A book file and a Google Doc, both ways (the writing-tools ruling: Word
 // and Google Docs "both directions, keeping tracked changes and comments"), for a coauthor who works in Docs.
 //
 // - Bring in: the Doc becomes the file's working copy in its room, with Google's pending suggestions as Carrel

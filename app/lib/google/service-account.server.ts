@@ -1,5 +1,5 @@
 // The Google service account (design decision 6): it reads the manuscripts folder's metadata and
-// Search Console, and, for the Docs tools (the Docs plan, slices 1 to 3), reads Docs, lays suggestions and comments in
+// Search Console, and, for the Docs tools, reads Docs, lays suggestions and comments in
 // them, and on the Owner's own ask writes directly or accepts. It cannot do anything else. Two walls: Google lets it
 // reach only what is shared with it, and every request it makes passes an allowlist here, so anything outside the
 // list, and any direct change to a Doc's text the caller did not mark as the Owner's ask, is refused in code before
@@ -18,7 +18,7 @@ import { timedFetch } from "@dustinedwards/site-runtime/http";
  * The index takes metadata, and search asks Drive each time. drive.readonly is for one thing, the export of a Doc in
  * the index (Drive's files.export, which no narrower scope allows); the allowlist below lets nothing else through.
  * `documents` is the Docs API's one scope that can write, which suggestions and comments need; docBatchProblem below
- * keeps it to those. `presentations` and `spreadsheets` are the same for Slides and Sheets (the Docs plan, slice 9):
+ * keeps it to those. `presentations` and `spreadsheets` are the same for Slides and Sheets:
  * slidesBatchProblem, sheetsBatchProblem and the values wall below keep them to comments, a slide's text on the
  * Owner's ask, and tabs Carrel made.
  */

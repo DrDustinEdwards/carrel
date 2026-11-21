@@ -117,7 +117,7 @@ export async function refreshManuscripts(
     }
   }
   const d = drizzle(env.DB);
-  // The Docs that changed since the last walk have their open AI suggestions counted again (slice 7), a few a walk; one
+  // The Docs that changed since the last walk have their open AI suggestions counted again, a few a walk; one
   // not counted keeps the modified time it had, so the next walk counts it.
   const before = new Map(
     (

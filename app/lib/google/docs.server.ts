@@ -1,4 +1,4 @@
-// Google Docs through the service account (the Docs plan, slices 1 to 3): read a Doc with its pending suggestions and
+// Google Docs through the service account: read a Doc with its pending suggestions and
 // its comments, lay edits in as suggestions, comment, and, on Dustin's own ask, write directly, accept or reject, and
 // take a change back. One path for every AI: the MCP tools call these functions and nothing else reaches a Doc. The
 // rules live here and in service-account.server.ts:
@@ -1066,7 +1066,7 @@ async function carrelSuggestions(env: Env, docId: string) {
 }
 
 /**
- * How many of the suggestions AIs laid in a Doc through Carrel are still open (slice 7, Home's "suggestions wait"),
+ * How many of the suggestions AIs laid in a Doc through Carrel are still open (Home's "suggestions wait"),
  * or null when Google would not give the Doc. A Doc locked "no AI" is not read and counts none.
  */
 export async function waitingIn(env: Env, docId: string, fetcher?: Fetch): Promise<number | null> {

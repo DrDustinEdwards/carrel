@@ -81,7 +81,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
         : {}),
       extra: { toolbar: [{ intent: "refresh", label: "Refresh from the site" }] },
     };
-    // A draft for a post the site does not have yet shows on the plain list and on Drafts, as before the kit.
+    // A draft for a post the site does not have yet shows on the plain list and on Drafts.
     const plain =
       !query.trashed &&
       !query.cursor &&

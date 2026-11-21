@@ -1,4 +1,4 @@
-// Docs activity (the Docs plan, slices 2 and 3): every change an AI made in a Google Doc through Carrel, newest first:
+// Docs activity: every change an AI made in a Google Doc through Carrel, newest first:
 // which AI (and the model it said), what it did and why, in which Doc, and the id any AI takes to undo it. The Doc
 // itself holds the suggestions and comments to accept or reject; this is the record beside it. Owner only, like the
 // manuscripts.

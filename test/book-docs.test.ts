@@ -1,4 +1,4 @@
-// A book file and a Google Doc, both ways (the Docs plan, slice 8): the Doc comes into the file's room with Google's
+// A book file and a Google Doc, both ways: the Doc comes into the file's room with Google's
 // suggestions as Carrel's, each by the person whose name it carries, and its comment threads on the same words; what
 // changed in Carrel goes back into the Doc as suggestions, a Google suggestion accepted here is accepted there, and a
 // thread started here becomes a comment. All against the fake Google's Docs API and a real room.

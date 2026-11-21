@@ -1,4 +1,4 @@
-// The Slides and Sheets side of the Docs tools (the Docs plan, slice 9), against the fake Google's Slides and Sheets
+// The Slides and Sheets side of the Docs tools, against the fake Google's Slides and Sheets
 // APIs. Slides has no suggestions: an AI comments, and changes a slide's text only on the Owner's ask. Sheets is
 // never written over: cells go on a tab Carrel made. Planted: a slide text change that is not the Owner's ask, a cell
 // write or a tab outside Carrel's own, and a comment with an assignee are refused in code before anything is sent.

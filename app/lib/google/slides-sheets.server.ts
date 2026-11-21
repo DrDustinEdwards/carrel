@@ -1,4 +1,4 @@
-// Google Slides and Sheets through the service account (the Docs plan, slice 9), behind the same tools and the same
+// Google Slides and Sheets through the service account, behind the same tools and the same
 // rules as Docs: Owner only, only a file in the manuscripts index, every tool refused on a file locked "no AI", every
 // comment saying which AI wrote it and why, every change a row in doc_changes or doc_actions. What differs is what
 // Google offers, and so what the rules mean here:
