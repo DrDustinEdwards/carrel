@@ -147,7 +147,7 @@ jobs:
   deploy:
     needs: [check]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@6b0656ca6e6072ccdd73b85647d5c16ff85ea98f # v0.53.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@71fed4a06c3cb6808c5bfead4da98bd88ef62c3c # v0.53.2
     with:
       worker-name: carrel-desk
       # site-runtime withAdminIdle's key and audit-log's signing key (0.85), minted once by the deploy and never shown (devkit "generated-secrets").
@@ -178,7 +178,7 @@ jobs:
   deploy-www:
     needs: [check]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@6b0656ca6e6072ccdd73b85647d5c16ff85ea98f # v0.53.0
+    uses: DrDustinEdwards/devkit/.github/workflows/worker-deploy.yml@71fed4a06c3cb6808c5bfead4da98bd88ef62c3c # v0.53.2
     with:
       worker-name: carrel
       health-url: https://carrel.dustinedwards.info/health
