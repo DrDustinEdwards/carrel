@@ -34,12 +34,26 @@ export function fakeSite<A extends SiteAdapter = ReturnType<typeof memoryAdapter
     log: () => {},
   });
   const requests: string[] = [];
+  // The site's public routes as a real site answers them (the health check's probe post reads them): a live item's
+  // path is 200, a renamed one's old path 301, and a path that once was live and is not now 410.
+  const everLive = new Set<string>();
+  const publicPage = (pathname: string): Response => {
+    const store = (adapter as unknown as ReturnType<typeof memoryAdapter>).store;
+    for (const s of store.values())
+      if (s.doc.status === "published" && s.doc.path) everLive.add(s.doc.path);
+    const moved = (adapter as unknown as ReturnType<typeof memoryAdapter>).redirects.get(pathname);
+    if (moved) return new Response(null, { status: 301, headers: { location: moved } });
+    if ([...store.values()].some((s) => s.doc.status === "published" && s.doc.path === pathname))
+      return new Response("<p>post</p>");
+    return new Response("site page", { status: everLive.has(pathname) ? 410 : 404 });
+  };
   const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
     requests.push(`${request.method} ${new URL(request.url).pathname}`);
     if (!request.url.startsWith(SITE_ORIGIN))
       throw new Error(`the tests reach only the fake site, not ${request.url}`);
-    return api.matches(request) ? api.handle(request) : new Response("site page", { status: 404 });
+    if (api.matches(request)) return api.handle(request);
+    return publicPage(new URL(request.url).pathname);
   }) as typeof globalThis.fetch;
   return { adapter, fetch, requests };
 }

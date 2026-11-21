@@ -151,6 +151,8 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
       baseUrl: connection.origin,
       key: connection.key,
       probeMediaUpload: false,
+      // The probe post: its 301, 410 and trash checks run live. A site that cannot delete content skips it.
+      probePosts: true,
       fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
         fetcher(
           typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
