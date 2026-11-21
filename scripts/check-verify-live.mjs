@@ -13,6 +13,8 @@ const SHA = "4df127439ed3aa19aef8e350ab6311957b8f8611";
 /** The healthy answers, each a plant can replace. */
 const healthy = () => ({
   health: { status: 200, body: JSON.stringify({ ok: true, sha: SHA }) },
+  // True: the old version answers any read that carries no version override, as 90% of a 10% gradual rollout does.
+  oldUnlessOverridden: false,
   metadata: { status: 200, body: "" },
   mcp: { status: 401, body: "" },
   unknown: { status: 404, body: "Not found." },
@@ -44,7 +46,13 @@ async function serve(pick) {
 }
 
 const mcp = await serve((req) => {
-  if (req.url === "/health") return answers.health;
+  if (req.url === "/health")
+    return answers.oldUnlessOverridden && !req.headers["cloudflare-workers-version-overrides"]
+      ? {
+          status: 200,
+          body: JSON.stringify({ ok: true, sha: "376eecb3bc27c6d744de35453cfad7a08bdc1d5f" }),
+        }
+      : answers.health;
   if (req.url === "/.well-known/oauth-authorization-server")
     return {
       ...answers.metadata,
@@ -96,6 +104,12 @@ await expectCase(
   "a 401 from Access on the browser host passes",
   { browser: { status: 401, location: "" } },
   0,
+);
+await expectCase(
+  "a gradual rollout reads every check through the version override and passes",
+  { oldUnlessOverridden: true },
+  0,
+  { WORKERS_VERSION_OVERRIDE: 'carrel-desk="24fbd1bb-e2d6-4573-83c3-16a3abdd126f"' },
 );
 await expectCase(
   "PLANT /health names another commit: refused",

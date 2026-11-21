@@ -26,6 +26,8 @@ const BROWSER = (process.env.CARREL_ORIGIN || "https://desk.dustinedwards.info")
 );
 const EXPECT_SHA = (process.env.EXPECT_SHA ?? "").trim().toLowerCase();
 const TRIES = 3;
+// A gradual rollout (devkit's worker-deploy.yml) exports this; every read carries it so it reaches the new version, not the split.
+const VERSION_OVERRIDE = (process.env.WORKERS_VERSION_OVERRIDE ?? "").trim();
 // The pause between tries. scripts/check-verify-live.mjs sets it to 0.
 const RETRY_MS = Number(process.env.VERIFY_RETRY_MS ?? 2_000);
 
@@ -39,9 +41,16 @@ const unanswered = [];
  * @param {string} url @param {RequestInit} [init]
  */
 async function ask(url, init = {}) {
+  const headers = new Headers(init.headers);
+  if (VERSION_OVERRIDE) headers.set("Cloudflare-Workers-Version-Overrides", VERSION_OVERRIDE);
   for (let i = 1; i <= TRIES; i++) {
     try {
-      return await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10_000), ...init });
+      return await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(10_000),
+        ...init,
+        headers,
+      });
     } catch {
       if (i < TRIES) await new Promise((resolve) => setTimeout(resolve, RETRY_MS));
     }
