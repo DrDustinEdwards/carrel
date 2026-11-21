@@ -34,6 +34,12 @@ const refusals = [];
 /** @type {string[]} */
 const unanswered = [];
 
+// A gradual rollout (devkit worker-deploy gradual-percent) splits traffic, so every read goes to the new version through
+// this header; devkit passes its value in WORKERS_VERSION_OVERRIDE (empty on a plain deploy).
+const override = process.env.WORKERS_VERSION_OVERRIDE
+  ? { "Cloudflare-Workers-Version-Overrides": process.env.WORKERS_VERSION_OVERRIDE }
+  : {};
+
 /**
  * One request, retried only when there was no answer at all. Null when every try went unanswered.
  * @param {string} url @param {RequestInit} [init]
@@ -41,7 +47,7 @@ const unanswered = [];
 async function ask(url, init = {}) {
   for (let i = 1; i <= TRIES; i++) {
     try {
-      return await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10_000), ...init });
+      return await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(10_000), ...init, headers: { ...override, ...init.headers } });
     } catch {
       if (i < TRIES) await new Promise((resolve) => setTimeout(resolve, RETRY_MS));
     }
