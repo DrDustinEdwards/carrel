@@ -113,7 +113,7 @@ describe("the protocol", () => {
           deps: { fetcher: site.fetch, carrelOrigin: CARREL },
         })
       ).list(),
-    ] as [Record<string, any>[], Record<string, any>[]];
+    ] as [Record<string, unknown>[], Record<string, unknown>[]];
     for (const tools of [write, read]) {
       expect(tools.length).toBeGreaterThan(0);
       expect(
