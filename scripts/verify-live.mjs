@@ -41,16 +41,15 @@ const unanswered = [];
  * @param {string} url @param {RequestInit} [init]
  */
 async function ask(url, init = {}) {
+  const headers = new Headers(init.headers);
+  if (VERSION_OVERRIDE) headers.set("Cloudflare-Workers-Version-Overrides", VERSION_OVERRIDE);
   for (let i = 1; i <= TRIES; i++) {
     try {
       return await fetch(url, {
         redirect: "manual",
         signal: AbortSignal.timeout(10_000),
         ...init,
-        headers: {
-          ...(VERSION_OVERRIDE ? { "Cloudflare-Workers-Version-Overrides": VERSION_OVERRIDE } : {}),
-          ...init.headers,
-        },
+        headers,
       });
     } catch {
       if (i < TRIES) await new Promise((resolve) => setTimeout(resolve, RETRY_MS));
