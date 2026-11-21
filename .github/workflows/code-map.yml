@@ -26,7 +26,7 @@ jobs:
     concurrency:
       group: code-map
       cancel-in-progress: false
-    uses: DrDustinEdwards/devkit/.github/workflows/code-map.yml@4005284e04e658021f274855ea982bb98fdba112 # v0.55.7
+    uses: DrDustinEdwards/devkit/.github/workflows/code-map.yml@2dafea855b9156133ea1bb6310ff95c7dab8f58e # v0.55.9
     with:
       # The version in package.json's engines field, as ci.yml reads it.
       node-version-file: package.json
