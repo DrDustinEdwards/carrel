@@ -5,7 +5,13 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { OUTSIDE_DATA_NOTICE as OUTSIDE_NOTICE } from "@dustinedwards/site-runtime/mcp-server";
+import {
+  OUTSIDE_DATA_NOTICE as OUTSIDE_NOTICE,
+  toolListHash,
+  toolListProblems,
+} from "@dustinedwards/site-runtime/mcp-server";
+
+import { SCOPE_READ } from "~/lib/mcp/scopes";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
 import { connectAs } from "./mcp-client";
@@ -40,13 +46,23 @@ const connect = (email: string, client = "Claude", scopes?: string[]) =>
 type Listed = { name: string; annotations?: Record<string, unknown> };
 
 describe("names and hints", () => {
-  it("PLANT: every tool carries all four hints as booleans, and the ones that matter say what they do", async () => {
+  it("PLANT: both grants' tool lists pass the family check and the read list is pinned, and the hints that matter say what they do", async () => {
     const tools = (await (await connect("owner@test.invalid")).list()) as Listed[];
-    for (const tool of tools) {
-      for (const hint of ["readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"]) {
-        expect(typeof tool.annotations?.[hint], `${tool.name} ${hint}`).toBe("boolean");
-      }
-    }
+    // The family's tools/list check (T1-T4, T9) on both grants' lists, and the read list pinned (T12): the daily
+    // check pins the same hash (devkit live/areas.json, --tools-hash). Update it after reviewing a tool change.
+    const read = (await (
+      await connect("owner@test.invalid", "Claude", [SCOPE_READ])
+    ).list()) as Listed[];
+    expect(read.length).toBeLessThan(tools.length);
+    for (const list of [tools, read])
+      expect(
+        toolListProblems(list)
+          .filter((p) => p.severity === "error")
+          .map((p) => `${p.item} ${p.tool}: ${p.detail}`),
+      ).toEqual([]);
+    expect(await toolListHash(read)).toBe(
+      "bd193813a768ae75a1d05c08f76b1dc0f72f25e661b5b749771ef970215b02c6",
+    );
     const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations]));
     const writes = [
       "carrel_save_draft",
