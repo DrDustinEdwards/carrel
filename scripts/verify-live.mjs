@@ -48,7 +48,7 @@ async function ask(url, init = {}) {
         signal: AbortSignal.timeout(10_000),
         ...init,
         headers: {
-          ...(VERSION_OVERRIDE && { "Cloudflare-Workers-Version-Overrides": VERSION_OVERRIDE }),
+          ...(VERSION_OVERRIDE ? { "Cloudflare-Workers-Version-Overrides": VERSION_OVERRIDE } : {}),
           ...init.headers,
         },
       });
