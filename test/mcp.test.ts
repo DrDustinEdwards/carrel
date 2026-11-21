@@ -104,7 +104,7 @@ describe("the protocol", () => {
   it("PLANT: both grants' tools/list pass the family's list check (T1-T4, T9), and the read list is pinned (T12)", async () => {
     // The daily check pins the same hash (devkit live/areas.json, --tools-hash). Update it after reviewing a tool change.
     const READ_LIST_HASH = "bd193813a768ae75a1d05c08f76b1dc0f72f25e661b5b749771ef970215b02c6";
-    const lists = [
+    const [write, read] = [
       await (await connect("owner@test.invalid")).list(),
       await (
         await connectAs("owner@test.invalid", "Claude", {
@@ -113,8 +113,8 @@ describe("the protocol", () => {
           deps: { fetcher: site.fetch, carrelOrigin: CARREL },
         })
       ).list(),
-    ] as Record<string, any>[][];
-    for (const tools of lists) {
+    ] as [Record<string, any>[], Record<string, any>[]];
+    for (const tools of [write, read]) {
       expect(tools.length).toBeGreaterThan(0);
       expect(
         toolListProblems(tools)
@@ -122,8 +122,8 @@ describe("the protocol", () => {
           .map((p) => `${p.item} ${p.tool}: ${p.detail}`),
       ).toEqual([]);
     }
-    expect(lists[1].length).toBeLessThan(lists[0].length);
-    expect(await toolListHash(lists[1])).toBe(READ_LIST_HASH);
+    expect(read.length).toBeLessThan(write.length);
+    expect(await toolListHash(read)).toBe(READ_LIST_HASH);
   });
 
   it("PLANT: a page elsewhere cannot drive the tools, a rebinding host is refused, and GET, DELETE, 2026-era batches and bad JSON are refused", async () => {
