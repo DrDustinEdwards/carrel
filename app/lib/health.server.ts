@@ -172,14 +172,15 @@ async function checkSite(env: Env, id: SiteId, fetcher: Fetch): Promise<CheckRes
       name,
       ok: false,
       detail: `${site} does not conform. ${failed.map((c) => `${c.name}: ${c.detail}`).join(" | ")}`,
-      // The check's name only: its detail can quote the site's answer, which stays in Dustin's email.
+      // The check's name only: its detail can quote the site's answer, which stays in Dustin's email. A probe post's
+      // step is the exception: its detail is the status and error code the site answered, never its body.
       conformance: {
         origin: connection.origin,
         status: "fail",
         findings: failed.map((c) => ({
           severity: "error",
           check: "M1",
-          detail: `${api} ${c.name} failed`,
+          detail: `${api} ${c.name} failed${c.name.startsWith("probe post:") ? `: ${c.detail.slice(0, 160)}` : ""}`,
         })),
       },
     };
