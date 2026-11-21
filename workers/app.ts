@@ -13,6 +13,7 @@ import {
 } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
+import { securityTxtResponse } from "@dustinedwards/site-runtime/security-txt";
 import { withSiteSentry } from "@dustinedwards/site-runtime/sentry";
 import { carrel, carrelMcp } from "@dustinedwards/site-runtime/sites";
 import { createRequestHandler, RouterContextProvider } from "react-router";
@@ -86,11 +87,13 @@ function routeName(request: Request): string | undefined {
  * Desk's pages, so the wrapper's own is never reached. Its robots.txt, `Disallow: /`, is the static
  * public/robots.txt, served before the Worker on both doors.
  */
+const SECURITY_TXT = { contact: "security@dustinedwards.info", expires: "2027-10-26T00:00:00Z" };
+
 const door = withMcpHeaders<Env>(
   (request, env, ctx) => aiDoor(request, env, ctx as ExecutionContext),
   {
     site: carrelMcp,
-    securityTxt: { contact: "security@dustinedwards.info", expires: "2027-10-26T00:00:00Z" },
+    securityTxt: SECURITY_TXT,
   },
 );
 
@@ -130,6 +133,14 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
     });
     return deskHeaders(list, request, env);
   }
+  // security.txt (RFC 9116) is public, so Access bypasses this one path (the carrel-desk-public application,
+  // docs/coediting.md) and the Worker answers it before the gate.
+  if (path === "/.well-known/security.txt")
+    return deskHeaders(
+      securityTxtResponse({ origin: new URL(request.url).origin, ...SECURITY_TXT }),
+      request,
+      env,
+    );
   // The chart demo (workers/demo.ts): one sample page, GET only, before the door.
   if (isDemo(request))
     return deskHeaders(demoHeaders(await demoRender(env, ctx, nonce)(request)), request, env);
