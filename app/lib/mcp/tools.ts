@@ -1639,7 +1639,49 @@ export const TOOLS: Tool[] = [
           maxItems: 50,
           description:
             "A Doc or Slides file: each is {find, replace, reason?} or {insert_after, text, reason?}. A Sheets file: each is {tab, range?, values}.",
-          items: { type: "object" },
+          items: {
+            anyOf: [
+              {
+                type: "object",
+                properties: {
+                  find: { type: "string" },
+                  replace: { type: "string" },
+                  reason: { type: "string" },
+                  tab: { type: "string" },
+                },
+                required: ["find", "replace"],
+                additionalProperties: false,
+              },
+              {
+                type: "object",
+                properties: {
+                  insert_after: { type: "string" },
+                  text: { type: "string" },
+                  reason: { type: "string" },
+                  tab: { type: "string" },
+                },
+                required: ["insert_after", "text"],
+                additionalProperties: false,
+              },
+              {
+                type: "object",
+                properties: {
+                  tab: { type: "string" },
+                  range: { type: "string" },
+                  values: {
+                    type: "array",
+                    items: {
+                      type: "array",
+                      items: { type: ["string", "number", "boolean"] },
+                    },
+                  },
+                  reason: { type: "string" },
+                },
+                required: ["tab", "values"],
+                additionalProperties: false,
+              },
+            ],
+          },
         },
         reason: {
           type: "string",

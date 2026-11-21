@@ -4,9 +4,11 @@
 // its reference adapter; the email binding is a mailbox the tests read. The session is what the door
 // hands over from the OAuth grant: the person and the client, credited by the client's name.
 
+import { toolListHash, toolListProblems } from "@dustinedwards/site-runtime/mcp-server";
 import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { SCOPE_READ } from "~/lib/mcp/scopes";
 import { autosave, readDraft } from "~/lib/content.server";
 import { runHealth } from "~/lib/health.server";
 import { requireSiteProject } from "~/lib/projects.server";
@@ -97,6 +99,31 @@ describe("the protocol", () => {
     expect((await legacy.call("carrel_list_projects")).structuredContent).toMatchObject({
       projects: [{ slug: SLUG, role: "reader" }],
     });
+  });
+
+  it("PLANT: both grants' tools/list pass the family's list check (T1-T4, T9), and the read list is pinned (T12)", async () => {
+    // The daily check pins the same hash (devkit live/areas.json, --tools-hash). Update it after reviewing a tool change.
+    const READ_LIST_HASH = "bd193813a768ae75a1d05c08f76b1dc0f72f25e661b5b749771ef970215b02c6";
+    const [write, read] = [
+      await (await connect("owner@test.invalid")).list(),
+      await (
+        await connectAs("owner@test.invalid", "Claude", {
+          env,
+          scopes: [SCOPE_READ],
+          deps: { fetcher: site.fetch, carrelOrigin: CARREL },
+        })
+      ).list(),
+    ] as [Record<string, unknown>[], Record<string, unknown>[]];
+    for (const tools of [write, read]) {
+      expect(tools.length).toBeGreaterThan(0);
+      expect(
+        toolListProblems(tools)
+          .filter((p) => p.severity === "error")
+          .map((p) => `${p.item} ${p.tool}: ${p.detail}`),
+      ).toEqual([]);
+    }
+    expect(read.length).toBeLessThan(write.length);
+    expect(await toolListHash(read)).toBe(READ_LIST_HASH);
   });
 
   it("PLANT: a page elsewhere cannot drive the tools, a rebinding host is refused, and GET, DELETE, 2026-era batches and bad JSON are refused", async () => {
