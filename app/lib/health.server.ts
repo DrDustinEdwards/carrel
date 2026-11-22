@@ -68,15 +68,17 @@ export type CheckResult = {
 
 /**
  * The probe post publishes, renames and deletes a post on the site, and every one of those purges the site's stored
- * pages. Health runs every 15 minutes, so the probe runs once a day, and again an hour after a failing one so a fix shows
- * within the hour: its failures are kept (reports, "probe-posts") and carried into every report until the next probe
- * replaces them.
+ * pages. Cloudflare rations purges per account, shared by every site's Worker (Free: 5 requests a minute, bucket of 25,
+ * developers.cloudflare.com/cache/how-to/purge-cache/), so the sites are probed one at a time: health runs every 15
+ * minutes and each run probes the one site that is due, a site once a day and again an hour after a failing probe, so a
+ * fix shows within the hour. Probing all of them at once spent the bucket and left a stored page stale for the probe. A
+ * site's failures are kept (reports, "probe-posts") and carried into every report until its next probe replaces them.
  */
 const PROBE_REPORT = "probe-posts";
 const PROBE_EVERY_MS = 24 * 60 * 60 * 1000;
 const PROBE_RETRY_MS = 60 * 60 * 1000;
 const PROBE_STEP = "probe post:";
-type ProbeRecord = { at: string; sites: Record<string, SiteConformance["findings"]> };
+type ProbeRecord = { sites: Record<string, { at: string; findings: SiteConformance["findings"] }> };
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -443,17 +445,12 @@ export async function runChecks(
   now: Date = new Date(),
 ): Promise<CheckResult[]> {
   const last = await lastProbe(env);
-  const probeDue =
-    !last ||
-    now.getTime() - Date.parse(last.at) >=
-      (Object.values(last.sites).some((findings) => findings.length > 0)
-        ? PROBE_RETRY_MS
-        : PROBE_EVERY_MS);
+  const probed = nextProbe(env, last, now);
   const results = await Promise.all([
     checkConfig(env),
     checkOwner(env),
     checkAccessKeys(env, fetcher),
-    ...SITE_IDS.map((id) => checkSite(env, id, fetcher, probeDue)),
+    ...SITE_IDS.map((id) => checkSite(env, id, fetcher, id === probed)),
     checkNovels(env, fetcher),
     checkAiPublishEmails(env),
     checkBackup(env, now),
@@ -462,7 +459,27 @@ export async function runChecks(
     checkDriveFile(env, fetcher),
     checkSocialTemplates(env),
   ]);
-  return probeDue ? await recordProbe(env, results, now) : carryProbe(results, last);
+  return settleProbe(env, results, last, probed ? siteConnectionOrigin(env, probed) : null, now);
+}
+
+const siteConnectionOrigin = (env: Env, id: SiteId) => {
+  const connection = siteConnection(env, id);
+  return connection.state === "connected" ? connection.origin : null;
+};
+
+/** The one connected site whose probe is due and oldest (never probed first), or null when none is. */
+export function nextProbe(env: Env, last: ProbeRecord | null, now: Date): SiteId | null {
+  let next: { id: SiteId; at: number } | null = null;
+  for (const id of SITE_IDS) {
+    const origin = siteConnectionOrigin(env, id);
+    if (!origin) continue;
+    const record = last?.sites[origin];
+    const at = record ? Date.parse(record.at) : 0;
+    const due =
+      !record || now.getTime() - at >= (record.findings.length ? PROBE_RETRY_MS : PROBE_EVERY_MS);
+    if (due && (!next || at < next.at)) next = { id, at };
+  }
+  return next?.id ?? null;
 }
 
 async function lastProbe(env: Env): Promise<ProbeRecord | null> {
@@ -472,37 +489,52 @@ async function lastProbe(env: Env): Promise<ProbeRecord | null> {
       .from(reports)
       .where(eq(reports.name, PROBE_REPORT))
       .get();
-    return row ? (JSON.parse(row.body) as ProbeRecord) : null;
+    const sites = row ? (JSON.parse(row.body) as { sites?: Record<string, unknown> }).sites : null;
+    // A record kept by the earlier all-at-once probe (a bare list of findings per site) probes every site once more.
+    return {
+      sites: Object.fromEntries(
+        Object.entries(sites ?? {}).filter(
+          ([, v]) => typeof (v as { at?: unknown })?.at === "string",
+        ),
+      ) as ProbeRecord["sites"],
+    };
   } catch {
     return null;
   }
 }
 
-/** A day's probe ran: keep each site's probe-post findings until the next one. */
-async function recordProbe(env: Env, results: CheckResult[], now: Date): Promise<CheckResult[]> {
-  const sites: ProbeRecord["sites"] = {};
-  for (const r of results)
-    if (r.conformance)
-      sites[r.conformance.origin] = r.conformance.findings.filter((f) =>
-        f.detail.includes(PROBE_STEP),
-      );
-  const body = JSON.stringify({ at: now.toISOString(), sites } satisfies ProbeRecord);
-  try {
-    await drizzle(env.DB)
-      .insert(reports)
-      .values({ name: PROBE_REPORT, body, at: now.toISOString() })
-      .onConflictDoUpdate({ target: reports.name, set: { body, at: now.toISOString() } });
-  } catch (error) {
-    logEvent("health.probe-record-failed", { error: errorMessage(error) }, { level: "error" });
+/**
+ * The probed site's probe-post findings replace its record; every other site stays failing until its own next probe
+ * (the findings of its last one are carried into this report).
+ */
+async function settleProbe(
+  env: Env,
+  results: CheckResult[],
+  last: ProbeRecord | null,
+  probedOrigin: string | null,
+  now: Date,
+): Promise<CheckResult[]> {
+  const sites: ProbeRecord["sites"] = { ...last?.sites };
+  const fresh = results.find((r) => r.conformance && r.conformance.origin === probedOrigin);
+  if (fresh?.conformance) {
+    sites[fresh.conformance.origin] = {
+      at: now.toISOString(),
+      findings: fresh.conformance.findings.filter((f) => f.detail.includes(PROBE_STEP)),
+    };
+    const body = JSON.stringify({ sites } satisfies ProbeRecord);
+    try {
+      await drizzle(env.DB)
+        .insert(reports)
+        .values({ name: PROBE_REPORT, body, at: now.toISOString() })
+        .onConflictDoUpdate({ target: reports.name, set: { body, at: now.toISOString() } });
+    } catch (error) {
+      logEvent("health.probe-record-failed", { error: errorMessage(error) }, { level: "error" });
+    }
   }
-  return results;
-}
-
-/** Between probes: the last probe's failures still count, so a site that failed it stays failing until the next. */
-function carryProbe(results: CheckResult[], last: ProbeRecord | null): CheckResult[] {
   return results.map((r) => {
-    const carried = r.conformance ? (last?.sites[r.conformance.origin] ?? []) : [];
-    if (!r.conformance || carried.length === 0) return r;
+    if (!r.conformance || r === fresh) return r;
+    const carried = sites[r.conformance.origin]?.findings ?? [];
+    if (carried.length === 0) return r;
     return {
       ...r,
       ok: false,
