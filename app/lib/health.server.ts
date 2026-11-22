@@ -173,7 +173,8 @@ async function checkSite(
       // The site's own starting source, as New post sends it: a site may require a slug or a date.
       newSource: (itemId) =>
         siteEntry(id).newSource?.(itemId, new Date().toISOString().slice(0, 10)) ?? "",
-      imageAsUrl: siteEntry(id).imageAsUrl === true,
+      imageAsUrl: siteEntry(id).imageAsUrl,
+      author: siteEntry(id).author,
       fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
         fetcher(
           typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
@@ -505,7 +506,7 @@ function carryProbe(results: CheckResult[], last: ProbeRecord | null): CheckResu
     return {
       ...r,
       ok: false,
-      detail: `${r.detail}${r.ok ? ` ${carried.length} probe post step(s) failed at the last daily probe.` : ""}`,
+      detail: `${r.detail}${r.ok ? ` ${carried.length} probe post step(s) failed at the last probe.` : ""}`,
       conformance: {
         origin: r.conformance.origin,
         status: "fail",

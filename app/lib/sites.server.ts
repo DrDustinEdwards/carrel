@@ -26,6 +26,8 @@ type SiteEntry = {
   newSource?: (slug: string, today: string) => string;
   /** True when the site checks a post's share image as a whole address; the conformance probe then sends one. */
   imageAsUrl?: boolean;
+  /** The author the conformance probe post credits, for a site that credits only names it knows. */
+  author?: string;
   /**
    * Items other code on the site depends on staying public. dustinedwards.info's terms are the license
    * named by the Dataset JSON-LD and the Link header on every download, so Carrel never takes them down.
@@ -105,6 +107,7 @@ const SITES: Record<SiteId, SiteEntry> = {
     keyName: "SITE_FOXING_KEY",
     keepPublic: [],
     imageAsUrl: true,
+    author: "Foxing",
     // The shape of foxing's apps/web/app/lib/carrel/journal-source.ts for a Journal post: every field
     // as JSON, a blank line, then the Markdown body. The id is the slug; a new post is created a draft.
     newSource: () =>
