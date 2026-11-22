@@ -70,6 +70,26 @@ export async function share(
 }
 
 /** A fresh database with one book shared the usual way: an owner, an editor and a reader. */
+/** The desk every route and tool test starts from: an Owner, an Editor on a site project, and the optional extra people (the reader and the reviewer are readers on it, the stranger is on none). */
+export async function seedDesk(
+  slug: string,
+  also: ("reader" | "reviewer" | "stranger")[] = [],
+): Promise<number> {
+  await resetDb();
+  await addPerson("owner@test.invalid", { owner: true });
+  const editor = await addPerson("editor@test.invalid");
+  const reader = also.includes("reader") ? await addPerson("reader@test.invalid") : 0;
+  const reviewer = also.includes("reviewer")
+    ? await addPerson("reviewer@test.invalid", { reviewer: true })
+    : 0;
+  if (also.includes("stranger")) await addPerson("stranger@test.invalid");
+  const id = await addProject(slug, "dustinedwards");
+  await share(id, editor, "editor");
+  if (reader) await share(id, reader, "reader");
+  if (reviewer) await share(id, reviewer, "reader");
+  return id;
+}
+
 export async function sharedBook(slug: string): Promise<number> {
   await resetDb();
   await addPerson("owner@test.invalid", { owner: true });

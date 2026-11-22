@@ -8,7 +8,7 @@ import { saveAiDraft } from "~/lib/ai.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { loader as aiPreviewLoader } from "~/routes/ai-draft.preview";
 
-import { addPerson, addProject, resetDb, share } from "./env";
+import { seedDesk } from "./env";
 import { connectedEnv, fakeSite, viewerFor, routeContext } from "./site";
 
 const SLUG = "de-info";
@@ -17,11 +17,7 @@ let site: ReturnType<typeof fakeSite>;
 let env: Env;
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const id = await addProject(SLUG, "dustinedwards");
-  await share(id, editor, "editor");
+  await seedDesk(SLUG);
   site = fakeSite();
   vi.stubGlobal("fetch", site.fetch);
   env = connectedEnv();

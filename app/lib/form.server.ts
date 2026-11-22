@@ -2,6 +2,10 @@
 // whole body in memory before anything can refuse it. Over the ceiling is a thrown 413, never a cut form.
 
 import { readForm as readCappedForm } from "@dustinedwards/site-runtime/body";
+import type { RouterContextProvider } from "react-router";
+
+import { getEnv, getViewer } from "~/lib/context";
+import type { Viewer } from "~/lib/people.server";
 
 /** Text forms: the site API refuses a body over 4 MB (site-api server/http.ts), and prose is far smaller. */
 const FORM_MAX_BYTES = 4_000_000;
@@ -12,3 +16,19 @@ export const UPLOAD_MAX_BYTES = 26 * 1024 * 1024;
 /** The form, read to the ceiling (site-runtime ./body): a thrown 413 over it. */
 export const readForm = (request: Request, max = FORM_MAX_BYTES): Promise<FormData> =>
   readCappedForm(request, max);
+
+export const intentAction =
+  <R>(
+    run: (env: Env, viewer: Viewer, slug: string | undefined, form: FormData) => Promise<R>,
+    max?: number,
+  ) =>
+  async ({
+    params,
+    request,
+    context,
+  }: {
+    params: { project?: string };
+    request: Request;
+    context: Readonly<RouterContextProvider>;
+  }) =>
+    run(getEnv(context), getViewer(context), params.project, await readForm(request, max));

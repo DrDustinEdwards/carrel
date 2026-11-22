@@ -6,11 +6,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { writeToSite } from "~/lib/content.server";
 import { setProjectRole } from "~/lib/people-admin.server";
-import { requireSiteProject } from "~/lib/projects.server";
 import { action as editorAction, loader as editorLoader } from "~/routes/editor";
 
 import { addBook, addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, refusal, routeContext, viewerFor } from "./site";
+import { connectedEnv, fakeSite, refusal, routeContext, viewerFor, siteAs } from "./site";
 
 const SLUG = "de-info";
 const AUTHOR = "author@test.invalid";
@@ -31,10 +30,7 @@ beforeEach(async () => {
   vi.stubGlobal("fetch", site.fetch);
 });
 
-async function as(email: string) {
-  const viewer = await viewerFor(email);
-  return { viewer, project: await requireSiteProject(testEnv.DB, viewer, SLUG, "read") };
-}
+const as = (email: string) => siteAs(SLUG, email);
 
 /** A new post saved to the site by `email`, which makes them its author. */
 async function create(email: string, id: string) {

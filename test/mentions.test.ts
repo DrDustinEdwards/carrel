@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { action as mentionsApi } from "~/routes/mentions.api";
 import { loader as mentionsLoader } from "~/routes/mentions";
 
-import { addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { testEnv, seedDesk } from "./env";
 import { connectedEnv, fakeSite, refusal, routeContext } from "./site";
 
 const SLUG = "de-info";
@@ -19,11 +19,7 @@ let pending: string;
 let old: string;
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const id = await addProject(SLUG, "dustinedwards");
-  await share(id, editor, "editor");
+  await seedDesk(SLUG);
   site = fakeSite();
   env = connectedEnv();
   vi.stubGlobal("fetch", site.fetch);

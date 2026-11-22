@@ -5,12 +5,7 @@
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  authorshipRecord,
-  refreshBook,
-  requireBookProject,
-  saveBookFile,
-} from "~/lib/books.server";
+import { authorshipRecord, refreshBook, saveBookFile } from "~/lib/books.server";
 import { describe as describeFile, readMeta } from "~/lib/novels/layout";
 import { parseFile } from "~/lib/novels/frontmatter";
 import { clearTokenCache } from "~/lib/novels/repo.server";
@@ -30,7 +25,7 @@ import { action as settingsAction } from "~/routes/book.settings";
 
 import { sharedBook, testEnv } from "./env";
 import { fakeNovels, githubStyleKey } from "./novels";
-import { viewerFor, routeContext, settle } from "./site";
+import { bookAs, postRoute, routeContext, settle } from "./site";
 
 const SLUG = "test-book";
 const HEADER = (status: string, extra = "") =>
@@ -96,33 +91,11 @@ beforeEach(async () => {
   env = { ...testEnv, NOVELS_APP_ID: "123", NOVELS_APP_PRIVATE_KEY: key };
 });
 
-async function as(email: string, action: "read" | "edit" = "read") {
-  const viewer = await viewerFor(email);
-  return { viewer, project: await requireBookProject(testEnv.DB, viewer, SLUG, action) };
-}
+const as = (email: string, action: "read" | "edit" = "read") => bookAs(SLUG, email, action);
 
 const contextFor = (email: string) => routeContext(env, email);
 
-function body(fields: Record<string, string | string[]>) {
-  const form = new FormData();
-  for (const [k, v] of Object.entries(fields)) for (const one of [v].flat()) form.append(k, one);
-  return form;
-}
-
-const post = async (
-  route: (args: never) => Promise<unknown>,
-  email: string,
-  url: string,
-  fields: Record<string, string | string[]>,
-  params: Record<string, string>,
-) =>
-  settle(
-    route({
-      request: new Request(`https://carrel.test${url}`, { method: "POST", body: body(fields) }),
-      params,
-      context: await contextFor(email),
-    } as never),
-  );
+const post = postRoute(() => env);
 
 async function outliner(email: string, query = "") {
   return settle(

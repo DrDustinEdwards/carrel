@@ -105,7 +105,7 @@ import {
 import type { ChartFinding } from "~/lib/chart-check.client";
 import { featureImageFault, imagesWithoutAlt, searchFieldFaults, seoCheck } from "~/lib/seo-checks";
 import { siteFigureMarkup } from "~/lib/site-markdown";
-import { siteClient, siteConnection, siteEntry, SiteNotConnected } from "~/lib/sites.server";
+import { siteClient, siteConnection, siteHead, SiteNotConnected } from "~/lib/sites.server";
 import { siteBinderTree } from "~/lib/writing/binder";
 import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
@@ -269,9 +269,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 
   return {
     project: {
-      slug: project.slug,
-      name: project.name,
-      site: siteEntry(project.site).name,
+      ...siteHead(project),
       siteId: project.site,
     },
     itemId,

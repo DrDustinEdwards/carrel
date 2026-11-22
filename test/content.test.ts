@@ -2,33 +2,24 @@
 // Editor publishes, an Editor changes a live post, a non-member reads, and a stale expectedVersion.
 // Each must be refused, and refused before the site is asked to change anything.
 
+import { requireSiteProject } from "~/lib/projects.server";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { autosave, readDraft, writeToSite } from "~/lib/content.server";
-import { requireSiteProject } from "~/lib/projects.server";
 
-import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor, refusal } from "./site";
+import { addProject, testEnv, seedDesk } from "./env";
+import { connectedEnv, fakeSite, viewerFor, refusal, siteAs } from "./site";
 
 const SLUG = "de-info";
 
 let projectId: number;
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
-  await addPerson("stranger@test.invalid");
-  projectId = await addProject(SLUG, "dustinedwards");
-  await share(projectId, editor, "editor");
-  await share(projectId, reader, "reader");
+  projectId = await seedDesk(SLUG, ["reader", "stranger"]);
 });
 
-async function as(email: string, action: "read" | "edit" | "publish" = "read") {
-  const viewer = await viewerFor(email);
-  return { viewer, project: await requireSiteProject(testEnv.DB, viewer, SLUG, action) };
-}
+const as = (email: string, action: "read" | "edit" | "publish" = "read") =>
+  siteAs(SLUG, email, action);
 
 /** A post already on the site, saved by the Owner, returned with its current version. */
 async function seed(

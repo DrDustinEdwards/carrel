@@ -14,7 +14,7 @@ import { action as mediaAction, loader as mediaLoader } from "~/routes/media";
 import { action as apiAction, loader as apiLoader } from "~/routes/media.api";
 
 import { withSecurityHeaders } from "../workers/security-headers";
-import { addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { addPerson, testEnv, seedDesk } from "./env";
 import { connectedEnv, fakeSite, SITE_ORIGIN, routeContext, refusal, viewerFor } from "./site";
 
 const SLUG = "de-info";
@@ -29,13 +29,7 @@ let site: ReturnType<typeof fakeSite<ReturnType<typeof memoryAdapter>>>;
 let env: Env;
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
-  const id = await addProject(SLUG, "dustinedwards");
-  await share(id, editor, "editor");
-  await share(id, reader, "reader");
+  await seedDesk(SLUG, ["reader"]);
   site = fakeSite();
   env = connectedEnv();
   vi.stubGlobal("fetch", site.fetch);
