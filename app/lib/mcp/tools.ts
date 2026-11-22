@@ -39,7 +39,7 @@ import {
   requireBookProject,
   saveBookAiDraft,
 } from "~/lib/books.server";
-import { readDoc, readDraft } from "~/lib/content.server";
+import { readDoc, readDraft, type ProjectRole } from "~/lib/content.server";
 import { writeInDoc } from "~/lib/ai-write.server";
 import {
   CARREL_FOLDER,
@@ -378,6 +378,20 @@ async function packFor(ctx: ToolContext, p: SiteProject): Promise<VoicePack> {
 
 async function book(ctx: ToolContext, args: Record<string, unknown>, action: Action) {
   return requireBookProject(ctx.env.DB, ctx.session.viewer, str(args, "project"), action);
+}
+
+/** Flags `itemId` on a project for the session: the same flag twice is one flag (alreadyFlagged). */
+async function flag(
+  ctx: ToolContext,
+  args: Record<string, unknown>,
+  target: ProjectRole,
+  itemId: string,
+) {
+  const added = await addFinding(ctx.env.DB, target, ctx.session, itemId, {
+    message: str(args, "message", { max: MAX.message }),
+    excerpt: str(args, "excerpt", { optional: true, max: MAX.excerpt }) || null,
+  });
+  return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };
 }
 
 export const TOOLS: Tool[] = [
@@ -816,11 +830,7 @@ export const TOOLS: Tool[] = [
     outside: false,
     run: async (args, ctx) => {
       const p = await project(ctx, args, "read");
-      const added = await addFinding(ctx.env.DB, p, ctx.session, str(args, "item"), {
-        message: str(args, "message", { max: MAX.message }),
-        excerpt: str(args, "excerpt", { optional: true, max: MAX.excerpt }) || null,
-      });
-      return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };
+      return flag(ctx, args, p, str(args, "item"));
     },
   },
   {
@@ -1449,11 +1459,7 @@ export const TOOLS: Tool[] = [
       const b = await book(ctx, args, "read");
       const path = str(args, "path", { max: MAX.path });
       if (!isBookPath(path)) throw new AiRefusal(`${path} is not a file in the novels layout.`);
-      const added = await addFinding(ctx.env.DB, b, ctx.session, path, {
-        message: str(args, "message", { max: MAX.message }),
-        excerpt: str(args, "excerpt", { optional: true, max: MAX.excerpt }) || null,
-      });
-      return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };
+      return flag(ctx, args, b, path);
     },
   },
 
