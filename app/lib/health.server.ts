@@ -500,16 +500,17 @@ async function settleProbe(
   const sites: ProbeRecord["sites"] = { ...last?.sites };
   const fresh = results.find((r) => r.conformance && r.conformance.origin === probedOrigin);
   if (fresh?.conformance) {
+    const at = now.toISOString();
     sites[fresh.conformance.origin] = {
-      at: now.toISOString(),
+      at,
       findings: fresh.conformance.findings.filter((f) => f.detail.includes(PROBE_STEP)),
     };
     const body = JSON.stringify({ sites } satisfies ProbeRecord);
     try {
       await drizzle(env.DB)
         .insert(reports)
-        .values({ name: PROBE_REPORT, body, at: now.toISOString() })
-        .onConflictDoUpdate({ target: reports.name, set: { body, at: now.toISOString() } });
+        .values({ name: PROBE_REPORT, body, at })
+        .onConflictDoUpdate({ target: reports.name, set: { body, at } });
     } catch (error) {
       logEvent("health.probe-record-failed", { error: errorMessage(error) }, { level: "error" });
     }
@@ -517,7 +518,7 @@ async function settleProbe(
   return results.map((r) => {
     if (!r.conformance || r === fresh) return r;
     const carried = sites[r.conformance.origin]?.findings ?? [];
-    if (carried.length === 0) return r;
+    if (!carried.length) return r;
     return {
       ...r,
       ok: false,
