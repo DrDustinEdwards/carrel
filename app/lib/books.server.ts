@@ -17,6 +17,7 @@ import {
   people,
   projects,
 } from "~/db/schema";
+import { draftOf } from "~/lib/content.server";
 import { AiRefusal, type AiSession } from "~/lib/ai.server";
 import { requireAction, type Viewer } from "~/lib/people.server";
 import { can, type Action, type Role } from "~/lib/roles";
@@ -585,15 +586,7 @@ export async function saveBookFile(
     { source: input.source, sha: written.sha },
     new Date().toISOString(),
   );
-  await d
-    .delete(drafts)
-    .where(
-      and(
-        eq(drafts.projectId, project.id),
-        eq(drafts.itemId, path),
-        eq(drafts.personId, viewer.id),
-      ),
-    );
+  await d.delete(drafts).where(draftOf(project.id, path, viewer.id));
 
   // A bible entry can change what every scene's checks say; a scene can change its successor's timeline.
   const kind = fileKindOf(path);

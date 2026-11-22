@@ -19,6 +19,10 @@ import { siteClient, siteConnection } from "~/lib/sites.server";
 import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
 import { logEvent } from "@dustinedwards/site-runtime/log";
 
+/** The rows of one person's working copy of one item. */
+export const draftOf = (projectId: number, itemId: string, personId: number) =>
+  and(eq(drafts.projectId, projectId), eq(drafts.itemId, itemId), eq(drafts.personId, personId));
+
 export type Draft = { source: string; baseVersion: string | null; updatedAt: string };
 
 type WriteAction = "save" | "publish" | "schedule" | "unschedule" | "unpublish";
@@ -104,13 +108,7 @@ export async function readOwnDraft(
   const row = await drizzle(db)
     .select({ source: drafts.source, baseVersion: drafts.baseVersion, updatedAt: drafts.updatedAt })
     .from(drafts)
-    .where(
-      and(
-        eq(drafts.projectId, project.id),
-        eq(drafts.itemId, itemId),
-        eq(drafts.personId, viewer.id),
-      ),
-    )
+    .where(draftOf(project.id, itemId, viewer.id))
     .get();
   return row ?? null;
 }
@@ -152,13 +150,7 @@ export async function discardDraft(
   requireCan(project, "edit");
   await drizzle(db)
     .delete(drafts)
-    .where(
-      and(
-        eq(drafts.projectId, project.id),
-        eq(drafts.itemId, itemId),
-        eq(drafts.personId, viewer.id),
-      ),
-    );
+    .where(draftOf(project.id, itemId, viewer.id));
 }
 
 /**
@@ -400,13 +392,7 @@ export async function writeToSite(
   if ("source" in request && request.source !== undefined && !opts.keepDraft) {
     await drizzle(env.DB)
       .delete(drafts)
-      .where(
-        and(
-          eq(drafts.projectId, project.id),
-          eq(drafts.itemId, itemId),
-          eq(drafts.personId, viewer.id),
-        ),
-      );
+      .where(draftOf(project.id, itemId, viewer.id));
   }
 
   // The write landed; a failed re-read only leaves the index to the next refresh.

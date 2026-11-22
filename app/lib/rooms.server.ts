@@ -20,6 +20,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { changeContributors, changes, drafts, people, rooms } from "~/db/schema";
 import type { JsonDoc } from "capsomer/behavior/collab-editor";
 import type { Dialect } from "capsomer/behavior/rich-editor";
+import { draftOf } from "~/lib/content.server";
 import type { Viewer } from "~/lib/people.server";
 import { can, type Role } from "~/lib/roles";
 import { roomName, roomViewer } from "~/lib/editor/room-protocol";
@@ -74,13 +75,7 @@ export async function openRoom(
           updatedAt: drafts.updatedAt,
         })
         .from(drafts)
-        .where(
-          and(
-            eq(drafts.projectId, project.id),
-            eq(drafts.itemId, itemId),
-            eq(drafts.personId, viewer.id),
-          ),
-        )
+        .where(draftOf(project.id, itemId, viewer.id))
         .get()
     : undefined;
   let ownDraft: OpenRoom["ownDraft"] = null;
@@ -101,13 +96,7 @@ export async function openRoom(
     if (own)
       await drizzle(env.DB)
         .delete(drafts)
-        .where(
-          and(
-            eq(drafts.projectId, project.id),
-            eq(drafts.itemId, itemId),
-            eq(drafts.personId, viewer.id),
-          ),
-        );
+        .where(draftOf(project.id, itemId, viewer.id));
     status = await room.status();
   } else if (draft && draft.source !== status.markdown) {
     ownDraft = { source: draft.source, updatedAt: draft.updatedAt };
