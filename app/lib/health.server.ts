@@ -67,12 +67,10 @@ export type CheckResult = {
 };
 
 /**
- * The probe post publishes, renames and deletes a post on the site, and every one of those purges the site's stored
- * pages. Cloudflare rations purges per account, shared by every site's Worker (Free: 5 requests a minute, bucket of 25,
- * developers.cloudflare.com/cache/how-to/purge-cache/), so the sites are probed one at a time: health runs every 15
- * minutes and each run probes the one site that is due, a site once a day and again an hour after a failing probe, so a
- * fix shows within the hour. Probing all of them at once spent the bucket and left a stored page stale for the probe. A
- * site's failures are kept (reports, "probe-sites") and carried into every report until its next probe replaces them.
+ * The probe post publishes, renames and deletes a post, and each purges the site's stored pages. Cloudflare rations purges
+ * per account, shared by every site's Worker (Free: 5 a minute, bucket of 25), so each health run (every 15 minutes)
+ * probes only the one site that is due: once a day, and an hour after a failing probe. A site's failures are kept
+ * (reports, "probe-sites") and carried into every report until its next probe.
  */
 const PROBE_REPORT = "probe-sites";
 const PROBE_EVERY_MS = 24 * 60 * 60 * 1000;
