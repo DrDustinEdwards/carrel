@@ -1,6 +1,5 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteLoaderData } from "react-router";
 
-import { preloads } from "@dustinedwards/site-runtime/preload";
 import { markup } from "capsomer/behavior/trusted-html";
 import { ErrorPage, errorTitle } from "capsomer/react/error-page";
 import { themeScript } from "capsomer/theme-server";
@@ -19,9 +18,10 @@ const THEME_SCRIPT = themeScript();
 
 // Capsomer's UI face, which every page draws first and loads `font-display: optional`: preloaded, it is in
 // before the first layout, so a line that wraps differently in the size-matched fallback never moves the page
-// under it (capsomer README, fallback fonts). site-runtime adds the crossorigin a font preload needs.
-export const links: Route.LinksFunction = () =>
-  preloads([{ href: uiFontUrl, as: "font", type: "font/woff2" }]).links;
+// under it (capsomer README, fallback fonts). A font preload needs crossorigin, or the file is fetched twice.
+export const links: Route.LinksFunction = () => [
+  { rel: "preload", href: uiFontUrl, as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+];
 
 export function meta({ error }: Route.MetaArgs): Route.MetaDescriptors {
   return [
