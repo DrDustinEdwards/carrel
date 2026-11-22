@@ -70,7 +70,7 @@ describe("the probe post", () => {
   const ago = (hours: number) => new Date(now.getTime() - hours * 3_600_000).toISOString();
 
   it("probes one site per run: the never probed first, then the oldest due, a failing one after an hour", () => {
-    expect(nextProbe(env, null, now)).toBe("germomics");
+    expect(nextProbe(env, null, now)?.id).toBe("germomics");
     const record = (germomics: [number, boolean], foxing: [number, boolean]) => ({
       sites: {
         "https://germomics.example.com": {
@@ -83,9 +83,9 @@ describe("the probe post", () => {
         },
       },
     });
-    expect(nextProbe(env, record([2, false], [30, false]), now)).toBe("foxing");
-    expect(nextProbe(env, record([30, false], [26, false]), now)).toBe("germomics");
-    expect(nextProbe(env, record([2, false], [2, false]), now)).toBeNull();
-    expect(nextProbe(env, record([2, true], [2, false]), now)).toBe("germomics");
+    expect(nextProbe(env, record([2, false], [30, false]), now)?.id).toBe("foxing");
+    expect(nextProbe(env, record([30, false], [26, false]), now)?.id).toBe("germomics");
+    expect(nextProbe(env, record([2, false], [2, false]), now)).toBeUndefined();
+    expect(nextProbe(env, record([2, true], [2, false]), now)?.id).toBe("germomics");
   });
 });

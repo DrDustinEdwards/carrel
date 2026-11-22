@@ -450,7 +450,7 @@ export async function runChecks(
     checkConfig(env),
     checkOwner(env),
     checkAccessKeys(env, fetcher),
-    ...SITE_IDS.map((id) => checkSite(env, id, fetcher, id === probed)),
+    ...SITE_IDS.map((id) => checkSite(env, id, fetcher, id === probed?.id)),
     checkNovels(env, fetcher),
     checkAiPublishEmails(env),
     checkBackup(env, now),
@@ -459,27 +459,23 @@ export async function runChecks(
     checkDriveFile(env, fetcher),
     checkSocialTemplates(env),
   ]);
-  return settleProbe(env, results, last, probed ? siteConnectionOrigin(env, probed) : null, now);
+  return settleProbe(env, results, last, probed?.origin, now);
 }
 
-const siteConnectionOrigin = (env: Env, id: SiteId) => {
-  const connection = siteConnection(env, id);
-  return connection.state === "connected" ? connection.origin : null;
-};
-
-/** The one connected site whose probe is due and oldest (never probed first), or null when none is. */
-export function nextProbe(env: Env, last: ProbeRecord | null, now: Date): SiteId | null {
-  let next: { id: SiteId; at: number } | null = null;
+/** The connected site whose probe is due and oldest (never probed first), or undefined. */
+export function nextProbe(env: Env, last: ProbeRecord | null, now: Date) {
+  let next: { id: SiteId; origin: string; at: number } | undefined;
   for (const id of SITE_IDS) {
-    const origin = siteConnectionOrigin(env, id);
-    if (!origin) continue;
+    const connection = siteConnection(env, id);
+    if (connection.state !== "connected") continue;
+    const { origin } = connection;
     const record = last?.sites[origin];
     const at = record ? Date.parse(record.at) : 0;
-    const due =
-      !record || now.getTime() - at >= (record.findings.length ? PROBE_RETRY_MS : PROBE_EVERY_MS);
-    if (due && (!next || at < next.at)) next = { id, at };
+    const wait = record?.findings.length ? PROBE_RETRY_MS : PROBE_EVERY_MS;
+    if ((!record || now.getTime() - at >= wait) && (!next || at < next.at))
+      next = { id, origin, at };
   }
-  return next?.id ?? null;
+  return next;
 }
 
 async function lastProbe(env: Env): Promise<ProbeRecord | null> {
@@ -495,15 +491,12 @@ async function lastProbe(env: Env): Promise<ProbeRecord | null> {
   }
 }
 
-/**
- * The probed site's probe-post findings replace its record; every other site stays failing until its own next probe
- * (the findings of its last one are carried into this report).
- */
+/** The probed site's findings replace its record; every other site carries its last probe's. */
 async function settleProbe(
   env: Env,
   results: CheckResult[],
   last: ProbeRecord | null,
-  probedOrigin: string | null,
+  probedOrigin: string | undefined,
   now: Date,
 ): Promise<CheckResult[]> {
   const sites: ProbeRecord["sites"] = { ...last?.sites };
