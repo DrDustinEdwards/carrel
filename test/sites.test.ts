@@ -3,7 +3,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { runChecks } from "~/lib/health.server";
+import { nextProbe, runChecks } from "~/lib/health.server";
 import { siteFigureMarkup } from "~/lib/site-markdown";
 import { siteClient, siteOrigins } from "~/lib/sites.server";
 import { addPerson, resetDb, testEnv } from "./env";
@@ -54,5 +54,38 @@ describe("germomics", () => {
     expect(siteFigureMarkup("dustinedwards", "https://media.example.com/plain.png", "x")).toContain(
       'src="https://media.example.com/plain.png"',
     );
+  });
+});
+
+describe("the probe post", () => {
+  const key = "k".repeat(32);
+  const env = {
+    ...testEnv,
+    SITE_GERMOMICS_ORIGIN: "https://germomics.example.com",
+    SITE_GERMOMICS_KEY: key,
+    SITE_FOXING_ORIGIN: "https://foxing.example.com",
+    SITE_FOXING_KEY: key,
+  } as Env;
+  const now = new Date("2026-11-22T09:00:00Z");
+  const ago = (hours: number) => new Date(now.getTime() - hours * 3_600_000).toISOString();
+
+  it("probes one site per run: the never probed first, then the oldest due, a failing one after an hour", () => {
+    expect(nextProbe(env, null, now)?.id).toBe("germomics");
+    const record = (germomics: [number, boolean], foxing: [number, boolean]) => ({
+      sites: {
+        "https://germomics.example.com": {
+          at: ago(germomics[0]),
+          findings: germomics[1] ? [{} as never] : [],
+        },
+        "https://foxing.example.com": {
+          at: ago(foxing[0]),
+          findings: foxing[1] ? [{} as never] : [],
+        },
+      },
+    });
+    expect(nextProbe(env, record([2, false], [30, false]), now)?.id).toBe("foxing");
+    expect(nextProbe(env, record([30, false], [26, false]), now)?.id).toBe("germomics");
+    expect(nextProbe(env, record([2, false], [2, false]), now)).toBeUndefined();
+    expect(nextProbe(env, record([2, true], [2, false]), now)?.id).toBe("germomics");
   });
 });
