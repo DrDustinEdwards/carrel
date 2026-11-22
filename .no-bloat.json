@@ -4,7 +4,7 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "b627b95",
+    "measured_at": "8ad13c5",
     "knip": {},
     "jscpd": {
       "clones": 42,
@@ -30,7 +30,7 @@
       "app/lib/google/docs.server.ts": 1562,
       "app/lib/google/drive.server.ts": 501,
       "app/lib/google/slides-sheets.server.ts": 669,
-      "app/lib/health.server.ts": 684,
+      "app/lib/health.server.ts": 680,
       "app/lib/mcp/tools.ts": 2000,
       "app/lib/social/queue.server.ts": 817,
       "app/routes/book.file.tsx": 975,
@@ -47,7 +47,7 @@
     },
     "comments": {
       "lines": 3983,
-      "code": 47408,
+      "code": 47404,
       "percentage": 7.75
     }
   }
