@@ -21,7 +21,7 @@ import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { isMain } from "@dustinedwards/devkit/node";
+import { isMain, walkFiles } from "@dustinedwards/devkit/node";
 
 import {
   ACCESSIBILITY_PATH,
@@ -567,16 +567,7 @@ export async function buildSite(outDir) {
   // Each page's Markdown copy and /llms-full.txt, which serveMarkdownCopies in worker.mjs serves.
   await writeMarkdownCopies({ dir: outDir, origin: ORIGIN });
 
-  /** @type {string[]} */
-  const files = [];
-  const walk = (/** @type {string} */ dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) walk(path);
-      else files.push(relative(outDir, path));
-    }
-  };
-  walk(outDir);
+  const files = walkFiles(outDir).map((path) => relative(outDir, path));
   const missing = PAGE_PRELOADS.links.filter(({ href }) => !files.includes(href.slice(1)));
   if (missing.length)
     throw new Error(
