@@ -1,5 +1,6 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteLoaderData } from "react-router";
 
+import { preloads } from "@dustinedwards/site-runtime/preload";
 import { markup } from "capsomer/behavior/trusted-html";
 import { ErrorPage, errorTitle } from "capsomer/react/error-page";
 import { themeScript } from "capsomer/theme-server";
@@ -9,11 +10,18 @@ import { getNonce } from "~/lib/context";
 import type { Route } from "./+types/root";
 import { LinkPrefetch } from "capsomer/react/link";
 import "capsomer/fonts.css";
+import uiFontUrl from "capsomer/fonts/inter-latin-wght-normal.woff2?url";
 import "./app.css";
 
 // Run before first paint, so a remembered theme never flashes the other one: Capsomer's own
 // one-liner; the nonce is what lets the policy run it.
 const THEME_SCRIPT = themeScript();
+
+// Capsomer's UI face, which every page draws first and loads `font-display: optional`: preloaded, it is in
+// before the first layout, so a line that wraps differently in the size-matched fallback never moves the page
+// under it (capsomer README, fallback fonts). site-runtime adds the crossorigin a font preload needs.
+export const links: Route.LinksFunction = () =>
+  preloads([{ href: uiFontUrl, as: "font", type: "font/woff2" }]).links;
 
 export function meta({ error }: Route.MetaArgs): Route.MetaDescriptors {
   return [
