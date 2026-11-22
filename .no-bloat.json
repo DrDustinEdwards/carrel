@@ -4,7 +4,7 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "433ae5a",
+    "measured_at": "b627b95",
     "knip": {},
     "jscpd": {
       "clones": 42,
@@ -18,6 +18,28 @@
     },
     "legacy": {
       "ime-safe-enter-submit": 1
+    },
+    "size": {
+      "app/app.css": 526,
+      "app/db/schema.ts": 803,
+      "app/lib/ai-engine.server.ts": 621,
+      "app/lib/ai-write.server.ts": 506,
+      "app/lib/ai.server.ts": 547,
+      "app/lib/books.server.ts": 841,
+      "app/lib/google/book-docs.server.ts": 734,
+      "app/lib/google/docs.server.ts": 1562,
+      "app/lib/google/drive.server.ts": 501,
+      "app/lib/google/slides-sheets.server.ts": 669,
+      "app/lib/health.server.ts": 684,
+      "app/lib/mcp/tools.ts": 2000,
+      "app/lib/social/queue.server.ts": 817,
+      "app/routes/book.file.tsx": 975,
+      "app/routes/editor.tsx": 1404,
+      "scripts/lib/harness.mjs": 887,
+      "test/door.test.ts": 975,
+      "test/google.ts": 939,
+      "test/harness/seed.ts": 1084,
+      "www/build.mjs": 583
     },
     "tests": {
       "files": 51,
