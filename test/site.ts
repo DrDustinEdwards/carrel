@@ -6,7 +6,9 @@ import { memoryAdapter } from "@dustinedwards/site-api/testing";
 import { RouterContextProvider } from "react-router";
 
 import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
+import { requireBookProject } from "~/lib/books.server";
 import type { Viewer } from "~/lib/people.server";
+import { requireSiteProject } from "~/lib/projects.server";
 
 import { refreshManuscripts } from "~/lib/google/drive.server";
 import { clearSaTokenCache } from "~/lib/google/service-account.server";
@@ -242,3 +244,41 @@ export async function googleDesk(
   google.requests.length = 0;
   return { google, env, box };
 }
+
+export async function siteAs(
+  slug: string,
+  email: string,
+  action: "read" | "edit" | "publish" = "read",
+) {
+  const viewer = await viewerFor(email);
+  return { viewer, project: await requireSiteProject(testEnv.DB, viewer, slug, action) };
+}
+
+export async function bookAs(
+  slug: string,
+  email: string,
+  action: "read" | "edit" | "publish" = "read",
+) {
+  const viewer = await viewerFor(email);
+  return { viewer, project: await requireBookProject(testEnv.DB, viewer, slug, action) };
+}
+
+export const postRoute =
+  (env: () => Env) =>
+  async (
+    route: (args: never) => Promise<unknown>,
+    email: string,
+    url: string,
+    fields: Record<string, string | string[]>,
+    params: Record<string, string>,
+  ) => {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) for (const one of [v].flat()) form.append(k, one);
+    return settle(
+      route({
+        request: new Request(`https://carrel.test${url}`, { method: "POST", body: form }),
+        params,
+        context: await routeContext(env(), email),
+      } as never),
+    );
+  };

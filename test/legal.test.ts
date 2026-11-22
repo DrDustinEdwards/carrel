@@ -10,12 +10,11 @@ import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
 import { expandShared, prepareLegalWrite, type SharedSection } from "~/lib/legal";
 import { deleteSection, listSections, saveSection } from "~/lib/legal.server";
-import { requireSiteProject } from "~/lib/projects.server";
 import { siteEntry } from "~/lib/sites.server";
 import { action as legalAction, loader as legalLoader } from "~/routes/legal";
 
 import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, viewerFor } from "./site";
+import { connectedEnv, fakeSite, viewerFor, siteAs } from "./site";
 
 const SLUG = "de-info";
 
@@ -122,10 +121,7 @@ beforeEach(async () => {
   }
 });
 
-async function as(email: string) {
-  const viewer = await viewerFor(email);
-  return { viewer, project: await requireSiteProject(testEnv.DB, viewer, SLUG, "read") };
-}
+const as = (email: string) => siteAs(SLUG, email);
 
 async function seed(site: ReturnType<typeof fakeSite>, id: string, source: string) {
   const { viewer, project } = await as("owner@test.invalid");

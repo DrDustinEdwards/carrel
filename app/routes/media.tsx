@@ -14,7 +14,7 @@ import { MediaLibrary, type KitMediaChanges } from "capsomer/react/media-library
 import { mediaDataOfKit, readMediaView } from "capsomer/behavior/media-library";
 import type { MediaRecord } from "capsomer/behavior/media";
 import { PageHead } from "capsomer/react/page-head";
-import { loadMedia, readMediaQuery, type IntentResult } from "@dustinedwards/site-api/admin";
+import { loadMedia, readMediaQuery } from "@dustinedwards/site-api/admin";
 
 import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
 import { ScopeChip } from "capsomer/react/scope-chip";
@@ -24,8 +24,8 @@ import { getEnv, getViewer } from "~/lib/context";
 import { mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
-import { siteEntry } from "~/lib/sites.server";
-import { readForm, UPLOAD_MAX_BYTES } from "~/lib/form.server";
+import { siteHead } from "~/lib/sites.server";
+import { intentAction, UPLOAD_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/media";
 import "capsomer/drop-zone.css";
@@ -48,9 +48,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     .map((p) => ({ slug: p.slug, name: p.name }));
   const head = {
     sites,
-    slug: project.slug,
-    name: project.name,
-    site: siteEntry(project.site).name,
+    ...siteHead(project),
   };
   try {
     const kit = await loadMedia(mediaSource(env, project, viewer), readMediaQuery(search));
@@ -69,18 +67,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   }
 }
 
-export async function action({
-  params,
-  request,
-  context,
-}: Route.ActionArgs): Promise<IntentResult> {
-  return runIntent(
-    getEnv(context),
-    getViewer(context),
-    params.project,
-    await readForm(request, UPLOAD_MAX_BYTES),
-  );
-}
+export const action = intentAction(runIntent, UPLOAD_MAX_BYTES);
 
 export default function MediaPage({ loaderData, actionData }: Route.ComponentProps) {
   const { project, data, unavailable } = loaderData;

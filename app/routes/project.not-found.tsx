@@ -13,7 +13,7 @@ import { ProjectTabs } from "~/components/project-tabs";
 
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteClient, siteEntry, SiteNotConnected } from "~/lib/sites.server";
+import { siteClient, siteHead, SiteNotConnected } from "~/lib/sites.server";
 
 import type { Route } from "./+types/project.not-found";
 import { logEvent } from "@dustinedwards/site-runtime/log";
@@ -30,9 +30,7 @@ export async function loader({ params, context, request }: Route.LoaderArgs) {
   const days = windowOf(new URL(request.url).searchParams.get("days"), WINDOWS);
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read");
   const head = {
-    slug: project.slug,
-    name: project.name,
-    site: siteEntry(project.site).name,
+    ...siteHead(project),
   };
   try {
     const { rows } = await siteClient(env, project.site).insight.notFound({ days });

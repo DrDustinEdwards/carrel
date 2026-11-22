@@ -15,7 +15,7 @@ import { lastAiPublication, publishedByLine } from "~/lib/ai.server";
 import { mayPublishItem, readDoc, writeToSite } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteEntry } from "~/lib/sites.server";
+import { siteHead } from "~/lib/sites.server";
 
 import type { Route } from "./+types/unpublish";
 
@@ -40,7 +40,7 @@ export async function loader(args: Route.LoaderArgs) {
   const { params } = args;
   const ai = await lastAiPublication(env.DB, project, params.item);
   return {
-    project: { slug: project.slug, name: project.name, site: siteEntry(project.site).name },
+    project: { ...siteHead(project) },
     item: {
       id: doc.id,
       title: doc.title || doc.id,
