@@ -21,12 +21,12 @@
     },
     "tests": {
       "files": 51,
-      "cases": 466
+      "cases": 467
     },
     "comments": {
-      "lines": 3976,
+      "lines": 3984,
       "code": 47460,
-      "percentage": 7.73
+      "percentage": 7.74
     }
   }
 }
