@@ -236,9 +236,9 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/mcp/tools.ts",
-    find: "Open world: the public site.\n    annotations: {\n      readOnlyHint: false,\n      destructiveHint: true,",
+    find: "Open world: the public site.\n    annotations: { ...WRITE_SITE, destructiveHint: true },",
     replace:
-      "Open world: the public site.\n    annotations: {\n      readOnlyHint: false,\n      destructiveHint: false,",
+      "Open world: the public site.\n    annotations: WRITE_SITE,",
     label: "publish no longer marked destructive",
   },
   {
