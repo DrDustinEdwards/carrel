@@ -15,16 +15,14 @@ import { sendEmail } from "@dustinedwards/site-runtime/email";
 import { PACKAGE_VERSION } from "@dustinedwards/site-api";
 import { runConformance } from "@dustinedwards/site-api/conformance";
 import { accessIssuer } from "@dustinedwards/site-runtime/access";
-import { cronCheck } from "@dustinedwards/site-runtime/cron";
 import { auditLogCheck } from "@dustinedwards/site-runtime/audit-log";
-import { deployedAt, deployedSha } from "@dustinedwards/site-runtime/deploy";
 import {
   aiOutcomeCheck,
   durableObjectCheck,
   emailCheck,
-  healthResponse,
   kvCheck,
   r2Check,
+  siteHealthResponse,
 } from "@dustinedwards/site-runtime/health";
 import { and, eq, isNull, notLike } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -619,7 +617,7 @@ export async function runHealth(
 }
 
 /**
- * GET /health, the one answer on both hosts (site-runtime's healthResponse). On the AI door it is outside Access, so it
+ * GET /health, the one answer on both hosts (site-runtime's siteHealthResponse). On the AI door it is outside Access, so it
  * says only what any family site says in public: D1 answers, the bindings are there, the dump's age, the crons, the
  * deployed commit the live gate waits for, and the names (never the details) of the checks above that are failing.
  *
@@ -640,10 +638,9 @@ export async function runHealth(
  * the receiver answers 204 regardless. BACKUPS is the backup check's own read.
  */
 export function healthAnswer(env: Env): Promise<Response> {
-  return healthResponse({
-    ping: () => env.DB.prepare("SELECT 1").first(),
+  return siteHealthResponse(env, {
     backup: () => backupStatus(env),
-    sha: deployedSha(env, { fallback: "unknown" }),
+    jobs: ALL_JOBS,
     checks: [
       { ...kvCheck("oauth-kv", env.OAUTH_KV), level: "warn" },
       durableObjectCheck("doc-room", env.DOC_ROOM),
@@ -657,7 +654,6 @@ export function healthAnswer(env: Env): Promise<Response> {
       aiOutcomeCheck("writing", env.OAUTH_KV),
       // Each job with its own interval, so one that never ran (a trigger that does not fire it) warns too. Held back
       // until its window has passed since this version was deployed.
-      cronCheck(env.DB, { jobs: ALL_JOBS, deployedAt: deployedAt(env) }),
       {
         name: "alerts",
         level: "warn",
