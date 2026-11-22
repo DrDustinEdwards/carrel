@@ -14,7 +14,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { people, projectMembers, projects } from "~/db/schema";
 import { syncAccess, type SyncOutcome } from "~/lib/access-sync.server";
 import { agentEmail, isAgentName } from "~/lib/agent-keys.server";
-import type { Viewer } from "~/lib/people.server";
+import { allProjects, type Viewer } from "~/lib/people.server";
 import { isMemberRole, type MemberRole } from "~/lib/roles";
 
 /** A refusal the Owner reads on the page: the rule said no, and nothing changed. */
@@ -65,17 +65,7 @@ export async function listPeople(
       .orderBy(asc(people.email))
       .all(),
     d.select().from(projectMembers).all(),
-    d
-      .select({
-        id: projects.id,
-        slug: projects.slug,
-        name: projects.name,
-        site: projects.site,
-        book: projects.book,
-      })
-      .from(projects)
-      .orderBy(asc(projects.name))
-      .all(),
+    allProjects(d),
   ]);
   return {
     // The Owner first: the one row nothing here can change.

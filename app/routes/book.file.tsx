@@ -11,7 +11,7 @@ import { FlagRow } from "~/components/editor/flags-panel";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
-import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
+import { DraftConfirms } from "~/components/draft-confirms";
 import { Disclosure } from "capsomer/react/disclosure";
 import { Field } from "capsomer/react/field";
 import { Select } from "capsomer/react/select";
@@ -409,14 +409,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const base = `/b/${data.project.slug}`;
 
   // The file's room: one copy for everyone on the book, as they type.
-  const editing = useRoomEditing({
-    path: data.room?.path ?? "",
-    initial: data.source,
-    unsaved: data.unsaved,
-    viewer: data.room?.viewer ?? { id: 0, name: "", access: "suggest" },
-    names: data.room?.names ?? {},
-    hideFrontMatter: true,
-  });
+  const editing = useRoomEditing(data);
   const { room } = editing;
   const source = data.room ? room.source : data.source;
   const setSource = (next: string) => {
@@ -909,22 +902,7 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
         />
       </div>
 
-      <PutDraftDialog
-        returnTo={asking.props.returnTo}
-        onClose={asking.close}
-        open={asking.subject?.kind === "put-draft"}
-        perform={async () => {
-          await send("use-own-draft", { confirmed: "1" });
-        }}
-      />
-      <DropDraftDialog
-        returnTo={asking.props.returnTo}
-        onClose={asking.close}
-        open={asking.subject?.kind === "drop-draft"}
-        perform={async () => {
-          await send("drop-own-draft", { confirmed: "1" });
-        }}
-      />
+      <DraftConfirms asking={asking} send={send} />
       <ConfirmDialog
         {...asking.props}
         open={asking.subject?.kind === "discard"}
