@@ -4,12 +4,8 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "aeefb37",
-    "knip": {
-      "files": 3,
-      "exports": 8,
-      "types": 1
-    },
+    "measured_at": "274f8d8",
+    "knip": {},
     "jscpd": {
       "clones": 50,
       "lines": 463,
