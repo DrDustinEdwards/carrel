@@ -44,7 +44,7 @@
     "@codemirror/language": "6.13.1",
     "@codemirror/state": "6.7.6",
     "@codemirror/view": "6.43.15",
-    "@drdustinedwards/site-helpers": "github:DrDustinEdwards/prelum#v0.63.9",
+    "@drdustinedwards/site-helpers": "github:DrDustinEdwards/prelum#v0.63.10",
     "@dustinedwards/d1-dump": "github:DrDustinEdwards/d1-dump#v0.16.3",
     "@dustinedwards/site-api": "github:DrDustinEdwards/site-api#v0.46.5",
     "@dustinedwards/site-runtime": "github:DrDustinEdwards/site-runtime#v0.173.5",
