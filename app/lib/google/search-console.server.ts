@@ -94,7 +94,7 @@ export async function refreshSearchConsole(
     env.DB.prepare("DELETE FROM search_console_pages WHERE project_id = ?").bind(project.id),
     ...(body.rows ?? []).map((r) =>
       env.DB.prepare(
-        "INSERT INTO search_console_pages (project_id, page, clicks, impressions, ctr, position, start_date, end_date, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (project_id, page) DO UPDATE SET clicks = excluded.clicks, impressions = excluded.impressions, ctr = excluded.ctr, position = excluded.position, start_date = excluded.start_date, end_date = excluded.end_date, fetched_at = excluded.fetched_at",
+        "INSERT INTO search_console_pages (project_id, page, clicks, impressions, ctr, position, start_date, end_date, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       ).bind(
         project.id,
         r.keys[0] ?? "",
