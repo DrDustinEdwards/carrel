@@ -211,6 +211,8 @@ export async function refreshIndex(
     try {
       doc = await client.get(item.id);
     } catch (error) {
+      // Listed, then deleted before its body was read (a post removed mid-run): the next listing drops it.
+      if (error instanceof SiteApiError && error.status === 404) continue;
       if (!isRateLimited(error)) throw error;
       limited = true;
       break;

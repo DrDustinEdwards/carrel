@@ -123,6 +123,29 @@ describe("refresh", () => {
       "c",
     ]);
   });
+
+  // CARREL-4: an item listed and then deleted before its body was read answered 404, and the whole refresh was
+  // logged as an error. The read is skipped; the next listing drops the item.
+  it("skips an item deleted between the listing and its body read", async () => {
+    const site = await seeded({ a: "# A\nalpha\n", b: "# B\nbravo\n" });
+    const env = connectedEnv();
+    const racing: typeof fetch = (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.pathname.endsWith("/content/b"))
+        return Promise.resolve(
+          Response.json(
+            { error: { code: "not-found", message: "No such content." } },
+            { status: 404 },
+          ),
+        );
+      return site.fetch(input, init);
+    };
+    const result = await refreshIndex(env, { id: projectId, site: "dustinedwards" }, racing);
+    expect(result).toMatchObject({ listed: 2, fetched: 1, limited: false });
+    expect((await searchItems(env.DB, projectId, { q: "alpha" })).map((i) => i.itemId)).toEqual([
+      "a",
+    ]);
+  });
 });
 
 /**

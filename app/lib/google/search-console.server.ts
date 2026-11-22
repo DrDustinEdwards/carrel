@@ -88,20 +88,28 @@ export async function refreshSearchConsole(
     rows?: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[];
   };
   const at = now.toISOString();
-  await d.delete(searchConsolePages).where(eq(searchConsolePages.projectId, project.id));
-  for (const r of body.rows ?? []) {
-    await d.insert(searchConsolePages).values({
-      projectId: project.id,
-      page: r.keys[0] ?? "",
-      clicks: Math.round(r.clicks),
-      impressions: Math.round(r.impressions),
-      ctr: r.ctr,
-      position: r.position,
-      startDate: start,
-      endDate: end,
-      fetchedAt: at,
-    });
-  }
+  // One batch per thousand statements (a D1 batch is a transaction): a row-by-row write cost a round trip each, and a
+  // site with thousands of pages ran the cron job past its two minutes with its old rows already deleted.
+  const statements = [
+    env.DB.prepare("DELETE FROM search_console_pages WHERE project_id = ?").bind(project.id),
+    ...(body.rows ?? []).map((r) =>
+      env.DB.prepare(
+        "INSERT INTO search_console_pages (project_id, page, clicks, impressions, ctr, position, start_date, end_date, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (project_id, page) DO UPDATE SET clicks = excluded.clicks, impressions = excluded.impressions, ctr = excluded.ctr, position = excluded.position, start_date = excluded.start_date, end_date = excluded.end_date, fetched_at = excluded.fetched_at",
+      ).bind(
+        project.id,
+        r.keys[0] ?? "",
+        Math.round(r.clicks),
+        Math.round(r.impressions),
+        r.ctr,
+        r.position,
+        start,
+        end,
+        at,
+      ),
+    ),
+  ];
+  for (let i = 0; i < statements.length; i += 1000)
+    await env.DB.batch(statements.slice(i, i + 1000));
   return { pages: body.rows?.length ?? 0, skipped: false, start, end };
 }
 
