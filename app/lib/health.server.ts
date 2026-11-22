@@ -173,6 +173,7 @@ async function checkSite(
       // The site's own starting source, as New post sends it: a site may require a slug or a date.
       newSource: (itemId) =>
         siteEntry(id).newSource?.(itemId, new Date().toISOString().slice(0, 10)) ?? "",
+      imageAsUrl: siteEntry(id).imageAsUrl === true,
       fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
         fetcher(
           typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
