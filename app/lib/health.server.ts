@@ -72,9 +72,9 @@ export type CheckResult = {
  * developers.cloudflare.com/cache/how-to/purge-cache/), so the sites are probed one at a time: health runs every 15
  * minutes and each run probes the one site that is due, a site once a day and again an hour after a failing probe, so a
  * fix shows within the hour. Probing all of them at once spent the bucket and left a stored page stale for the probe. A
- * site's failures are kept (reports, "probe-posts") and carried into every report until its next probe replaces them.
+ * site's failures are kept (reports, "probe-sites") and carried into every report until its next probe replaces them.
  */
-const PROBE_REPORT = "probe-posts";
+const PROBE_REPORT = "probe-sites";
 const PROBE_EVERY_MS = 24 * 60 * 60 * 1000;
 const PROBE_RETRY_MS = 60 * 60 * 1000;
 const PROBE_STEP = "probe post:";
@@ -489,15 +489,7 @@ async function lastProbe(env: Env): Promise<ProbeRecord | null> {
       .from(reports)
       .where(eq(reports.name, PROBE_REPORT))
       .get();
-    const sites = row ? (JSON.parse(row.body) as { sites?: Record<string, unknown> }).sites : null;
-    // A record kept by the earlier all-at-once probe (a bare list of findings per site) probes every site once more.
-    return {
-      sites: Object.fromEntries(
-        Object.entries(sites ?? {}).filter(
-          ([, v]) => typeof (v as { at?: unknown })?.at === "string",
-        ),
-      ) as ProbeRecord["sites"],
-    };
+    return row ? (JSON.parse(row.body) as ProbeRecord) : null;
   } catch {
     return null;
   }
