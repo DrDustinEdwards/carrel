@@ -371,7 +371,7 @@ describe("the AI door's OAuth surface", () => {
       await (
         await door(new Request(`${DOOR}/health`), { ...doorEnv(), DEPLOY_SHA: "<script>" } as Env)
       ).json(),
-    ).toMatchObject({ sha: "unknown" });
+    ).not.toHaveProperty("sha");
   });
 
   it("PLANT: never serves Carrel's pages", async () => {
