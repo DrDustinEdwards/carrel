@@ -173,6 +173,15 @@ const READ = {
   openWorldHint: false,
 };
 
+const ADD_HERE = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+};
+
+const SET_HERE = { ...ADD_HERE, idempotentHint: true };
+
 /** A write to the site that undoes cleanly: not destructive, repeatable, and it reaches past Carrel. */
 const WRITE_SITE = {
   readOnlyHint: false,
@@ -519,12 +528,7 @@ export const TOOLS: Tool[] = [
       required: ["project", "item", "source", "sources"],
       additionalProperties: false,
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: false,
-    },
+    annotations: ADD_HERE,
     outputSchema: shape(
       { saved: YES, aiDraftId: ID, where: TEXT, checks: { type: "object" } },
       { basedOnVersion: ANY, seo: ANY, timing: ANY },
@@ -600,12 +604,7 @@ export const TOOLS: Tool[] = [
       required: ["project", "item"],
       additionalProperties: false,
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: false,
-    },
+    annotations: ADD_HERE,
     outputSchema: shape(
       { saved: YES, transcriptDraftId: ID, where: TEXT, changes: { type: "object" } },
       { basedOnTranscriptVersion: ANY, replaced: LIST },
@@ -820,12 +819,7 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     // The same flag twice is one flag (alreadyFlagged).
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: false,
-    },
+    annotations: SET_HERE,
     outputSchema: FLAGGED,
     outside: false,
     run: async (args, ctx) => {
@@ -867,12 +861,7 @@ export const TOOLS: Tool[] = [
     },
     // Destructive: the live page is replaced for every reader of the site, so a client should confirm
     // first. Idempotent: the same version published twice is one publish. Open world: the public site.
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: true,
-      idempotentHint: true,
-      openWorldHint: true,
-    },
+    annotations: { ...WRITE_SITE, destructiveHint: true },
     outputSchema: shape(
       { published: YES },
       {
@@ -1105,12 +1094,7 @@ export const TOOLS: Tool[] = [
       required: ["project", "ids"],
       additionalProperties: false,
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: true,
-      idempotentHint: true,
-      openWorldHint: true,
-    },
+    annotations: { ...WRITE_SITE, destructiveHint: true },
     outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST }),
     outside: false,
     run: async (args, ctx) => {
@@ -1245,12 +1229,7 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     // Not destructive: approve, reject and reset each undo the others. The site's public post page changes.
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: true,
-    },
+    annotations: WRITE_SITE,
     outputSchema: shape({ ok: YES, message: TEXT }, { outcomes: LIST, undo: ANY, conflict: ANY }),
     outside: false,
     run: async (args, ctx) => {
@@ -1403,12 +1382,7 @@ export const TOOLS: Tool[] = [
       required: ["project", "path", "source"],
       additionalProperties: false,
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: false,
-    },
+    annotations: ADD_HERE,
     outputSchema: shape({ saved: YES, aiDraftId: ID, where: TEXT }, { basedOnVersion: ANY }),
     outside: false,
     run: async (args, ctx) => {
@@ -1447,12 +1421,7 @@ export const TOOLS: Tool[] = [
       required: ["project", "path", "message"],
       additionalProperties: false,
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: false,
-    },
+    annotations: SET_HERE,
     outputSchema: FLAGGED,
     outside: false,
     run: async (args, ctx) => {
@@ -1963,12 +1932,7 @@ export const TOOLS: Tool[] = [
     },
     // A newer draft for the same piece replaces the waiting one, and nothing is sent from here: Carrel's
     // queue sends it later, under the account's own switch.
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: false,
-    },
+    annotations: ADD_HERE,
     outputSchema: shape({ stored: YES, postId: ID, next: TEXT }),
     outside: false,
     run: async (args, ctx) => {

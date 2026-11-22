@@ -157,20 +157,24 @@ export async function currentRole(
 }
 
 /** Every project the viewer may read: all of them for the Owner, shared ones for everyone else. */
+export function allProjects(d: ReturnType<typeof drizzle>) {
+  return d
+    .select({
+      id: projects.id,
+      slug: projects.slug,
+      name: projects.name,
+      site: projects.site,
+      book: projects.book,
+    })
+    .from(projects)
+    .orderBy(asc(projects.name))
+    .all();
+}
+
 export async function visibleProjects(db: D1Database, viewer: Viewer): Promise<VisibleProject[]> {
   const d = drizzle(db);
   if (viewer.isOwner) {
-    const rows = await d
-      .select({
-        id: projects.id,
-        slug: projects.slug,
-        name: projects.name,
-        site: projects.site,
-        book: projects.book,
-      })
-      .from(projects)
-      .orderBy(asc(projects.name))
-      .all();
+    const rows = await allProjects(d);
     return rows.map(({ site, book, ...r }) => ({
       ...r,
       role: "owner" as const,

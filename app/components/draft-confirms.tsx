@@ -10,7 +10,7 @@ type Props = {
   onClose: () => void;
 };
 
-export function DropDraftDialog({ open, returnTo, perform, onClose }: Props) {
+function DropDraftDialog({ open, returnTo, perform, onClose }: Props) {
   return (
     <ConfirmDialog
       open={open}
@@ -25,7 +25,7 @@ export function DropDraftDialog({ open, returnTo, perform, onClose }: Props) {
   );
 }
 
-export function PutDraftDialog({ open, returnTo, perform, onClose }: Props) {
+function PutDraftDialog({ open, returnTo, perform, onClose }: Props) {
   return (
     <ConfirmDialog
       open={open}
@@ -37,5 +37,34 @@ export function PutDraftDialog({ open, returnTo, perform, onClose }: Props) {
       perform={perform}
       onClose={onClose}
     />
+  );
+}
+
+type Asking = {
+  props: { returnTo: HTMLElement | null | undefined };
+  subject: { kind: string } | null | undefined;
+  close: () => void;
+};
+
+export function DraftConfirms({
+  asking,
+  send,
+}: {
+  asking: Asking;
+  send: (intent: string, extra: Record<string, string>) => Promise<unknown>;
+}) {
+  const ask = (kind: string, intent: string) => ({
+    open: asking.subject?.kind === kind,
+    returnTo: asking.props.returnTo,
+    onClose: asking.close,
+    perform: async () => {
+      await send(intent, { confirmed: "1" });
+    },
+  });
+  return (
+    <>
+      <PutDraftDialog {...ask("put-draft", "use-own-draft")} />
+      <DropDraftDialog {...ask("drop-draft", "drop-own-draft")} />
+    </>
   );
 }

@@ -10,7 +10,7 @@ import { useHydrated } from "capsomer/react/hooks";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
-import { DropDraftDialog, PutDraftDialog } from "~/components/draft-confirms";
+import { DraftConfirms } from "~/components/draft-confirms";
 import { useMessage } from "capsomer/react/message";
 import { Panel } from "capsomer/react/panel";
 import {
@@ -600,14 +600,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   useTypingRecede();
 
   // The item's room: one copy for everyone on the project, as they type.
-  const editing = useRoomEditing({
-    path: data.room?.path ?? "",
-    initial: data.source,
-    unsaved: data.unsaved,
-    viewer: data.room?.viewer ?? { id: 0, name: "", access: "suggest" },
-    names: data.room?.names ?? {},
-    hideFrontMatter: true,
-  });
+  const editing = useRoomEditing(data);
   const { room } = editing;
   // The room's text when this person opened Publish; the publish is refused if it changed while the dialog was open.
   const shownAtPublish = useRef("");
@@ -1292,22 +1285,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         />
       </div>
 
-      <PutDraftDialog
-        returnTo={asking.props.returnTo}
-        onClose={asking.close}
-        open={asking.subject?.kind === "put-draft"}
-        perform={async () => {
-          await send("use-own-draft", { confirmed: "1" });
-        }}
-      />
-      <DropDraftDialog
-        returnTo={asking.props.returnTo}
-        onClose={asking.close}
-        open={asking.subject?.kind === "drop-draft"}
-        perform={async () => {
-          await send("drop-own-draft", { confirmed: "1" });
-        }}
-      />
+      <DraftConfirms asking={asking} send={send} />
       <ConfirmDialog
         {...asking.props}
         open={asking.subject?.kind === "publish"}
