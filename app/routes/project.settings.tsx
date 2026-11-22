@@ -16,7 +16,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { shareFromForm } from "~/lib/people-admin.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
-import { siteConnection, siteEntry } from "~/lib/sites.server";
+import { siteConnection, siteHead } from "~/lib/sites.server";
 import { readForm } from "~/lib/form.server";
 
 import type { Route } from "./+types/project.settings";
@@ -37,9 +37,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     .get();
   return {
     project: {
-      slug: project.slug,
-      name: project.name,
-      site: siteEntry(project.site).name,
+      ...siteHead(project),
       canShare: can(project.role, "manage"),
     },
     connection: {

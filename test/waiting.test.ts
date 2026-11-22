@@ -13,7 +13,7 @@ import { loader as editorLoader } from "~/routes/editor";
 import { loader as previewLoader } from "~/routes/preview";
 import { loader as projectLoader } from "~/routes/project";
 
-import { addPerson, addProject, resetDb, share } from "./env";
+import { seedDesk } from "./env";
 import { connectedEnv, fakeSite, viewerFor, routeContext } from "./site";
 
 const SLUG = "de-info";
@@ -22,11 +22,7 @@ let env: Env;
 let projectId: number;
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  projectId = await addProject(SLUG, "dustinedwards");
-  await share(projectId, editor, "editor");
+  projectId = await seedDesk(SLUG);
   site = fakeSite();
   vi.stubGlobal("fetch", site.fetch);
   env = connectedEnv();

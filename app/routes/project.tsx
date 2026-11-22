@@ -9,7 +9,7 @@
 // of their own for a new post), the Refresh of its index (which the editor's links and the AI tools
 // search), the Share panel and the project tabs.
 
-import { loadPosts, readPostQuery, type IntentResult } from "@dustinedwards/site-api/admin";
+import { loadPosts, readPostQuery } from "@dustinedwards/site-api/admin";
 import { Banner } from "capsomer/react/banner";
 import { PageHead } from "capsomer/react/page-head";
 import { Panel } from "capsomer/react/panel";
@@ -24,9 +24,9 @@ import { getEnv, getViewer } from "~/lib/context";
 import { kindsIn, searchItems } from "~/lib/index.server";
 import { postsSource, runIntent } from "~/lib/posts.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteConnection, siteEntry, siteUnreachable } from "~/lib/sites.server";
+import { siteConnection, siteEntry, siteUnreachable, siteHead } from "~/lib/sites.server";
 import { onlyInCarrel, waitingWork } from "~/lib/waiting.server";
-import { readForm } from "~/lib/form.server";
+import { intentAction } from "~/lib/form.server";
 
 import type { Route } from "./+types/project";
 
@@ -39,9 +39,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
   const head = {
-    slug: project.slug,
-    name: project.name,
-    site: siteEntry(project.site).name,
+    ...siteHead(project),
   };
   const connection = siteConnection(env, project.site);
   if (connection.state !== "connected")
@@ -105,13 +103,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   }
 }
 
-export async function action({
-  params,
-  request,
-  context,
-}: Route.ActionArgs): Promise<IntentResult> {
-  return runIntent(getEnv(context), getViewer(context), params.project, await readForm(request));
-}
+export const action = intentAction(runIntent);
 
 export default function Project({ loaderData, actionData }: Route.ComponentProps) {
   const { project, data, fresh, unavailable } = loaderData;

@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
 import { readDraft } from "~/lib/content.server";
-import { requireSiteProject } from "~/lib/projects.server";
 import { action as aiDraftAction, loader as aiDraftLoader } from "~/routes/ai-draft";
 import { action as editorAction, loader as editorLoader } from "~/routes/editor";
 import { action as unpublishAction, loader as unpublishLoader } from "~/routes/unpublish";
@@ -13,19 +12,23 @@ import { action as transcriptAction, loader as transcriptLoader } from "~/routes
 import { saveTranscriptDraft } from "~/lib/transcripts.server";
 import type { memoryAdapter } from "@dustinedwards/site-api/testing";
 
-import { addPerson, addProject, resetDb, share, testEnv } from "./env";
-import { connectedEnv, fakeSite, publishPostOne, viewerFor, routeContext, settle } from "./site";
+import { testEnv, seedDesk } from "./env";
+import {
+  connectedEnv,
+  fakeSite,
+  publishPostOne,
+  viewerFor,
+  routeContext,
+  settle,
+  siteAs,
+} from "./site";
 
 const SLUG = "de-info";
 let site: ReturnType<typeof fakeSite>;
 let env: Env;
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const id = await addProject(SLUG, "dustinedwards");
-  await share(id, editor, "editor");
+  await seedDesk(SLUG);
   site = fakeSite();
   // The routes call the site through the global fetch, as the Worker does.
   vi.stubGlobal("fetch", site.fetch);
@@ -36,10 +39,7 @@ const context = (email: string) => routeContext(env, email);
 
 const published = () => publishPostOne(site);
 
-async function as(email: string) {
-  const viewer = await viewerFor(email);
-  return { viewer, project: await requireSiteProject(testEnv.DB, viewer, SLUG, "read") };
-}
+const as = (email: string) => siteAs(SLUG, email);
 
 describe("the unpublish page", () => {
   it("opens without changing anything, and one button returns the post to draft", async () => {

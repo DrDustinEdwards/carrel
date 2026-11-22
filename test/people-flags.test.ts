@@ -15,23 +15,14 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { action as peopleAction, loader as peopleLoader } from "~/routes/people";
 import { action as flagsAction, loader as flagsLoader } from "~/routes/project.flags";
 
-import { addPerson, addProject, resetDb, share, testEnv } from "./env";
+import { addPerson, testEnv, seedDesk } from "./env";
 import { viewerFor, routeContext, refusal } from "./site";
 
 const SLUG = "de-info";
 let projectId: number;
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
-  const reviewer = await addPerson("reviewer@test.invalid", { reviewer: true });
-  await addPerson("stranger@test.invalid");
-  projectId = await addProject(SLUG, "dustinedwards");
-  await share(projectId, editor, "editor");
-  await share(projectId, reader, "reader");
-  await share(projectId, reviewer, "reader");
+  projectId = await seedDesk(SLUG, ["reader", "reviewer", "stranger"]);
 });
 
 const contextFor = (email: string, env: Env = testEnv) => routeContext(env, email);

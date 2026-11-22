@@ -26,7 +26,7 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { addBook, addPerson, addProject, sharedBook, testEnv } from "./env";
 import { BASELINE, PLANT } from "./fixtures/voice";
 import { fakeNovels } from "./novels";
-import { viewerFor, refusal } from "./site";
+import { viewerFor, refusal, bookAs } from "./site";
 
 const SLUG = "test-book";
 
@@ -58,10 +58,8 @@ beforeEach(async () => {
   await addPerson("stranger@test.invalid");
 });
 
-async function as(email: string, action: "read" | "edit" | "publish" = "read") {
-  const viewer = await viewerFor(email);
-  return { viewer, project: await requireBookProject(testEnv.DB, viewer, SLUG, action) };
-}
+const as = (email: string, action: "read" | "edit" | "publish" = "read") =>
+  bookAs(SLUG, email, action);
 
 describe("opening a book", () => {
   it("PLANT: a non-member, a missing book, and a site all answer 404", async () => {

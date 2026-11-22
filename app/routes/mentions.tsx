@@ -5,7 +5,7 @@
 // drawn as text: the source address is never a link. Every action is a form post, so it all works with
 // no script; with script the posts go through the mentions endpoint and answer in place.
 
-import { loadMentions, readMentionsQuery, type IntentResult } from "@dustinedwards/site-api/admin";
+import { loadMentions, readMentionsQuery } from "@dustinedwards/site-api/admin";
 import { kitMentionsSearch, mentionsDataOfKit } from "capsomer/behavior/mentions-list";
 import { Banner } from "capsomer/react/banner";
 import { MentionsList } from "capsomer/react/mentions-list";
@@ -15,8 +15,8 @@ import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
 import { getEnv, getViewer } from "~/lib/context";
 import { mentionsSource, runIntent, unreachable } from "~/lib/mentions.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteEntry } from "~/lib/sites.server";
-import { readForm } from "~/lib/form.server";
+import { siteHead } from "~/lib/sites.server";
+import { intentAction } from "~/lib/form.server";
 
 import type { Route } from "./+types/mentions";
 import { logEvent } from "@dustinedwards/site-runtime/log";
@@ -30,7 +30,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const viewer = getViewer(context);
   // The Owner's alone, as Dustin ruled for the inbox: anyone else is refused before the site is asked.
   const project = await requireSiteProject(env.DB, viewer, params.project, "read_mentions");
-  const head = { slug: project.slug, name: project.name, site: siteEntry(project.site).name };
+  const head = { ...siteHead(project) };
   const search = new URL(request.url).searchParams;
   try {
     const kit = await loadMentions(
@@ -52,13 +52,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   }
 }
 
-export async function action({
-  params,
-  request,
-  context,
-}: Route.ActionArgs): Promise<IntentResult> {
-  return runIntent(getEnv(context), getViewer(context), params.project, await readForm(request));
-}
+export const action = intentAction(runIntent);
 
 export default function Mentions({ loaderData, actionData }: Route.ComponentProps) {
   const { project, data, unavailable } = loaderData;

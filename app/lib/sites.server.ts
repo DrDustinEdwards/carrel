@@ -162,6 +162,12 @@ export function isSiteId(value: string | null | undefined): value is SiteId {
   return typeof value === "string" && Object.hasOwn(SITES, value);
 }
 
+export const siteHead = (project: { slug: string; name: string; site: SiteId }) => ({
+  slug: project.slug,
+  name: project.name,
+  site: siteEntry(project.site).name,
+});
+
 export function siteEntry(id: SiteId): SiteEntry {
   return SITES[id];
 }

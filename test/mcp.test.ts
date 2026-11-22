@@ -11,7 +11,7 @@ import { autosave, readDraft } from "~/lib/content.server";
 import { runHealth } from "~/lib/health.server";
 import { requireSiteProject } from "~/lib/projects.server";
 
-import { addPerson, addProject, mailbox, resetDb, share, testEnv } from "./env";
+import { mailbox, testEnv, seedDesk } from "./env";
 import {
   connectAs,
   legacyRequest,
@@ -31,16 +31,7 @@ let box: ReturnType<typeof mailbox>;
 let env: Env;
 
 beforeEach(async () => {
-  await resetDb();
-  await addPerson("owner@test.invalid", { owner: true });
-  const editor = await addPerson("editor@test.invalid");
-  const reader = await addPerson("reader@test.invalid");
-  const reviewer = await addPerson("reviewer@test.invalid", { reviewer: true });
-  await addPerson("stranger@test.invalid");
-  const id = await addProject(SLUG, "dustinedwards");
-  await share(id, editor, "editor");
-  await share(id, reader, "reader");
-  await share(id, reviewer, "reader");
+  await seedDesk(SLUG, ["reader", "reviewer", "stranger"]);
   site = fakeSite();
   box = mailbox();
   env = { ...connectedEnv(), EMAIL: box.EMAIL };
