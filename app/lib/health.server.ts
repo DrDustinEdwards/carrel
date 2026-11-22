@@ -68,11 +68,13 @@ export type CheckResult = {
 
 /**
  * The probe post publishes, renames and deletes a post on the site, and every one of those purges the site's stored
- * pages. Health runs every 15 minutes, so the probe runs once a day: its failures are kept (reports, "probe-posts") and
- * carried into every report until the next probe replaces them.
+ * pages. Health runs every 15 minutes, so the probe runs once a day, and again an hour after a failing one so a fix shows
+ * within the hour: its failures are kept (reports, "probe-posts") and carried into every report until the next probe
+ * replaces them.
  */
 const PROBE_REPORT = "probe-posts";
 const PROBE_EVERY_MS = 24 * 60 * 60 * 1000;
+const PROBE_RETRY_MS = 60 * 60 * 1000;
 const PROBE_STEP = "probe post:";
 type ProbeRecord = { at: string; sites: Record<string, SiteConformance["findings"]> };
 
@@ -439,7 +441,12 @@ export async function runChecks(
   now: Date = new Date(),
 ): Promise<CheckResult[]> {
   const last = await lastProbe(env);
-  const probeDue = !last || now.getTime() - Date.parse(last.at) >= PROBE_EVERY_MS;
+  const probeDue =
+    !last ||
+    now.getTime() - Date.parse(last.at) >=
+      (Object.values(last.sites).some((findings) => findings.length > 0)
+        ? PROBE_RETRY_MS
+        : PROBE_EVERY_MS);
   const results = await Promise.all([
     checkConfig(env),
     checkOwner(env),

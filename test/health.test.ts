@@ -95,7 +95,7 @@ describe("site health", () => {
     });
   });
 
-  it("runs the probe post once a day, and a failure it found stays in every report until the next one", async () => {
+  it("runs the probe post once a day, an hour after a failing one, and a failure stays in every report until the next", async () => {
     const site = fakeSite();
     let probes = 0;
     let refuse = true;
@@ -136,10 +136,15 @@ describe("site health", () => {
     expect(check(await runHealth(env, counted, at(15))).ok).toBe(false);
     expect(probes).toBe(1);
     expect((await report()).status).toBe("fail");
-    // A day later: the probe runs again, passes, and the report clears.
-    expect(check(await runHealth(env, counted, at(24 * 60))).ok).toBe(true);
+    // An hour later: a failing probe runs again, passes, and the report clears.
+    expect(check(await runHealth(env, counted, at(60))).ok).toBe(true);
     expect(probes).toBe(2);
     expect(await report()).toEqual({ status: "pass", findings: [] });
+    // A passing probe waits a day.
+    await runHealth(env, counted, at(120));
+    expect(probes).toBe(2);
+    await runHealth(env, counted, at(60 + 24 * 60));
+    expect(probes).toBe(3);
   });
 
   it("PLANT: flags a key too short to be the site's", async () => {
