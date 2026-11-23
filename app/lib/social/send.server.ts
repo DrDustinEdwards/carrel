@@ -4,13 +4,13 @@ import { errorMessage } from "@dustinedwards/site-runtime/log";
 import { formatMoney } from "@dustinedwards/site-runtime/money";
 import { monthKey } from "@dustinedwards/site-runtime/time";
 import { isoDay } from "@drdustinedwards/site-helpers/xml";
-import { and, asc, desc, eq, gte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { socialPosts } from "~/db/schema";
 
 import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
-import type { Account, Fetch, TickResult } from "./queue.server";
+import { updatePost, type Account, type Fetch, type TickResult } from "./queue.server";
 
 export function dayStart(now: Date): string {
   return `${isoDay(now)}T00:00:00.000Z`;
@@ -60,52 +60,48 @@ export async function sendQueued(
     }
     const cost = account.platform === "x" ? xCostMills(post.text) : 0;
     if (account.platform === "x" && spent + cost > account.monthlyBudgetMills) {
-      await d
-        .update(socialPosts)
-        .set({
-          error: `Held: it would pass this month's X budget (${formatMoney(account.monthlyBudgetMills, "usd", { scale: 3 })}).`,
-        })
-        .where(eq(socialPosts.id, post.id));
+      await updatePost(env.DB, post.id, {
+        error: `Held: it would pass this month's X budget (${formatMoney(account.monthlyBudgetMills, "usd", { scale: 3 })}).`,
+      });
       result.waitingOnCaps++;
       return;
     }
     if ("missing" in creds) {
-      await d
-        .update(socialPosts)
-        .set({ error: `Waiting for credentials: ${creds.missing.join(", ")}.` })
-        .where(eq(socialPosts.id, post.id));
+      await updatePost(env.DB, post.id, {
+        error: `Waiting for credentials: ${creds.missing.join(", ")}.`,
+      });
       result.errors.push(`${account.key}: credentials missing`);
       return;
     }
     // Claim it before it leaves: an overlapping run, or a Reject made since the read, finds no row.
-    const claim = await env.DB.prepare(
-      "UPDATE social_posts SET sent_at = ? WHERE id = ? AND status = 'queued' AND sent_at IS NULL",
-    )
-      .bind(now.toISOString(), post.id)
+    const claim = await d
+      .update(socialPosts)
+      .set({ sentAt: now.toISOString() })
+      .where(
+        and(
+          eq(socialPosts.id, post.id),
+          eq(socialPosts.status, "queued"),
+          isNull(socialPosts.sentAt),
+        ),
+      )
       .run();
     if (!claim.meta.changes) continue;
     try {
       const id = await postOriginal(creds, post.text, fetcher, now.getTime());
-      await d
-        .update(socialPosts)
-        .set({
-          status: "sent",
-          platformPostId: id,
-          costMills: cost,
-          sentAt: now.toISOString(),
-          error: null,
-        })
-        .where(eq(socialPosts.id, post.id));
+      await updatePost(env.DB, post.id, {
+        status: "sent",
+        platformPostId: id,
+        costMills: cost,
+        sentAt: now.toISOString(),
+        error: null,
+      });
       today++;
       spent += cost;
       last = now.getTime();
       result.sent++;
     } catch (error) {
       const message = errorMessage(error);
-      await d
-        .update(socialPosts)
-        .set({ status: "failed", error: message, sentAt: null })
-        .where(eq(socialPosts.id, post.id));
+      await updatePost(env.DB, post.id, { status: "failed", error: message, sentAt: null });
       result.errors.push(`${account.key}: ${message}`);
     }
   }

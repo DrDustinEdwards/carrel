@@ -302,10 +302,7 @@ async function excerptsFor(db: D1Database, eventId: number): Promise<string[]> {
 async function route(db: D1Database, post: typeof socialPosts.$inferSelect, account: Account) {
   const findings = lintPost(post.text, account.platform, await excerptsFor(db, post.eventId));
   const status = findings.length ? "held" : account.mode === "auto" ? "queued" : "awaiting";
-  await drizzle(db)
-    .update(socialPosts)
-    .set({ status, lint: JSON.stringify(findings) })
-    .where(eq(socialPosts.id, post.id));
+  await updatePost(db, post.id, { status, lint: JSON.stringify(findings) });
   await drizzle(db)
     .update(socialEvents)
     .set({ state: "covered" })
@@ -632,18 +629,12 @@ export async function decidePost(
               ? "Edit the post until the lint passes, then approve it."
               : "Only a post awaiting approval can be approved.",
         };
-      await d
-        .update(socialPosts)
-        .set({ status: "queued", approvedBy: viewer.id })
-        .where(eq(socialPosts.id, id));
+      await updatePost(db, id, { status: "queued", approvedBy: viewer.id });
       return { ok: true as const };
     case "reject":
       if (!open && post.status !== "queued")
         return { ok: false as const, error: "Only a post that has not gone out can be rejected." };
-      await d
-        .update(socialPosts)
-        .set({ status: "rejected", approvedBy: viewer.id })
-        .where(eq(socialPosts.id, id));
+      await updatePost(db, id, { status: "rejected", approvedBy: viewer.id });
       return { ok: true as const };
     case "by-hand":
       // The personal account's free path: Dustin copies the text and posts it himself.
@@ -652,10 +643,11 @@ export async function decidePost(
           ok: false as const,
           error: "Only a post that has not gone out can be posted by hand.",
         };
-      await d
-        .update(socialPosts)
-        .set({ status: "by-hand", approvedBy: viewer.id, sentAt: now.toISOString() })
-        .where(eq(socialPosts.id, id));
+      await updatePost(db, id, {
+        status: "by-hand",
+        approvedBy: viewer.id,
+        sentAt: now.toISOString(),
+      });
       return { ok: true as const };
     case "edit": {
       if (!open)
@@ -665,26 +657,27 @@ export async function decidePost(
         account.platform,
         await excerptsFor(db, post.eventId),
       );
-      await d
-        .update(socialPosts)
-        .set({
-          text: decision.text.trim(),
-          lint: JSON.stringify(findings),
-          status: findings.length ? "held" : "awaiting",
-        })
-        .where(eq(socialPosts.id, id));
+      await updatePost(db, id, {
+        text: decision.text.trim(),
+        lint: JSON.stringify(findings),
+        status: findings.length ? "held" : "awaiting",
+      });
       return { ok: true as const, findings };
     }
     case "acknowledge":
       if (post.source !== "template")
         return { ok: false as const, error: "Only a template post has an alert to acknowledge." };
-      await d
-        .update(socialPosts)
-        .set({ acknowledgedAt: now.toISOString() })
-        .where(eq(socialPosts.id, id));
+      await updatePost(db, id, { acknowledgedAt: now.toISOString() });
       return { ok: true as const };
   }
 }
+
+/** One post's columns changed. */
+export const updatePost = (
+  db: D1Database,
+  id: number,
+  set: Partial<typeof socialPosts.$inferInsert>,
+) => drizzle(db).update(socialPosts).set(set).where(eq(socialPosts.id, id));
 
 export async function socialOverview(db: D1Database, viewer: Viewer) {
   requireOwner(viewer);
