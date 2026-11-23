@@ -264,9 +264,9 @@ const PLANTS = [
   {
     gate: "roles",
     file: "app/lib/mcp/tools.ts",
-    find: "    run: async (args, ctx) => {\n      // Refused on the role",
+    find: '    run: async (args, ctx) => {\n      const p = await project(ctx, args, "read");\n      if (args.transcript_draft_id',
     replace:
-      '    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal("planted");\n      // Refused on the role',
+      '    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal("planted");\n      const p = await project(ctx, args, "read");\n      if (args.transcript_draft_id',
     label: "an Owner check in a tool",
   },
   {
