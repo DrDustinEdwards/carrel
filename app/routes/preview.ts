@@ -3,17 +3,15 @@
 // A POST previews the text it carries instead (the insert-chart dialog's chart, before it is in the
 // post): rendered by the site and kept nowhere.
 
-import { SiteApiError } from "@dustinedwards/site-api/client";
-
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { readDoc, readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { previewFailure, previewResponse, withLabel } from "~/lib/preview.server";
+import { readForm } from "~/lib/form.server";
+import { failed, previewFailure, previewResponse, withLabel } from "~/lib/preview.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteClient, siteConnection, SiteNotConnected } from "~/lib/sites.server";
+import { siteClient, siteConnection } from "~/lib/sites.server";
 
 import type { Route } from "./+types/preview";
-import { logEvent } from "@dustinedwards/site-runtime/log";
 
 // A chart block with its CSV and the post's frontmatter, with room to spare; the site sets its own limit.
 const MAX_SOURCE = 256 * 1024;
@@ -25,7 +23,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   const connection = siteConnection(env, project.site);
   if (connection.state !== "connected")
     return previewFailure(`The site is not connected: ${connection.detail}`);
-  const source = (await request.formData()).get("source");
+  const source = (await readForm(request, MAX_SOURCE * 2)).get("source");
   if (typeof source !== "string" || !source.trim())
     return previewFailure("There is nothing to preview yet.");
   if (source.length > MAX_SOURCE) return previewFailure("This is too long to preview here.");
@@ -35,17 +33,8 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       connection.origin,
     );
   } catch (error) {
-    return failed(error, params.item);
+    return failed(error, { itemId: params.item });
   }
-}
-
-/** A preview the site could not give: what it said, or that it did not answer. */
-function failed(error: unknown, itemId: string): Response {
-  if (error instanceof SiteNotConnected) return previewFailure(error.detail);
-  if (error instanceof SiteApiError && error.body)
-    return previewFailure(`The site could not render this: ${error.body.message}`);
-  logEvent("preview.failed", { itemId, error: String(error) }, { level: "error" });
-  return previewFailure("The site did not answer the preview request.");
 }
 
 export async function loader({ params, context }: Route.LoaderArgs) {
@@ -71,6 +60,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     const html = await siteClient(env, project.site).preview({ id: itemId, source });
     return previewResponse(label ? withLabel(html, label) : html, connection.origin);
   } catch (error) {
-    return failed(error, itemId);
+    return failed(error, { itemId });
   }
 }

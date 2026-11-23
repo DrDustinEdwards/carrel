@@ -47,6 +47,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "vite";
 
 import { PAGE_PRELOADS } from "./headers.mjs";
+import { SECURITY_TXT } from "./security.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -55,11 +56,6 @@ export const ORIGIN = "https://carrel.dustinedwards.info";
 const DESK = "https://desk.dustinedwards.info";
 const REPO = "https://github.com/DrDustinEdwards/carrel";
 const FAMILY = "olive";
-
-/** When security.txt lapses (RFC 9116 asks for under a year); renew it before then, with the AI door's (workers/app.ts). */
-const SECURITY_TXT_EXPIRES = "2027-10-26T00:00:00Z";
-
-const CONTACT = "security@dustinedwards.info";
 
 /**
  * The IndexNow key, served as /<key>.txt; ci.yml's indexnow job reads it from this line for prelum-indexnow after each deploy. A key
@@ -153,7 +149,11 @@ const TOOL_COUNT = [
     /^    name: "carrel_[a-z_]+",$/gm,
   ),
 ].length;
-if (SITES.length === 0 || TOOL_COUNT === 0)
+const ROLES = readFileSync(join(HERE, "../app/lib/roles.ts"), "utf8").match(
+  /^export type Role = (.+);$/m,
+)?.[1];
+const ROLE_COUNT = ROLES?.split("|").length;
+if (SITES.length === 0 || TOOL_COUNT === 0 || !ROLE_COUNT)
   throw new Error("www/build.mjs: could not read the sites or the tools");
 
 /** A feature with no section of its own on the page has no href and shows its name unlinked. @param {{ name: string, href?: string, note: string }} item */
@@ -230,7 +230,7 @@ ${heroHtml()}
 
 <dl class="cap-form-boxes" data-variant="readings">
 <div class="cap-form-boxes-box"><dt>Sites on this Desk</dt><dd>${SITES.length}</dd></div>
-<div class="cap-form-boxes-box"><dt>Roles</dt><dd>3</dd></div>
+<div class="cap-form-boxes-box"><dt>Roles</dt><dd>${ROLE_COUNT}</dd></div>
 <div class="cap-form-boxes-box"><dt>AI tools</dt><dd>${TOOL_COUNT}</dd></div>
 <div class="cap-form-boxes-box"><dt>License</dt><dd>MIT</dd></div>
 </dl>
@@ -536,7 +536,7 @@ export async function buildSite(outDir) {
   mkdirSync(join(outDir, ".well-known"), { recursive: true });
   writeFileSync(
     join(outDir, ".well-known", "security.txt"),
-    securityTxt({ origin: ORIGIN, contact: CONTACT, expires: SECURITY_TXT_EXPIRES }),
+    securityTxt({ origin: ORIGIN, contact: SECURITY_TXT.contact, expires: SECURITY_TXT.expires }),
   );
   writeFileSync(
     join(outDir, "sitemap.xml"),
@@ -548,7 +548,7 @@ export async function buildSite(outDir) {
   );
   writeFileSync(
     join(outDir, "ai.txt"),
-    aiTxt({ origin: ORIGIN, name: "Carrel", contact: CONTACT }),
+    aiTxt({ origin: ORIGIN, name: "Carrel", contact: SECURITY_TXT.contact }),
   );
   writeFileSync(join(outDir, "llms.txt"), LLMS);
   writeFileSync(

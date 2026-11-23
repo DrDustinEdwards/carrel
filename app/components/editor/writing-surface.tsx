@@ -6,7 +6,6 @@
 // formatted editor is bound to the room's shared copy, and Markdown typed in the Markdown view goes into
 // it block by block (Capsomer's collab editor, through room-editing.tsx).
 
-import { EditorView } from "@codemirror/view";
 import { useEffect, useEffectEvent, useRef } from "react";
 import { MarkdownEditor, type LinkTarget } from "capsomer/react/markdown-editor";
 import { Segmented } from "capsomer/react/segmented";
@@ -46,22 +45,6 @@ export type EditorMedia = {
 
 type Mode = "formatted" | "markdown";
 const MODE_KEY = "carrel:editor-mode";
-
-/** In the Markdown editor: a block at the cursor on a line of its own, as the editor's own blocks are put. */
-function insertIntoMarkdown(root: HTMLElement | null, text: string) {
-  const dom = root?.querySelector<HTMLElement>(".cm-editor");
-  const view = dom ? EditorView.findFromDOM(dom) : null;
-  if (!view) return;
-  const { from, to } = view.state.selection.main;
-  const line = view.state.doc.lineAt(from);
-  const prefix = line.from === from && line.text.trim() === "" ? "" : "\n\n";
-  view.dispatch({
-    changes: { from, to, insert: `${prefix}${text}` },
-    selection: { anchor: from + prefix.length + text.length },
-    scrollIntoView: true,
-  });
-  view.focus();
-}
 
 export function WritingSurface({
   label,
@@ -154,7 +137,10 @@ export function WritingSurface({
             preview={chart}
             onInsert={(block) => {
               if (mode === "formatted") rich.current?.insertMarkdown(block);
-              else insertIntoMarkdown(root.current, block);
+              else
+                void import("~/lib/markdown-insert.client").then((m) =>
+                  m.insertIntoMarkdown(root.current, block),
+                );
             }}
           />
         ) : null}
@@ -164,7 +150,10 @@ export function WritingSurface({
             onPick={({ url, alt, caption }) => {
               const md = images.figure(url, alt, caption);
               if (mode === "formatted") rich.current?.insertMarkdown(md);
-              else insertIntoMarkdown(root.current, md);
+              else
+                void import("~/lib/markdown-insert.client").then((m) =>
+                  m.insertIntoMarkdown(root.current, md),
+                );
             }}
           />
         ) : null}

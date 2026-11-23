@@ -183,22 +183,27 @@ describe("a legal page written to the site", () => {
     ).toBe(new Date().toISOString().slice(0, 10));
   });
 
-  it("is refused at publish with a field missing, and the site hears no write after the seed", async () => {
+  it("is refused at publish or schedule with a field missing, and the site hears no write after the seed", async () => {
     const site = fakeSite();
     const { viewer, project } = await as("owner@test.invalid");
     const source =
       FRONT.replace('contact: "hello@example.test"\n', "") + "<!-- shared:hosting -->\n";
     const version = await seed(site, "page.privacy", source);
     const before = writes(site).length;
-    const published = await writeToSite(
-      connectedEnv(),
-      project,
-      viewer,
-      "page.privacy",
-      { action: "publish", expectedVersion: version, source },
-      site.fetch,
-    );
-    expect(published).toMatchObject({ ok: false, reason: "refused" });
+    for (const request of [
+      { action: "publish" as const },
+      { action: "schedule" as const, publishAt: "2999-01-01T00:00:00.000Z" },
+    ]) {
+      const refused = await writeToSite(
+        connectedEnv(),
+        project,
+        viewer,
+        "page.privacy",
+        { ...request, expectedVersion: version, source },
+        site.fetch,
+      );
+      expect(refused).toMatchObject({ ok: false, reason: "refused" });
+    }
     expect(writes(site).length).toBe(before);
   });
 });

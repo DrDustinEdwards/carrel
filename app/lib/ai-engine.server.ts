@@ -40,6 +40,7 @@ import type { SiteProject } from "~/lib/projects.server";
 import { socialFieldsOf } from "~/lib/seo-checks";
 import { formatMoney } from "@dustinedwards/site-runtime/money";
 import { normalizeNewlines } from "@drdustinedwards/site-helpers/text";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 import { monthKey } from "@dustinedwards/site-runtime/time";
 
 /** Whether the API engine has no key yet. The route reads this, never the secret, so the secret stays on the server. */
@@ -270,8 +271,7 @@ export async function usageThisMonth(db: D1Database, now = new Date()) {
 
 /**
  * What one call of the site's picture suggester costs at most, in tokens, for a site that does not report its usage
- * (site-api before 0.34.0): it sends a 768px JPEG (at most about 790 image tokens) with a prompt of about 300 tokens and the answer schema, and it
- * caps its answer at 300 tokens. The real tokens are in that site's own log (`anthropic_call`); the cap counts this ceiling.
+ * (site-api before 0.34.0): a 768px JPEG (about 790 image tokens), a prompt of about 300 and an answer capped at 300.
  */
 const SUGGESTER_CALL = { input: 1500, output: 300, cacheRead: 0, cacheWrite: 0 };
 
@@ -296,21 +296,17 @@ export async function recordForeignCall(
   await capAlert(env);
 }
 
-/** The share of the monthly cap at which Dustin is emailed, once a month. */
 const CAP_ALERT_AT = 0.8;
 
-/**
- * Emails the alert address once a month when the API spend reaches 80% of the cap, so the cap closing never comes as a
- * surprise. A failed email never fails the call that spent: the page shows the spend too.
- */
+/** Emails the alert address once a month at 80% of the cap. A failed email never fails the call that spent. */
 async function capAlert(env: Env, now = new Date()): Promise<boolean> {
+  const marker = `ai-cap-alert:${monthKey(now)}`;
   try {
     const settings = await readAiSettings(env.DB);
     if (settings.apiCapMicros <= 0) return false;
     const spent = await monthSpendMicros(env.DB, now);
     if (spent < settings.apiCapMicros * CAP_ALERT_AT) return false;
-    const month = monthKey(now);
-    if (!(await d1FireStore(env.DB).add(`ai-cap-alert:${month}`, now.toISOString()))) return false;
+    if (!(await d1FireStore(env.DB).add(marker, now.toISOString()))) return false;
     const sent = await sendEmail(env.EMAIL, {
       from: env.ALERT_FROM,
       to: env.ALERT_EMAIL,
@@ -322,8 +318,11 @@ async function capAlert(env: Env, now = new Date()): Promise<boolean> {
         "",
       ].join("\n"),
     });
-    return sent.sent;
-  } catch {
+    if (!sent.sent) throw new Error("the email was not sent");
+    return true;
+  } catch (error) {
+    logEvent("ai.cap-alert-failed", { error: String(error) }, { level: "error" });
+    await d1FireStore(env.DB).delete(marker);
     return false;
   }
 }

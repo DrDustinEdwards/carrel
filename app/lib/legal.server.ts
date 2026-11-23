@@ -121,9 +121,9 @@ export async function checkLegalWrite(
       message: `A legal page's path is fixed in Carrel (${pathOf(current.source) ?? "none"}): the site's code and its data name it.`,
     };
   }
-  if (request.action === "schedule") return { ok: true, source };
   const live =
     request.action === "publish" ||
+    request.action === "schedule" ||
     (request.action === "save" && current !== null && current.status !== "draft");
   const prepared = prepareLegalWrite({
     source,

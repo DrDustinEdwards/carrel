@@ -19,6 +19,8 @@ import { requireSiteProject } from "~/lib/projects.server";
 import { findOwner } from "~/lib/signed-in-crawl.server";
 import { d1FireStore, fireOnce, routineConfig } from "./social/routine.server";
 import { siteClient } from "~/lib/sites.server";
+import { isRateLimited } from "~/lib/index.server";
+import { SiteApiError } from "@dustinedwards/site-api/client";
 
 const SITE = "germomics";
 const PROJECT = "germomics";
@@ -94,7 +96,15 @@ export async function draftEpisodes(
   const list = await client.list({ kind: "episode", limit: 50 });
   let viaApi = 0;
   for (const item of list.items) {
-    const doc = await client.get(item.id);
+    let doc: Awaited<ReturnType<typeof client.get>>;
+    try {
+      doc = await client.get(item.id);
+    } catch (error) {
+      // Deleted since the list: skip it; the site's limiter ends the pass, as the index refresh does.
+      if (isRateLimited(error)) break;
+      if (error instanceof SiteApiError && error.status === 404) continue;
+      throw error;
+    }
     if (!doc?.transcript?.trim() || !needsDraft(doc.source)) continue;
     const transcript = doc.transcript;
     const ran = await runAi({

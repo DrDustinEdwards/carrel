@@ -27,8 +27,8 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
 }
 
 /** The filter's values besides the labels themselves. */
-const NONE = "none";
-const OTHER = "other";
+const NONE = "~none";
+const OTHER = "~other";
 
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);

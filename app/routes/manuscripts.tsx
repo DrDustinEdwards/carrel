@@ -33,6 +33,7 @@ import {
   refreshManuscripts,
   searchManuscripts,
 } from "~/lib/google/drive.server";
+import { GOOGLE_MESSAGES } from "~/lib/google/messages";
 import { isConnected, oauthConnection } from "~/lib/google/oauth.server";
 import { GoogleNotConnected, saConnection } from "~/lib/google/service-account.server";
 
@@ -89,7 +90,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     google,
     locks,
     docsEmail,
-    message: url.searchParams.get("google"),
+    message: GOOGLE_MESSAGES[url.searchParams.get("google") ?? ""] ?? null,
   };
 }
 

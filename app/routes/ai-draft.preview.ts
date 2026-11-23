@@ -2,17 +2,14 @@
 // pipeline and served under the same sandboxing policy as the editor's preview. Read-only; nothing
 // here writes to the site or to anyone's draft.
 
-import { SiteApiError } from "@dustinedwards/site-api/client";
-
 import { draftIdParam } from "~/components/editor/draft-head";
 import { readAiDraft } from "~/lib/ai.server";
 import { getEnv, getViewer } from "~/lib/context";
-import { previewFailure, previewResponse } from "~/lib/preview.server";
+import { failed, previewFailure, previewResponse } from "~/lib/preview.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteClient, siteConnection, SiteNotConnected } from "~/lib/sites.server";
+import { siteClient, siteConnection } from "~/lib/sites.server";
 
 import type { Route } from "./+types/ai-draft.preview";
-import { logEvent } from "@dustinedwards/site-runtime/log";
 
 export async function loader({ params, context }: Route.LoaderArgs) {
   const env = getEnv(context);
@@ -30,14 +27,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     });
     return previewResponse(html, connection.origin);
   } catch (error) {
-    if (error instanceof SiteNotConnected) return previewFailure(error.detail);
-    if (error instanceof SiteApiError && error.body)
-      return previewFailure(`The site could not render this: ${error.body.message}`);
-    logEvent(
-      "preview.failed",
-      { itemId: params.item, aiDraft: draft.id, error: String(error) },
-      { level: "error" },
-    );
-    return previewFailure("The site did not answer the preview request.");
+    return failed(error, { itemId: params.item, aiDraft: draft.id });
   }
 }

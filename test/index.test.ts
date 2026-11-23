@@ -79,6 +79,26 @@ describe("refresh", () => {
     expect(await searchItems(env.DB, projectId, { q: "nothing-like-this" })).toEqual([]);
   });
 
+  it("keeps the items it did not reach when the listing is cut off at the page limit", async () => {
+    const site = await seeded({ a: "# A\n", b: "# B\n" });
+    const env = connectedEnv();
+    const project = { id: projectId, site: "dustinedwards" as const };
+    await refreshIndex(env, project, site.fetch);
+    // Every page claims another follows, so the walk ends at the limit with `b` unlisted.
+    const endless: typeof fetch = async (input, init) => {
+      const res = await site.fetch(input, init);
+      const body = (await res.clone().json()) as { items?: { id: string }[] };
+      if (!Array.isArray(body.items)) return res;
+      return Response.json({ ...body, items: body.items.slice(0, 1), nextCursor: "more" });
+    };
+    const result = await refreshIndex(env, project, endless);
+    expect(result.removed).toBe(0);
+    const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM site_items WHERE project_id = ?")
+      .bind(projectId)
+      .first<{ n: number }>();
+    expect(row?.n).toBe(2);
+  });
+
   it("reads a body again only when the item changed, and drops an item the site no longer lists", async () => {
     const site = await seeded({ a: "# A\n", b: "# B\n" });
     const env = connectedEnv();

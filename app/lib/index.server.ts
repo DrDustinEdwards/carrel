@@ -137,10 +137,14 @@ export async function refreshIndex(
   const client = siteClient(env, project.site, fetcher);
   const items: ContentSummary[] = [];
   let cursor: string | undefined;
+  let complete = false;
   for (let page = 0; page < MAX_PAGES; page++) {
     const result = await client.list({ limit: PAGE_SIZE, cursor });
     items.push(...result.items);
-    if (!result.nextCursor) break;
+    if (!result.nextCursor) {
+      complete = true;
+      break;
+    }
     cursor = result.nextCursor;
   }
 
@@ -182,7 +186,8 @@ export async function refreshIndex(
       ),
     );
   }
-  const gone = [...known.keys()].filter((id) => !listed.has(id));
+  // An incomplete walk lists only the first pages: dropping what it did not reach would delete real items.
+  const gone = complete ? [...known.keys()].filter((id) => !listed.has(id)) : [];
   for (const itemId of gone) {
     statements.push(
       env.DB.prepare("DELETE FROM site_items WHERE project_id = ? AND item_id = ?").bind(

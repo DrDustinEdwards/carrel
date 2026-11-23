@@ -46,7 +46,7 @@ export function manuscriptsFolder(env: Env): string | null {
 }
 
 /** Manuscripts are Dustin's alone (design section 3, "Roles"). */
-function requireOwner(viewer: Viewer) {
+export function requireOwner(viewer: Viewer) {
   if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
 }
 

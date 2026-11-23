@@ -6,6 +6,7 @@
     "workers/**/*",
     "test/**/*",
     "scripts/lib/**/*",
+    "www/security.mjs",
     "worker-configuration.d.ts"
   ],
   "compilerOptions": {

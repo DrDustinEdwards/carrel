@@ -55,7 +55,7 @@ export function BookHead({
               </Form>
             ) : null}
             {book.canPublish ? (
-              book.exportReady ? (
+              book.exportBlocked === null ? (
                 <ButtonGroup label="Export">
                   <ButtonLink href={`${base}/export/epub`}>ePub</ButtonLink>
                   <ButtonLink href={`${base}/export/docx`}>Word</ButtonLink>
@@ -65,9 +65,7 @@ export function BookHead({
                   </ButtonLink>
                 </ButtonGroup>
               ) : (
-                <Button disabledReason="Export waits until every flag is fixed or dismissed.">
-                  Export
-                </Button>
+                <Button disabledReason={book.exportBlocked ?? undefined}>Export</Button>
               )
             ) : null}
           </>

@@ -3,7 +3,11 @@
 // but the site's own styles and images, and an opaque origin that cannot reach Carrel.
 
 import { buildPolicy } from "@dustinedwards/site-runtime/csp";
+import { SiteApiError } from "@dustinedwards/site-api/client";
 import { UPLOAD_HEADERS } from "@dustinedwards/site-runtime/headers";
+import { logEvent } from "@dustinedwards/site-runtime/log";
+
+import { SiteNotConnected } from "~/lib/sites.server";
 
 /**
  * The policy for a preview document. `sandbox` in the header holds even if the iframe attribute is lost. Its
@@ -72,4 +76,13 @@ export function previewFailure(message: string): Response {
       },
     },
   );
+}
+
+/** A preview the site could not give: what it said, or that it did not answer. */
+export function failed(error: unknown, fields: Record<string, unknown>): Response {
+  if (error instanceof SiteNotConnected) return previewFailure(error.detail);
+  if (error instanceof SiteApiError && error.body)
+    return previewFailure(`The site could not render this: ${error.body.message}`);
+  logEvent("preview.failed", { ...fields, error: String(error) }, { level: "error" });
+  return previewFailure("The site did not answer the preview request.");
 }

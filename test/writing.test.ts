@@ -322,7 +322,7 @@ describe("the outliner", () => {
       [THREE, "", null],
       ["chapters/02-the-crossing/02-the-bank.md", "Polished", 2000],
     ]);
-    expect(data.counts).toEqual({ drafting: 1, "first draft": 1, none: 1, other: 1 });
+    expect(data.counts).toEqual({ drafting: 1, "first draft": 1, "~none": 1, "~other": 1 });
   });
 
   it("filters by a label ignoring case, by no status, and by a status not on the list", async () => {
@@ -330,11 +330,11 @@ describe("the outliner", () => {
     expect(
       (await outliner("reader@test.invalid", "?status=first+draft")).rows.map((r) => r.path),
     ).toEqual([TWO]);
-    expect((await outliner("reader@test.invalid", "?status=none")).rows.map((r) => r.path)).toEqual(
-      [THREE],
-    );
     expect(
-      (await outliner("reader@test.invalid", "?status=other")).rows.map((r) => r.status),
+      (await outliner("reader@test.invalid", "?status=~none")).rows.map((r) => r.path),
+    ).toEqual([THREE]);
+    expect(
+      (await outliner("reader@test.invalid", "?status=~other")).rows.map((r) => r.status),
     ).toEqual(["Polished"]);
     expect((await outliner("reader@test.invalid", "?status=final")).rows).toEqual([]);
   });
@@ -366,7 +366,7 @@ describe("the outliner", () => {
         { label: "Polished", color: 7 },
       ],
     });
-    const data = await outliner("reader@test.invalid", "?status=other");
+    const data = await outliner("reader@test.invalid", "?status=~other");
     expect(data.rows.map((r) => r.status)).toEqual(["first draft"]);
     const twice = await saveStatusList(
       testEnv.DB,

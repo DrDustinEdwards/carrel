@@ -24,11 +24,11 @@ import { RevisionPicker } from "~/components/history/revision-picker";
 import { comparePicks, messageSummary } from "capsomer/behavior/history-list";
 import { listAiDrafts, readAiDraft } from "~/lib/ai.server";
 import { bookVersions, readVersion } from "~/lib/book-history.server";
-import { bookRepo, indexedFile, requireBookProject } from "~/lib/books.server";
+import { bookRepo, indexedFile, requireBookFile } from "~/lib/books.server";
 import { readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { orderPair } from "~/lib/history.server";
-import { isBookPath, fileKindOf, titleFromSegment } from "~/lib/novels/layout";
+import { labelFor } from "~/lib/novels/layout";
 
 import type { Route } from "./+types/book.history";
 import "capsomer/history-list.css";
@@ -41,19 +41,10 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
   ];
 }
 
-function labelFor(path: string): string {
-  const file = titleFromSegment(path.split("/").pop()!.replace(/\.md$/, ""));
-  if (fileKindOf(path) === "scene") return `${titleFromSegment(path.split("/")[1]!)}: ${file}`;
-  if (fileKindOf(path) === "book") return "Title page";
-  return file;
-}
-
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const project = await requireBookProject(env.DB, viewer, params.project, "read");
-  const path = params["*"] ?? "";
-  if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
+  const { project, path } = await requireBookFile(env.DB, viewer, params, "read");
   const fileName = path.split("/").pop()!;
   const query = new URL(request.url).searchParams;
   // Side by side unless the person asks for the patch.

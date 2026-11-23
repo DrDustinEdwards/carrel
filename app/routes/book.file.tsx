@@ -38,11 +38,11 @@ import {
   indexedFile,
   listFiles,
   listFindings,
-  requireBookProject,
+  requireBookFile,
   saveBookFile,
   type BookWrite,
 } from "~/lib/books.server";
-import { AiRefusal, listAiDrafts, readAiDraft } from "~/lib/ai.server";
+import { AiRefusal, listAiDraftSources, readAiDraft } from "~/lib/ai.server";
 import { bringInDoc, readDocLink, sendToDoc } from "~/lib/google/book-docs.server";
 import { GOOGLE_DOC } from "~/lib/google/docs.server";
 import { listManuscripts } from "~/lib/google/drive.server";
@@ -55,8 +55,8 @@ import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
 import {
   countProseWords,
-  isBookPath,
   fileKindOf,
+  labelFor,
   TEMPLATES,
   titleFromSegment,
 } from "~/lib/novels/layout";
@@ -93,20 +93,10 @@ function starter(path: string, name: string | null, bookName: string): string {
   return `# ${fallback}\n\n`;
 }
 
-function labelFor(path: string): string {
-  const kind = fileKindOf(path);
-  const file = titleFromSegment(path.split("/").pop()!.replace(/\.md$/, ""));
-  if (kind === "scene") return `${titleFromSegment(path.split("/")[1]!)}: ${file}`;
-  if (kind === "book") return "Title page";
-  return file;
-}
-
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const project = await requireBookProject(env.DB, viewer, params.project, "read");
-  const path = params["*"] ?? "";
-  if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
+  const { project, path } = await requireBookFile(env.DB, viewer, params, "read");
 
   const { repo, detail } = bookRepo(env);
   let git: { source: string; sha: string } | null = null;
@@ -217,12 +207,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     bible,
     binder: binderTree(indexed, `/b/${project.slug}`),
     // AI drafts an AI session saved beside this person's own, with their text: never committed.
-    aiDrafts: await Promise.all(
-      (await listAiDrafts(env.DB, project, viewer, path)).map(async (d) => ({
-        ...d,
-        source: (await readAiDraft(env.DB, project, viewer, path, d.id)).source,
-      })),
-    ),
+    aiDrafts: await listAiDraftSources(env.DB, project, viewer, path),
   };
 }
 
@@ -256,9 +241,7 @@ export async function action({
 }: Route.ActionArgs): Promise<ActionResult> {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const project = await requireBookProject(env.DB, viewer, params.project, "read");
-  const path = params["*"] ?? "";
-  if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
+  const { project, path } = await requireBookFile(env.DB, viewer, params, "read");
   const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   const source = normalizeNewlines(String(form.get("source") ?? ""));
@@ -857,31 +840,27 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Bible",
               content:
                 data.kind !== "scene" ? null : (
-                  <div className="cap-stack" data-gap="6">
-                    {data.kind === "scene" ? (
-                      <Panel title="From the bible" count={data.bible.length}>
-                        {data.bible.length === 0 ? (
-                          <p className="cap-muted">No entries.</p>
-                        ) : (
-                          <div className="cap-stack" data-gap="4">
-                            {data.bible.map((b) => (
-                              <Disclosure
-                                key={b.path}
-                                summary={
-                                  <>
-                                    {b.name} <span className="cap-muted">{b.kind}</span>
-                                  </>
-                                }
-                              >
-                                <p className="app-bible-body">{b.body || "(no notes)"}</p>
-                                <Link to={`${base}/f/${b.path}`}>Open</Link>
-                              </Disclosure>
-                            ))}
-                          </div>
-                        )}
-                      </Panel>
-                    ) : null}
-                  </div>
+                  <Panel title="From the bible" count={data.bible.length}>
+                    {data.bible.length === 0 ? (
+                      <p className="cap-muted">No entries.</p>
+                    ) : (
+                      <div className="cap-stack" data-gap="4">
+                        {data.bible.map((b) => (
+                          <Disclosure
+                            key={b.path}
+                            summary={
+                              <>
+                                {b.name} <span className="cap-muted">{b.kind}</span>
+                              </>
+                            }
+                          >
+                            <p className="app-bible-body">{b.body || "(no notes)"}</p>
+                            <Link to={`${base}/f/${b.path}`}>Open</Link>
+                          </Disclosure>
+                        ))}
+                      </div>
+                    )}
+                  </Panel>
                 ),
             },
             {

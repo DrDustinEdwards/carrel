@@ -68,6 +68,25 @@ describe("the test manuscript", () => {
     expect(paragraphs[2]!.runs.map((run) => run.italic)).toEqual([false, true, false]);
   });
 
+  it("keeps the text after a field that has no displayed text, such as an index entry", () => {
+    const field = (type: string) => `<w:r><w:fldChar w:fldCharType="${type}"/></w:r>`;
+    const { paragraphs } = readDocumentXml(
+      documentXml(
+        p(
+          r("Before") +
+            field("begin") +
+            '<w:r><w:instrText> XE "term" </w:instrText></w:r>' +
+            field("end") +
+            r(" after"),
+        ) + p(r("Next paragraph")),
+      ),
+    );
+    expect(paragraphs.map((x) => x.runs.map((run) => run.text).join(""))).toEqual([
+      "Before after",
+      "Next paragraph",
+    ]);
+  });
+
   it("treats a folder of files as chapters in order, a file with no heading as one chapter", async () => {
     const book = await importDocs({
       "01-arrival.docx": documentXml(p(r("First words here."))),

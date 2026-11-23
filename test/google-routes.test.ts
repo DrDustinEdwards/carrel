@@ -93,13 +93,20 @@ describe("Google routes", () => {
     const message = new URL(done.headers.get("Location")!, "https://carrel.test").searchParams.get(
       "google",
     );
-    expect(message).toBe("Google is connected for Send to Docs and Import (drive.file only).");
+    expect(message).toBe("connected");
     const page = (await manuscriptsLoader({
       request: new Request("https://carrel.test/manuscripts"),
       params: {},
       context: await context("owner@test.invalid"),
     } as never)) as Awaited<ReturnType<typeof manuscriptsLoader>>;
     expect(page.google).toEqual({ configured: true, connected: true });
+    // Wording of a link's own is not shown: only the fixed messages are.
+    const crafted = (await manuscriptsLoader({
+      request: new Request("https://carrel.test/manuscripts?google=Call+555"),
+      params: {},
+      context: await context("owner@test.invalid"),
+    } as never)) as Awaited<ReturnType<typeof manuscriptsLoader>>;
+    expect(crafted.message).toBeNull();
   });
 
   it("shows the manuscripts page with the setup still missing, rather than failing", async () => {

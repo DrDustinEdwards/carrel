@@ -164,16 +164,9 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/projects.server.ts",
-    find: "  const role = await requireAction(db, viewer, row.id, action);",
-    replace: '  const role = "owner" as const;',
-    label: "a site project reachable by anyone who names it",
-  },
-  {
-    gate: "tests",
-    file: "app/lib/books.server.ts",
-    find: "  const role = await requireAction(db, viewer, row.id, action);",
-    replace: '  const role = "owner" as const;',
-    label: "a book reachable by anyone who names it",
+    find: "  return { ...row, role: await requireAction(db, viewer, row.id, action) };",
+    replace: '  return { ...row, role: "owner" as const };',
+    label: "a site project or book reachable by anyone who names it",
   },
   {
     gate: "tests",
@@ -264,9 +257,9 @@ const PLANTS = [
   {
     gate: "roles",
     file: "app/lib/mcp/tools.ts",
-    find: "    run: async (args, ctx) => {\n      // Refused on the role",
+    find: '    run: async (args, ctx) => {\n      const p = await project(ctx, args, "read");\n      if (args.transcript_draft_id',
     replace:
-      '    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal("planted");\n      // Refused on the role',
+      '    run: async (args, ctx) => {\n      if (!ctx.session.viewer.isOwner) throw new AiRefusal("planted");\n      const p = await project(ctx, args, "read");\n      if (args.transcript_draft_id',
     label: "an Owner check in a tool",
   },
   {

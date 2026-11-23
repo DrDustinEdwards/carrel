@@ -1,4 +1,4 @@
-// Mirrors drizzle/0001_init.sql to 0023_access_sync.sql, which own the shape. Change both in the
+// Mirrors drizzle/*.sql, which own the shape. Change both in the
 // same commit. The FTS5 table site_items_fts has no mirror: only index.server.ts touches it, in SQL.
 
 import { sql } from "drizzle-orm";

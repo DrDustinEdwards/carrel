@@ -161,8 +161,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
         source === null
           ? {
               kind: "problem",
-              message:
-                "The site could not open that revision's source. A site on an older version of the site API cannot.",
+              message: "The site could not open that revision's source.",
             }
           : {
               kind: "source",
@@ -202,8 +201,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
           before === null || after === null
             ? {
                 kind: "problem",
-                message:
-                  "The site could not open one of those revisions' source. A site on an older version of the site API cannot.",
+                message: "The site could not open one of those revisions' source.",
               }
             : {
                 kind: "compare",
@@ -271,6 +269,9 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   const version = String(form.get("version") ?? "");
   const doc = await readDoc(env, project, params.item);
   if (!doc || !version) throw new Response("Not found", { status: 404 });
+  // A restore would publish it now; the schedule is the person's to change first.
+  if (doc.status === "scheduled")
+    return { ok: false as const, message: "Unschedule this post before restoring a version." };
   if (!(await mayRestore(env.DB, project, viewer, params.item, doc.status)))
     throw new Response("Forbidden", { status: 403 });
   const source = await readRevision(env, project, params.item, version);
