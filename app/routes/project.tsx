@@ -24,7 +24,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { kindsIn, searchItems } from "~/lib/index.server";
 import { postsSource, runIntent } from "~/lib/posts.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteConnection, siteEntry, siteUnreachable, siteHead } from "~/lib/sites.server";
+import { siteConnection, siteEntry, siteUnreachable, projectHead } from "~/lib/sites.server";
 import { onlyInCarrel, waitingWork } from "~/lib/waiting.server";
 import { intentAction } from "~/lib/form.server";
 
@@ -39,7 +39,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const viewer = getViewer(context);
   const project = await requireSiteProject(env.DB, viewer, params.project, "read");
   const head = {
-    ...siteHead(project),
+    ...projectHead(project),
   };
   const connection = siteConnection(env, project.site);
   if (connection.state !== "connected")

@@ -15,7 +15,7 @@ import { KitForm, useKitSubmit } from "capsomer/react/kit-form";
 import { getEnv, getViewer } from "~/lib/context";
 import { mentionsSource, runIntent, unreachable } from "~/lib/mentions.server";
 import { requireSiteProject } from "~/lib/projects.server";
-import { siteHead } from "~/lib/sites.server";
+import { projectHead } from "~/lib/sites.server";
 import { intentAction } from "~/lib/form.server";
 
 import type { Route } from "./+types/mentions";
@@ -30,7 +30,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const viewer = getViewer(context);
   // The Owner's alone, as Dustin ruled for the inbox: anyone else is refused before the site is asked.
   const project = await requireSiteProject(env.DB, viewer, params.project, "read_mentions");
-  const head = { ...siteHead(project) };
+  const head = { ...projectHead(project) };
   const search = new URL(request.url).searchParams;
   try {
     const kit = await loadMentions(

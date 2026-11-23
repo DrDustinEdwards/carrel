@@ -5,7 +5,7 @@ import { createExecutionContext } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { runBackup } from "~/lib/backup.server";
-import { healthAnswer, runHealth } from "~/lib/health.server";
+import { deskHealthAnswer, runHealth } from "~/lib/health.server";
 import { aiDoor } from "~/lib/mcp/door";
 import { clearTokenCache } from "~/lib/novels/repo.server";
 import { addPerson, mailbox, resetDb, testEnv } from "./env";
@@ -193,7 +193,7 @@ describe("site health", () => {
       /FAIL site-dustinedwards: dustinedwards\.info does not conform\. meta: answers with this contract's schema hash: schema hash ffffffffffff/,
     );
     // The drift is the site's finding, not Desk's: Desk's own /health does not list it as an alert.
-    const { checks } = (await (await healthAnswer(env)).json()) as {
+    const { checks } = (await (await deskHealthAnswer(env)).json()) as {
       checks: Array<{ name: string; status: string }>;
     };
     expect(checks.find((c) => c.name === "alerts")?.status).toBe("pass");

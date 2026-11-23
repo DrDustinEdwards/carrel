@@ -25,7 +25,7 @@ import {
 import { isolationVerdict, refuseCrossSite } from "@dustinedwards/site-runtime/origin";
 
 import { verifyAccess } from "~/lib/access.server";
-import { healthAnswer } from "~/lib/health.server";
+import { deskHealthAnswer } from "~/lib/health.server";
 import { findViewer, type Viewer } from "~/lib/people.server";
 
 export type Render = (request: Request, viewer: Viewer) => Promise<Response>;
@@ -62,7 +62,7 @@ export async function gate(
 ): Promise<Response> {
   // The shared /health is public, like every site's: Access bypasses this one path (the carrel-desk-public application)
   // so Capsid's watcher can read Desk's deployed sha. The AI door serves the same answer (app/lib/mcp/door.ts).
-  if (new URL(request.url).pathname === "/health") return healthAnswer(env);
+  if (new URL(request.url).pathname === "/health") return deskHealthAnswer(env);
   let viewer: Viewer | null;
   try {
     const access = await verifyAccess(

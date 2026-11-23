@@ -24,7 +24,7 @@ import { getEnv, getViewer } from "~/lib/context";
 import { mediaSource, runIntent, unreachable, usageHref } from "~/lib/media.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
-import { siteHead } from "~/lib/sites.server";
+import { projectHead } from "~/lib/sites.server";
 import { intentAction, UPLOAD_MAX_BYTES } from "~/lib/form.server";
 
 import type { Route } from "./+types/media";
@@ -48,7 +48,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     .map((p) => ({ slug: p.slug, name: p.name }));
   const head = {
     sites,
-    ...siteHead(project),
+    ...projectHead(project),
   };
   try {
     const kit = await loadMedia(mediaSource(env, project, viewer), readMediaQuery(search));

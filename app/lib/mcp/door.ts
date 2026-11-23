@@ -52,7 +52,7 @@ import { isAdminEmail } from "@dustinedwards/site-runtime/access";
 import { textResponse } from "@dustinedwards/site-runtime/http";
 import { agentPrincipal } from "@dustinedwards/site-runtime/agent-keys";
 import { agentEmail } from "~/lib/agent-keys.server";
-import { healthAnswer } from "~/lib/health.server";
+import { deskHealthAnswer } from "~/lib/health.server";
 import { findAgentViewer, findViewer } from "~/lib/people.server";
 import { SIGNED_IN_REPORT_NAME } from "~/lib/signed-in-crawl.server";
 
@@ -317,7 +317,7 @@ async function storedReport(env: Env, name: string): Promise<Response> {
 
 export async function aiDoor(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const { pathname } = new URL(request.url);
-  if (pathname === "/health") return healthAnswer(env);
+  if (pathname === "/health") return deskHealthAnswer(env);
   if (pathname === REPORT_PATH && request.method === "GET") return storedReport(env, "conformance");
   if (pathname === SIGNED_IN_REPORT_PATH && request.method === "GET")
     return storedReport(env, SIGNED_IN_REPORT_NAME);
