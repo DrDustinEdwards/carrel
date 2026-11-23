@@ -196,11 +196,12 @@ function tabWrites(edits: unknown): TabWrite[] {
         `${n}: range is the top-left cell, such as A1 (the rest follows from values).`,
       );
     const rows = e.values;
+    const shape = `${n}: values is 1 to ${SHEET_MAX.rows} rows of 1 to ${SHEET_MAX.columns} cells.`;
     if (!Array.isArray(rows) || rows.length === 0 || rows.length > SHEET_MAX.rows)
-      throw new AiRefusal(`${n}: values is 1 to ${SHEET_MAX.rows} rows, each a list of cells.`);
+      throw new AiRefusal(shape);
     const values = rows.map((r) => {
       if (!Array.isArray(r) || r.length === 0 || r.length > SHEET_MAX.columns)
-        throw new AiRefusal(`${n}: each row is 1 to ${SHEET_MAX.columns} cells.`);
+        throw new AiRefusal(shape);
       return r.map((c) => {
         const v = c ?? "";
         if (
