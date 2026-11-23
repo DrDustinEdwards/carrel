@@ -164,16 +164,9 @@ const PLANTS = [
   {
     gate: "tests",
     file: "app/lib/projects.server.ts",
-    find: "  const role = await requireAction(db, viewer, row.id, action);",
-    replace: '  const role = "owner" as const;',
-    label: "a site project reachable by anyone who names it",
-  },
-  {
-    gate: "tests",
-    file: "app/lib/books.server.ts",
-    find: "  const role = await requireAction(db, viewer, row.id, action);",
-    replace: '  const role = "owner" as const;',
-    label: "a book reachable by anyone who names it",
+    find: "  return { ...row, role: await requireAction(db, viewer, row.id, action) };",
+    replace: '  return { ...row, role: "owner" as const };',
+    label: "a site project or book reachable by anyone who names it",
   },
   {
     gate: "tests",
