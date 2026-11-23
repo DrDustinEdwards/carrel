@@ -637,7 +637,7 @@ export async function runHealth(
  * Left out: CSP_REPORT_RATE_LIMIT, because a probe would spend a count and a missing binding only drops reports, which
  * the receiver answers 204 regardless. BACKUPS is the backup check's own read.
  */
-export function healthAnswer(env: Env): Promise<Response> {
+export function deskHealthAnswer(env: Env): Promise<Response> {
   return siteHealthResponse(env, {
     backup: () => backupStatus(env),
     jobs: ALL_JOBS,

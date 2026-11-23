@@ -17,7 +17,7 @@ import { ProjectTabs } from "~/components/project-tabs";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
-import { siteHead } from "~/lib/sites.server";
+import { projectHead } from "~/lib/sites.server";
 import {
   briefOf,
   buildVoicePack,
@@ -39,7 +39,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const pack = await readVoicePack(env.DB, project);
   return {
     project: {
-      ...siteHead(project),
+      ...projectHead(project),
     },
     canManage: can(project.role, "manage"),
     brief: briefOf(pack),

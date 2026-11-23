@@ -24,7 +24,7 @@ import { LEGAL_TYPES, legalItemId, sectionsUsed, type LegalType } from "~/lib/le
 import { deleteSection, listSections, saveSection, sectionsCurrent } from "~/lib/legal.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
-import { siteHead, SiteNotConnected } from "~/lib/sites.server";
+import { projectHead, SiteNotConnected } from "~/lib/sites.server";
 import { confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
@@ -69,7 +69,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   );
   return {
     project: {
-      ...siteHead(project),
+      ...projectHead(project),
     },
     canManage: can(project.role, "manage"),
     siteError,

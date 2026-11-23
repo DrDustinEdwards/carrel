@@ -19,7 +19,7 @@ import { dismissItemFinding, projectFlags } from "~/lib/ai.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
-import { siteHead } from "~/lib/sites.server";
+import { projectHead } from "~/lib/sites.server";
 import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 import { readForm } from "~/lib/form.server";
 
@@ -34,7 +34,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   const project = await requireSiteProject(env.DB, getViewer(context), params.project, "read");
   return {
     project: {
-      ...siteHead(project),
+      ...projectHead(project),
       mentions: can(project.role, "read_mentions"),
     },
     canDismiss: can(project.role, "publish"),
