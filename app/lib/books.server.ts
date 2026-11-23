@@ -19,7 +19,8 @@ import {
 } from "~/db/schema";
 import { draftOf } from "~/lib/content.server";
 import { AiRefusal, type AiSession } from "~/lib/ai.server";
-import { requireAction, type Viewer } from "~/lib/people.server";
+import type { Viewer } from "~/lib/people.server";
+import { projectBySlug } from "~/lib/projects.server";
 import { can, type Action, type Role } from "~/lib/roles";
 import { checkFile, fingerprints, type BookContext, type Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
@@ -61,23 +62,22 @@ export async function requireBookProject(
   slug: string | undefined,
   action: Action,
 ): Promise<BookProject> {
-  const row = slug
-    ? await drizzle(db)
-        .select({
-          id: projects.id,
-          slug: projects.slug,
-          name: projects.name,
-          book: projects.book,
-          site: projects.site,
-        })
-        .from(projects)
-        .where(eq(projects.slug, slug))
-        .get()
-    : undefined;
-  if (!row) throw new Response("Not found", { status: 404 });
-  const role = await requireAction(db, viewer, row.id, action);
+  const row = await projectBySlug(db, viewer, slug, action);
   if (!row.book || row.site) throw new Response("Not found", { status: 404 });
-  return { id: row.id, slug: row.slug, name: row.name, book: row.book, role };
+  return { id: row.id, slug: row.slug, name: row.name, book: row.book, role: row.role };
+}
+
+/** A book project and one of its files by URL params: a path that is not a book file answers 404. */
+export async function requireBookFile(
+  db: D1Database,
+  viewer: Viewer,
+  params: { project?: string; "*"?: string },
+  action: Action,
+) {
+  const project = await requireBookProject(db, viewer, params.project, action);
+  const path = params["*"] ?? "";
+  if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
+  return { project, path };
 }
 
 /** The repository, or why there is none yet: until the App is set up, books open read-only from the index. */

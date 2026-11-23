@@ -53,6 +53,14 @@ export function titleFromSegment(segment: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** What a file is called on a page: a scene as "Chapter: Scene", the book as "Title page", the rest by file name. */
+export function labelFor(path: string): string {
+  const file = nameFromFile(path);
+  const kind = fileKindOf(path);
+  if (kind === "scene") return `${titleFromSegment(path.split("/")[1]!)}: ${file}`;
+  return kind === "book" ? "Title page" : file;
+}
+
 /** The next NN- prefix after the ones present, two digits until a hundred. */
 export function nextNumbered(existing: string[], name: string): string {
   const numbers = existing.map((s) => Number(NUMBERED.exec(s)?.[1] ?? 0));

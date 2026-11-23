@@ -1,5 +1,4 @@
-// Posting what the queue holds: one account's queued posts, kept to its daily cap, the gap between posts and X's
-// monthly budget, each claimed before it leaves so no post goes out twice.
+// Posting one account's queued posts within its caps, each claimed first so none goes out twice.
 
 import { errorMessage } from "@dustinedwards/site-runtime/log";
 import { formatMoney } from "@dustinedwards/site-runtime/money";

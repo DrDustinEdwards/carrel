@@ -46,7 +46,8 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "vite";
 
-import { PAGE_PRELOADS, SECURITY_TXT } from "./headers.mjs";
+import { PAGE_PRELOADS } from "./headers.mjs";
+import { SECURITY_TXT } from "./security.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -148,13 +149,12 @@ const TOOL_COUNT = [
     /^    name: "carrel_[a-z_]+",$/gm,
   ),
 ].length;
-/** The roles a person can hold, from the Role type in app/lib/roles.ts. */
-const ROLE_COUNT =
-  readFileSync(join(HERE, "..", "app", "lib", "roles.ts"), "utf8")
-    .match(/^export type Role = (.+);$/m)?.[1]
-    ?.split("|").length ?? 0;
-if (SITES.length === 0 || TOOL_COUNT === 0 || ROLE_COUNT === 0)
-  throw new Error("www/build.mjs: could not read the sites, the tools or the roles");
+const ROLES = readFileSync(join(HERE, "../app/lib/roles.ts"), "utf8").match(
+  /^export type Role = (.+);$/m,
+)?.[1];
+const ROLE_COUNT = ROLES?.split("|").length;
+if (SITES.length === 0 || TOOL_COUNT === 0 || !ROLE_COUNT)
+  throw new Error("www/build.mjs: could not read the sites or the tools");
 
 /** A feature with no section of its own on the page has no href and shows its name unlinked. @param {{ name: string, href?: string, note: string }} item */
 const checklistItem = ({ name, href, note }) =>

@@ -38,7 +38,7 @@ import {
   indexedFile,
   listFiles,
   listFindings,
-  requireBookProject,
+  requireBookFile,
   saveBookFile,
   type BookWrite,
 } from "~/lib/books.server";
@@ -55,8 +55,8 @@ import type { Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
 import {
   countProseWords,
-  isBookPath,
   fileKindOf,
+  labelFor,
   TEMPLATES,
   titleFromSegment,
 } from "~/lib/novels/layout";
@@ -93,20 +93,10 @@ function starter(path: string, name: string | null, bookName: string): string {
   return `# ${fallback}\n\n`;
 }
 
-function labelFor(path: string): string {
-  const kind = fileKindOf(path);
-  const file = titleFromSegment(path.split("/").pop()!.replace(/\.md$/, ""));
-  if (kind === "scene") return `${titleFromSegment(path.split("/")[1]!)}: ${file}`;
-  if (kind === "book") return "Title page";
-  return file;
-}
-
 export async function loader({ params, request, context }: Route.LoaderArgs) {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const project = await requireBookProject(env.DB, viewer, params.project, "read");
-  const path = params["*"] ?? "";
-  if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
+  const { project, path } = await requireBookFile(env.DB, viewer, params, "read");
 
   const { repo, detail } = bookRepo(env);
   let git: { source: string; sha: string } | null = null;
@@ -251,9 +241,7 @@ export async function action({
 }: Route.ActionArgs): Promise<ActionResult> {
   const env = getEnv(context);
   const viewer = getViewer(context);
-  const project = await requireBookProject(env.DB, viewer, params.project, "read");
-  const path = params["*"] ?? "";
-  if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
+  const { project, path } = await requireBookFile(env.DB, viewer, params, "read");
   const form = await readForm(request);
   const intent = String(form.get("intent") ?? "");
   const source = normalizeNewlines(String(form.get("source") ?? ""));

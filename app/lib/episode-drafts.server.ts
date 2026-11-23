@@ -100,11 +100,8 @@ export async function draftEpisodes(
     try {
       doc = await client.get(item.id);
     } catch (error) {
-      // Deleted since the list: skip it. The site's limiter ends the pass, as the index refresh does.
-      if (isRateLimited(error)) {
-        out.errors.push(`${item.id}: the site's rate limit stopped the pass`);
-        break;
-      }
+      // Deleted since the list: skip it; the site's limiter ends the pass, as the index refresh does.
+      if (isRateLimited(error)) break;
       if (error instanceof SiteApiError && error.status === 404) continue;
       throw error;
     }

@@ -13,7 +13,7 @@ import {
 } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
-import { SECURITY_TXT } from "../www/headers.mjs";
+import { SECURITY_TXT } from "../www/security.mjs";
 import { securityTxtResponse } from "@dustinedwards/site-runtime/security-txt";
 import { withSiteSentry } from "@dustinedwards/site-runtime/sentry";
 import { carrel, carrelMcp } from "@dustinedwards/site-runtime/sites";
@@ -84,7 +84,7 @@ function routeName(request: Request): string | undefined {
 /*
  * The AI door's headers, all from site-runtime: its registry entry's set, noindex and no-store, the consent page's
  * hashed-style policy, a load-nothing policy for everything else, both report sinks, and security.txt (the same contact
- * and expiry as the public page's, www/headers.mjs). Its CSP sink is cspReport, which answers CORS for
+ * and expiry as the public page's, www/security.mjs). Its CSP sink is cspReport, which answers CORS for
  * Desk's pages, so the wrapper's own is never reached. Its robots.txt, `Disallow: /`, is the static
  * public/robots.txt, served before the Worker on both doors.
  */

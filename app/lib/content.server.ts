@@ -399,13 +399,9 @@ export async function writeToSite(
 
   // The draft is done once its text reached the site; an unpublish sends no text, so it stays.
   if ("source" in request && request.source !== undefined && !opts.keepDraft) {
-    try {
-      await drizzle(env.DB)
-        .delete(drafts)
-        .where(draftOf(project.id, itemId, viewer.id));
-    } catch (error) {
-      logEvent("write.draft-kept", { itemId, error: String(error) }, { level: "error" });
-    }
+    await drizzle(env.DB)
+      .delete(drafts)
+      .where(draftOf(project.id, itemId, viewer.id));
   }
 
   // The write landed; a failed re-read only leaves the index to the next refresh.

@@ -2,14 +2,13 @@
 // renames of the numbered files, all in ONE commit with the version of each file Carrel indexed, so a
 // move never splits across commits and never overwrites a change made elsewhere. After the commit,
 // Carrel's own records that name a path follow the file: the index, the flags, the AI drafts beside
-// it, the untyped-word count, the comments, the shared working copy and the link to a Google Doc. The authorship record keeps the paths it was written with; a move is
-// recorded in book_moves, which a file's history follows back.
+// it, the untyped-word count, the comments, the shared working copy and the Google Doc link. A move is recorded in book_moves.
 
 import { inList } from "@dustinedwards/site-runtime/d1";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { bookFiles, bookMoves, drafts, rooms } from "~/db/schema";
+import { bookFiles, bookMoves } from "~/db/schema";
 import { listFiles, recheck, type BookProject } from "~/lib/books.server";
 import { GitConflict, type NovelsRepo } from "~/lib/novels/repo.server";
 import type { Viewer } from "~/lib/people.server";
@@ -52,25 +51,16 @@ export async function reorderBook(
   // A working draft is tied to its path and to the version it started from: moving the file under it
   // would strand the draft, so the move waits until it is saved or discarded.
   const froms = plan.renames.map((r) => r.from);
-  const held = await drizzle(db)
-    .select({ path: drafts.itemId })
-    .from(drafts)
-    .where(and(eq(drafts.projectId, project.id), inList(drafts.itemId, froms)))
-    .all();
   // So is a shared working copy with text no one has saved to Git.
-  held.push(
-    ...(await drizzle(db)
-      .select({ path: rooms.itemId })
-      .from(rooms)
-      .where(
-        and(
-          eq(rooms.projectId, project.id),
-          inList(rooms.itemId, froms),
-          ne(rooms.source, rooms.savedSource),
-        ),
+  const held = (
+    await db
+      .prepare(
+        `SELECT item_id AS path FROM drafts WHERE project_id = ?1 AND item_id IN (SELECT value FROM json_each(?2))
+         UNION SELECT item_id FROM rooms WHERE project_id = ?1 AND item_id IN (SELECT value FROM json_each(?2)) AND source != saved_source`,
       )
-      .all()),
-  );
+      .bind(project.id, JSON.stringify(froms))
+      .all<{ path: string }>()
+  ).results;
   if (held.length > 0) {
     const paths = [...new Set(held.map((h) => h.path))].sort();
     return {

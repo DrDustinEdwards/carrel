@@ -4,12 +4,12 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "2e067f5",
+    "measured_at": "8fba78b",
     "knip": {},
     "jscpd": {
-      "clones": 42,
-      "lines": 349,
-      "percentage": 0.64,
+      "clones": 40,
+      "lines": 330,
+      "percentage": 0.6,
       "unread": 0
     },
     "shared copies": {
@@ -32,7 +32,7 @@
       "app/lib/health.server.ts": 670,
       "app/lib/mcp/tools.ts": 2000,
       "app/lib/social/queue.server.ts": 728,
-      "app/routes/book.file.tsx": 966,
+      "app/routes/book.file.tsx": 954,
       "app/routes/editor.tsx": 1404,
       "scripts/lib/harness.mjs": 887,
       "test/door.test.ts": 975,
@@ -45,9 +45,9 @@
       "cases": 471
     },
     "comments": {
-      "lines": 3994,
-      "code": 47610,
-      "percentage": 7.74
+      "lines": 3990,
+      "code": 47594,
+      "percentage": 7.73
     }
   }
 }

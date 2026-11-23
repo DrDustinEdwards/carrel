@@ -1,6 +1,4 @@
-// Sheets through the service account: a tab's cells read, and cells written only on tabs Carrel made (sheet_tabs),
-// each created on the first write under the title asked for; his own tabs are never written. The rules around it are
-// slides-sheets.server.ts's.
+// Sheets: cells read from any tab, written only on tabs Carrel made (sheet_tabs).
 
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";

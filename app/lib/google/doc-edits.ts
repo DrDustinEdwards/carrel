@@ -1,6 +1,4 @@
-// Laying a book file's words against a Google Doc's: the file's text as proposed (Carrel's suggestions taken, Google's
-// pending ones left as the Doc has them) and the smallest edits that carry the Doc to it. Pure text work; the Docs calls
-// are in book-docs.server.ts.
+// A book file's words against a Google Doc's: the smallest edits that carry the Doc to the file.
 
 import type { JsonDoc } from "capsomer/behavior/collab-editor";
 
