@@ -185,7 +185,6 @@ function collect(
   }
 }
 
-/** Every paragraph of every tab, child tabs after their parent, in reading order. */
 /** The ids of the Doc's suggestions still open. */
 export function openSuggestions(doc: GoogleDoc): Set<string> {
   return new Set(
@@ -195,6 +194,7 @@ export function openSuggestions(doc: GoogleDoc): Set<string> {
   );
 }
 
+/** Every paragraph of every tab, child tabs after their parent, in reading order. */
 export function paragraphsOf(doc: GoogleDoc): Para[] {
   const out: Para[] = [];
   const walk = (tabs: Tab[] | undefined) => {

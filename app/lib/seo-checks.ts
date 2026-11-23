@@ -143,7 +143,6 @@ function withSearchFields(fields: SocialFields, listed: readonly SearchField[]):
   };
 }
 
-/** What the site adds after the title in a search result, for a width measured as the result shows it. */
 /** The keys a site keeps its search and card title and description under. */
 export const socialFieldsOf = (site: string): SocialFields => SOCIAL_FIELDS[site] ?? DEFAULT_FIELDS;
 

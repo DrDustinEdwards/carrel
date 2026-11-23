@@ -39,9 +39,7 @@ export default function ProgressDemo({ loaderData }: Route.ComponentProps) {
       <div className="cap-admin-page">
         <PageHead title="Sample book" />
         <div className="cap-stack" data-gap="6">
-          <Banner tone="info" title="Demo with sample data">
-            Sample data.
-          </Banner>
+          <Banner tone="info" title="Demo with sample data" />
           <WritingProgress {...loaderData} canEdit={false} />
         </div>
       </div>

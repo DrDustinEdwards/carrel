@@ -186,6 +186,8 @@ export async function buildVoicePack(
       logEvent("voice.post-unreadable", { itemId, error: String(error) }, { level: "error" });
     }
   }
+  // Every read failed (the site unreachable or rate limited): keep the excerpts already stored.
+  if (rows.length > 0 && texts.length === 0) return readVoicePack(env.DB, project);
   await storeExcerpts(env.DB, project.id, texts, now);
   return readVoicePack(env.DB, project);
 }

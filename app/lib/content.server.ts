@@ -375,24 +375,37 @@ export async function writeToSite(
     };
   }
 
-  await drizzle(env.DB)
-    .insert(changes)
-    .values({
-      id: changeId,
-      projectId: project.id,
-      itemId,
-      personId: viewer.id,
-      action: request.action,
-      versionBefore: current?.version ?? null,
-      versionAfter: result.version,
-      client: opts.client ?? null,
-    });
+  // The site has the write: a failed record is logged, not raised, so the caller still sees it saved.
+  try {
+    await drizzle(env.DB)
+      .insert(changes)
+      .values({
+        id: changeId,
+        projectId: project.id,
+        itemId,
+        personId: viewer.id,
+        action: request.action,
+        versionBefore: current?.version ?? null,
+        versionAfter: result.version,
+        client: opts.client ?? null,
+      });
+  } catch (error) {
+    logEvent(
+      "write.record-failed",
+      { itemId, action: request.action, error: String(error) },
+      { level: "error" },
+    );
+  }
 
   // The draft is done once its text reached the site; an unpublish sends no text, so it stays.
   if ("source" in request && request.source !== undefined && !opts.keepDraft) {
-    await drizzle(env.DB)
-      .delete(drafts)
-      .where(draftOf(project.id, itemId, viewer.id));
+    try {
+      await drizzle(env.DB)
+        .delete(drafts)
+        .where(draftOf(project.id, itemId, viewer.id));
+    } catch (error) {
+      logEvent("write.draft-kept", { itemId, error: String(error) }, { level: "error" });
+    }
   }
 
   // The write landed; a failed re-read only leaves the index to the next refresh.

@@ -78,6 +78,15 @@ type ProbeRecord = { sites: Record<string, { at: string; findings: SiteConforman
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
+/** The string-address fetcher the checks take, as the platform's fetch. */
+const asFetch =
+  (fetcher: Fetch): typeof fetch =>
+  (input, init) =>
+    fetcher(
+      typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+      init,
+    );
+
 const PLACEHOLDER = /example\.(com|cloudflareaccess\.com)/i;
 
 async function checkConfig(env: Env): Promise<CheckResult> {
@@ -173,11 +182,7 @@ async function checkSite(
         siteEntry(id).newSource?.(itemId, new Date().toISOString().slice(0, 10)) ?? "",
       imageAsUrl: siteEntry(id).imageAsUrl,
       author: siteEntry(id).author,
-      fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
-        fetcher(
-          typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
-          init,
-        )) as typeof fetch,
+      fetch: asFetch(fetcher),
     });
     if (report.ok) {
       return {
@@ -243,14 +248,7 @@ async function checkNovels(env: Env, fetcher: Fetch): Promise<CheckResult> {
       : { name: "writing", ok: false, detail: connection.detail };
   }
   try {
-    await installationToken(connection.appId, connection.privateKey, ((
-      input: RequestInfo | URL,
-      init?: RequestInit,
-    ) =>
-      fetcher(
-        typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
-        init,
-      )) as typeof fetch);
+    await installationToken(connection.appId, connection.privateKey, asFetch(fetcher));
     return { name: "writing", ok: true, detail: `The GitHub App can write to ${NOVELS_REPO}.` };
   } catch (error) {
     return {
@@ -328,11 +326,7 @@ async function checkServiceAccount(env: Env, fetcher: Fetch, now: Date): Promise
   const days = Math.floor((now.getTime() - Date.parse(seen!.firstSeenAt)) / 86_400_000);
   const id = key.privateKeyId.slice(0, 8);
   try {
-    await saAccessToken(key, ((input: RequestInfo | URL, init?: RequestInit) =>
-      fetcher(
-        typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
-        init,
-      )) as typeof fetch);
+    await saAccessToken(key, asFetch(fetcher));
   } catch (error) {
     return {
       name: "google-service-account",
@@ -397,11 +391,7 @@ async function checkDriveFile(env: Env, fetcher: Fetch): Promise<CheckResult> {
     };
   try {
     for (const g of grants) {
-      await userAccessToken(env, g.personId, ((input: RequestInfo | URL, init?: RequestInit) =>
-        fetcher(
-          typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
-          init,
-        )) as typeof fetch);
+      await userAccessToken(env, g.personId, asFetch(fetcher));
     }
     return { name: "google-drive-file", ok: true, detail: "The drive.file grant refreshes." };
   } catch (error) {

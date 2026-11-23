@@ -9,7 +9,8 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { FRAGMENT, roomSchema, suggestionPlugins } from "capsomer/behavior/collab-editor";
 import { listComments } from "~/lib/comments.server";
-import { bringInDoc, editsBetween, sendToDoc } from "~/lib/google/book-docs.server";
+import { bringInDoc, sendToDoc } from "~/lib/google/book-docs.server";
+import { editsBetween } from "~/lib/google/doc-edits";
 import { refreshManuscripts } from "~/lib/google/drive.server";
 import { clearSaTokenCache } from "~/lib/google/service-account.server";
 import { openRoom, roomDocument } from "~/lib/rooms.server";

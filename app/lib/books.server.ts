@@ -254,13 +254,10 @@ export async function bookVoice(db: D1Database, project: BookProject, path: stri
   };
 }
 
-/**
- * Replaces the findings for each file with what the checks found now. A dismissed finding that is
- * found again stays dismissed; one that is no longer found is gone, whatever its state.
- */
 /** The check names of flags added through MCP (ai.server.ts addFinding), which a recheck leaves alone. */
 const SESSION_FLAGS = ["ai", "review"];
 
+/** Replaces each file's findings with what the checks found now: a dismissed one found again stays dismissed, one no longer found is gone. */
 async function recordFindings(db: D1Database, projectId: number, byPath: Map<string, Finding[]>) {
   const d = drizzle(db);
   for (const [path, found] of byPath) {
@@ -293,15 +290,18 @@ async function recordFindings(db: D1Database, projectId: number, byPath: Map<str
     }
     const fresh = found.map((f, i) => ({ f, key: keys[i]! })).filter(({ key }) => !have.has(key));
     for (const { f, key } of fresh) {
-      await d.insert(findings).values({
-        projectId,
-        path,
-        checkName: f.check,
-        message: f.message,
-        line: f.line,
-        excerpt: f.excerpt,
-        fingerprint: key,
-      });
+      await d
+        .insert(findings)
+        .values({
+          projectId,
+          path,
+          checkName: f.check,
+          message: f.message,
+          line: f.line,
+          excerpt: f.excerpt,
+          fingerprint: key,
+        })
+        .onConflictDoNothing();
     }
   }
 }
@@ -390,8 +390,8 @@ export type BookRefresh = {
 const REFRESH_READ_CAP = 150;
 
 /**
- * Brings the index in line with Git: files whose blob sha changed are read again, files gone from
- * Git are dropped, and the checks run again if anything changed. Git is the authority throughout.
+ * Brings the index in line with Git, the authority: files whose blob sha changed are read again, files gone from
+ * Git are dropped, and the checks run again if anything changed.
  */
 export async function refreshBook(
   db: D1Database,
@@ -484,9 +484,8 @@ function wordBag(text: string): Map<string, number> {
 }
 
 /**
- * Words added and removed between two versions, counted as a multiset difference: a moved word
- * counts as neither, a changed word as one of each. Approximate on purpose; it is a record of how
- * much each person or AI changed, not a diff.
+ * Words added and removed between two versions, as a multiset difference: a moved word counts as neither, a changed
+ * word as one of each. Approximate on purpose: a record of how much each person or AI changed, not a diff.
  */
 export function wordDelta(
   before: string | null,
@@ -829,13 +828,14 @@ export async function saveBookAiDraft(
 /** What every tab of a book's page shows in its head: the name, Git's state and whether export is open. */
 export async function bookHead(env: Env, project: BookProject) {
   const canPublish = can(project.role, "publish");
+  const gate = canPublish ? await exportGate(env.DB, project) : null;
   return {
     slug: project.slug,
     name: project.name,
     book: project.book,
     connected: bookRepo(env).repo !== null,
     canPublish,
-    exportReady: canPublish ? (await exportGate(env.DB, project)).ok : false,
+    exportBlocked: gate && !gate.ok ? gate.message : null,
   };
 }
 export type BookHeadData = Awaited<ReturnType<typeof bookHead>>;

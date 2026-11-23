@@ -159,6 +159,8 @@ export function readDocumentXml(xml) {
   let inText = false;
   let skipDepth = 0; // inside an unsupported element or a deletion
   let fieldDepth = 0; // inside a field's instruction text
+  /** @type {{ separated: boolean }[]} */
+  const fields = []; // each open field, until its end
   const seenFlags = new Set();
 
   /**
@@ -311,9 +313,19 @@ export function readDocumentXml(xml) {
           flag("tracked-change", "A tracked insertion was kept, as Word's final view shows it.");
         break;
       case "w:fldChar":
-        if (attr(attrs, "w:fldCharType") === "begin") fieldDepth++;
-        else if (attr(attrs, "w:fldCharType") === "separate")
-          fieldDepth = Math.max(0, fieldDepth - 1);
+        {
+          const type = attr(attrs, "w:fldCharType");
+          if (type === "begin") fields.push({ separated: false });
+          else if (type === "separate") {
+            const open = fields.at(-1);
+            if (open) open.separated = true;
+          } else if (type === "end") {
+            // A field with no result (an index entry) has no separate: its end closes the instruction text.
+            if (fields.pop()?.separated === false)
+              flag("field", "A field with no displayed text was left out.");
+          }
+          fieldDepth = fields.filter((f) => !f.separated).length;
+        }
         break;
       case "w:instrText":
         if (!closing)

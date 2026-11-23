@@ -113,10 +113,11 @@ async function postToBluesky(
   const session = await blueskySession(creds, fetcher, now);
   // A link is made clickable with a facet over its byte range, as the app does.
   const facets = [...text.matchAll(/https?:\/\/[^\s]+/g)].map((m) => {
+    const link = m[0].replace(/[.,;:!?)]+$/, "");
     const start = new TextEncoder().encode(text.slice(0, m.index)).length;
     return {
-      index: { byteStart: start, byteEnd: start + new TextEncoder().encode(m[0]).length },
-      features: [{ $type: "app.bsky.richtext.facet#link", uri: m[0] }],
+      index: { byteStart: start, byteEnd: start + new TextEncoder().encode(link).length },
+      features: [{ $type: "app.bsky.richtext.facet#link", uri: link }],
     };
   });
   const res = await send(

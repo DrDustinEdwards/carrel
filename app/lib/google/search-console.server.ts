@@ -90,9 +90,13 @@ export async function refreshSearchConsole(
   const at = now.toISOString();
   // One batch per thousand statements (a D1 batch is a transaction): a row-by-row write cost a round trip each, and a
   // site with thousands of pages ran the cron job past its two minutes with its old rows already deleted.
+  // A property with no rows keeps one empty-address row, so the once-a-day gate still sees when it last asked.
+  const rows = body.rows?.length
+    ? body.rows
+    : [{ keys: [""], clicks: 0, impressions: 0, ctr: 0, position: 0 }];
   const statements = [
     env.DB.prepare("DELETE FROM search_console_pages WHERE project_id = ?").bind(project.id),
-    ...(body.rows ?? []).map((r) =>
+    ...rows.map((r) =>
       env.DB.prepare(
         "INSERT INTO search_console_pages (project_id, page, clicks, impressions, ctr, position, start_date, end_date, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       ).bind(

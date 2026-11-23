@@ -10,7 +10,7 @@ import { SlugField } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
 
-import { autosave, readDoc } from "~/lib/content.server";
+import { autosave, readDoc, readDraft } from "~/lib/content.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { requireSiteProject } from "~/lib/projects.server";
 import { siteEntry, type SiteId } from "~/lib/sites.server";
@@ -52,6 +52,9 @@ export async function action({ params, request, context }: Route.ActionArgs) {
   }
   if (await readDoc(env, project, slug)) {
     return { error: `The site already has a post at ${slug}. Open it from the list instead.` };
+  }
+  if (await readDraft(env.DB, project, viewer, slug)) {
+    return { error: `You already have a draft at ${slug}. Open it from the list instead.` };
   }
   const today = isoDay(new Date())!;
   await autosave(env.DB, project, viewer, slug, {

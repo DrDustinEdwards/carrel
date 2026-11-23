@@ -14,7 +14,6 @@ import { NeedsList, type NeedLinkProps } from "capsomer/react/attention-list";
 import { laterUntil } from "capsomer/behavior/time";
 import { useRouterRowForm } from "capsomer/react/router";
 import { Link, ButtonLink } from "capsomer/react/link";
-import { Banner } from "capsomer/react/banner";
 import { Empty } from "capsomer/react/empty";
 import { PageHead } from "capsomer/react/page-head";
 import { Panel } from "capsomer/react/panel";
@@ -35,6 +34,7 @@ import {
 } from "~/lib/desk.server";
 import { readForm } from "~/lib/form.server";
 import { useBrowserZone } from "capsomer/react/hooks";
+import { logEvent } from "@dustinedwards/site-runtime/log";
 import { visibleProjects } from "~/lib/people.server";
 
 import type { Route } from "./+types/home";
@@ -74,11 +74,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     show,
     needs,
     // Streamed: shown when the sites have answered.
-    mentions: mentionNeeds(env, viewer, visible).catch(() => [] as Need[]),
+    mentions: mentionNeeds(env, viewer, visible).catch((error) => {
+      logEvent("home.mentions-failed", { error: String(error) }, { level: "error" });
+      return [] as Need[];
+    }),
     resume,
     typed,
     zone: getZone(context),
-    googleMessage: url.searchParams.get("google"),
   };
 }
 
@@ -139,7 +141,7 @@ function Needs({ needs, show, zone }: { needs: Need[]; show: Show; zone: string 
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { isOwner, hasProjects, show, needs, mentions, resume, typed, googleMessage } = loaderData;
+  const { isOwner, hasProjects, show, needs, mentions, resume, typed } = loaderData;
   const zone = useBrowserZone(loaderData.zone);
   const link = ({ href, children }: { href: string; children: React.ReactNode }) => (
     <Link to={href}>{children}</Link>
@@ -161,7 +163,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           ) : null
         }
       />
-      {googleMessage ? <Banner tone="info">{googleMessage}</Banner> : null}
 
       {!hasProjects ? (
         <Empty kind="nothing-yet" title="No projects yet" />

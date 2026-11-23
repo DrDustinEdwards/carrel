@@ -1,8 +1,7 @@
-// The MCP tools over posts (design section 5, "MCP tools"). Each calls the same functions the
-// buttons do (content.server.ts, projects.server.ts, index.server.ts) or the AI rules on top of them
-// (ai.server.ts), so a role that cannot do something in the browser cannot do it here. Each tool's
-// description carries the rule that AI never rewrites Dustin's prose unasked. The books tools call
-// books.server.ts as the book pages do, and carrel_draft_social_post stores a post for the social queue.
+// The MCP tools over posts (design section 5, "MCP tools"). Each calls the functions the buttons do
+// (content.server.ts, projects.server.ts, index.server.ts) or the AI rules on top of them (ai.server.ts), so a role
+// that cannot do something in the browser cannot do it here. Each tool's description carries the rule that AI never
+// rewrites Dustin's prose unasked. The books tools call books.server.ts as the book pages do.
 //
 // The ruling of 2026-10-10 (capsid/rulings/mcp-2026-10-10.md) sets the shape around them: names
 // prefixed carrel_, all four annotation hints on every tool, a cursor on the one list that can run
@@ -45,6 +44,7 @@ import {
   CARREL_FOLDER,
   createGoogleDoc,
   listManuscripts,
+  requireOwner,
   refreshManuscripts,
 } from "~/lib/google/drive.server";
 import {
@@ -872,7 +872,6 @@ export const TOOLS: Tool[] = [
     ),
     outside: false,
     run: async (args, ctx) => {
-      // Refused on the role before anything else is read, as the button is.
       const p = await project(ctx, args, "read");
       if (args.transcript_draft_id !== undefined) {
         const raw = String(args.transcript_draft_id);
@@ -1451,6 +1450,7 @@ export const TOOLS: Tool[] = [
     outputSchema: shape({ docs: LIST }, { refreshed: ANY }),
     outside: true,
     run: async (args, ctx) => {
+      requireOwner(ctx.session.viewer);
       const refreshed =
         args.refresh === true ? await refreshManuscripts(ctx.env, ctx.deps.fetcher) : undefined;
       const all = await listManuscripts(ctx.env.DB, ctx.session.viewer);

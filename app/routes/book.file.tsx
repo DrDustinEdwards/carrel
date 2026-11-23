@@ -42,7 +42,7 @@ import {
   saveBookFile,
   type BookWrite,
 } from "~/lib/books.server";
-import { AiRefusal, listAiDrafts, readAiDraft } from "~/lib/ai.server";
+import { AiRefusal, listAiDraftSources, readAiDraft } from "~/lib/ai.server";
 import { bringInDoc, readDocLink, sendToDoc } from "~/lib/google/book-docs.server";
 import { GOOGLE_DOC } from "~/lib/google/docs.server";
 import { listManuscripts } from "~/lib/google/drive.server";
@@ -217,12 +217,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     bible,
     binder: binderTree(indexed, `/b/${project.slug}`),
     // AI drafts an AI session saved beside this person's own, with their text: never committed.
-    aiDrafts: await Promise.all(
-      (await listAiDrafts(env.DB, project, viewer, path)).map(async (d) => ({
-        ...d,
-        source: (await readAiDraft(env.DB, project, viewer, path, d.id)).source,
-      })),
-    ),
+    aiDrafts: await listAiDraftSources(env.DB, project, viewer, path),
   };
 }
 
@@ -857,31 +852,27 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
               label: "Bible",
               content:
                 data.kind !== "scene" ? null : (
-                  <div className="cap-stack" data-gap="6">
-                    {data.kind === "scene" ? (
-                      <Panel title="From the bible" count={data.bible.length}>
-                        {data.bible.length === 0 ? (
-                          <p className="cap-muted">No entries.</p>
-                        ) : (
-                          <div className="cap-stack" data-gap="4">
-                            {data.bible.map((b) => (
-                              <Disclosure
-                                key={b.path}
-                                summary={
-                                  <>
-                                    {b.name} <span className="cap-muted">{b.kind}</span>
-                                  </>
-                                }
-                              >
-                                <p className="app-bible-body">{b.body || "(no notes)"}</p>
-                                <Link to={`${base}/f/${b.path}`}>Open</Link>
-                              </Disclosure>
-                            ))}
-                          </div>
-                        )}
-                      </Panel>
-                    ) : null}
-                  </div>
+                  <Panel title="From the bible" count={data.bible.length}>
+                    {data.bible.length === 0 ? (
+                      <p className="cap-muted">No entries.</p>
+                    ) : (
+                      <div className="cap-stack" data-gap="4">
+                        {data.bible.map((b) => (
+                          <Disclosure
+                            key={b.path}
+                            summary={
+                              <>
+                                {b.name} <span className="cap-muted">{b.kind}</span>
+                              </>
+                            }
+                          >
+                            <p className="app-bible-body">{b.body || "(no notes)"}</p>
+                            <Link to={`${base}/f/${b.path}`}>Open</Link>
+                          </Disclosure>
+                        ))}
+                      </div>
+                    )}
+                  </Panel>
                 ),
             },
             {

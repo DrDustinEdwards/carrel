@@ -327,6 +327,16 @@ describe("reordering a book", () => {
     )
       .bind(project.id, A1, viewer.id)
       .run();
+    await testEnv.DB.prepare(
+      "INSERT INTO comments (id, project_id, item_id, person_id, body, created_at) VALUES ('c1', ?, ?, ?, 'note', '2026-01-01')",
+    )
+      .bind(project.id, A1, viewer.id)
+      .run();
+    await testEnv.DB.prepare(
+      "INSERT INTO doc_links (project_id, item_id, doc_id, person_id, brought, synced_at) VALUES (?, ?, 'doc', ?, '[]', '2026-01-01')",
+    )
+      .bind(project.id, A1, viewer.id)
+      .run();
     const result = await reorderBook(testEnv.DB, gh.repo, project, viewer, swapped());
     expect(result).toMatchObject({
       ok: true,
@@ -350,6 +360,10 @@ describe("reordering a book", () => {
     expect(await testEnv.DB.prepare("SELECT item_id FROM ai_drafts").first()).toEqual({
       item_id: "chapters/01-arrival/02-the-gate.md",
     });
+    for (const table of ["comments", "doc_links"])
+      expect(await testEnv.DB.prepare(`SELECT item_id FROM ${table}`).first()).toEqual({
+        item_id: "chapters/01-arrival/02-the-gate.md",
+      });
     const moves = await testEnv.DB.prepare(
       "SELECT from_path, to_path, person_id FROM book_moves ORDER BY id",
     ).all();
@@ -373,6 +387,16 @@ describe("reordering a book", () => {
       message: expect.stringContaining(A1),
     });
     expect(gh.commits).toHaveLength(0);
+    await testEnv.DB.prepare("DELETE FROM drafts").run();
+    await testEnv.DB.prepare(
+      "INSERT INTO rooms (project_id, item_id, source, saved_source, updated_at) VALUES (?, ?, 'typed', 'saved', '2026-01-01')",
+    )
+      .bind(project.id, A1)
+      .run();
+    expect(await reorderBook(testEnv.DB, gh.repo, project, viewer, swapped())).toMatchObject({
+      ok: false,
+      reason: "draft",
+    });
     const reader = await as("reader@test.invalid");
     await expect(
       reorderBook(testEnv.DB, gh.repo, reader.project, reader.viewer, swapped()),

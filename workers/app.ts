@@ -13,6 +13,7 @@ import {
 } from "@dustinedwards/site-runtime/log";
 import { countNotFound, pruneNotFound } from "@dustinedwards/site-runtime/not-found";
 import { withMcpHeaders } from "@dustinedwards/site-runtime/mcp-server";
+import { SECURITY_TXT } from "../www/headers.mjs";
 import { securityTxtResponse } from "@dustinedwards/site-runtime/security-txt";
 import { withSiteSentry } from "@dustinedwards/site-runtime/sentry";
 import { carrel, carrelMcp } from "@dustinedwards/site-runtime/sites";
@@ -83,19 +84,14 @@ function routeName(request: Request): string | undefined {
 /*
  * The AI door's headers, all from site-runtime: its registry entry's set, noindex and no-store, the consent page's
  * hashed-style policy, a load-nothing policy for everything else, both report sinks, and security.txt (the same contact
- * and expiry as the public page's, www/build.mjs; renew both together). Its CSP sink is cspReport, which answers CORS for
+ * and expiry as the public page's, www/headers.mjs). Its CSP sink is cspReport, which answers CORS for
  * Desk's pages, so the wrapper's own is never reached. Its robots.txt, `Disallow: /`, is the static
  * public/robots.txt, served before the Worker on both doors.
  */
-const SECURITY_TXT = { contact: "security@dustinedwards.info", expires: "2027-10-26T00:00:00Z" };
+const doorHeaders = (handler: Parameters<typeof withMcpHeaders<Env>>[0]) =>
+  withMcpHeaders<Env>(handler, { site: carrelMcp, securityTxt: SECURITY_TXT });
 
-const door = withMcpHeaders<Env>(
-  (request, env, ctx) => aiDoor(request, env, ctx as ExecutionContext),
-  {
-    site: carrelMcp,
-    securityTxt: SECURITY_TXT,
-  },
-);
+const door = doorHeaders((request, env, ctx) => aiDoor(request, env, ctx as ExecutionContext));
 
 /**
  * Two doors, told apart by the hostname alone. The AI door (carrel-mcp.dustinedwards.info) speaks OAuth and MCP and
@@ -107,8 +103,12 @@ async function doors(request: Request, env: Env, ctx: ExecutionContext): Promise
   const path = new URL(request.url).pathname;
   // The maintenance page (site-runtime ./maintenance), on both doors: every path but /health answers 503 while the
   // MAINTENANCE var is on.
-  if (maintenanceOn(env) && path !== "/health")
-    return deskHeaders(maintenanceResponse({ siteName: "Carrel" }), request, env);
+  if (maintenanceOn(env) && path !== "/health") {
+    const maintenance = () => maintenanceResponse({ siteName: "Carrel" });
+    return isMcpHost(request, env)
+      ? doorHeaders(maintenance)(request, env, ctx)
+      : deskHeaders(maintenance(), request, env);
+  }
   if (isMcpHost(request, env)) {
     if (isCspReport(request)) return cspReport(request, env, carrelOrigin(env));
     // Capsid Admin's run a job now (app/lib/operator.server.ts).

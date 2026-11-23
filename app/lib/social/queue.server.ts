@@ -22,19 +22,15 @@ import type { Viewer } from "~/lib/people.server";
 import { packExcerpts } from "~/lib/voice.server";
 
 import { lintPost } from "./lint";
-import { credentialsFor, postOriginal, xCostMills } from "./platforms.server";
+import { dayStart, sendQueued } from "./send.server";
 import { d1FireStore, fireOnce, routineConfig, routinePrompt } from "./routine.server";
 import { draftPostViaApi, monthSpendMicros, readAiSettings } from "~/lib/ai-engine.server";
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { readKey, splitSource } from "@drdustinedwards/site-helpers/frontmatter";
-import { formatMoney } from "@dustinedwards/site-runtime/money";
 
-import { errorMessage } from "@dustinedwards/site-runtime/log";
 import { isSlug } from "@drdustinedwards/site-helpers/slug";
-import { isoDay } from "@drdustinedwards/site-helpers/xml";
-import { monthKey } from "@dustinedwards/site-runtime/time";
-type Fetch = typeof fetch;
+export type Fetch = typeof fetch;
 
 /** How long published items gather before one routine run takes them all. */
 export const BATCH_DELAY_MS = 30 * 60_000;
@@ -49,14 +45,6 @@ const DEFAULT_TEMPLATE = "New: {title}. {summary} {link}";
 
 function requireOwner(viewer: Viewer) {
   if (!viewer.isOwner) throw new Response("Not found", { status: 404 });
-}
-
-function dayStart(now: Date): string {
-  return `${isoDay(now)}T00:00:00.000Z`;
-}
-
-function monthStart(now: Date): string {
-  return `${monthKey(now)}-01T00:00:00.000Z`;
 }
 
 export type AccountInput = {
@@ -88,7 +76,8 @@ export async function createAccount(db: D1Database, viewer: Viewer, input: Accou
         enabled: false,
         mode: "approval",
       });
-  } catch {
+  } catch (error) {
+    if (!/UNIQUE/i.test(String(error))) throw error;
     return { ok: false as const, error: `An account with the key ${input.key} already exists.` };
   }
   return { ok: true as const };
@@ -224,6 +213,13 @@ export async function draftSocialPost(
       ok: false as const,
       error: "This item's post was already settled (template used, or the account was off).",
     };
+  if (
+    await d.$count(
+      socialPosts,
+      and(eq(socialPosts.eventId, event!.id), inArray(socialPosts.status, ["sent", "by-hand"])),
+    )
+  )
+    return { ok: false as const, error: "This item was already announced; it is announced once." };
   await d
     .update(socialPosts)
     .set({ status: "rejected", error: "Replaced by a newer draft." })
@@ -278,7 +274,6 @@ function fillTemplate(
     .replaceAll("{link}", event.url)
     .replace(/\s+/g, " ")
     .replace(/\s+([.,])/g, "$1")
-    .replace(/\.\./g, ".")
     .trim();
 }
 
@@ -291,9 +286,8 @@ export type TickResult = {
   errors: string[];
 };
 
-type Account = typeof socialAccounts.$inferSelect;
+export type Account = typeof socialAccounts.$inferSelect;
 
-/** Lints a drafted post and routes it by the account's switch. */
 /** The voice excerpts of the project a post announces, for its lint. */
 async function excerptsFor(db: D1Database, eventId: number): Promise<string[]> {
   const event = await drizzle(db)
@@ -304,6 +298,7 @@ async function excerptsFor(db: D1Database, eventId: number): Promise<string[]> {
   return event ? packExcerpts(db, event.projectId) : [];
 }
 
+/** Lints a drafted post and routes it by the account's switch. */
 async function route(db: D1Database, post: typeof socialPosts.$inferSelect, account: Account) {
   const findings = lintPost(post.text, account.platform, await excerptsFor(db, post.eventId));
   const status = findings.length ? "held" : account.mode === "auto" ? "queued" : "awaiting";
@@ -338,90 +333,6 @@ async function applyTemplate(
     .returning();
   await d.update(socialEvents).set({ state: "templated" }).where(eq(socialEvents.id, event.id));
   await route(db, post!, account);
-}
-
-async function sendQueued(
-  env: Env,
-  account: Account,
-  now: Date,
-  fetcher: Fetch,
-  result: TickResult,
-) {
-  const d = drizzle(env.DB);
-  const queued = await d
-    .select()
-    .from(socialPosts)
-    .where(and(eq(socialPosts.accountId, account.id), eq(socialPosts.status, "queued")))
-    .orderBy(asc(socialPosts.id))
-    .all();
-  if (queued.length === 0) return;
-  const sent = await d
-    .select({ sentAt: socialPosts.sentAt, cost: socialPosts.costMills })
-    .from(socialPosts)
-    .where(
-      and(
-        eq(socialPosts.accountId, account.id),
-        eq(socialPosts.status, "sent"),
-        gte(socialPosts.sentAt, monthStart(now)),
-      ),
-    )
-    .orderBy(desc(socialPosts.sentAt))
-    .all();
-  let today = sent.filter((s) => s.sentAt! >= dayStart(now)).length;
-  let spent = sent.reduce((n, s) => n + s.cost, 0);
-  let last = sent[0]?.sentAt ? Date.parse(sent[0].sentAt) : 0;
-  const creds = credentialsFor(env, account);
-
-  for (const post of queued) {
-    // Recova's caps, per account: the daily cap and the gap between posts; X's monthly budget too.
-    if (today >= account.dailyCap || now.getTime() - last < account.minGapMinutes * 60_000) {
-      result.waitingOnCaps++;
-      return;
-    }
-    const cost = account.platform === "x" ? xCostMills(post.text) : 0;
-    if (account.platform === "x" && spent + cost > account.monthlyBudgetMills) {
-      await d
-        .update(socialPosts)
-        .set({
-          error: `Held: it would pass this month's X budget (${formatMoney(account.monthlyBudgetMills, "usd", { scale: 3 })}).`,
-        })
-        .where(eq(socialPosts.id, post.id));
-      result.waitingOnCaps++;
-      return;
-    }
-    if ("missing" in creds) {
-      await d
-        .update(socialPosts)
-        .set({ error: `Waiting for credentials: ${creds.missing.join(", ")}.` })
-        .where(eq(socialPosts.id, post.id));
-      result.errors.push(`${account.key}: credentials missing`);
-      return;
-    }
-    try {
-      const id = await postOriginal(creds, post.text, fetcher, now.getTime());
-      await d
-        .update(socialPosts)
-        .set({
-          status: "sent",
-          platformPostId: id,
-          costMills: cost,
-          sentAt: now.toISOString(),
-          error: null,
-        })
-        .where(eq(socialPosts.id, post.id));
-      today++;
-      spent += cost;
-      last = now.getTime();
-      result.sent++;
-    } catch (error) {
-      const message = errorMessage(error);
-      await d
-        .update(socialPosts)
-        .set({ status: "failed", error: message })
-        .where(eq(socialPosts.id, post.id));
-      result.errors.push(`${account.key}: ${message}`);
-    }
-  }
 }
 
 /** One pass of the queue, run by the cron. Every step is idempotent, so a missed run loses nothing. */

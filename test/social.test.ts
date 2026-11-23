@@ -286,6 +286,27 @@ describe("the primary path: a draft stored ahead", () => {
     });
   });
 
+  it("posts once when two runs overlap, and refuses a second draft for a piece already announced", async () => {
+    await account("example-bluesky");
+    const world = fakeWorld();
+    const draft = {
+      accountKey: "example-bluesky",
+      projectId,
+      itemId: "post-one",
+      text: `New post: Spring update. ${PIECE.url}`,
+      createdBy: "Claude 1.0",
+    };
+    await draftSocialPost(testEnv.DB, draft);
+    await recordPublication(testEnv.DB, projectId, PIECE, NOW);
+    await processSocial(env, { fetcher: world.fetch, now: NOW, draftNow: true });
+    await Promise.all([
+      processSocial(env, { fetcher: world.fetch, now: NOW }),
+      processSocial(env, { fetcher: world.fetch, now: NOW }),
+    ]);
+    expect(world.sent.filter((s) => s.url.endsWith("createRecord"))).toHaveLength(1);
+    expect(await draftSocialPost(testEnv.DB, draft)).toMatchObject({ ok: false });
+  });
+
   it("PLANT: a post failing the lint is held, and goes only once edited and approved", async () => {
     const id = await account("example-bluesky");
     const world = fakeWorld();

@@ -7,9 +7,8 @@
 // - an AI draft is saved beside the person's own draft, never over it or to the site;
 // - publish is the Owner's own sessions only, refused while any flag on the item is open, recorded
 //   as "published by <client> on <person>'s instruction", and emailed with links to undo it.
-//   It publishes the site's text as it stands or the session's own AI draft, first publications
-//   included, at once on Dustin's word in the conversation. The site keeps
-//   every earlier version, so the history page can restore the one before.
+//   It publishes the site's text as it stands or the session's own AI draft, first publications included,
+//   at once on Dustin's word in the conversation; the site keeps every earlier version.
 
 import { sendEmail } from "@dustinedwards/site-runtime/email";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
@@ -219,13 +218,13 @@ export type AiDraftSummary = {
   words: number;
 };
 
-/** The AI drafts a person's own sessions saved for this item, newest first. Private to the person, as drafts are. */
-export async function listAiDrafts(
+/** The AI drafts a person's own sessions saved for this item, newest first, with their text. Private to the person. */
+export async function listAiDraftSources(
   db: D1Database,
   project: ProjectRole,
   viewer: Viewer,
   itemId: string,
-): Promise<AiDraftSummary[]> {
+) {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   const rows = await drizzle(db)
     .select({
@@ -246,11 +245,13 @@ export async function listAiDrafts(
     )
     .orderBy(desc(aiDrafts.createdAt), desc(aiDrafts.id))
     .all();
-  return rows.map(({ source, ...r }) => ({
-    ...r,
-    words: wordCount(source),
-  }));
+  return rows.map((r) => ({ ...r, words: wordCount(r.source) }));
 }
+
+export const listAiDrafts = async (
+  ...args: Parameters<typeof listAiDraftSources>
+): Promise<AiDraftSummary[]> =>
+  (await listAiDraftSources(...args)).map(({ source: _text, ...r }) => r);
 
 export async function readAiDraft(
   db: D1Database,
@@ -338,8 +339,7 @@ const itemBase = (origin: string, project: SiteProject, itemId: string) =>
  * edit on the site is never overwritten unseen. Every refusal comes before the site is asked anything.
  *
  * It goes live at once, first publications and AI drafts included: Dustin's approval in the conversation is the
- * instruction. Every version is kept, and the email
- * after it links to unpublish and restore.
+ * instruction. Every version is kept, and the email after it links to unpublish and restore.
  */
 export async function aiPublish(
   env: Env,
