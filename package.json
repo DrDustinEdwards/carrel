@@ -118,6 +118,9 @@
     },
     "micromark-extension-math": {
       "katex": "0.18.2"
+    },
+    "linkedom": {
+      "htmlparser2": "$htmlparser2"
     }
   },
   "engines": {
