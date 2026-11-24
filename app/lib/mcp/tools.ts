@@ -14,7 +14,7 @@
 // editor" in this file would be a second place for the rules to live, and the first time the two
 // disagreed one door would allow what the other refused. check:mcp-roles fails on it.
 
-import type { MentionFilter } from "@dustinedwards/site-api/admin";
+import type { MentionsQuery } from "@dustinedwards/site-api/admin";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { outsideResult } from "@dustinedwards/site-runtime/mcp-server";
 
@@ -1176,7 +1176,7 @@ export const TOOLS: Tool[] = [
         ctx.session.viewer,
         str(args, "project"),
         {
-          ...(status ? { status: status as MentionFilter } : {}),
+          ...(status ? { status: status as MentionsQuery["status"] } : {}),
           ...(q ? { q } : {}),
           ...(item ? { targetId: item } : {}),
           ...(cursor ? { cursor } : {}),
@@ -1790,14 +1790,14 @@ export const TOOLS: Tool[] = [
     name: "carrel_undo_doc",
     title: "List or take back Carrel's changes in a Google Doc",
     scope: "write",
-    description: `Without change: lists what AIs changed in a Google Doc through Carrel, newest first, each with its undo id (c12, a5), which AI, why, and whether it was taken back. With change: takes that one back. A suggestion is withdrawn (whatever is still open), a comment is deleted, and a direct write puts the old text back if the written text still stands as written; if it moved or was edited, nothing changes and the answer says what it was. Undo only when Dustin asked for it in this conversation. ${RULE}`,
+    description: `Without change: lists what AIs changed in a Google Doc through Carrel, newest first, each with its undo id (12), which AI, why, and whether it was taken back. With change: takes that one back. A suggestion is withdrawn (whatever is still open), a comment is deleted, and a direct write puts the old text back if the written text still stands as written; if it moved or was edited, nothing changes and the answer says what it was. Undo only when Dustin asked for it in this conversation. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: {
         doc: DOC,
         change: {
           type: "string",
-          description: "The undo id, such as c12 or a5. Leave out to list.",
+          description: "The undo id, such as 12. Leave out to list.",
         },
         reason: { type: "string" },
         model: { type: "string" },

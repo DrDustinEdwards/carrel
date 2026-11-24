@@ -438,7 +438,7 @@ describe("publish by instruction (decision 2)", () => {
     ).first();
     expect(change).toEqual({ action: "publish", client: "Claude" });
     const record = await testEnv.DB.prepare(
-      "SELECT client, emailed_at, email_error FROM ai_publications",
+      "SELECT client, emailed_at, email_error FROM changes WHERE action = 'publish'",
     ).first<{ client: string; emailed_at: string | null; email_error: string | null }>();
     expect(record).toMatchObject({ client: "Claude", email_error: null });
     expect(record!.emailed_at).not.toBeNull();

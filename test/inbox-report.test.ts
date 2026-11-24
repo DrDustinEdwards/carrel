@@ -12,7 +12,7 @@ let personId: number;
 
 async function addDraft(at: string) {
   await testEnv.DB.prepare(
-    "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source, created_at) VALUES (?, 'a', ?, 'claude', 'x', ?)",
+    "INSERT INTO item_drafts (project_id, item_id, person_id, client, kind, body, created_at) VALUES (?, 'a', ?, 'claude', 'text', 'x', ?)",
   )
     .bind(projectId, personId, at)
     .run();

@@ -11,12 +11,19 @@
 //   at once on Dustin's word in the conversation; the site keeps every earlier version.
 
 import { sendEmail } from "@dustinedwards/site-runtime/email";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 
-import { aiDrafts, aiPublications, findings, people, siteItems } from "~/db/schema";
-import { readDoc, writeToSite, type ProjectRole, type WriteOutcome } from "~/lib/content.server";
+import { changes, findings, itemDrafts, people, siteItems } from "~/db/schema";
+import {
+  listItemDrafts,
+  readDoc,
+  readItemDraft,
+  writeToSite,
+  type ProjectRole,
+  type WriteOutcome,
+} from "~/lib/content.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
@@ -194,18 +201,18 @@ export async function saveAiDraft(
     // The site not answering does not stop a draft that lives only in Carrel.
   }
   const [row] = await drizzle(env.DB)
-    .insert(aiDrafts)
+    .insert(itemDrafts)
     .values({
       projectId: project.id,
       itemId,
       personId: session.viewer.id,
       client: session.client,
-      source: normalizeNewlines(input.source),
+      body: normalizeNewlines(input.source),
       baseVersion,
       note: (input.note ?? "").trim().slice(0, 500),
       sources: JSON.stringify(input.sources ?? []),
     })
-    .returning({ id: aiDrafts.id });
+    .returning({ id: itemDrafts.id });
   return { id: row!.id, baseVersion };
 }
 
@@ -225,27 +232,16 @@ export async function listAiDraftSources(
   viewer: Viewer,
   itemId: string,
 ) {
-  if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
-  const rows = await drizzle(db)
-    .select({
-      id: aiDrafts.id,
-      client: aiDrafts.client,
-      note: aiDrafts.note,
-      createdAt: aiDrafts.createdAt,
-      baseVersion: aiDrafts.baseVersion,
-      source: aiDrafts.source,
-    })
-    .from(aiDrafts)
-    .where(
-      and(
-        eq(aiDrafts.projectId, project.id),
-        eq(aiDrafts.itemId, itemId),
-        eq(aiDrafts.personId, viewer.id),
-      ),
-    )
-    .orderBy(desc(aiDrafts.createdAt), desc(aiDrafts.id))
-    .all();
-  return rows.map((r) => ({ ...r, words: wordCount(r.source) }));
+  const rows = await listItemDrafts(db, project, viewer, itemId, "text");
+  return rows.map((r) => ({
+    id: r.id,
+    client: r.client,
+    note: r.note,
+    createdAt: r.createdAt,
+    baseVersion: r.baseVersion,
+    source: r.body,
+    words: wordCount(r.body),
+  }));
 }
 
 export const listAiDrafts = async (
@@ -260,21 +256,12 @@ export async function readAiDraft(
   itemId: string,
   id: number,
 ) {
-  if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
-  const row = await drizzle(db)
-    .select()
-    .from(aiDrafts)
-    .where(
-      and(
-        eq(aiDrafts.id, id),
-        eq(aiDrafts.projectId, project.id),
-        eq(aiDrafts.itemId, itemId),
-        eq(aiDrafts.personId, viewer.id),
-      ),
-    )
-    .get();
-  if (!row) throw new Response("Not found", { status: 404 });
-  return { ...row, sources: row.sources === null ? null : (JSON.parse(row.sources) as string[]) };
+  const { body, sources, ...row } = await readItemDraft(db, project, viewer, itemId, "text", id);
+  return {
+    ...row,
+    source: body,
+    sources: sources === null ? null : (JSON.parse(sources) as string[]),
+  };
 }
 
 export type AiPublishResult =
@@ -392,7 +379,7 @@ async function publishPostNow(
   const doc = await readDoc(env, project, itemId, opts.fetcher).catch(() => null);
   const title = doc?.title || itemId;
   const base = itemBase(opts.carrelOrigin, project, itemId);
-  const emailed = await recordAiPublication(env, project, session, itemId, outcome, {
+  const emailed = await recordAiPublication(env, outcome, {
     subject: `Carrel: ${session.client} published "${title}"`,
     text: [
       publishedByLine(session.client, session.viewer.name),
@@ -417,34 +404,19 @@ async function publishPostNow(
  */
 async function recordAiPublication(
   env: Env,
-  project: SiteProject,
-  session: AiSession,
-  itemId: string,
-  outcome: { changeId: string; version: string },
+  outcome: { changeId: string },
   mail: { subject: string; text: string },
 ): Promise<boolean> {
-  const d = drizzle(env.DB);
-  await d.insert(aiPublications).values({
-    changeId: outcome.changeId,
-    projectId: project.id,
-    itemId,
-    personId: session.viewer.id,
-    client: session.client,
-    version: outcome.version,
-  });
+  const mark = (set: { emailedAt: string | null; emailError: string | null }) =>
+    drizzle(env.DB).update(changes).set(set).where(eq(changes.id, outcome.changeId));
+  await mark({ emailedAt: null, emailError: "not sent" });
   const error = await emailDustin(env, mail);
   if (error) {
     logEvent("aiPublish.email-failed", { changeId: outcome.changeId, error }, { level: "error" });
-    await d
-      .update(aiPublications)
-      .set({ emailError: error })
-      .where(eq(aiPublications.changeId, outcome.changeId));
+    await mark({ emailedAt: null, emailError: error });
     return false;
   }
-  await d
-    .update(aiPublications)
-    .set({ emailedAt: new Date().toISOString() })
-    .where(eq(aiPublications.changeId, outcome.changeId));
+  await mark({ emailedAt: new Date().toISOString(), emailError: null });
   return true;
 }
 
@@ -488,7 +460,7 @@ export async function aiPublishTranscript(
     throw error;
   }
   const base = itemBase(opts.carrelOrigin, project, itemId);
-  const emailed = await recordAiPublication(env, project, session, itemId, published, {
+  const emailed = await recordAiPublication(env, published, {
     subject: `Carrel: ${session.client} published the transcript of "${itemId}"`,
     text: [
       publishedByLine(session.client, session.viewer.name),
@@ -508,15 +480,22 @@ export async function lastAiPublication(db: D1Database, project: SiteProject, it
   return (
     (await drizzle(db)
       .select({
-        client: aiPublications.client,
+        client: sql<string>`${changes.client}`,
         person: people.name,
-        publishedAt: aiPublications.publishedAt,
-        emailedAt: aiPublications.emailedAt,
+        publishedAt: changes.createdAt,
+        emailedAt: changes.emailedAt,
       })
-      .from(aiPublications)
-      .innerJoin(people, eq(people.id, aiPublications.personId))
-      .where(and(eq(aiPublications.projectId, project.id), eq(aiPublications.itemId, itemId)))
-      .orderBy(desc(aiPublications.publishedAt))
+      .from(changes)
+      .innerJoin(people, eq(people.id, changes.personId))
+      .where(
+        and(
+          eq(changes.projectId, project.id),
+          eq(changes.itemId, itemId),
+          eq(changes.action, "publish"),
+          isNotNull(changes.client),
+        ),
+      )
+      .orderBy(desc(changes.createdAt))
       .get()) ?? null
   );
 }

@@ -102,14 +102,16 @@ describe("what a named agent key does", () => {
       note: "A try.",
     });
     expect(saved.result!.isError).toBeUndefined();
-    expect(await rows("SELECT client, source FROM ai_drafts")).toEqual([
+    expect(await rows("SELECT client, body AS source FROM item_drafts")).toEqual([
       { client: "agent:grok", source: "---\ntitle: Post one\n---\nGrok's try.\n" },
     ]);
     const owner = await viewerFor("owner@test.invalid");
-    expect(await rows(`SELECT person_id FROM ai_drafts WHERE person_id = ${owner.id}`)).toEqual([]);
-    expect(await rows(`SELECT person_id FROM ai_drafts WHERE person_id = ${agentId}`)).toHaveLength(
-      1,
+    expect(await rows(`SELECT person_id FROM item_drafts WHERE person_id = ${owner.id}`)).toEqual(
+      [],
     );
+    expect(
+      await rows(`SELECT person_id FROM item_drafts WHERE person_id = ${agentId}`),
+    ).toHaveLength(1);
 
     const flagged = await call("carrel_add_finding", {
       project: SLUG,
@@ -145,7 +147,9 @@ describe("what a named agent key does", () => {
       content: [{ text: "Only the Owner's own sessions may publish." }],
     });
     expect((await site.adapter.content.get("post-one"))!.status).not.toBe("published");
-    expect(await rows("SELECT * FROM ai_publications")).toEqual([]);
+    expect(
+      await rows("SELECT id FROM changes WHERE emailed_at IS NOT NULL OR email_error IS NOT NULL"),
+    ).toEqual([]);
     expect(await rows("SELECT id FROM changes")).toEqual([]);
   });
 
@@ -164,7 +168,7 @@ describe("what a named agent key does", () => {
       isError: true,
       content: [{ text: "You may not write drafts on this project." }],
     });
-    expect(await rows("SELECT id FROM ai_drafts")).toEqual([]);
+    expect(await rows("SELECT id FROM item_drafts")).toEqual([]);
   });
 
   it("PLANT: a project the agent has no role on is not there for it: not listed, not read, not drafted, not flagged", async () => {
@@ -183,7 +187,7 @@ describe("what a named agent key does", () => {
         content: [{ text: "Not found, or not shared with this person." }],
       });
     }
-    expect(await rows("SELECT id FROM ai_drafts")).toEqual([]);
+    expect(await rows("SELECT id FROM item_drafts")).toEqual([]);
     expect(await rows("SELECT id FROM findings")).toEqual([]);
   });
 
@@ -229,7 +233,7 @@ describe("what a named agent key refuses", () => {
     await testEnv.DB.prepare("DELETE FROM project_members").run();
     await testEnv.DB.prepare("DELETE FROM people WHERE email = 'agent:grok'").run();
     expect((await call("carrel_list_projects")).status).toBe(403);
-    expect(await rows("SELECT id FROM ai_drafts")).toEqual([]);
+    expect(await rows("SELECT id FROM item_drafts")).toEqual([]);
   });
 
   it("PLANT: the agent's name is the secret's name, never the request's: a header or body naming another agent changes nothing", async () => {
@@ -269,7 +273,7 @@ describe("what a named agent key refuses", () => {
         /error|invalid|unrecognized|additional/i,
       );
     }
-    expect(await rows("SELECT client FROM ai_drafts")).toEqual([{ client: "agent:grok" }]);
+    expect(await rows("SELECT client FROM item_drafts")).toEqual([{ client: "agent:grok" }]);
     // Two agents with two keys: each key is its own name, whichever the request claims to be.
     const second = await call(
       "carrel_save_draft",
@@ -281,10 +285,9 @@ describe("what a named agent key refuses", () => {
       },
     );
     expect(second.result!.isError).toBeUndefined();
-    expect((await rows("SELECT client FROM ai_drafts ORDER BY id")).map((r) => r.client)).toEqual([
-      "agent:grok",
-      "agent:other",
-    ]);
+    expect((await rows("SELECT client FROM item_drafts ORDER BY id")).map((r) => r.client)).toEqual(
+      ["agent:grok", "agent:other"],
+    );
   });
 
   it("PLANT: a malformed Authorization header is never an agent: it goes to the OAuth path and is refused there", async () => {

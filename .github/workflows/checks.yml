@@ -38,7 +38,7 @@ jobs:
       pull-requests: write
       id-token: write
       checks: write
-    uses: DrDustinEdwards/devkit/.github/workflows/pr.yml@73e298e1ccb5a5c05d25ff15ff9102cb86228346 # v0.59.2
+    uses: DrDustinEdwards/devkit/.github/workflows/pr.yml@ffdb0473473df6eb30d902a6843107af42a4f706 # v0.59.5
     with:
       review: true
       # The version in package.json's engines field, as ci.yml reads it.

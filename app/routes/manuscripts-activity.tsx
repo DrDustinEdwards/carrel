@@ -56,7 +56,7 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
             caption="Changes AIs made in Google Docs"
             captionHidden
             rows={changes}
-            rowKey={(c) => c.ref}
+            rowKey={(c) => String(c.id)}
             empty="No AI has changed a Doc yet"
             columns={[
               { key: "when", header: "When", cell: (c) => <Time at={c.createdAt} /> },
@@ -75,9 +75,9 @@ export default function DocsActivity({ loaderData }: Route.ComponentProps) {
                 header: "What",
                 cell: (c) => (
                   <>
-                    {WHAT[c.mode] ?? c.mode}
-                    {THREAD.has(c.mode) ? "" : ` (${c.changes})`}
-                    <span className="cap-table-aside">{c.ref}</span>
+                    {WHAT[c.kind] ?? c.kind}
+                    {THREAD.has(c.kind) ? "" : ` (${c.changes})`}
+                    <span className="cap-table-aside">{c.id}</span>
                     {c.reason ? <span className="cap-table-aside">{c.reason}</span> : null}
                     {c.labeled ? null : <Status tone="warn">No label in the Doc</Status>}
                     {c.undoneAt ? <Status tone="nodata">Taken back</Status> : null}

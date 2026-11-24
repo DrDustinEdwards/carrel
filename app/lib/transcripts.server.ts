@@ -9,11 +9,16 @@
 // every publish keeps the transcript it replaced as a draft of its own, so a publish can be put back.
 
 import { SiteApiError } from "@dustinedwards/site-api/client";
-import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { transcriptChanges, transcriptDrafts } from "~/db/schema";
-import { mayPublishItem, readDoc, type ProjectRole } from "~/lib/content.server";
+import { itemDrafts, transcriptChanges } from "~/db/schema";
+import {
+  listItemDrafts,
+  mayPublishItem,
+  readDoc,
+  readItemDraft,
+  type ProjectRole,
+} from "~/lib/content.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
@@ -93,17 +98,18 @@ export async function saveTranscriptDraft(
       "The draft is the site's transcript as it stands: nothing to save.",
     );
   const [row] = await drizzle(env.DB)
-    .insert(transcriptDrafts)
+    .insert(itemDrafts)
     .values({
       projectId: project.id,
       itemId,
       personId: author.viewer.id,
       client: author.client,
-      transcript,
-      baseTranscriptVersion: site.version,
+      kind: "transcript",
+      body: transcript,
+      baseVersion: site.version,
       note: (input.note ?? "").trim().slice(0, 500),
     })
-    .returning({ id: transcriptDrafts.id });
+    .returning({ id: itemDrafts.id });
   return {
     id: row!.id,
     baseTranscriptVersion: site.version,
@@ -127,25 +133,14 @@ export async function listTranscriptDrafts(
   viewer: Viewer,
   itemId: string,
 ): Promise<TranscriptDraftSummary[]> {
-  if (!can(project.role, "read")) forbid();
-  return drizzle(db)
-    .select({
-      id: transcriptDrafts.id,
-      client: transcriptDrafts.client,
-      note: transcriptDrafts.note,
-      createdAt: transcriptDrafts.createdAt,
-      baseTranscriptVersion: transcriptDrafts.baseTranscriptVersion,
-    })
-    .from(transcriptDrafts)
-    .where(
-      and(
-        eq(transcriptDrafts.projectId, project.id),
-        eq(transcriptDrafts.itemId, itemId),
-        eq(transcriptDrafts.personId, viewer.id),
-      ),
-    )
-    .orderBy(desc(transcriptDrafts.createdAt), desc(transcriptDrafts.id))
-    .all();
+  const rows = await listItemDrafts(db, project, viewer, itemId, "transcript");
+  return rows.map((r) => ({
+    id: r.id,
+    client: r.client,
+    note: r.note,
+    createdAt: r.createdAt,
+    baseTranscriptVersion: r.baseVersion,
+  }));
 }
 
 export async function readTranscriptDraft(
@@ -155,21 +150,15 @@ export async function readTranscriptDraft(
   itemId: string,
   id: number,
 ) {
-  if (!can(project.role, "read")) forbid();
-  const row = await drizzle(db)
-    .select()
-    .from(transcriptDrafts)
-    .where(
-      and(
-        eq(transcriptDrafts.id, id),
-        eq(transcriptDrafts.projectId, project.id),
-        eq(transcriptDrafts.itemId, itemId),
-        eq(transcriptDrafts.personId, viewer.id),
-      ),
-    )
-    .get();
-  if (!row) throw new Response("Not found", { status: 404 });
-  return row;
+  const { body, baseVersion, ...row } = await readItemDraft(
+    db,
+    project,
+    viewer,
+    itemId,
+    "transcript",
+    id,
+  );
+  return { ...row, transcript: body, baseTranscriptVersion: baseVersion };
 }
 
 /** A transcript draft against the site's transcript now, for the page that shows it and the session that asks. */
@@ -255,17 +244,18 @@ export async function publishTranscriptDraft(
     versionAfter: written.transcriptVersion,
   });
   const [kept] = await d
-    .insert(transcriptDrafts)
+    .insert(itemDrafts)
     .values({
       projectId: project.id,
       itemId,
       personId: viewer.id,
       client: KEPT_CLIENT,
-      transcript: site.transcript,
-      baseTranscriptVersion: written.transcriptVersion,
+      kind: "transcript",
+      body: site.transcript,
+      baseVersion: written.transcriptVersion,
       note: `The transcript before draft ${draftId} went live. Publish this to put it back.`,
     })
-    .returning({ id: transcriptDrafts.id });
+    .returning({ id: itemDrafts.id });
   return {
     changeId,
     version: written.version,

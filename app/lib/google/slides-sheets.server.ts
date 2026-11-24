@@ -1,11 +1,11 @@
 // Google Slides and Sheets through the service account, behind the same tools and the same
 // rules as Docs: Owner only, only a file in the manuscripts index, every tool refused on a file locked "no AI", every
-// comment saying which AI wrote it and why, every change a row in doc_changes or doc_actions. What differs is what
+// comment saying which AI wrote it and why, every change a row in doc_edits. What differs is what
 // Google offers, and so what the rules mean here:
 //
 // - Slides has no suggest mode. An AI reads and comments by default (a comment anchored on quoted text or on a slide),
 //   and changes a slide's text only on the Owner's own ask (mode "write"), refused on a file locked "suggest only".
-//   Carrel keeps the text it replaced (doc_actions) and emails Dustin by his Docs email setting; only a Doc has undo.
+//   Carrel keeps the text it replaced (doc_edits) and emails Dustin by his Docs email setting; only a Doc has undo.
 // - Sheets never changes his cells. An AI writes cells only on a tab Carrel made (sheet_tabs), created on the first write
 //   under the title asked for; naming one of his tabs is refused. A new tab starts with a comment saying which AI made it.
 // - Comments go through Google's own comment requests in the Slides and Sheets batchUpdate not Drive's comments, which the editors do not show when anchored.
@@ -238,7 +238,6 @@ async function writeInSlides(
     model: input.model,
     reason: input.reason,
     edits,
-    revisionId: p.revisionId,
     beforeText: shapes
       .map((s) => s.text)
       .join("\n---\n")
@@ -289,14 +288,13 @@ export async function commentOnFile(
               textRange: { type: "FIXED_RANGE", startIndex: at.start, endIndex: at.end },
             },
           },
-          revisionId: p.revisionId,
         };
       }
       if (!only)
         throw new AiRefusal(
           "A new comment needs quote (words on a slide) or tab (the slide's number).",
         );
-      return { fields: { objectId: only }, revisionId: p.revisionId };
+      return { fields: { objectId: only } };
     }
     const cell = /^(?:(.+)!)?([A-Z]{1,3})([1-9][0-9]{0,6})$/.exec(input.cell?.trim() ?? "");
     if (!cell)

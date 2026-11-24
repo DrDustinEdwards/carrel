@@ -615,17 +615,6 @@ async function build(base: Env): Promise<World> {
       "2026-10-24T09:00:00Z",
     )
     .run();
-  for (const [phrase, items] of [
-    ["seamless", ["a", "b", "c", "d"]],
-    ["robust pipeline", ["a", "b", "c"]],
-  ] as const) {
-    await db
-      .prepare(
-        "INSERT INTO voice_cuts (project_id, phrase, items, last_cut_at) VALUES (?, ?, ?, '2026-10-23T12:00:00Z')",
-      )
-      .bind(sitePr.id, phrase, JSON.stringify(items))
-      .run();
-  }
   // Legal pages: two shared sections, and a privacy page that carries one with the Draft banner on. The
   // terms page is left out, so the Legal tab shows both a page that is set up and one that is not.
   for (const [key, title, body] of [
@@ -959,7 +948,7 @@ async function build(base: Env): Promise<World> {
     ["Claude", null, "suggest", "Fixed two typos", ["suggest.3"], 0],
   ] as const) {
     await env.DB.prepare(
-      "INSERT INTO doc_changes (file_id, person_id, client, model, mode, reason, change, google_ids, labeled) VALUES ('m1', ?, ?, ?, ?, ?, '[]', ?, ?)",
+      "INSERT INTO doc_edits (file_id, person_id, client, model, kind, reason, change, google_ids, labeled) VALUES ('m1', ?, ?, ?, ?, ?, '[]', ?, ?)",
     )
       .bind(owner.id, client, model, mode, reason, JSON.stringify(ids), labeled)
       .run();
@@ -1069,7 +1058,7 @@ async function build(base: Env): Promise<World> {
       "INSERT INTO site_items (project_id, item_id, kind, title, status, path, publish_at, synced_at) VALUES (?, 'weekly-notes', 'post', 'Weekly notes', 'scheduled', '/blog/weekly-notes', ?, '2026-10-03T00:00:00Z')",
     ).bind(siteId, new Date(Date.now() - 2 * 3_600_000).toISOString()),
     env.DB.prepare(
-      "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source) VALUES (?, 'weekly-notes', ?, 'Claude', '---\ntitle: Weekly notes\n---\nAn AI draft.\n')",
+      "INSERT INTO item_drafts (project_id, item_id, person_id, client, kind, body) VALUES (?, 'weekly-notes', ?, 'Claude', 'text', '---\ntitle: Weekly notes\n---\nAn AI draft.\n')",
     ).bind(siteId, owner.id),
     env.DB.prepare(
       "INSERT INTO findings (project_id, path, check_name, message, fingerprint) VALUES (?, 'blog/alerts-wait.md', 'em-dash', 'An em dash', 'a'), (?, 'blog/alerts-wait.md', 'filler', 'Filler phrase', 'b')",

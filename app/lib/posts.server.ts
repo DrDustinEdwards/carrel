@@ -134,7 +134,7 @@ export function postsSource(
     async taken(id) {
       const used = await env.DB.prepare(
         `SELECT 1 AS used FROM drafts WHERE project_id = ?1 AND item_id = ?2
-         UNION ALL SELECT 1 FROM ai_drafts WHERE project_id = ?1 AND item_id = ?2
+         UNION ALL SELECT 1 FROM item_drafts WHERE kind = 'text' AND project_id = ?1 AND item_id = ?2
          UNION ALL SELECT 1 FROM site_items WHERE project_id = ?1 AND item_id = ?2 LIMIT 1`,
       )
         .bind(project.id, id)
