@@ -165,7 +165,9 @@ describe("suggest", () => {
     const labels = doc.suggestions.flatMap((s) => s.posts.map((p) => p.content));
     expect(labels).toContain("Grok Bot, through Carrel: shorter");
     expect(labels).toContain("Grok Bot, through Carrel: tighten");
-    const rows = await testEnv.DB.prepare("SELECT client, kind AS mode, labeled FROM doc_edits").all();
+    const rows = await testEnv.DB.prepare(
+      "SELECT client, kind AS mode, labeled FROM doc_edits",
+    ).all();
     expect(rows.results).toEqual([{ client: "Grok Bot", mode: "suggest", labeled: 1 }]);
   });
 
