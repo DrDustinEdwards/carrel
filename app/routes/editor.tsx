@@ -613,7 +613,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
   // Reading only: no room (the site did not answer), or a role that suggests, whose changes the room marks.
   const readOnly = !data.room;
-  const mayEdit = data.canEdit;
   const live = data.status === "published" || data.status === "scheduled";
   const onSite = data.version !== null;
   // Changes to a live post change the public site, which is the Owner's to do, or the Author's on their own post.
@@ -625,7 +624,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const previewAt = usePausedStamp(source, 2000, data.baseVersion ?? "");
 
   const waiting = useRef<((result: ActionResult) => void) | null>(null);
-  // True while a gate write is in flight, then that write's outcome: the gate says its own result.
   const [held, setHeld] = useState<unknown>(null);
   // Before a write the room is asked to confirm it has every change made here, so the save holds them.
   const send = async (intent: string, extra: Record<string, string> = {}) => {
@@ -890,12 +888,12 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
         {data.siteError ? <Banner tone="warn">{data.siteError}</Banner> : null}
         {data.behind ? (
           <Banner tone="warn" title="The site's copy changed">
-            {data.merge && mayEdit
+            {data.merge && data.canEdit
               ? "It changed after this text was started, so a save is refused until the two are merged below. Nothing here is lost."
               : "It changed after this text was started, so a save is refused until someone who may edit merges the two."}
           </Banner>
         ) : null}
-        {data.merge && mayEdit && !readOnly ? (
+        {data.merge && data.canEdit && !readOnly ? (
           <Suspense fallback={null}>
             <MergePanel
               key={`${data.merge.from}:${data.merge.siteVersion}`}
@@ -914,7 +912,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
             />
           </Suspense>
         ) : null}
-        {data.ownDraft && mayEdit ? (
+        {data.ownDraft && data.canEdit ? (
           <Banner
             tone="info"
             title="You have a draft of your own from before shared editing"
@@ -1147,7 +1145,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                   <ItemDetails
                     source={source}
                     onChange={setSource}
-                    readOnly={readOnly || !mayEdit}
+                    readOnly={readOnly || !data.canEdit}
                     sections={data.sections}
                     kind={data.kind}
                     searchFields={seo ? data.searchFields : []}
@@ -1156,13 +1154,13 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     <PostFields
                       source={source}
                       onChange={setSource}
-                      readOnly={readOnly || !mayEdit}
+                      readOnly={readOnly || !data.canEdit}
                       listed={data.postFields}
                       origin={data.origin}
                       media={data.media}
                     />
                   ) : null}
-                  {mayEdit ? (
+                  {data.canEdit ? (
                     <AiJobButtons
                       action={`/p/${data.project.slug}/e/${data.itemId}/ai-write`}
                       Form={aiJob.Form}
@@ -1233,7 +1231,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                     <SearchFields
                       source={source}
                       onChange={setSource}
-                      readOnly={readOnly || !mayEdit}
+                      readOnly={readOnly || !data.canEdit}
                       listed={data.searchFields}
                       site={data.project.siteId}
                       origin={data.origin}
