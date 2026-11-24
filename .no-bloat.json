@@ -4,7 +4,7 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "7316be2",
+    "measured_at": "503d3c9",
     "knip": {},
     "jscpd": {
       "clones": 40,
@@ -21,7 +21,7 @@
     },
     "size": {
       "app/app.css": 526,
-      "app/db/schema.ts": 793,
+      "app/db/schema.ts": 773,
       "app/lib/ai-engine.server.ts": 620,
       "app/lib/ai-write.server.ts": 506,
       "app/lib/ai.server.ts": 539,
@@ -37,7 +37,7 @@
       "scripts/lib/harness.mjs": 887,
       "test/door.test.ts": 975,
       "test/google.ts": 939,
-      "test/harness/seed.ts": 1084,
+      "test/harness/seed.ts": 1073,
       "www/build.mjs": 583
     },
     "tests": {
@@ -45,8 +45,8 @@
       "cases": 471
     },
     "comments": {
-      "lines": 3992,
-      "code": 47557,
+      "lines": 3989,
+      "code": 47530,
       "percentage": 7.74
     }
   }
