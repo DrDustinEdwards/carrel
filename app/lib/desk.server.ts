@@ -4,7 +4,7 @@
 // the sites, and they are separate so a slow site never holds the page.
 
 import { inList } from "@dustinedwards/site-runtime/d1";
-import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import {
@@ -15,6 +15,7 @@ import {
   manuscripts,
   needLater,
   projects,
+  rooms,
   siteItems,
   socialPosts,
 } from "~/db/schema";
@@ -303,7 +304,7 @@ export async function bringBack(db: D1Database, viewer: Viewer, needId: string):
 
 export type Continue = { projectName: string; title: string; href: string; at: string };
 
-/** The last things this person had open in their own drafts, newest first. */
+/** The last posts with text nobody has saved: this person's own drafts and shared rooms, newest first. */
 export async function continueWriting(
   db: D1Database,
   viewer: Viewer,
@@ -311,18 +312,42 @@ export async function continueWriting(
   limit = 3,
 ): Promise<Continue[]> {
   const known = byId(visible);
-  const rows = await drizzle(db)
-    .select({
-      projectId: drafts.projectId,
-      itemId: drafts.itemId,
-      source: drafts.source,
-      at: drafts.updatedAt,
-    })
-    .from(drafts)
-    .where(eq(drafts.personId, viewer.id))
-    .orderBy(desc(drafts.updatedAt))
-    .limit(limit * 3)
-    .all();
+  const d = drizzle(db);
+  const [own, shared] = await Promise.all([
+    d
+      .select({
+        projectId: drafts.projectId,
+        itemId: drafts.itemId,
+        source: drafts.source,
+        at: drafts.updatedAt,
+      })
+      .from(drafts)
+      .where(eq(drafts.personId, viewer.id))
+      .orderBy(desc(drafts.updatedAt))
+      .limit(limit * 3)
+      .all(),
+    d
+      .select({
+        projectId: rooms.projectId,
+        itemId: rooms.itemId,
+        source: rooms.source,
+        at: rooms.updatedAt,
+      })
+      .from(rooms)
+      .where(
+        and(inArray(rooms.projectId, [...known.keys()]), ne(rooms.source, rooms.savedSource)),
+      )
+      .orderBy(desc(rooms.updatedAt))
+      .limit(limit * 3)
+      .all(),
+  ]);
+  const seen = new Set<string>();
+  const rows = [...shared, ...own]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .filter((r) => {
+      const k = `${r.projectId}/${r.itemId}`;
+      return !seen.has(k) && !!seen.add(k);
+    });
   const out: Continue[] = [];
   for (const r of rows) {
     const p = known.get(r.projectId);

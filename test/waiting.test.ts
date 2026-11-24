@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { saveAiDraft } from "~/lib/ai.server";
 import { autosave } from "~/lib/content.server";
 import { refreshIndex } from "~/lib/index.server";
+import { continueWriting } from "~/lib/desk.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { titleOf } from "~/lib/waiting.server";
 import { loader as editorLoader } from "~/routes/editor";
@@ -49,6 +50,24 @@ async function list(email: string, query = "") {
 }
 
 const NEW_POST = "---\ntitle: A desk apart\n---\nWords for a new post.\n";
+
+describe("unsaved text in a live room", () => {
+  it("is listed in Posts and in Continue writing", async () => {
+    await env.DB.prepare(
+      "INSERT INTO rooms (project_id, item_id, source, saved_source, updated_at) VALUES (?, 'in-a-room', ?, 'old', '2026-01-01')",
+    )
+      .bind(projectId, NEW_POST)
+      .run();
+    expect(await list("owner@test.invalid")).toMatchObject([
+      { itemId: "in-a-room", title: "A desk apart", ownDraft: true },
+    ]);
+    const viewer = await viewerFor("owner@test.invalid");
+    const visible = [{ id: projectId, kind: "site", name: "Site", slug: SLUG }] as never;
+    expect(await continueWriting(env.DB, viewer, visible)).toMatchObject([
+      { title: "A desk apart", href: expect.stringContaining("in-a-room") },
+    ]);
+  });
+});
 
 describe("the project's Posts list", () => {
   it("lists an AI draft for a post the site does not have, and its editor opens", async () => {

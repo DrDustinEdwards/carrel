@@ -1,12 +1,12 @@
 // Work that waits on a person and is not in Carrel's index of the site: an AI draft or a draft of
-// their own for a post the site does not have yet. Without this the project's list shows only what
+// their own (or unsaved text in its live room) for a post the site does not have yet. Without this the project's list shows only what
 // the site reports, and such a draft is reachable only by typing its URL. The list also marks an
 // indexed post that has AI drafts waiting beside the person's own.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { drafts, itemDrafts } from "~/db/schema";
+import { drafts, itemDrafts, rooms } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 import type { ProjectRole } from "~/lib/content.server";
 import { can } from "~/lib/roles";
@@ -34,7 +34,7 @@ export async function waitingWork(
 ): Promise<Waiting[]> {
   if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
   const d = drizzle(db);
-  const [ai, own] = await Promise.all([
+  const [ai, own, shared] = await Promise.all([
     d
       .select({ itemId: itemDrafts.itemId, source: itemDrafts.body, at: itemDrafts.createdAt })
       .from(itemDrafts)
@@ -50,6 +50,11 @@ export async function waitingWork(
       .select({ itemId: drafts.itemId, source: drafts.source, at: drafts.updatedAt })
       .from(drafts)
       .where(and(eq(drafts.projectId, project.id), eq(drafts.personId, viewer.id)))
+      .all(),
+    d
+      .select({ itemId: rooms.itemId, source: rooms.source, at: rooms.updatedAt })
+      .from(rooms)
+      .where(and(eq(rooms.projectId, project.id), ne(rooms.source, rooms.savedSource)))
       .all(),
   ]);
   const byItem = new Map<string, Waiting>();
@@ -69,7 +74,7 @@ export async function waitingWork(
       );
     return w;
   };
-  for (const row of own) {
+  for (const row of [...own, ...shared]) {
     const w = entry(row.itemId);
     w.ownDraft = true;
     w.title = titleOf(row.source) || w.title;
