@@ -421,8 +421,6 @@ async function recordAiPublication(
   mail: { subject: string; text: string },
 ): Promise<boolean> {
   const d = drizzle(env.DB);
-  // The change row already holds who, what and when; the email state is two columns on it. "not sent" marks it unsent
-  // until the email goes, so a crash between the publish and the email still shows in the health check.
   const mark = (set: { emailedAt: string | null; emailError: string | null }) =>
     d.update(changes).set(set).where(eq(changes.id, outcome.changeId));
   await mark({ emailedAt: null, emailError: "not sent" });

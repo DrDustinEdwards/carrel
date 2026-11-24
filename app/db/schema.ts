@@ -154,7 +154,6 @@ export const changes = sqliteTable("changes", {
   client: text("client"),
   /** The id a rename moved the post from (migration 0027); null for every other action. */
   renamedFrom: text("renamed_from"),
-  /** An AI publish's email to Dustin (migration 0045): both null on every other change. A failure keeps its error until sent. */
   emailedAt: text("emailed_at"),
   emailError: text("email_error"),
 });
