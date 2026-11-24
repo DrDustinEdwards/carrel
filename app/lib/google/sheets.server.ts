@@ -17,7 +17,7 @@ import {
   postBatch,
   postsOf,
   READ_LIMIT,
-  record,
+  recordEdit,
 } from "./docs.server";
 import { saClient } from "./service-account.server";
 
@@ -260,9 +260,9 @@ export async function writeInSheet(
   const madeSoFar: SheetProps[] = [];
   const written: typeof writes = [];
   const recordDone = (labeled: boolean) =>
-    record(env, viewer, session, {
+    recordEdit(env, viewer, session, {
       fileId: row.fileId,
-      mode: "suggest",
+      kind: "suggest",
       model: input.model,
       reason: input.reason,
       change: written.map((w) => ({
