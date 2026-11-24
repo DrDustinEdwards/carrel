@@ -59,6 +59,7 @@ import {
   type ExportFormat,
   type ReviewAction,
 } from "~/lib/google/docs.server";
+import { GoogleNotConnected } from "~/lib/google/service-account.server";
 import { changeInFile, commentOnFile, fileKind, readFile } from "~/lib/google/slides-sheets.server";
 import { keyMomentProblems } from "~/lib/transcript";
 import { readMentions, runIntent as runMentionsIntent } from "~/lib/mentions.server";
@@ -1972,8 +1973,7 @@ export async function runTool(
 ): Promise<ToolResult> {
   try {
     const value = (await tool.run(args, ctx)) as Record<string, unknown>;
-    // Outside content is data (rule 12.5, checklist S2): site-runtime's outsideResult leads with the shared notice, puts
-    // the value inside its <data> delimiters, and carries the notice in the structured answer.
+    // Outside content is data (rule 12.5, checklist S2): outsideResult leads with the shared notice and wraps the value in <data>.
     if (tool.outside) return outsideResult(OUTSIDE_LABEL, value) as ToolResult;
     return {
       content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
@@ -1987,8 +1987,8 @@ export async function runTool(
         error.status === 404
           ? "Not found, or not shared with this person."
           : "Forbidden: this person's role does not allow that.";
-    else if (error instanceof SiteNotConnected)
-      message = `The site is not connected: ${error.detail}`;
+    else if (error instanceof SiteNotConnected || error instanceof GoogleNotConnected)
+      message = `${error instanceof SiteNotConnected ? "The site" : "Google"} is not connected: ${error.detail}`;
     else if (error instanceof SiteApiError && error.body)
       message = `The site refused: ${error.body.message}`;
     else {
