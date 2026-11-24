@@ -4,7 +4,7 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "c887d60",
+    "measured_at": "e2592ee",
     "knip": {},
     "jscpd": {
       "clones": 39,
@@ -42,11 +42,11 @@
     },
     "tests": {
       "files": 51,
-      "cases": 471
+      "cases": 472
     },
     "comments": {
       "lines": 3992,
-      "code": 47431,
+      "code": 47453,
       "percentage": 7.76
     }
   }
