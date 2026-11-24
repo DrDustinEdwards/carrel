@@ -46,6 +46,9 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
     setupFiles: ["./test/setup.ts"],
+    // Off: vitest 5's file module cache sends each fresh isolate a snapshot of every cached module, and the Workers pool
+    // inlines it into one WebSocket message that grows with the app, past workerd's limit ("Message is too large").
+    fsModuleCache: false,
     testTimeout: 30_000,
   },
 });
