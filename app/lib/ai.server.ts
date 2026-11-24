@@ -11,7 +11,7 @@
 //   at once on Dustin's word in the conversation; the site keeps every earlier version.
 
 import { sendEmail } from "@dustinedwards/site-runtime/email";
-import { and, asc, desc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 
@@ -505,7 +505,8 @@ export async function lastAiPublication(db: D1Database, project: SiteProject, it
         and(
           eq(changes.projectId, project.id),
           eq(changes.itemId, itemId),
-          or(isNotNull(changes.emailedAt), isNotNull(changes.emailError)),
+          eq(changes.action, "publish"),
+          isNotNull(changes.client),
         ),
       )
       .orderBy(desc(changes.createdAt))

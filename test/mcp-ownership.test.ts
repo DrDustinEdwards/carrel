@@ -101,9 +101,7 @@ async function written() {
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM ai_drafts"),
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings"),
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM social_posts"),
-    testEnv.DB.prepare(
-      "SELECT COUNT(*) AS n FROM changes WHERE emailed_at IS NOT NULL OR email_error IS NOT NULL",
-    ),
+    testEnv.DB.prepare("SELECT COUNT(*) AS n FROM changes WHERE client IS NOT NULL"),
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM transcript_drafts"),
   ]);
   return counts.map((c) => (c.results[0] as { n: number }).n);
