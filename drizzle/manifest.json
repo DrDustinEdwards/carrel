@@ -50,6 +50,7 @@
     "0045_changes_email.sql": "a9781e8d8336dd80a0819a6168420f44a440b88ae8fcf76af0fbb58ffe7bc1b4",
     "0046_drop_unused_tables.sql": "a42935d7362f20efb6e0bd54df3ff17b17f205535bcf481cc99c3ac925f90347",
     "0047_doc_edits.sql": "5909d9ae875f6acbd5fc4510b2435ff1b4edd3bbab1fe250c53ee03955371a97",
-    "0048_item_drafts.sql": "4bfbb497ef1e255e8065231d02576e4a6ba8a1cd8a4326595f97e63db695cf66"
+    "0048_item_drafts.sql": "4bfbb497ef1e255e8065231d02576e4a6ba8a1cd8a4326595f97e63db695cf66",
+    "0049_drop_merged_tables.sql": "f199469c8371054822e4c4ed5037cff899f1175c6d1518aa60fe0a218bf2ac5c"
   }
 }
