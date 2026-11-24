@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   drill:
-    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@7ca141c8b91ba55a0fbb95e381e3b7f978ac030a # v0.59.3
+    uses: DrDustinEdwards/devkit/.github/workflows/restore-drill.yml@ffdb0473473df6eb30d902a6843107af42a4f706 # v0.59.5
     with:
       bucket: carrel-backups
     secrets:

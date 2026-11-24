@@ -173,7 +173,7 @@ describe("typed words on save", () => {
       } as never),
     );
     const ai = await testEnv.DB.prepare(
-      "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source, base_version, note) VALUES (?, ?, ?, 'Claude', ?, ?, '') RETURNING id",
+      "INSERT INTO item_drafts (project_id, item_id, person_id, client, kind, body, base_version, note) VALUES (?, ?, ?, 'Claude', 'text', ?, ?, '') RETURNING id",
     )
       .bind(
         project.id,

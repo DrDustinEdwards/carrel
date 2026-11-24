@@ -8,10 +8,9 @@ import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, sql } from "dri
 import { drizzle } from "drizzle-orm/d1";
 
 import {
-  aiDrafts,
   authorship,
-  drafts,
   findings,
+  itemDrafts,
   manuscripts,
   needLater,
   projects,
@@ -58,14 +57,20 @@ export async function needsYou(
   const [ai, due, flags, awaiting, later] = await Promise.all([
     d
       .select({
-        projectId: aiDrafts.projectId,
+        projectId: itemDrafts.projectId,
         n: count(),
-        since: min(aiDrafts.createdAt),
-        first: min(aiDrafts.id),
+        since: min(itemDrafts.createdAt),
+        first: min(itemDrafts.id),
       })
-      .from(aiDrafts)
-      .where(and(eq(aiDrafts.personId, viewer.id), inList(aiDrafts.projectId, ids)))
-      .groupBy(aiDrafts.projectId)
+      .from(itemDrafts)
+      .where(
+        and(
+          eq(itemDrafts.kind, "text"),
+          eq(itemDrafts.personId, viewer.id),
+          inList(itemDrafts.projectId, ids),
+        ),
+      )
+      .groupBy(itemDrafts.projectId)
       .all(),
     d
       .select({
@@ -297,7 +302,7 @@ export async function bringBack(db: D1Database, viewer: Viewer, needId: string):
 
 export type Continue = { projectName: string; title: string; href: string; at: string };
 
-/** The last things this person had open in their own drafts, newest first. */
+/** The last posts with text nobody has saved: this person's own drafts and shared rooms, newest first. */
 export async function continueWriting(
   db: D1Database,
   viewer: Viewer,
@@ -305,22 +310,22 @@ export async function continueWriting(
   limit = 3,
 ): Promise<Continue[]> {
   const known = byId(visible);
-  const rows = await drizzle(db)
-    .select({
-      projectId: drafts.projectId,
-      itemId: drafts.itemId,
-      source: drafts.source,
-      at: drafts.updatedAt,
-    })
-    .from(drafts)
-    .where(eq(drafts.personId, viewer.id))
-    .orderBy(desc(drafts.updatedAt))
-    .limit(limit * 3)
-    .all();
+  const rows = (
+    await db
+      .prepare(
+        `SELECT project_id AS projectId, item_id AS itemId, source, updated_at AS at FROM drafts WHERE person_id = ?1
+         UNION ALL SELECT project_id, item_id, source, updated_at FROM rooms WHERE source != saved_source
+         ORDER BY at DESC LIMIT ?2`,
+      )
+      .bind(viewer.id, limit * 6)
+      .all<{ projectId: number; itemId: string; source: string; at: string }>()
+  ).results;
+  const seen = new Set<string>();
   const out: Continue[] = [];
   for (const r of rows) {
     const p = known.get(r.projectId);
-    if (!p || p.kind !== "site") continue;
+    if (!p || p.kind !== "site" || seen.has(`${r.projectId}/${r.itemId}`)) continue;
+    seen.add(`${r.projectId}/${r.itemId}`);
     const title = /^title:\s*(.+)$/m.exec(r.source)?.[1]?.replace(/^["']|["']$/g, "") ?? r.itemId;
     out.push({ projectName: p.name, title, href: postHref(p.slug, r.itemId), at: r.at });
     if (out.length === limit) break;

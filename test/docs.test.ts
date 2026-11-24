@@ -165,7 +165,9 @@ describe("suggest", () => {
     const labels = doc.suggestions.flatMap((s) => s.posts.map((p) => p.content));
     expect(labels).toContain("Grok Bot, through Carrel: shorter");
     expect(labels).toContain("Grok Bot, through Carrel: tighten");
-    const rows = await testEnv.DB.prepare("SELECT client, mode, labeled FROM doc_changes").all();
+    const rows = await testEnv.DB.prepare(
+      "SELECT client, kind AS mode, labeled FROM doc_edits",
+    ).all();
     expect(rows.results).toEqual([{ client: "Grok Bot", mode: "suggest", labeled: 1 }]);
   });
 
@@ -195,7 +197,7 @@ describe("suggest", () => {
     );
     expect(result.labeled).toBe(false);
     expect(result.labelProblem).toContain("labels");
-    const rows = await testEnv.DB.prepare("SELECT labeled FROM doc_changes").all();
+    const rows = await testEnv.DB.prepare("SELECT labeled FROM doc_edits").all();
     expect(rows.results).toEqual([{ labeled: 0 }]);
   });
 
@@ -274,7 +276,7 @@ describe("comment", () => {
     expect(doc.comments[0]!.status).toBe("RESOLVED");
     const read = data(await c.call("carrel_read_doc", { doc: DOC }));
     expect(read.comments[0]!.posts).toHaveLength(3);
-    const modes = await testEnv.DB.prepare("SELECT mode FROM doc_changes ORDER BY id").all();
+    const modes = await testEnv.DB.prepare("SELECT kind AS mode FROM doc_edits ORDER BY id").all();
     expect(modes.results.map((r) => r.mode)).toEqual(["comment", "reply", "resolve"]);
   });
 
@@ -554,7 +556,7 @@ describe("Carrel writes it", () => {
     expect(done.status).toBe(200);
     expect(await done.json()).toMatchObject({ ok: true, model: "claude-opus-5-5" });
     expect(JSON.stringify(asked[0])).toContain("The river was wide");
-    const rows = await testEnv.DB.prepare("SELECT client FROM doc_changes").all();
+    const rows = await testEnv.DB.prepare("SELECT client FROM doc_edits").all();
     expect(rows.results).toEqual([{ client: "Carrel (Claude API) for Docs panel" }]);
   });
 
@@ -651,7 +653,7 @@ describe("Docs activity", () => {
       text: "Cut?",
     });
     const rows = await docActivity(env, await viewerFor("owner@test.invalid"));
-    expect(rows.map((r) => [r.client, r.mode, r.name])).toEqual([
+    expect(rows.map((r) => [r.client, r.kind, r.name])).toEqual([
       ["Grok Bot", "comment", "Chapter draft"],
       ["Claude", "suggest", "Chapter draft"],
     ]);

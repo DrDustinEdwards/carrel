@@ -48,7 +48,7 @@ export async function freeDeadClaim(
   if (!claimed || now.getTime() - Date.parse(claimed) < CLAIM_LEASE_MS) return;
   const drafted = await db
     .prepare(
-      "SELECT 1 AS x FROM ai_drafts WHERE item_id = ?1 AND client = ?2 AND created_at >= ?3 LIMIT 1",
+      "SELECT 1 AS x FROM item_drafts WHERE kind = 'text' AND item_id = ?1 AND client = ?2 AND created_at >= ?3 LIMIT 1",
     )
     .bind(itemId, API_CLIENT, claimed)
     .first();

@@ -154,6 +154,8 @@ export const changes = sqliteTable("changes", {
   client: text("client"),
   /** The id a rename moved the post from (migration 0027); null for every other action. */
   renamedFrom: text("renamed_from"),
+  emailedAt: text("emailed_at"),
+  emailError: text("email_error"),
 });
 
 // Webmention decisions since migration 0011 (a table of its own: the changes table holds posts and
@@ -180,63 +182,37 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// mcp_calls (0012_mcp_calls.sql) is kept for the old tool-call log; its triggers refuse UPDATE and DELETE.
-
-/** The columns every draft kept beside a person's own starts with: whose, of what, and from which client. Fresh per table. */
-function draftOwner() {
-  return {
-    id: integer("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    itemId: text("item_id").notNull(),
-    personId: integer("person_id")
-      .notNull()
-      .references(() => people.id, { onDelete: "cascade" }),
-    client: text("client").notNull(),
-  };
-}
-
-export const aiDrafts = sqliteTable("ai_drafts", {
-  ...draftOwner(),
-  source: text("source").notNull(),
+// The whole text an AI session saved beside the site's (migrations 0004, 0032 and 0048), never over it: kind "text" is a
+// post's or a book file's source, "transcript" an episode's WebVTT (an AI session's fix, or the transcript a publish
+// replaced, kept so it can be put back). Each names the version of the site's text it was written from and is
+// published only from that version. Private to the person whose session saved it.
+export const itemDrafts = sqliteTable("item_drafts", {
+  id: integer("id").primaryKey(),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
+  client: text("client").notNull(),
+  kind: text("kind", { enum: ["text", "transcript"] })
+    .notNull()
+    .default("text"),
+  body: text("body").notNull(),
   baseVersion: text("base_version"),
   note: text("note").notNull().default(""),
-  // A JSON array of the text of each source the draft drew on; null on drafts saved before sources were asked for.
+  // A JSON array of the text of each source a text draft drew on; null on drafts saved before sources were asked for.
   sources: text("sources"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-export const aiPublications = sqliteTable("ai_publications", {
-  changeId: text("change_id").primaryKey(),
-  ...recordOf(),
-  client: text("client").notNull(),
-  version: text("version").notNull(),
-  publishedAt: text("published_at")
-    .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-  emailedAt: text("emailed_at"),
-  emailError: text("email_error"),
-});
-
 // Who made each preview link of a post (migration 0043): a link sends the post out, so it is recorded as a publish is.
 export const previewLinkRecords = sqliteTable("preview_link_records", {
   changeId: text("change_id").primaryKey(),
   ...recordOf(),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-});
-
-// An episode's whole WebVTT transcript beside the site's (migration 0032): an AI session's fix, or the transcript a
-// publish replaced, kept so it can be put back. Published only from base_transcript_version.
-export const transcriptDrafts = sqliteTable("transcript_drafts", {
-  ...draftOwner(),
-  transcript: text("transcript").notNull(),
-  baseTranscriptVersion: text("base_transcript_version"),
-  note: text("note").notNull().default(""),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
@@ -448,8 +424,10 @@ export const driveWatch = sqliteTable("drive_watch", {
   refreshedAt: text("refreshed_at"),
 });
 
-// Every change an AI made in a Google Doc through Carrel (migration 0035): which AI, why, and the exact change.
-export const docChanges = sqliteTable("doc_changes", {
+// Every change an AI made in a Google Doc through Carrel (migration 0047): which AI, why, and the exact change.
+// A suggestion or comment is decided on in Docs; a write, accept, reject, withdraw or undo is on Dustin's own ask, and
+// a write keeps the Doc's text before it so it can be taken back.
+export const docEdits = sqliteTable("doc_edits", {
   id: integer("id").primaryKey(),
   fileId: text("file_id").notNull(),
   personId: integer("person_id")
@@ -457,37 +435,27 @@ export const docChanges = sqliteTable("doc_changes", {
     .references(() => people.id, { onDelete: "cascade" }),
   client: text("client").notNull(),
   model: text("model"),
-  mode: text("mode", { enum: ["suggest", "comment", "reply", "resolve", "reopen"] }).notNull(),
+  kind: text("kind", {
+    enum: [
+      "suggest",
+      "comment",
+      "reply",
+      "resolve",
+      "reopen",
+      "write",
+      "accept",
+      "reject",
+      "withdraw",
+      "undo",
+    ],
+  }).notNull(),
   reason: text("reason").notNull().default(""),
   change: text("change").notNull(),
   googleIds: text("google_ids").notNull().default("[]"),
-  labeled: integer("labeled", { mode: "boolean" }).notNull().default(false),
-  revisionId: text("revision_id"),
-  // When an undo took the suggestion or comment back (migration 0036).
-  undoneAt: text("undone_at"),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-});
-
-// What changed a Doc's text on Dustin's own ask (migration 0036): a direct write, an accept, a reject, a withdrawn
-// suggestion or an undo, with the text before a write so it can be taken back.
-export const docActions = sqliteTable("doc_actions", {
-  id: integer("id").primaryKey(),
-  fileId: text("file_id").notNull(),
-  personId: integer("person_id")
-    .notNull()
-    .references(() => people.id, { onDelete: "cascade" }),
-  client: text("client").notNull(),
-  model: text("model"),
-  action: text("action", { enum: ["write", "accept", "reject", "withdraw", "undo"] }).notNull(),
-  reason: text("reason").notNull().default(""),
-  change: text("change").notNull(),
-  googleIds: text("google_ids").notNull().default("[]"),
-  revisionId: text("revision_id"),
+  // Whether the label (which AI, and why) is on the suggestion or comment in the Doc itself; a decision has none.
+  labeled: integer("labeled", { mode: "boolean" }).notNull().default(true),
   beforeText: text("before_text"),
-  undoes: integer("undoes"),
-  undoesTable: text("undoes_table", { enum: ["doc_changes", "doc_actions"] }),
+  // When an undo took the suggestion, comment or write back.
   undoneAt: text("undone_at"),
   emailedAt: text("emailed_at"),
   emailError: text("email_error"),
@@ -684,7 +652,7 @@ export const bookMoves = sqliteTable("book_moves", {
 });
 
 // The voice pack (0018_voice.sql, 0019_voice_own.sql, voice.server.ts): the Owner's guide, the author's own
-// writing and the excerpts. phrases, allow, profile and voice_cuts are unused; they stay so the lists the Owner typed
+// writing and the excerpts. phrases, allow and profile are unused; they stay so the lists the Owner typed
 // are not lost, as a rollback of the code would not bring them back.
 export const voicePacks = sqliteTable("voice_packs", {
   projectId: integer("project_id")
@@ -702,24 +670,6 @@ export const voicePacks = sqliteTable("voice_packs", {
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
-
-/** @public drizzle-kit reads the export; unexported, it would write a migration dropping the table. */
-export const voiceCuts = sqliteTable(
-  "voice_cuts",
-  {
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    phrase: text("phrase").notNull(),
-    items: text("items").notNull().default("[]"),
-    kept: integer("kept").notNull().default(0),
-    setAside: integer("set_aside", { mode: "boolean" }).notNull().default(false),
-    lastCutAt: text("last_cut_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-  },
-  (t) => [primaryKey({ columns: [t.projectId, t.phrase] })],
-);
 
 // The last Cloudflare Access sync (0023_access_sync.sql, access-sync.server.ts): one row, replaced by each sync.
 export const accessSync = sqliteTable("access_sync", {

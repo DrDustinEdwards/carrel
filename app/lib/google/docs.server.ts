@@ -9,9 +9,8 @@
 //   change too; both are refused on a Doc Dustin locked "suggest only", and every tool is refused on one he locked
 //   "no AI" (doc_locks, set on Desk's Manuscripts page).
 // - Every suggestion and comment says which AI made it and why, in the Doc itself, and every change is a row in
-//   doc_changes (suggestions and comments) or doc_actions (writes, decisions, undos). A direct write keeps the text
-//   it replaced and the whole Doc's text before it, so it can be taken back, and emails Dustin by his Docs email
-//   setting (each write, a daily summary, or off).
+//   doc_edits. A direct write keeps the text it replaced and the whole Doc's text before it, so it can be taken
+//   back, and emails Dustin by his Docs email setting (each write, a daily summary, or off).
 // An AI names text by quoting it. Carrel turns the quote into Google's positions from a fresh read, so no AI does
 // position arithmetic, and a quote that is not found exactly once is refused rather than guessed at.
 
@@ -19,7 +18,7 @@ import { logEvent } from "@dustinedwards/site-runtime/log";
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiSettings, docActions, docChanges, docLocks, manuscripts } from "~/db/schema";
+import { aiSettings, docEdits, docLocks, manuscripts } from "~/db/schema";
 import { AiRefusal, emailDustin, type AiSession } from "~/lib/ai.server";
 import { carrelOrigin } from "~/lib/mcp/server";
 import type { Viewer } from "~/lib/people.server";
@@ -525,37 +524,47 @@ const batch = (
   opts: DocWrite = {},
 ) => postBatch(env, `${DOCS}/${docId}:batchUpdate`, body, fetcher, opts);
 
-export async function record(
+type EditKind = (typeof docEdits.$inferInsert)["kind"];
+
+/** Records one change to a Doc, and marks the change it takes back, if any, as taken back. */
+export async function recordEdit(
   env: Env,
   viewer: Viewer,
   session: AiSession,
   row: {
     fileId: string;
-    mode: "suggest" | "comment" | "reply" | "resolve" | "reopen";
+    kind: EditKind;
     model?: string;
     reason: string;
     change: unknown;
-    googleIds: string[];
-    labeled: boolean;
-    revisionId?: string;
+    googleIds?: string[];
+    labeled?: boolean;
+    beforeText?: string;
+    undoes?: number;
   },
 ): Promise<number> {
-  const saved = await drizzle(env.DB)
-    .insert(docChanges)
+  const d = drizzle(env.DB);
+  const saved = await d
+    .insert(docEdits)
     .values({
       fileId: row.fileId,
       personId: viewer.id,
       client: session.client,
       model: row.model?.trim() || null,
-      mode: row.mode,
+      kind: row.kind,
       reason: row.reason.slice(0, MAX.reason),
       change: JSON.stringify(row.change),
-      googleIds: JSON.stringify(row.googleIds),
+      googleIds: JSON.stringify(row.googleIds ?? []),
       labeled: row.labeled,
-      revisionId: row.revisionId ?? null,
+      beforeText: row.beforeText ?? null,
     })
-    .returning({ id: docChanges.id })
+    .returning({ id: docEdits.id })
     .get();
+  if (row.undoes)
+    await d
+      .update(docEdits)
+      .set({ undoneAt: new Date().toISOString() })
+      .where(eq(docEdits.id, row.undoes));
   return saved.id;
 }
 
@@ -730,7 +739,6 @@ export async function changeInDoc(
       model: input.model,
       reason: input.reason,
       edits: planned,
-      revisionId: doc.revisionId,
       beforeText,
     });
     return { ...written, ...extra };
@@ -785,9 +793,9 @@ export async function changeInDoc(
       labelProblem = error instanceof AiRefusal ? error.message : "The labels could not be added.";
     }
   }
-  const changeId = await record(env, viewer, session, {
+  const changeId = await recordEdit(env, viewer, session, {
     fileId: docId,
-    mode: "suggest",
+    kind: "suggest",
     model: input.model,
     reason: input.reason,
     change: planned.map((p) => ({
@@ -800,12 +808,11 @@ export async function changeInDoc(
     })),
     googleIds: [...ids],
     labeled: labelProblem === undefined,
-    revisionId: doc.revisionId,
   });
   return {
     mode: "suggest",
     changeId,
-    undo: `c${changeId}`,
+    undo: String(changeId),
     suggestionIds: [...ids],
     edits: planned.length,
     labeled: labelProblem === undefined,
@@ -852,21 +859,19 @@ export async function writeDone(
     model?: string;
     reason: string;
     edits: Planned[] | WrittenEdit[];
-    revisionId?: string;
     beforeText?: string;
-    undoes?: { id: number; table: "doc_changes" | "doc_actions" };
+    undoes?: number;
     /** False for a Slides write: Carrel keeps the text it replaced, but only a Doc has an undo. */
     undoable?: boolean;
   },
 ): Promise<WriteResult> {
   const edits = w.edits.map((e) => ("at" in e ? writtenOf(e) : e));
-  const actionId = await recordAction(env, viewer, session, {
+  const actionId = await recordEdit(env, viewer, session, {
     fileId: row.fileId,
-    action: w.undoes ? "undo" : "write",
+    kind: w.undoes ? "undo" : "write",
     model: w.model,
     reason: w.reason,
     change: edits,
-    revisionId: w.revisionId,
     beforeText: w.beforeText,
     undoes: w.undoes,
   });
@@ -889,7 +894,7 @@ export async function writeDone(
         "",
         w.undoable === false
           ? `The text it replaced is kept at ${carrelOrigin(env)}/manuscripts/activity, and Google keeps the file's own version history.`
-          : `Take it back: ask any AI connected to Carrel to undo a${actionId} in this Doc, or open ${carrelOrigin(env)}/manuscripts/activity.`,
+          : `Take it back: ask any AI connected to Carrel to undo ${actionId} in this Doc, or open ${carrelOrigin(env)}/manuscripts/activity.`,
         "",
       ].join("\n"),
     });
@@ -897,13 +902,13 @@ export async function writeDone(
   return {
     mode: "write",
     changeId: actionId,
-    undo: w.undoable === false ? "" : `a${actionId}`,
+    undo: w.undoable === false ? "" : String(actionId),
     edits: edits.length,
     emailed,
   };
 }
 
-/** Sends one email about these doc_actions rows and records on each whether it went. */
+/** Sends one email about these doc_edits rows and records on each whether it went. */
 async function emailWrites(
   env: Env,
   ids: number[],
@@ -913,13 +918,13 @@ async function emailWrites(
   const error = await emailDustin(env, mail);
   if (error) {
     logEvent("docs.email-failed", { ids: ids.join(","), error }, { level: "error" });
-    await d.update(docActions).set({ emailError: error }).where(inArray(docActions.id, ids));
+    await d.update(docEdits).set({ emailError: error }).where(inArray(docEdits.id, ids));
     return false;
   }
   await d
-    .update(docActions)
+    .update(docEdits)
     .set({ emailedAt: new Date().toISOString() })
-    .where(inArray(docActions.id, ids));
+    .where(inArray(docEdits.id, ids));
   return true;
 }
 
@@ -963,24 +968,24 @@ export async function emailDocsDigest(env: Env, now = new Date()): Promise<{ sen
   const since = new Date(now.getTime() - 2 * 86_400_000).toISOString();
   const rows = await drizzle(env.DB)
     .select({
-      id: docActions.id,
-      client: docActions.client,
-      action: docActions.action,
-      reason: docActions.reason,
-      createdAt: docActions.createdAt,
+      id: docEdits.id,
+      client: docEdits.client,
+      kind: docEdits.kind,
+      reason: docEdits.reason,
+      createdAt: docEdits.createdAt,
       name: manuscripts.name,
       link: manuscripts.webViewLink,
     })
-    .from(docActions)
-    .leftJoin(manuscripts, eq(manuscripts.fileId, docActions.fileId))
+    .from(docEdits)
+    .leftJoin(manuscripts, eq(manuscripts.fileId, docEdits.fileId))
     .where(
       and(
-        inArray(docActions.action, ["write", "undo"]),
-        isNull(docActions.emailedAt),
-        gte(docActions.createdAt, since),
+        inArray(docEdits.kind, ["write", "undo"]),
+        isNull(docEdits.emailedAt),
+        gte(docEdits.createdAt, since),
       ),
     )
-    .orderBy(docActions.id)
+    .orderBy(docEdits.id)
     .all();
   if (rows.length === 0) return { sent: 0 };
   await emailWrites(
@@ -991,7 +996,7 @@ export async function emailDocsDigest(env: Env, now = new Date()): Promise<{ sen
       text: [
         ...rows.map(
           (r) =>
-            `a${r.id} ${r.createdAt.slice(0, 16).replace("T", " ")} UTC: ${r.client} ${r.action === "undo" ? "took back a write" : "wrote"} in ${r.name ?? "a Doc"}: ${r.reason}${r.link ? ` (${r.link})` : ""}`,
+            `${r.id} ${r.createdAt.slice(0, 16).replace("T", " ")} UTC: ${r.client} ${r.kind === "undo" ? "took back a write" : "wrote"} in ${r.name ?? "a Doc"}: ${r.reason}${r.link ? ` (${r.link})` : ""}`,
         ),
         "",
         `Take one back: ask any AI connected to Carrel to undo it by its id, or open ${carrelOrigin(env)}/manuscripts/activity.`,
@@ -1002,49 +1007,8 @@ export async function emailDocsDigest(env: Env, now = new Date()): Promise<{ sen
   return { sent: rows.length };
 }
 
-async function recordAction(
-  env: Env,
-  viewer: Viewer,
-  session: AiSession,
-  row: {
-    fileId: string;
-    action: "write" | "accept" | "reject" | "withdraw" | "undo";
-    model?: string;
-    reason: string;
-    change: unknown;
-    googleIds?: string[];
-    revisionId?: string;
-    beforeText?: string;
-    undoes?: { id: number; table: "doc_changes" | "doc_actions" };
-  },
-): Promise<number> {
-  const d = drizzle(env.DB);
-  const saved = await d
-    .insert(docActions)
-    .values({
-      fileId: row.fileId,
-      personId: viewer.id,
-      client: session.client,
-      model: row.model?.trim() || null,
-      action: row.action,
-      reason: row.reason.slice(0, MAX.reason),
-      change: JSON.stringify(row.change),
-      googleIds: JSON.stringify(row.googleIds ?? []),
-      revisionId: row.revisionId ?? null,
-      beforeText: row.beforeText ?? null,
-      undoes: row.undoes?.id ?? null,
-      undoesTable: row.undoes?.table ?? null,
-    })
-    .returning({ id: docActions.id })
-    .get();
-  if (row.undoes) {
-    const at = new Date().toISOString();
-    if (row.undoes.table === "doc_changes")
-      await d.update(docChanges).set({ undoneAt: at }).where(eq(docChanges.id, row.undoes.id));
-    else await d.update(docActions).set({ undoneAt: at }).where(eq(docActions.id, row.undoes.id));
-  }
-  return saved.id;
-}
+/** The kinds of change that are a suggestion or a comment, decided on in Docs, not a write on Dustin's ask. */
+const SUGGESTED = new Set<EditKind>(["suggest", "comment", "reply", "resolve", "reopen"]);
 
 const REVIEW = {
   accept: "acceptSuggestion",
@@ -1056,9 +1020,9 @@ export type ReviewAction = keyof typeof REVIEW;
 /** The suggestion ids Carrel laid in this Doc, by the AI that asked for each. */
 async function carrelSuggestions(env: Env, docId: string) {
   const rows = await drizzle(env.DB)
-    .select({ client: docChanges.client, googleIds: docChanges.googleIds })
-    .from(docChanges)
-    .where(and(eq(docChanges.fileId, docId), eq(docChanges.mode, "suggest")))
+    .select({ client: docEdits.client, googleIds: docEdits.googleIds })
+    .from(docEdits)
+    .where(and(eq(docEdits.fileId, docId), eq(docEdits.kind, "suggest")))
     .all();
   return rows.flatMap((r) =>
     (JSON.parse(r.googleIds) as string[]).map((id) => ({ id, client: r.client })),
@@ -1150,14 +1114,13 @@ export async function reviewInDoc(
     fetcher,
     { direct: input.action === "accept" },
   );
-  const changeId = await recordAction(env, viewer, session, {
+  const changeId = await recordEdit(env, viewer, session, {
     fileId: docId,
-    action: input.action,
+    kind: input.action,
     model: input.model,
     reason: input.reason?.trim() || `${input.action} ${ids.length}`,
     change: { suggestions: ids, by: input.by ?? null },
     googleIds: ids,
-    revisionId: doc.revisionId,
   });
   return { changeId, action: input.action, suggestionIds: ids };
 }
@@ -1165,47 +1128,23 @@ export async function reviewInDoc(
 /** Everything Carrel changed in one Doc, newest first, each with the id carrel_undo_doc takes. */
 export async function docHistory(env: Env, viewer: Viewer, docId: string, limit = 50) {
   await indexed(env, viewer, docId);
-  const d = drizzle(env.DB);
-  const [changes, actions] = await Promise.all([
-    d
-      .select()
-      .from(docChanges)
-      .where(eq(docChanges.fileId, docId))
-      .orderBy(desc(docChanges.id))
-      .limit(limit)
-      .all(),
-    d
-      .select()
-      .from(docActions)
-      .where(eq(docActions.fileId, docId))
-      .orderBy(desc(docActions.id))
-      .limit(limit)
-      .all(),
-  ]);
-  return [
-    ...changes.map((c) => ({
-      undo: `c${c.id}`,
-      what: c.mode,
-      client: c.client,
-      model: c.model,
-      reason: c.reason,
-      googleIds: JSON.parse(c.googleIds) as string[],
-      at: c.createdAt,
-      undoneAt: c.undoneAt,
-    })),
-    ...actions.map((a) => ({
-      undo: `a${a.id}`,
-      what: a.action,
-      client: a.client,
-      model: a.model,
-      reason: a.reason,
-      googleIds: JSON.parse(a.googleIds) as string[],
-      at: a.createdAt,
-      undoneAt: a.undoneAt,
-    })),
-  ]
-    .sort((x, y) => y.at.localeCompare(x.at))
-    .slice(0, limit);
+  const rows = await drizzle(env.DB)
+    .select()
+    .from(docEdits)
+    .where(eq(docEdits.fileId, docId))
+    .orderBy(desc(docEdits.id))
+    .limit(limit)
+    .all();
+  return rows.map((r) => ({
+    undo: String(r.id),
+    what: r.kind,
+    client: r.client,
+    model: r.model,
+    reason: r.reason,
+    googleIds: JSON.parse(r.googleIds) as string[],
+    at: r.createdAt,
+    undoneAt: r.undoneAt,
+  }));
 }
 
 /**
@@ -1226,21 +1165,21 @@ export async function undoInDoc(
   | { mode: "withdraw" | "delete-comment"; changeId: number; undone: string[] }
 > {
   const row = await indexed(env, viewer, docId, "suggest");
-  const ref = /^([ca])(\d{1,12})$/.exec(input.change.trim());
-  if (!ref) throw new AiRefusal("change is an id from carrel_undo_doc's list, such as c12 or a5.");
-  const id = Number(ref[2]);
+  const ref = /^\d{1,12}$/.exec(input.change.trim());
+  if (!ref) throw new AiRefusal("change is an id from carrel_undo_doc's list, such as 12.");
+  const id = Number(ref[0]);
   const d = drizzle(env.DB);
   const reason = input.reason?.trim() || `undo ${input.change}`;
-  if (ref[1] === "c") {
-    const c = await d
-      .select()
-      .from(docChanges)
-      .where(and(eq(docChanges.id, id), eq(docChanges.fileId, docId)))
-      .get();
-    if (!c) throw new AiRefusal(`There is no change ${input.change} in this Doc.`);
-    if (c.undoneAt) throw new AiRefusal(`${input.change} was already taken back.`);
-    const ids = JSON.parse(c.googleIds) as string[];
-    if (c.mode === "suggest") {
+  const e = await d
+    .select()
+    .from(docEdits)
+    .where(and(eq(docEdits.id, id), eq(docEdits.fileId, docId)))
+    .get();
+  if (!e) throw new AiRefusal(`There is no change ${input.change} in this Doc.`);
+  if (e.undoneAt) throw new AiRefusal(`${input.change} was already taken back.`);
+  if (SUGGESTED.has(e.kind)) {
+    const ids = JSON.parse(e.googleIds) as string[];
+    if (e.kind === "suggest") {
       const doc = await fetchDoc(env, docId, fetcher);
       const open = new Set(
         (doc.suggestions ?? [])
@@ -1258,53 +1197,45 @@ export async function undoInDoc(
         { requests: still.map((s) => ({ deleteSuggestion: { suggestionId: s } })) },
         fetcher,
       );
-      const changeId = await recordAction(env, viewer, session, {
+      const changeId = await recordEdit(env, viewer, session, {
         fileId: docId,
-        action: "undo",
+        kind: "undo",
         model: input.model,
         reason,
         change: { withdrew: still },
         googleIds: still,
-        revisionId: doc.revisionId,
-        undoes: { id, table: "doc_changes" },
+        undoes: id,
       });
       return { mode: "withdraw", changeId, undone: still };
     }
-    if (c.mode === "comment" && ids[0]) {
+    if (e.kind === "comment" && ids[0]) {
       await batch(env, docId, { requests: [{ deleteComment: { commentId: ids[0] } }] }, fetcher);
-      const changeId = await recordAction(env, viewer, session, {
+      const changeId = await recordEdit(env, viewer, session, {
         fileId: docId,
-        action: "undo",
+        kind: "undo",
         model: input.model,
         reason,
         change: { deletedComment: ids[0] },
         googleIds: [ids[0]],
-        undoes: { id, table: "doc_changes" },
+        undoes: id,
       });
       return { mode: "delete-comment", changeId, undone: [ids[0]] };
     }
     throw new AiRefusal(
-      c.mode === "resolve"
+      e.kind === "resolve"
         ? "A resolve is taken back by reopening: carrel_comment_doc with action reopen."
-        : `A ${c.mode} is not taken back here; reply on the thread instead.`,
+        : `A ${e.kind} is not taken back here; reply on the thread instead.`,
     );
   }
-  const a = await d
-    .select()
-    .from(docActions)
-    .where(and(eq(docActions.id, id), eq(docActions.fileId, docId)))
-    .get();
-  if (!a) throw new AiRefusal(`There is no change ${input.change} in this Doc.`);
-  if (a.undoneAt) throw new AiRefusal(`${input.change} was already taken back.`);
-  if (a.action !== "write")
+  if (e.kind !== "write")
     throw new AiRefusal(
-      a.action === "accept"
+      e.kind === "accept"
         ? "Accepted text is part of the Doc now. To change it back, ask for a direct write."
-        : a.action === "undo"
+        : e.kind === "undo"
           ? "An undo is not undone; ask for the change again."
           : "A rejected or withdrawn suggestion cannot be brought back; suggest it again.",
     );
-  const written = JSON.parse(a.change) as WrittenEdit[];
+  const written = JSON.parse(e.change) as WrittenEdit[];
   const doc = await fetchDoc(env, docId, fetcher);
   const paras = paragraphsOf(doc);
   const moved: string[] = [];
@@ -1330,7 +1261,7 @@ export async function undoInDoc(
   }
   if (moved.length)
     throw new AiRefusal(
-      `Nothing was changed: the written text moved or was edited since. ${moved.join(" ")} The Doc's text before the write is kept in Carrel (doc_actions a${id}); Dustin can restore it by hand or from Docs' version history.`,
+      `Nothing was changed: the written text moved or was edited since. ${moved.join(" ")} The Doc's text before the write is kept in Carrel (doc_edits ${id}); Dustin can restore it by hand or from Docs' version history.`,
     );
   // An insertion that is now empty (it deleted text) puts the old text in at its spot, with nothing to remove.
   const { requests } = requestsOf(
@@ -1356,8 +1287,7 @@ export async function undoInDoc(
       prefix: written[i]!.prefix,
       suffix: written[i]!.suffix,
     })),
-    revisionId: doc.revisionId,
-    undoes: { id, table: "doc_actions" },
+    undoes: id,
   });
 }
 
@@ -1397,7 +1327,7 @@ export type CommentInput = {
   model?: string;
 };
 /** What a new comment is anchored on, as the fields of Google's insertComment, and the revision it was read at. */
-export type CommentAnchor = { fields: Record<string, unknown>; revisionId?: string };
+export type CommentAnchor = { fields: Record<string, unknown> };
 
 /**
  * A comment on a Doc, a Slides or a Sheets file: a new one on what `anchor` names, a reply to a thread (a comment's or
@@ -1426,7 +1356,6 @@ export async function commentInFile(
   const said = input.action ? text || (input.action === "resolve" ? "resolved" : "reopened") : text;
   const content = labelOf(session, input.model, said);
   let request: Record<string, unknown>;
-  let revisionId: string | undefined;
   if (input.reply_to) {
     // A suggestion thread's id starts "suggest."; a comment's does not (Google's own ids).
     const key = input.reply_to.startsWith("suggest.") ? "suggestionId" : "commentId";
@@ -1443,7 +1372,6 @@ export async function commentInFile(
     };
   } else {
     const at = await anchor();
-    revisionId = at.revisionId;
     request = { insertComment: { content, ...at.fields } };
   }
   const done = await postBatch(env, batchUrl, { requests: [request] }, fetcher);
@@ -1452,15 +1380,14 @@ export async function commentInFile(
   const reply = done.replies?.[0];
   const id = reply?.insertComment?.commentId ?? reply?.addCommentReply?.postId ?? null;
   const mode = input.action || (input.reply_to ? "reply" : "comment");
-  const changeId = await record(env, viewer, session, {
+  const changeId = await recordEdit(env, viewer, session, {
     fileId,
-    mode,
+    kind: mode,
     model: input.model,
     reason: text,
     change: { reply_to: input.reply_to ?? null, quote: input.quote ?? null, content },
     googleIds: id ? [id] : [],
     labeled: true,
-    revisionId,
   });
   return { changeId, id, labeled: true };
 }
@@ -1487,7 +1414,6 @@ export function commentInDoc(
       const at = locate(paragraphsOf(doc), input.quote, tabIdOf(doc, input.tab), "quote");
       return {
         fields: { range: { startIndex: at.start, endIndex: at.end, tabId: at.tabId } },
-        revisionId: doc.revisionId,
       };
     },
     fetcher,
@@ -1497,66 +1423,30 @@ export function commentInDoc(
 /** The latest changes AIs made in Docs, newest first, with each Doc's name: the Docs activity page. */
 export async function docActivity(env: Env, viewer: Viewer, limit = 100) {
   requireOwner(viewer);
-  const d = drizzle(env.DB);
-  const [changes, actions] = await Promise.all([
-    d
-      .select({
-        id: docChanges.id,
-        fileId: docChanges.fileId,
-        name: manuscripts.name,
-        link: manuscripts.webViewLink,
-        client: docChanges.client,
-        model: docChanges.model,
-        mode: docChanges.mode,
-        reason: docChanges.reason,
-        googleIds: docChanges.googleIds,
-        labeled: docChanges.labeled,
-        undoneAt: docChanges.undoneAt,
-        createdAt: docChanges.createdAt,
-      })
-      .from(docChanges)
-      .leftJoin(manuscripts, eq(manuscripts.fileId, docChanges.fileId))
-      .orderBy(desc(docChanges.id))
-      .limit(limit)
-      .all(),
-    d
-      .select({
-        id: docActions.id,
-        fileId: docActions.fileId,
-        name: manuscripts.name,
-        link: manuscripts.webViewLink,
-        client: docActions.client,
-        model: docActions.model,
-        mode: docActions.action,
-        reason: docActions.reason,
-        googleIds: docActions.googleIds,
-        change: docActions.change,
-        undoneAt: docActions.undoneAt,
-        createdAt: docActions.createdAt,
-      })
-      .from(docActions)
-      .leftJoin(manuscripts, eq(manuscripts.fileId, docActions.fileId))
-      .orderBy(desc(docActions.id))
-      .limit(limit)
-      .all(),
-  ]);
-  return [
-    ...changes.map((r) => ({
-      ...r,
-      ref: `c${r.id}`,
-      changes: (JSON.parse(r.googleIds) as string[]).length,
-    })),
-    ...actions.map(({ change, ...r }) => {
-      const edits = JSON.parse(change) as unknown;
-      return {
-        ...r,
-        ref: `a${r.id}`,
-        // Labels are for suggestions and comments; a write is recorded and emailed instead.
-        labeled: true,
-        changes: Array.isArray(edits) ? edits.length : (JSON.parse(r.googleIds) as string[]).length,
-      };
-    }),
-  ]
-    .sort((x, y) => y.createdAt.localeCompare(x.createdAt))
-    .slice(0, limit);
+  const rows = await drizzle(env.DB)
+    .select({
+      id: docEdits.id,
+      fileId: docEdits.fileId,
+      name: manuscripts.name,
+      link: manuscripts.webViewLink,
+      client: docEdits.client,
+      model: docEdits.model,
+      kind: docEdits.kind,
+      reason: docEdits.reason,
+      googleIds: docEdits.googleIds,
+      change: docEdits.change,
+      labeled: docEdits.labeled,
+      undoneAt: docEdits.undoneAt,
+      createdAt: docEdits.createdAt,
+    })
+    .from(docEdits)
+    .leftJoin(manuscripts, eq(manuscripts.fileId, docEdits.fileId))
+    .orderBy(desc(docEdits.id))
+    .limit(limit)
+    .all();
+  return rows.map(({ change, googleIds, ...r }) => {
+    const edits = JSON.parse(change) as unknown;
+    const ids = JSON.parse(googleIds) as string[];
+    return { ...r, changes: Array.isArray(edits) ? edits.length : ids.length };
+  });
 }

@@ -8,11 +8,11 @@ import { and, asc, desc, eq, inArray, like, notInArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import {
-  aiDrafts,
   authorship,
   bookFiles,
   drafts,
   findings,
+  itemDrafts,
   novelsShared,
   people,
   projects,
@@ -811,17 +811,17 @@ export async function saveBookAiDraft(
   if (!input.source.trim()) throw new Response("The draft is empty.", { status: 400 });
   const base = await indexedFile(db, project, path);
   const [row] = await drizzle(db)
-    .insert(aiDrafts)
+    .insert(itemDrafts)
     .values({
       projectId: project.id,
       itemId: path,
       personId: session.viewer.id,
       client: session.client,
-      source: normalizeNewlines(input.source),
+      body: normalizeNewlines(input.source),
       baseVersion: base?.sha ?? null,
       note: (input.note ?? "").trim().slice(0, 500),
     })
-    .returning({ id: aiDrafts.id });
+    .returning({ id: itemDrafts.id });
   return { id: row!.id, baseVersion: base?.sha ?? null };
 }
 

@@ -25,7 +25,7 @@ export type ReorderResult =
 const PATH_COLUMNS = [
   ["book_files", "path"],
   ["findings", "path"],
-  ["ai_drafts", "item_id"],
+  ["item_drafts", "item_id"],
   ["untyped_words", "path"],
   ["comments", "item_id"],
   ["rooms", "item_id"],

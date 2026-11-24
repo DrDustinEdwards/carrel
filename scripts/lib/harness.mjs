@@ -373,7 +373,7 @@ export const SCREENS = [
     wait: ".cap-rich-editor-surface",
   },
   { name: "ai-draft", viewer: "owner", path: `/p/${SITE}/e/counting-what-the-build-skips/ai/1` },
-  { name: "transcript-draft", viewer: "owner", path: `/p/${SITE}/e/alerts-wait/transcript/1` },
+  { name: "transcript-draft", viewer: "owner", path: `/p/${SITE}/e/alerts-wait/transcript/4` },
   {
     name: "post-history",
     viewer: "owner",

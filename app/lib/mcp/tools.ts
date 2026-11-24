@@ -1790,14 +1790,14 @@ export const TOOLS: Tool[] = [
     name: "carrel_undo_doc",
     title: "List or take back Carrel's changes in a Google Doc",
     scope: "write",
-    description: `Without change: lists what AIs changed in a Google Doc through Carrel, newest first, each with its undo id (c12, a5), which AI, why, and whether it was taken back. With change: takes that one back. A suggestion is withdrawn (whatever is still open), a comment is deleted, and a direct write puts the old text back if the written text still stands as written; if it moved or was edited, nothing changes and the answer says what it was. Undo only when Dustin asked for it in this conversation. ${RULE}`,
+    description: `Without change: lists what AIs changed in a Google Doc through Carrel, newest first, each with its undo id (12), which AI, why, and whether it was taken back. With change: takes that one back. A suggestion is withdrawn (whatever is still open), a comment is deleted, and a direct write puts the old text back if the written text still stands as written; if it moved or was edited, nothing changes and the answer says what it was. Undo only when Dustin asked for it in this conversation. ${RULE}`,
     inputSchema: {
       type: "object",
       properties: {
         doc: DOC,
         change: {
           type: "string",
-          description: "The undo id, such as c12 or a5. Leave out to list.",
+          description: "The undo id, such as 12. Leave out to list.",
         },
         reason: { type: "string" },
         model: { type: "string" },
