@@ -98,11 +98,11 @@ const connect = (email: string) =>
 
 async function written() {
   const counts = await testEnv.DB.batch([
-    testEnv.DB.prepare("SELECT COUNT(*) AS n FROM ai_drafts"),
+    testEnv.DB.prepare("SELECT COUNT(*) AS n FROM item_drafts WHERE kind = 'text'"),
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM findings"),
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM social_posts"),
     testEnv.DB.prepare("SELECT COUNT(*) AS n FROM changes WHERE client IS NOT NULL"),
-    testEnv.DB.prepare("SELECT COUNT(*) AS n FROM transcript_drafts"),
+    testEnv.DB.prepare("SELECT COUNT(*) AS n FROM item_drafts WHERE kind = 'transcript'"),
   ]);
   return counts.map((c) => (c.results[0] as { n: number }).n);
 }

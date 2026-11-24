@@ -15,8 +15,15 @@ import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { sha256Hex } from "@dustinedwards/site-runtime/encoding";
 
-import { aiDrafts, changes, findings, people, siteItems } from "~/db/schema";
-import { readDoc, writeToSite, type ProjectRole, type WriteOutcome } from "~/lib/content.server";
+import { changes, findings, itemDrafts, people, siteItems } from "~/db/schema";
+import {
+  listItemDrafts,
+  readDoc,
+  readItemDraft,
+  writeToSite,
+  type ProjectRole,
+  type WriteOutcome,
+} from "~/lib/content.server";
 import type { Viewer } from "~/lib/people.server";
 import type { SiteProject } from "~/lib/projects.server";
 import { can } from "~/lib/roles";
@@ -194,18 +201,18 @@ export async function saveAiDraft(
     // The site not answering does not stop a draft that lives only in Carrel.
   }
   const [row] = await drizzle(env.DB)
-    .insert(aiDrafts)
+    .insert(itemDrafts)
     .values({
       projectId: project.id,
       itemId,
       personId: session.viewer.id,
       client: session.client,
-      source: normalizeNewlines(input.source),
+      body: normalizeNewlines(input.source),
       baseVersion,
       note: (input.note ?? "").trim().slice(0, 500),
       sources: JSON.stringify(input.sources ?? []),
     })
-    .returning({ id: aiDrafts.id });
+    .returning({ id: itemDrafts.id });
   return { id: row!.id, baseVersion };
 }
 
@@ -225,27 +232,16 @@ export async function listAiDraftSources(
   viewer: Viewer,
   itemId: string,
 ) {
-  if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
-  const rows = await drizzle(db)
-    .select({
-      id: aiDrafts.id,
-      client: aiDrafts.client,
-      note: aiDrafts.note,
-      createdAt: aiDrafts.createdAt,
-      baseVersion: aiDrafts.baseVersion,
-      source: aiDrafts.source,
-    })
-    .from(aiDrafts)
-    .where(
-      and(
-        eq(aiDrafts.projectId, project.id),
-        eq(aiDrafts.itemId, itemId),
-        eq(aiDrafts.personId, viewer.id),
-      ),
-    )
-    .orderBy(desc(aiDrafts.createdAt), desc(aiDrafts.id))
-    .all();
-  return rows.map((r) => ({ ...r, words: wordCount(r.source) }));
+  const rows = await listItemDrafts(db, project, viewer, itemId, "text");
+  return rows.map((r) => ({
+    id: r.id,
+    client: r.client,
+    note: r.note,
+    createdAt: r.createdAt,
+    baseVersion: r.baseVersion,
+    source: r.body,
+    words: wordCount(r.body),
+  }));
 }
 
 export const listAiDrafts = async (
@@ -260,21 +256,12 @@ export async function readAiDraft(
   itemId: string,
   id: number,
 ) {
-  if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
-  const row = await drizzle(db)
-    .select()
-    .from(aiDrafts)
-    .where(
-      and(
-        eq(aiDrafts.id, id),
-        eq(aiDrafts.projectId, project.id),
-        eq(aiDrafts.itemId, itemId),
-        eq(aiDrafts.personId, viewer.id),
-      ),
-    )
-    .get();
-  if (!row) throw new Response("Not found", { status: 404 });
-  return { ...row, sources: row.sources === null ? null : (JSON.parse(row.sources) as string[]) };
+  const { body, sources, ...row } = await readItemDraft(db, project, viewer, itemId, "text", id);
+  return {
+    ...row,
+    source: body,
+    sources: sources === null ? null : (JSON.parse(sources) as string[]),
+  };
 }
 
 export type AiPublishResult =

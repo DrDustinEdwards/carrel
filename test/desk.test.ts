@@ -43,7 +43,7 @@ beforeEach(async () => {
   );
   const person = await viewerFor("editor@test.invalid");
   await testEnv.DB.prepare(
-    "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source) VALUES (?, 'alerts-wait', ?, 'Claude', 'x')",
+    "INSERT INTO item_drafts (project_id, item_id, person_id, client, kind, body) VALUES (?, 'alerts-wait', ?, 'Claude', 'text', 'x')",
   )
     .bind(mine, person.id)
     .run();
@@ -87,7 +87,7 @@ describe("what Desk lists across projects", () => {
     expect((await needsYou(testEnv.DB, editor, visible)).filter((n) => !n.later)).toHaveLength(1);
     // A second draft changes the row ("2 AI drafts"), so it is back before tomorrow.
     await testEnv.DB.prepare(
-      "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source) VALUES (?, 'due-now', ?, 'Claude', 'x')",
+      "INSERT INTO item_drafts (project_id, item_id, person_id, client, kind, body) VALUES (?, 'due-now', ?, 'Claude', 'text', 'x')",
     )
       .bind(mine, editor.id)
       .run();

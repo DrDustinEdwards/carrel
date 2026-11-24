@@ -8,10 +8,10 @@ import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, sql } from "dri
 import { drizzle } from "drizzle-orm/d1";
 
 import {
-  aiDrafts,
   authorship,
   drafts,
   findings,
+  itemDrafts,
   manuscripts,
   needLater,
   projects,
@@ -58,14 +58,20 @@ export async function needsYou(
   const [ai, due, flags, awaiting, later] = await Promise.all([
     d
       .select({
-        projectId: aiDrafts.projectId,
+        projectId: itemDrafts.projectId,
         n: count(),
-        since: min(aiDrafts.createdAt),
-        first: min(aiDrafts.id),
+        since: min(itemDrafts.createdAt),
+        first: min(itemDrafts.id),
       })
-      .from(aiDrafts)
-      .where(and(eq(aiDrafts.personId, viewer.id), inList(aiDrafts.projectId, ids)))
-      .groupBy(aiDrafts.projectId)
+      .from(itemDrafts)
+      .where(
+        and(
+          eq(itemDrafts.kind, "text"),
+          eq(itemDrafts.personId, viewer.id),
+          inList(itemDrafts.projectId, ids),
+        ),
+      )
+      .groupBy(itemDrafts.projectId)
       .all(),
     d
       .select({
