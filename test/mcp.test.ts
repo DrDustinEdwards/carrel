@@ -212,6 +212,15 @@ describe("reading, drafting, flagging", () => {
     });
   });
 
+  it("says Google is not connected when Dustin has not signed in to Google", async () => {
+    const ai = await connect("owner@test.invalid");
+    const result = await ai.call("carrel_create_doc", { title: "Scratch", reason: "test" });
+    expect(result).toMatchObject({
+      isError: true,
+      content: [{ text: expect.stringContaining("Google is not connected") }],
+    });
+  });
+
   it("PLANT: a Reader's session and a reviewer's cannot save a draft", async () => {
     await seedPost();
     expect(
