@@ -116,11 +116,11 @@
     "@drdustinedwards/site-helpers": {
       "playwright-core": "$playwright-core"
     },
-    "micromark-extension-math": {
-      "katex": "0.18.2"
-    },
     "linkedom": {
       "htmlparser2": "$htmlparser2"
+    },
+    "micromark-extension-math": {
+      "katex": "0.18.2"
     }
   },
   "engines": {
