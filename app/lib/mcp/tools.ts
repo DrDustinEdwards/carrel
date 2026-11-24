@@ -14,7 +14,7 @@
 // editor" in this file would be a second place for the rules to live, and the first time the two
 // disagreed one door would allow what the other refused. check:mcp-roles fails on it.
 
-import type { MentionFilter } from "@dustinedwards/site-api/admin";
+import type { MentionsQuery } from "@dustinedwards/site-api/admin";
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { outsideResult } from "@dustinedwards/site-runtime/mcp-server";
 
@@ -1176,7 +1176,7 @@ export const TOOLS: Tool[] = [
         ctx.session.viewer,
         str(args, "project"),
         {
-          ...(status ? { status: status as MentionFilter } : {}),
+          ...(status ? { status: status as MentionsQuery["status"] } : {}),
           ...(q ? { q } : {}),
           ...(item ? { targetId: item } : {}),
           ...(cursor ? { cursor } : {}),
