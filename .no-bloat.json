@@ -4,7 +4,7 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "5752013",
+    "measured_at": "7316be2",
     "knip": {},
     "jscpd": {
       "clones": 40,
@@ -24,7 +24,7 @@
       "app/db/schema.ts": 793,
       "app/lib/ai-engine.server.ts": 620,
       "app/lib/ai-write.server.ts": 506,
-      "app/lib/ai.server.ts": 540,
+      "app/lib/ai.server.ts": 539,
       "app/lib/books.server.ts": 841,
       "app/lib/google/book-docs.server.ts": 551,
       "app/lib/google/docs.server.ts": 1562,
@@ -46,7 +46,7 @@
     },
     "comments": {
       "lines": 3992,
-      "code": 47558,
+      "code": 47557,
       "percentage": 7.74
     }
   }

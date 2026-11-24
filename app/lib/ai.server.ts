@@ -420,9 +420,8 @@ async function recordAiPublication(
   outcome: { changeId: string },
   mail: { subject: string; text: string },
 ): Promise<boolean> {
-  const d = drizzle(env.DB);
   const mark = (set: { emailedAt: string | null; emailError: string | null }) =>
-    d.update(changes).set(set).where(eq(changes.id, outcome.changeId));
+    drizzle(env.DB).update(changes).set(set).where(eq(changes.id, outcome.changeId));
   await mark({ emailedAt: null, emailError: "not sent" });
   const error = await emailDustin(env, mail);
   if (error) {
