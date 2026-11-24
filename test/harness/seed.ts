@@ -615,17 +615,6 @@ async function build(base: Env): Promise<World> {
       "2026-10-24T09:00:00Z",
     )
     .run();
-  for (const [phrase, items] of [
-    ["seamless", ["a", "b", "c", "d"]],
-    ["robust pipeline", ["a", "b", "c"]],
-  ] as const) {
-    await db
-      .prepare(
-        "INSERT INTO voice_cuts (project_id, phrase, items, last_cut_at) VALUES (?, ?, ?, '2026-10-23T12:00:00Z')",
-      )
-      .bind(sitePr.id, phrase, JSON.stringify(items))
-      .run();
-  }
   // Legal pages: two shared sections, and a privacy page that carries one with the Draft banner on. The
   // terms page is left out, so the Legal tab shows both a page that is set up and one that is not.
   for (const [key, title, body] of [

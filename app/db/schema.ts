@@ -182,8 +182,6 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// mcp_calls (0012_mcp_calls.sql) is kept for the old tool-call log; its triggers refuse UPDATE and DELETE.
-
 /** The columns every draft kept beside a person's own starts with: whose, of what, and from which client. Fresh per table. */
 function draftOwner() {
   return {
@@ -674,7 +672,7 @@ export const bookMoves = sqliteTable("book_moves", {
 });
 
 // The voice pack (0018_voice.sql, 0019_voice_own.sql, voice.server.ts): the Owner's guide, the author's own
-// writing and the excerpts. phrases, allow, profile and voice_cuts are unused; they stay so the lists the Owner typed
+// writing and the excerpts. phrases, allow and profile are unused; they stay so the lists the Owner typed
 // are not lost, as a rollback of the code would not bring them back.
 export const voicePacks = sqliteTable("voice_packs", {
   projectId: integer("project_id")
@@ -692,24 +690,6 @@ export const voicePacks = sqliteTable("voice_packs", {
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
-
-/** @public drizzle-kit reads the export; unexported, it would write a migration dropping the table. */
-export const voiceCuts = sqliteTable(
-  "voice_cuts",
-  {
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    phrase: text("phrase").notNull(),
-    items: text("items").notNull().default("[]"),
-    kept: integer("kept").notNull().default(0),
-    setAside: integer("set_aside", { mode: "boolean" }).notNull().default(false),
-    lastCutAt: text("last_cut_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-  },
-  (t) => [primaryKey({ columns: [t.projectId, t.phrase] })],
-);
 
 // The last Cloudflare Access sync (0023_access_sync.sql, access-sync.server.ts): one row, replaced by each sync.
 export const accessSync = sqliteTable("access_sync", {
