@@ -625,7 +625,8 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const previewAt = usePausedStamp(source, 2000, data.baseVersion ?? "");
 
   const waiting = useRef<((result: ActionResult) => void) | null>(null);
-  const viaGate = useRef(false);
+  // True while a gate write is in flight, then that write's outcome: the gate says its own result.
+  const [held, setHeld] = useState<unknown>(null);
   // Before a write the room is asked to confirm it has every change made here, so the save holds them.
   const send = async (intent: string, extra: Record<string, string> = {}) => {
     await room.flush();
@@ -644,9 +645,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
   // The publish controls' two verbs. A rejection carries the site's own words, which the gate says.
   const writeThrough = async (intent: string, extra: Record<string, string> = {}) => {
-    viaGate.current = true;
+    setHeld(true);
     const result = await send(intent, extra);
-    viaGate.current = false;
+    setHeld(result.intent === "write" ? result.outcome : null);
     if (result.intent !== "write") throw new Error("The site did not answer.");
     if (!result.outcome.ok) throw new Error(result.outcome.message);
   };
@@ -665,8 +666,9 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
   // Results of the buttons Carrel owns are said in the message region; the gate says its own.
   const said = useRef<unknown>(null);
+  const gated = held === true || (outcome !== null && held === outcome);
   useEffect(() => {
-    if (writer.state !== "idle" || !outcome || said.current === outcome || viaGate.current) return;
+    if (writer.state !== "idle" || !outcome || said.current === outcome || gated) return;
     said.current = outcome;
     if (outcome.ok)
       say(
@@ -682,7 +684,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
                 ? "Published."
                 : "Returned to draft.",
       );
-  }, [outcome, writer.state, say]);
+  }, [outcome, writer.state, say, gated]);
 
   // Cmd+S saves in place: a draft stays a draft, a live post is updated.
   useSaveShortcut(() => {
@@ -707,7 +709,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   // Absolute, not relative: from /p/x/e/item a bare "preview" would resolve to /p/x/e/preview.
   const previewBase = `/p/${encodeURIComponent(data.project.slug)}/e/${encodeURIComponent(data.itemId)}/preview`;
   const previewSrc = previewUrl(previewBase, previewAt);
-  const failure = outcome && !outcome.ok && !viaGate.current ? outcome : null;
+  const failure = outcome && !outcome.ok && !gated ? outcome : null;
   const google = writer.data?.intent === "google" && !busy ? writer.data : null;
 
   const gateSite: GateSite = {
