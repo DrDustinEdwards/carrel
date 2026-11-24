@@ -948,7 +948,7 @@ async function build(base: Env): Promise<World> {
     ["Claude", null, "suggest", "Fixed two typos", ["suggest.3"], 0],
   ] as const) {
     await env.DB.prepare(
-      "INSERT INTO doc_changes (file_id, person_id, client, model, mode, reason, change, google_ids, labeled) VALUES ('m1', ?, ?, ?, ?, ?, '[]', ?, ?)",
+      "INSERT INTO doc_edits (file_id, person_id, client, model, kind, reason, change, google_ids, labeled) VALUES ('m1', ?, ?, ?, ?, ?, '[]', ?, ?)",
     )
       .bind(owner.id, client, model, mode, reason, JSON.stringify(ids), labeled)
       .run();

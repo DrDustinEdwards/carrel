@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { drizzle } from "drizzle-orm/d1";
 
-import { docActions, sheetTabs } from "~/db/schema";
+import { docEdits, sheetTabs } from "~/db/schema";
 import { setDocLock } from "~/lib/google/docs.server";
 import { assertAllowed, ServiceAccountRefused } from "~/lib/google/service-account.server";
 
@@ -149,9 +149,9 @@ describe("Slides", () => {
       "Methods: count the herons three times.\n",
     );
     expect(box.sent[0]!.text).toContain("before: twice");
-    const rows = await drizzle(testEnv.DB).select().from(docActions).all();
+    const rows = await drizzle(testEnv.DB).select().from(docEdits).all();
     expect(
-      rows.map((r) => [r.fileId, r.action, r.beforeText?.includes("count the herons twice")]),
+      rows.map((r) => [r.fileId, r.kind, r.beforeText?.includes("count the herons twice")]),
     ).toEqual([[DECK, "write", true]]);
     // Undo is for Docs: Google keeps a presentation's own history.
     expect((await c.call("carrel_undo_doc", { doc: DECK })).isError).toBe(true);

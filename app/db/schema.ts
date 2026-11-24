@@ -436,8 +436,10 @@ export const driveWatch = sqliteTable("drive_watch", {
   refreshedAt: text("refreshed_at"),
 });
 
-// Every change an AI made in a Google Doc through Carrel (migration 0035): which AI, why, and the exact change.
-export const docChanges = sqliteTable("doc_changes", {
+// Every change an AI made in a Google Doc through Carrel (migration 0047): which AI, why, and the exact change.
+// A suggestion or comment is decided on in Docs; a write, accept, reject, withdraw or undo is on Dustin's own ask, and
+// a write keeps the Doc's text before it so it can be taken back.
+export const docEdits = sqliteTable("doc_edits", {
   id: integer("id").primaryKey(),
   fileId: text("file_id").notNull(),
   personId: integer("person_id")
@@ -445,37 +447,27 @@ export const docChanges = sqliteTable("doc_changes", {
     .references(() => people.id, { onDelete: "cascade" }),
   client: text("client").notNull(),
   model: text("model"),
-  mode: text("mode", { enum: ["suggest", "comment", "reply", "resolve", "reopen"] }).notNull(),
+  kind: text("kind", {
+    enum: [
+      "suggest",
+      "comment",
+      "reply",
+      "resolve",
+      "reopen",
+      "write",
+      "accept",
+      "reject",
+      "withdraw",
+      "undo",
+    ],
+  }).notNull(),
   reason: text("reason").notNull().default(""),
   change: text("change").notNull(),
   googleIds: text("google_ids").notNull().default("[]"),
-  labeled: integer("labeled", { mode: "boolean" }).notNull().default(false),
-  revisionId: text("revision_id"),
-  // When an undo took the suggestion or comment back (migration 0036).
-  undoneAt: text("undone_at"),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-});
-
-// What changed a Doc's text on Dustin's own ask (migration 0036): a direct write, an accept, a reject, a withdrawn
-// suggestion or an undo, with the text before a write so it can be taken back.
-export const docActions = sqliteTable("doc_actions", {
-  id: integer("id").primaryKey(),
-  fileId: text("file_id").notNull(),
-  personId: integer("person_id")
-    .notNull()
-    .references(() => people.id, { onDelete: "cascade" }),
-  client: text("client").notNull(),
-  model: text("model"),
-  action: text("action", { enum: ["write", "accept", "reject", "withdraw", "undo"] }).notNull(),
-  reason: text("reason").notNull().default(""),
-  change: text("change").notNull(),
-  googleIds: text("google_ids").notNull().default("[]"),
-  revisionId: text("revision_id"),
+  // Whether the label (which AI, and why) is on the suggestion or comment in the Doc itself; a decision has none.
+  labeled: integer("labeled", { mode: "boolean" }).notNull().default(true),
   beforeText: text("before_text"),
-  undoes: integer("undoes"),
-  undoesTable: text("undoes_table", { enum: ["doc_changes", "doc_actions"] }),
+  // When an undo took the suggestion, comment or write back.
   undoneAt: text("undone_at"),
   emailedAt: text("emailed_at"),
   emailError: text("email_error"),

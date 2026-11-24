@@ -48,6 +48,7 @@
     "0043_preview_link_records.sql": "ab26366d290c0030e2531c8ca836e571aef035660fb18836be67c9e31c4835c9",
     "0044_drop_ai_publish_requests.sql": "80a6ba2cfec48407fd67efce8c02a2e4f54f14c7c53057cf8c67445cc2d63410",
     "0045_changes_email.sql": "a9781e8d8336dd80a0819a6168420f44a440b88ae8fcf76af0fbb58ffe7bc1b4",
-    "0046_drop_unused_tables.sql": "a42935d7362f20efb6e0bd54df3ff17b17f205535bcf481cc99c3ac925f90347"
+    "0046_drop_unused_tables.sql": "a42935d7362f20efb6e0bd54df3ff17b17f205535bcf481cc99c3ac925f90347",
+    "0047_doc_edits.sql": "5909d9ae875f6acbd5fc4510b2435ff1b4edd3bbab1fe250c53ee03955371a97"
   }
 }
