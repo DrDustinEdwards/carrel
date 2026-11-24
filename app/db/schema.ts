@@ -154,6 +154,8 @@ export const changes = sqliteTable("changes", {
   client: text("client"),
   /** The id a rename moved the post from (migration 0027); null for every other action. */
   renamedFrom: text("renamed_from"),
+  emailedAt: text("emailed_at"),
+  emailError: text("email_error"),
 });
 
 // Webmention decisions since migration 0011 (a table of its own: the changes table holds posts and
@@ -207,18 +209,6 @@ export const aiDrafts = sqliteTable("ai_drafts", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-});
-
-export const aiPublications = sqliteTable("ai_publications", {
-  changeId: text("change_id").primaryKey(),
-  ...recordOf(),
-  client: text("client").notNull(),
-  version: text("version").notNull(),
-  publishedAt: text("published_at")
-    .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-  emailedAt: text("emailed_at"),
-  emailError: text("email_error"),
 });
 
 // Who made each preview link of a post (migration 0043): a link sends the post out, so it is recorded as a publish is.
