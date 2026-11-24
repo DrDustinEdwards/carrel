@@ -4,18 +4,16 @@
 // the sites, and they are separate so a slow site never holds the page.
 
 import { inList } from "@dustinedwards/site-runtime/d1";
-import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNotNull, lte, min, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import {
   authorship,
-  drafts,
   findings,
   itemDrafts,
   manuscripts,
   needLater,
   projects,
-  rooms,
   siteItems,
   socialPosts,
 } from "~/db/schema";
@@ -312,46 +310,22 @@ export async function continueWriting(
   limit = 3,
 ): Promise<Continue[]> {
   const known = byId(visible);
-  const d = drizzle(db);
-  const [own, shared] = await Promise.all([
-    d
-      .select({
-        projectId: drafts.projectId,
-        itemId: drafts.itemId,
-        source: drafts.source,
-        at: drafts.updatedAt,
-      })
-      .from(drafts)
-      .where(eq(drafts.personId, viewer.id))
-      .orderBy(desc(drafts.updatedAt))
-      .limit(limit * 3)
-      .all(),
-    d
-      .select({
-        projectId: rooms.projectId,
-        itemId: rooms.itemId,
-        source: rooms.source,
-        at: rooms.updatedAt,
-      })
-      .from(rooms)
-      .where(
-        and(inArray(rooms.projectId, [...known.keys()]), ne(rooms.source, rooms.savedSource)),
+  const rows = (
+    await db
+      .prepare(
+        `SELECT project_id AS projectId, item_id AS itemId, source, updated_at AS at FROM drafts WHERE person_id = ?1
+         UNION ALL SELECT project_id, item_id, source, updated_at FROM rooms WHERE source != saved_source
+         ORDER BY at DESC LIMIT ?2`,
       )
-      .orderBy(desc(rooms.updatedAt))
-      .limit(limit * 3)
-      .all(),
-  ]);
+      .bind(viewer.id, limit * 6)
+      .all<{ projectId: number; itemId: string; source: string; at: string }>()
+  ).results;
   const seen = new Set<string>();
-  const rows = [...shared, ...own]
-    .sort((a, b) => b.at.localeCompare(a.at))
-    .filter((r) => {
-      const k = `${r.projectId}/${r.itemId}`;
-      return !seen.has(k) && !!seen.add(k);
-    });
   const out: Continue[] = [];
   for (const r of rows) {
     const p = known.get(r.projectId);
-    if (!p || p.kind !== "site") continue;
+    if (!p || p.kind !== "site" || seen.has(`${r.projectId}/${r.itemId}`)) continue;
+    seen.add(`${r.projectId}/${r.itemId}`);
     const title = /^title:\s*(.+)$/m.exec(r.source)?.[1]?.replace(/^["']|["']$/g, "") ?? r.itemId;
     out.push({ projectName: p.name, title, href: postHref(p.slug, r.itemId), at: r.at });
     if (out.length === limit) break;
