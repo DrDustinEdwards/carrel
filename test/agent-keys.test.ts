@@ -145,7 +145,7 @@ describe("what a named agent key does", () => {
       content: [{ text: "Only the Owner's own sessions may publish." }],
     });
     expect((await site.adapter.content.get("post-one"))!.status).not.toBe("published");
-    expect(await rows("SELECT * FROM ai_publications")).toEqual([]);
+    expect(await rows("SELECT id FROM changes WHERE emailed_at IS NOT NULL OR email_error IS NOT NULL")).toEqual([]);
     expect(await rows("SELECT id FROM changes")).toEqual([]);
   });
 

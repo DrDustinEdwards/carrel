@@ -24,11 +24,11 @@ import {
   r2Check,
   siteHealthResponse,
 } from "@dustinedwards/site-runtime/health";
-import { and, eq, isNull, notLike } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, notLike } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import {
-  aiPublications,
+  changes,
   googleKeysSeen,
   googleTokens,
   healthState,
@@ -264,13 +264,13 @@ async function checkAiPublishEmails(env: Env): Promise<CheckResult> {
   try {
     const unsent = await drizzle(env.DB)
       .select({
-        changeId: aiPublications.changeId,
-        itemId: aiPublications.itemId,
-        client: aiPublications.client,
-        error: aiPublications.emailError,
+        changeId: changes.id,
+        itemId: changes.itemId,
+        client: changes.client,
+        error: changes.emailError,
       })
-      .from(aiPublications)
-      .where(isNull(aiPublications.emailedAt))
+      .from(changes)
+      .where(and(isNull(changes.emailedAt), isNotNull(changes.emailError)))
       .all();
     if (unsent.length === 0)
       return { name: "ai-publish-email", ok: true, detail: "Every AI publish was emailed." };
