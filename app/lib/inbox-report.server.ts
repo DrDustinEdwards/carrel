@@ -4,10 +4,10 @@
 // no items when nothing waits so a cleared queue clears the badge. The bearer is Carrel's own Capsid
 // agent key, the secret CAPSID_AGENT_KEY. Never on a page's path: a failure is logged, not thrown.
 
-import { count, min } from "drizzle-orm";
+import { count, eq, min } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiDrafts } from "~/db/schema";
+import { itemDrafts } from "~/db/schema";
 import { carrelOrigin } from "~/lib/mcp/server";
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import {
@@ -38,8 +38,9 @@ export async function reportDraftsInbox(
 ): Promise<ReportResult> {
   try {
     const row = await drizzle(env.DB)
-      .select({ waiting: count(), since: min(aiDrafts.createdAt) })
-      .from(aiDrafts)
+      .select({ waiting: count(), since: min(itemDrafts.createdAt) })
+      .from(itemDrafts)
+      .where(eq(itemDrafts.kind, "text"))
       .get();
     const body = inboxReport(row?.waiting ?? 0, row?.since ?? null, carrelOrigin(env));
     return await reportInbox({

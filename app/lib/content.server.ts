@@ -7,7 +7,7 @@ import { SiteApiError } from "@dustinedwards/site-api/client";
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { changes, drafts, rooms } from "~/db/schema";
+import { changes, drafts, itemDrafts, rooms } from "~/db/schema";
 import { indexDoc } from "~/lib/index.server";
 import { checkLegalWrite } from "~/lib/legal.server";
 import { missingAltRefusal, postFieldRefusal, searchFieldRefusal } from "~/lib/seo-checks";
@@ -433,4 +433,49 @@ export async function writeToSite(
     status: result.status,
     changeId,
   };
+}
+
+const OWN_DRAFTS = (project: ProjectRole, viewer: Viewer, itemId: string, kind: ItemDraftKind) =>
+  and(
+    eq(itemDrafts.kind, kind),
+    eq(itemDrafts.projectId, project.id),
+    eq(itemDrafts.itemId, itemId),
+    eq(itemDrafts.personId, viewer.id),
+  );
+
+export type ItemDraftKind = (typeof itemDrafts.$inferSelect)["kind"];
+
+/** The drafts a person's own AI sessions saved of one kind for this item, newest first. Private to the person. */
+export async function listItemDrafts(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+  kind: ItemDraftKind,
+) {
+  if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
+  return drizzle(db)
+    .select()
+    .from(itemDrafts)
+    .where(OWN_DRAFTS(project, viewer, itemId, kind))
+    .orderBy(desc(itemDrafts.createdAt), desc(itemDrafts.id))
+    .all();
+}
+
+export async function readItemDraft(
+  db: D1Database,
+  project: ProjectRole,
+  viewer: Viewer,
+  itemId: string,
+  kind: ItemDraftKind,
+  id: number,
+) {
+  if (!can(project.role, "read")) throw new Response("Forbidden", { status: 403 });
+  const row = await drizzle(db)
+    .select()
+    .from(itemDrafts)
+    .where(and(eq(itemDrafts.id, id), OWN_DRAFTS(project, viewer, itemId, kind)))
+    .get();
+  if (!row) throw new Response("Not found", { status: 404 });
+  return row;
 }

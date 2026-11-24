@@ -323,7 +323,7 @@ describe("reordering a book", () => {
       .bind(project.id, A1)
       .run();
     await testEnv.DB.prepare(
-      "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source, note) VALUES (?, ?, ?, 'Claude', 'x', '')",
+      "INSERT INTO item_drafts (project_id, item_id, person_id, client, kind, body, note) VALUES (?, ?, ?, 'Claude', 'text', 'x', '')",
     )
       .bind(project.id, A1, viewer.id)
       .run();
@@ -357,7 +357,7 @@ describe("reordering a book", () => {
     expect(
       await testEnv.DB.prepare("SELECT path FROM findings WHERE check_name = 'ai'").first(),
     ).toEqual({ path: "chapters/01-arrival/02-the-gate.md" });
-    expect(await testEnv.DB.prepare("SELECT item_id FROM ai_drafts").first()).toEqual({
+    expect(await testEnv.DB.prepare("SELECT item_id FROM item_drafts").first()).toEqual({
       item_id: "chapters/01-arrival/02-the-gate.md",
     });
     for (const table of ["comments", "doc_links"])
@@ -592,7 +592,7 @@ describe("a file's history", () => {
     await refresh();
     const { viewer, project } = await as("owner@test.invalid", "edit");
     const ai = await testEnv.DB.prepare(
-      "INSERT INTO ai_drafts (project_id, item_id, person_id, client, source, note) VALUES (?, ?, ?, 'Claude', ?, '') RETURNING id",
+      "INSERT INTO item_drafts (project_id, item_id, person_id, client, kind, body, note) VALUES (?, ?, ?, 'Claude', 'text', ?, '') RETURNING id",
     )
       .bind(project.id, A1, viewer.id, scene("Nell", "An AI version of the gate."))
       .first<{ id: number }>();

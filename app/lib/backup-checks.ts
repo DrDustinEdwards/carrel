@@ -9,7 +9,7 @@
 //   after each change, and its comments are written to D1's `comments` (docs/coediting.md); the dump carries both.
 // - MCP_RATE_LIMIT (Durable Objects): per-person request counters that reset every minute. Nothing to keep.
 // - TOOL_CALL_LOG (Durable Objects): the AI door's append-only call log, an audit trail rather than writing. Every change
-//   an AI call made is in D1's `authorship` and `ai_drafts`, which the dump requires; losing the log loses the trail
+//   an AI call made is in D1's `authorship` and `item_drafts`, which the dump requires; losing the log loses the trail
 //   only, and reading it out would need an export the door does not have.
 // - BACKUPS (R2) is where the dumps go. Carrel stores no files of its own: media lives on each site, and manuscripts in
 //   Google Drive and the private writing repository.
@@ -30,7 +30,7 @@ export const BACKUP_CRON = "17 3 * * *";
 export const EXCLUDED_TABLES = ["google_tokens", "google_oauth_states", "drive_watch"] as const;
 
 /** Tables that exist nowhere else: the authorship record and the AI drafts saved beside Dustin's. */
-export const REQUIRED_TABLES = ["authorship", "ai_drafts"] as const;
+export const REQUIRED_TABLES = ["authorship", "item_drafts"] as const;
 
 /** Carrel cannot run without its Owner, so a dump with no people row is an emptied or wrong database. */
 function ownerProblems(dump: DumpResult): string[] {

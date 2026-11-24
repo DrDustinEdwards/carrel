@@ -6,7 +6,7 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { aiDrafts, drafts } from "~/db/schema";
+import { drafts, itemDrafts } from "~/db/schema";
 import type { Viewer } from "~/lib/people.server";
 import type { ProjectRole } from "~/lib/content.server";
 import { can } from "~/lib/roles";
@@ -36,9 +36,15 @@ export async function waitingWork(
   const d = drizzle(db);
   const [ai, own] = await Promise.all([
     d
-      .select({ itemId: aiDrafts.itemId, source: aiDrafts.source, at: aiDrafts.createdAt })
-      .from(aiDrafts)
-      .where(and(eq(aiDrafts.projectId, project.id), eq(aiDrafts.personId, viewer.id)))
+      .select({ itemId: itemDrafts.itemId, source: itemDrafts.body, at: itemDrafts.createdAt })
+      .from(itemDrafts)
+      .where(
+        and(
+          eq(itemDrafts.kind, "text"),
+          eq(itemDrafts.projectId, project.id),
+          eq(itemDrafts.personId, viewer.id),
+        ),
+      )
       .all(),
     d
       .select({ itemId: drafts.itemId, source: drafts.source, at: drafts.updatedAt })

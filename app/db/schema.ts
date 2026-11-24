@@ -182,27 +182,27 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-/** The columns every draft kept beside a person's own starts with: whose, of what, and from which client. Fresh per table. */
-function draftOwner() {
-  return {
-    id: integer("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    itemId: text("item_id").notNull(),
-    personId: integer("person_id")
-      .notNull()
-      .references(() => people.id, { onDelete: "cascade" }),
-    client: text("client").notNull(),
-  };
-}
-
-export const aiDrafts = sqliteTable("ai_drafts", {
-  ...draftOwner(),
-  source: text("source").notNull(),
+// The whole text an AI session saved beside the site's (migrations 0004, 0032 and 0048), never over it: kind "text" is a
+// post's or a book file's source, "transcript" an episode's WebVTT (an AI session's fix, or the transcript a publish
+// replaced, kept so it can be put back). Each names the version of the site's text it was written from and is
+// published only from that version. Private to the person whose session saved it.
+export const itemDrafts = sqliteTable("item_drafts", {
+  id: integer("id").primaryKey(),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
+  client: text("client").notNull(),
+  kind: text("kind", { enum: ["text", "transcript"] })
+    .notNull()
+    .default("text"),
+  body: text("body").notNull(),
   baseVersion: text("base_version"),
   note: text("note").notNull().default(""),
-  // A JSON array of the text of each source the draft drew on; null on drafts saved before sources were asked for.
+  // A JSON array of the text of each source a text draft drew on; null on drafts saved before sources were asked for.
   sources: text("sources"),
   createdAt: text("created_at")
     .notNull()
@@ -213,18 +213,6 @@ export const aiDrafts = sqliteTable("ai_drafts", {
 export const previewLinkRecords = sqliteTable("preview_link_records", {
   changeId: text("change_id").primaryKey(),
   ...recordOf(),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-});
-
-// An episode's whole WebVTT transcript beside the site's (migration 0032): an AI session's fix, or the transcript a
-// publish replaced, kept so it can be put back. Published only from base_transcript_version.
-export const transcriptDrafts = sqliteTable("transcript_drafts", {
-  ...draftOwner(),
-  transcript: text("transcript").notNull(),
-  baseTranscriptVersion: text("base_transcript_version"),
-  note: text("note").notNull().default(""),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
