@@ -1,4 +1,4 @@
-// The binder (design 4.1, ruling point 7): a book as one tree, and what a reorder in it means in Git.
+// The binder: a book as one tree, and what a reorder in it means in Git.
 // Order lives in the NN- prefix of each chapter folder and scene file, so moving a scene or a chapter
 // is renaming: every chapter and scene after the drop point is renumbered, and all the renames go in
 // one commit. Pure, so the browser, the server and the tests share it.

@@ -1,20 +1,18 @@
-// The live gate's verify for Carrel: run by devkit's worker-deploy.yml after the AI door's /health reports
-// this run's commit. It asks what a deploy that broke Carrel would answer differently, from outside and
-// with no credential, so it needs no secret and no install (Node's standard library and global fetch only):
+// The live gate's verify for Carrel: run by devkit's worker-deploy.yml after the AI door's /health reports this run's commit.
+// It asks what a deploy that broke Carrel would answer differently, from outside and with no credential (Node's standard
+// library and global fetch only):
 //
 //   1. the AI door's /health is 200 and names EXPECT_SHA, the commit this run deployed;
-//   2. the AI door's OAuth metadata is served, with Carrel's own issuer (the provider and OAUTH_KV work);
-//   3. the AI door's /mcp refuses a request with no token (the door did not open);
+//   2. the AI door's OAuth metadata is served, with Carrel's own issuer;
+//   3. the AI door's /mcp refuses a request with no token;
 //   4. the AI door answers an unknown path with 404 (the pages are never served there);
-//   5. the browser host does not serve Carrel to someone who has not signed in: Access answers first,
-//      with a redirect to the team's sign-in or a 401 or 403.
+//   5. the browser host does not serve Carrel to someone who has not signed in: Access answers first, with a redirect to the
+//      team's sign-in or a 401 or 403.
 //
-// Exit 0 passes. Exit 1 is a REFUSAL, and the workflow rolls the deploy back. Exit 3 is "could not run":
-// a check never got an answer (a reset connection, a timeout), so nothing refused the deploy and nothing
-// is rolled back. A refusal wins over a missing answer.
+// Exit 0 passes. Exit 1 is a REFUSAL, and the workflow rolls the deploy back. Exit 3 is "could not run": a check never got an
+// answer, so nothing refused the deploy and nothing is rolled back. A refusal wins over a missing answer.
 //
-// CARREL_MCP_ORIGIN and CARREL_ORIGIN override the two origins, for scripts/check-verify-live.mjs, which
-// runs this against local stubs.
+// CARREL_MCP_ORIGIN and CARREL_ORIGIN override the two origins, for scripts/check-verify-live.mjs, which runs this against stubs.
 
 const MCP = (process.env.CARREL_MCP_ORIGIN || "https://carrel-mcp.dustinedwards.info").replace(
   /\/+$/,

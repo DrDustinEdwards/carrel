@@ -11,7 +11,7 @@ export type Viewer = {
   email: string;
   name: string;
   isOwner: boolean;
-  /** Another company's AI agent that reads and flags through MCP (design B6). Never writes or publishes. */
+  /** Another company's AI agent that reads and flags through MCP. Never writes or publishes. */
   isReviewer: boolean;
 };
 

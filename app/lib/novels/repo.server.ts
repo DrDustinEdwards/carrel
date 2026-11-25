@@ -1,4 +1,4 @@
-// The writing repository, reached through the GitHub App `carrel-writer` (design setup step 8),
+// The writing repository, reached through the GitHub App `carrel-writer`,
 // installed on that one repository with contents read and write and nothing else. Carrel reads the
 // tree and files and commits one file at a time, each with the version it expects to replace. A move
 // that renames several files is one commit made through Git's data API (commitMany), and a file's

@@ -1,13 +1,9 @@
-// The one view for a site: Capsomer's PostsList over the content kit (lib/posts.server.ts), the same
-// screen and the same intents as each site's own admin. Status tabs with counts and the Trash, search
-// and the filters the site applies, each row's menu, the bulk bar with an outcome per post, Undo, rename
-// and preview links, each shown only where the site offers it and the person's role allows. Every
-// action is a form post, so it all works with no script; with script the posts go through the posts
+// The one view for a site: Capsomer's PostsList over the content kit (lib/posts.server.ts), the same screen and intents as each
+// site's own admin. Every action is a form post, so it all works with no script; with script the posts go through the posts
 // endpoint and answer in place.
 //
-// Carrel adds the work waiting on the person that the site does not have yet (an AI draft or a draft
-// of their own for a new post), the Refresh of its index (which the editor's links and the AI tools
-// search), the Share panel and the project tabs.
+// Carrel adds the work waiting on the person that the site does not have yet (an AI draft or a draft of their own for a new
+// post), the Refresh of its index (which the editor's links and the AI tools search), the Share panel and the project tabs.
 
 import { loadPosts, readPostQuery } from "@dustinedwards/site-api/admin";
 import { Banner } from "capsomer/react/banner";

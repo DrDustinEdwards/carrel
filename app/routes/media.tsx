@@ -1,13 +1,9 @@
-// The media library for one site: Capsomer's MediaLibrary over the content kit, the same screen and
-// the same intents as each site's own admin. Browse, search, tags, the site's lenses and filters,
-// upload and import from a web address, the inspector (alt text, tags, caption, credit and license,
-// focal point, crop, turns, shrink, history and replace, and the model's suggestions when the person
-// asks for them), Trash with Undo, delete for good after the kit asks, and, with script, live updates
-// of what others changed. Every action is a form post, so it all works with no script; with script
-// the posts go through the media endpoint and answer in place.
+// The media library for one site: Capsomer's MediaLibrary over the content kit, the same screen and intents as each site's
+// own admin. Every action is a form post, so it all works with no script; with script the posts go through the media endpoint
+// and answer in place, with live updates of what others changed.
 //
-// Each write is optional per site (the site's meta says which), and the screen shows only what the
-// site offers and the person's role allows (lib/media.server.ts).
+// Each write is optional per site (the site's meta says which), and the screen shows only what the site offers and the
+// person's role allows (lib/media.server.ts).
 
 import { Banner } from "capsomer/react/banner";
 import { MediaLibrary, type KitMediaChanges } from "capsomer/react/media-library";

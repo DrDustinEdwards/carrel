@@ -1,31 +1,26 @@
 // The CI deploy: render the real Worker config, check it, build, apply D1 migrations, then deploy.
 //
-// wrangler.jsonc is gitignored (it carries the live ids and the alert email), so a fresh clone has
-// only the placeholder copy that devkit-bootstrap (the postinstall) made. This script renders the real one
-// from the example and these variables, and refuses to go on when any is missing or still a
-// placeholder:
+// wrangler.jsonc is gitignored (it carries the live ids and the alert email), so a fresh clone has only the placeholder copy
+// that devkit-bootstrap made. This script renders the real one from the example and these variables, and refuses to go on
+// when any is missing or still a placeholder:
 //
 //   CARREL_D1_DATABASE_ID   id of the D1 database named `carrel`
-//   CARREL_KV_OAUTH_ID      id of the KV namespace titled `carrel-desk-oauth` (bound as OAUTH_KV); during the
-//                           rename its old title `carrel-oauth` is accepted too
+//   CARREL_KV_OAUTH_ID      id of the KV namespace titled `carrel-desk-oauth` (bound as OAUTH_KV); its old title
+//                           `carrel-oauth` is accepted too
 //   CARREL_ALERT_EMAIL      the address health alerts go to
 //   CARREL_MANUSCRIPTS_FOLDER_ID   optional: the Drive folder shared with the service account (the id in its URL)
 //   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   read by wrangler itself
 //
-// Order, and every step stops the run on a nonzero exit: render, check the ids against the names in
-// the account, build, migrations apply, migrations list (nothing may be pending), wrangler deploy.
-// The new code goes live only after the migrations are in.
+// Every step stops the run on a nonzero exit: render, check the ids against the names in the account, build, migrations apply,
+// migrations list (nothing may be pending), wrangler deploy. The new code goes live only after the migrations are in.
 //
-// It overwrites wrangler.jsonc only when that file is absent or still the placeholder copy, so a
-// local run can never replace a real config. It also turns on the two custom-domain routes, which the
-// example keeps commented out for the first, never-public deploy.
+// It overwrites wrangler.jsonc only when that file is absent or still the placeholder copy, so a local run can never replace
+// a real config. It also turns on the two custom-domain routes, which the example keeps commented out.
 //
-// --prepare runs every step but the last and stops before `wrangler deploy`. CI runs it as the pre-deploy
-// guard of devkit's shared deploy workflow (.github/workflows/ci.yml), which then deploys the build this
-// left, verifies it live and rolls it back on a refusal. Without the flag it deploys.
+// --prepare runs every step but the last and stops before `wrangler deploy`: CI runs it as the pre-deploy guard of devkit's
+// shared deploy workflow, which then deploys the build, verifies it live and rolls it back on a refusal.
 //
-// WRANGLER_ENTRY, BUILD_ENTRY and CARREL_ROOT exist for scripts/check-deploy.mjs, which stands stubs
-// in for wrangler and the build.
+// WRANGLER_ENTRY, BUILD_ENTRY and CARREL_ROOT exist for scripts/check-deploy.mjs, which stands stubs in for wrangler and the build.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";

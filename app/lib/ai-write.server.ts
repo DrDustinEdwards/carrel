@@ -1,8 +1,7 @@
 // Writing help on the AI switch: continue a post or a book file, suggest edits, and the search description. Each job runs
-// on the engine its setting names (site-runtime ./ai-engine): the API writes it, the subscription's routine is told to
-// write it with Carrel's own MCP tools. Either way the result is an AI draft beside Dustin's text, never over it, and
-// only a button press starts one (CLAUDE.md: AI never rewrites his prose unasked). The voice excerpts, the writing rules
-// and the draft stores are the ones the MCP tools use; nothing here duplicates them.
+// on the engine its setting names: the API writes it, or the subscription's routine is told to write it with Carrel's MCP
+// tools. Either way the result is an AI draft beside Dustin's text, never over it, and only a button press starts one
+// (CLAUDE.md: AI never rewrites his prose unasked).
 
 import { runAi } from "@dustinedwards/site-runtime/ai-engine";
 import { structured, untrusted, UNTRUSTED_DATA_RULE } from "@dustinedwards/site-runtime/anthropic";

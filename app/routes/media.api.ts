@@ -1,14 +1,12 @@
-// The media endpoint for one project, JSON both ways, so a screen reads an answer and never an HTML
-// page. GET ?bytes=<id> is one image's own bytes, for the crop editor: through Carrel, so the browser
-// can export the canvas it draws them on, which an image from the site's origin would taint. GET with
-// the library's query is one page of the library's data (the editor's image picker); with only `q`, the
-// matching files for quick search. GET ?changes=<cursor> is what others changed on the site since that
-// cursor (site-api v0.13.0's loadMediaChanges), for the library's live updates: the files as they are
-// now and the ids deleted for good, or `{ reload: true }` when the site can no longer answer from it.
-// POST with an `intent` runs it through the content kit, as the
-// library's page does with no script; POST with a file and its alt or decorative is the editor's paste, drop or Insert
-// image, answered with the site's address for it. A Reader may read; the kit refuses a write the role
-// does not allow before the site hears anything.
+// The media endpoint for one project, JSON both ways, so a screen reads an answer and never an HTML page.
+// GET ?bytes=<id> is one image's own bytes for the crop editor, through Carrel so the browser can export the canvas it draws
+// them on (an image from the site's origin would taint it). GET with the library's query is one page of the library (the
+// editor's image picker); with only `q`, quick search. GET ?changes=<cursor> is what others changed on the site since that
+// cursor (site-api's loadMediaChanges), for live updates: the files as they are now and the ids deleted for good, or
+// `{ reload: true }` when the site can no longer answer from it. POST with an `intent` runs it through the content kit, as the
+// library's page does with no script; POST with a file and its alt or decorative is the editor's paste, drop or Insert image,
+// answered with the site's address for it. A Reader may read; the kit refuses a write the role does not allow before the site
+// hears anything.
 
 import { UPLOAD_HEADERS } from "@dustinedwards/site-runtime/headers";
 import { jsonResponse } from "@dustinedwards/site-runtime/http";

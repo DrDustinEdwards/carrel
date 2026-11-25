@@ -1,15 +1,13 @@
-// Carrel's own health check, run by the cron trigger. It emails Dustin only when a check changes
-// state, like the site's watchdog, so a standing failure sends one message, not one every 15 minutes.
+// Carrel's own health check, run by the cron trigger. It emails Dustin only when a check changes state, so a standing
+// failure sends one message, not one every 15 minutes.
 //
-// It checks the settings the gate needs, the database and its Owner, the Access signing keys, and
-// each site: its key, and whether the site still conforms to the site-api contract Carrel was built
-// against, the GitHub App for the writing repository, that every AI publish reached Dustin's inbox,
-// Google (the service account key's age and whether Google still takes it, the Search Console properties
-// shared with it, and Dustin's drive.file grant), and any template social post that went out, which Dustin should know about (design
-// decision 5, third step).
+// It checks the settings the gate needs, the database and its Owner, the Access signing keys, each site (its key, and
+// whether it still conforms to the site-api contract), the GitHub App for the writing repository, that every AI publish
+// reached Dustin's inbox, Google (the service account key's age, the Search Console properties and Dustin's drive.file
+// grant), and any template social post that went out.
 //
-// Each run also rewrites the public conformance report (conformanceReport below), which devkit's
-// shared scoreboard reads; it carries check names and the site's API address, never a key or site text.
+// Each run also rewrites the public conformance report, which devkit's shared scoreboard reads; it carries check names and
+// the site's API address, never a key or site text.
 
 import { sendEmail } from "@dustinedwards/site-runtime/email";
 import { PACKAGE_VERSION } from "@dustinedwards/site-api";
@@ -136,14 +134,10 @@ async function checkAccessKeys(env: Env, fetcher: Fetch): Promise<CheckResult> {
 }
 
 /**
- * A site with no key is not connected yet, which is not a failure: its stage has not arrived. With a
- * key, the conformance suite runs, including its writes, each of which a conforming site refuses. On
- * a site that offers media (site-api v0.2.0) that includes the media checks: limits declared, list in
- * shape, a delete of an unknown id and an upload of an undeclared type both refused. On a site that
- * declares the mentions group (v0.5.0) it includes the mentions checks: the list in shape, writes without
- * the key refused, a decision and a delete of an unknown id refused, a stale version refused on the first
- * real mention, and a sweep with no change id refused; a site without the group must answer 501. The suite's real
- * upload round trip stays off: the health check never puts a file into a site's storage.
+ * A site with no key is not connected yet, which is not a failure. With a key, the conformance suite runs, including its
+ * writes, each of which a conforming site refuses; a site that offers media or declares the mentions group also gets those
+ * checks (a site without the mentions group must answer 501). The real upload round trip stays off: the health check never
+ * puts a file into a site's storage.
  */
 async function checkSite(
   env: Env,
@@ -601,24 +595,18 @@ export async function runHealth(
 
 /**
  * GET /health, the one answer on both hosts (site-runtime's siteHealthResponse). On the AI door it is outside Access, so it
- * says only what any family site says in public: D1 answers, the bindings are there, the dump's age, the crons, the
- * deployed commit the live gate waits for, and the names (never the details) of the checks above that are failing.
+ * says only what any family site says in public: D1 answers, the bindings are there, the dump's age, the crons, the deployed
+ * commit the live gate waits for, and the names (never the details) of the failing checks above.
  *
- * Levels (H3). Only D1 (`db`, the helper's ping) is fail level: without it neither door can find a person, so Carrel is
- * down and a 503 is the truth. Everything else is warn and answers 200:
- * - oauth-kv is warn, a stated choice. Without OAUTH_KV the AI door cannot issue or check a grant, but Desk, the app
- *   people use, still serves every page and save, so a 503 would call Carrel down while it works. The warn still reaches
- *   Capsid's watcher, which reads the checks.
- * - doc-room and mcp-rate-limit are Durable Object namespaces (site-runtime's
- *   durableObjectCheck: bound, and an id minted; no object is woken or billed). Without DOC_ROOM co-editing stops but
- *   the editor still saves; without the rate limiter the AI door refuses calls, as with OAUTH_KV.
- * - tool-call-log is site-runtime's auditLogCheck (L8): a call with no finished row after 15 minutes, a spike, or rows
- *   not copied to AUDIT_BUCKET for two days. Without TOOL_CALL_LOG it fails too, and the AI door refuses calls.
- * - email is the send_email binding, checked present only: sending a probe would mail Dustin every few minutes. A failed
- *   send is already seen where it matters, as the ai-publish-email check above and the health run's own alert.
- * - audit-bucket is site-runtime's r2Check on AUDIT_BUCKET, the tool-call log's copies: one `head`, never a list.
- * Left out: CSP_REPORT_RATE_LIMIT, because a probe would spend a count and a missing binding only drops reports, which
- * the receiver answers 204 regardless. BACKUPS is the backup check's own read.
+ * Levels. Only D1 (`db`) is fail level: without it neither door can find a person, so a 503 is the truth. Everything else
+ * is warn and answers 200:
+ * - oauth-kv, doc-room, mcp-rate-limit and tool-call-log each break one feature (the AI door, co-editing) while Desk still
+ *   serves every page and save, so a 503 would call Carrel down while it works. The warn still reaches Capsid's watcher.
+ *   The Durable Object checks only bind and mint an id; no object is woken or billed.
+ * - email is checked present only: sending a probe would mail Dustin every few minutes.
+ * - audit-bucket is one `head` on AUDIT_BUCKET, never a list.
+ * Left out: CSP_REPORT_RATE_LIMIT, because a probe would spend a count and a missing binding only drops reports. BACKUPS is
+ * the backup check's own read.
  */
 export function deskHealthAnswer(env: Env): Promise<Response> {
   return siteHealthResponse(env, {
@@ -628,7 +616,7 @@ export function deskHealthAnswer(env: Env): Promise<Response> {
       { ...kvCheck("oauth-kv", env.OAUTH_KV), level: "warn" },
       durableObjectCheck("doc-room", env.DOC_ROOM),
       durableObjectCheck("mcp-rate-limit", env.MCP_RATE_LIMIT),
-      // The tool-call log (L8, warn with an alert): a call with no finished row, a spike, or rows not copied for two days.
+      // The tool-call log (warn with an alert): a call with no finished row, a spike, or rows not copied for two days.
       auditLogCheck(env),
       // AUDIT_BUCKET answers: a head of one key (no list), warn like the rest; a throw (an unbound binding included) fails it.
       { ...r2Check("audit-bucket", env.AUDIT_BUCKET), level: "warn" },
@@ -640,10 +628,8 @@ export function deskHealthAnswer(env: Env): Promise<Response> {
       {
         name: "alerts",
         level: "warn",
-        // Desk's own alert state. The `site-*` checks are other sites' conformance to the contract, which
-        // goes wrong for a while after every site-api release until each site has bumped; each has its own
-        // finding in the conformance report and its own email, and listing them here made Desk read degraded
-        // to the watcher whenever a rollout was under way.
+        // Desk's own alert state. The `site-*` checks are other sites' conformance, which goes wrong for a while after every
+        // site-api release; each has its own report finding and email, and listing them here made Desk read degraded to the watcher.
         run: async () => {
           const failing = await drizzle(env.DB)
             .select({ name: healthState.checkName })

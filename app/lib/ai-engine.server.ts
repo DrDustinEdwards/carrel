@@ -50,10 +50,9 @@ export function apiKeyMissing(env: Pick<Env, "ANTHROPIC_API_KEY">): boolean {
 
 /**
  * The jobs that can run on either engine. `subscription` says whether a routine can do it; `engine` is the setting the job
- * starts with until Dustin changes it; `tier` and `effort` are what the API uses for it until he picks others. Each
- * effort is the API's own default for the job's tier (high on Sonnet 5.5, medium on Opus 5.5), so sending it always
- * changed nothing until he chose. Background jobs nobody waits on start on the API (it answers at once and is
- * metered); long writing he steers himself starts on Automatic, the subscription first.
+ * starts with; `tier` and `effort` are what the API uses until Dustin picks others. Each effort is the API's own default for
+ * the job's tier. Background jobs nobody waits on start on the API (answers at once, metered); long writing he steers
+ * himself starts on Automatic, the subscription first.
  */
 export const FEATURES = [
   {
@@ -269,10 +268,7 @@ export async function usageThisMonth(db: D1Database, now = new Date()) {
     .all();
 }
 
-/**
- * What one call of the site's picture suggester costs at most, in tokens, for a site that does not report its usage
- * (site-api before 0.34.0): a 768px JPEG (about 790 image tokens), a prompt of about 300 and an answer capped at 300.
- */
+/** The most one call of the site's picture suggester costs in tokens, for a site that does not report usage: a 768px JPEG (about 790 image tokens), a prompt of about 300 and an answer capped at 300. */
 const SUGGESTER_CALL = { input: 1500, output: 300, cacheRead: 0, cacheWrite: 0 };
 
 /**

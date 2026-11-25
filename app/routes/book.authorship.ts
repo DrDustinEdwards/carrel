@@ -1,4 +1,4 @@
-// The authorship record as a readable report (design decision 11): who changed what, person or AI
+// The authorship record as a readable report: who changed what, person or AI
 // client, with the words each change added and removed. Anyone who can read the book can read it.
 
 import { attachmentResponse } from "@dustinedwards/site-runtime/r2-object";

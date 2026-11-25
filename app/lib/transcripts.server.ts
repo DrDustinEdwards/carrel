@@ -1,12 +1,11 @@
-// An episode's transcript, fixed in Carrel and put live through site-api v0.36.0 (PUT /content/:id/transcript). The
-// transcript is machine-made and mishears names and terms ("Wheel's disease" for Weil's disease); a session saves a
-// corrected whole transcript as a draft beside the site's, never over it, and it goes live only when someone who may
-// publish the episode publishes it: Dustin from Desk, or his own AI session through carrel_publish_item on his
-// instruction (ai.server.ts, aiPublishTranscript). Roles are checked here, as content.server.ts checks them for posts.
+// An episode's transcript, fixed in Carrel and put live through site-api v0.36.0 (PUT /content/:id/transcript). The transcript
+// is machine-made and mishears names and terms; a session saves a corrected whole transcript as a draft beside the site's,
+// never over it, and it goes live only when someone who may publish the episode publishes it. Roles are checked here, as
+// content.server.ts checks them for posts.
 //
-// A transcript has its own version (transcriptVersion); the item's version does not move when it changes, so the post
-// drafts saved beside it stay good. A draft is published only from the transcriptVersion it was written from, and
-// every publish keeps the transcript it replaced as a draft of its own, so a publish can be put back.
+// A transcript has its own version (transcriptVersion); the item's version does not move when it changes, so the post drafts
+// saved beside it stay good. A draft is published only from the transcriptVersion it was written from, and every publish keeps
+// the transcript it replaced as a draft of its own, so a publish can be put back.
 
 import { SiteApiError } from "@dustinedwards/site-api/client";
 import { drizzle } from "drizzle-orm/d1";

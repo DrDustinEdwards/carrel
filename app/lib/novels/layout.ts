@@ -31,7 +31,7 @@ export function isBookPath(path: string): boolean {
       parts.length === 2 ||
       (parts.length === 3 && ["characters", "places", "rules"].includes(parts[1]!))
     );
-  // Notes (design 4.1): flat like the outline, read by no check and never exported.
+  // Notes: flat like the outline, read by no check and never exported.
   if (top === "outline" || top === "notes") return parts.length === 2;
   return false;
 }

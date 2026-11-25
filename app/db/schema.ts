@@ -67,7 +67,7 @@ export const siteItems = sqliteTable(
     status: text("status", { enum: ["draft", "scheduled", "published"] }).notNull(),
     path: text("path"),
     publishAt: text("publish_at"),
-    // When a live post's scheduled update goes live (migration 0021); null when none waits.
+    // When a live post's scheduled update goes live; null when none waits.
     updateAt: text("update_at"),
     publishedAt: text("published_at"),
     updatedAt: text("updated_at"),
@@ -113,12 +113,8 @@ function recordOf() {
 export const changes = sqliteTable("changes", {
   id: text("id").primaryKey(),
   ...recordOf(),
-  // Media actions since migration 0007: item_id is then the site's media id, and a file has no version.
-  // content-delete since migration 0009: item_id is the post's id, version_before the version deleted, version_after null.
-  // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.
-  // unschedule, media-focus, media-caption and media-replace since migration 0021.
-  // media-import, media-credit, media-transform, media-revert and media-resize since migration 0024.
-  // content-trash, content-restore and content-rename since migration 0027; a rename's row is under the new id.
+  // item_id is the site's media id for media actions (a file has no version, only a metadata version); a content-delete's
+  // version_before is the version deleted and version_after null; a rename's row is under the new id.
   action: text("action", {
     enum: [
       "save",
@@ -152,13 +148,13 @@ export const changes = sqliteTable("changes", {
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   client: text("client"),
-  /** The id a rename moved the post from (migration 0027); null for every other action. */
+  /** The id a rename moved the post from; null for every other action. */
   renamedFrom: text("renamed_from"),
   emailedAt: text("emailed_at"),
   emailError: text("email_error"),
 });
 
-// Webmention decisions since migration 0011 (a table of its own: the changes table holds posts and
+// Webmention decisions (a table of its own: the changes table holds posts and
 // files). mention_id is the site's id for the mention and is null for a sweep; status_after is null
 // for a delete and a sweep; change_id is the id Carrel sent the site, so the two histories join.
 const MENTION_STATUS = ["unverified", "pending", "approved", "rejected", "failed"] as const;
@@ -171,7 +167,7 @@ export const mentionDecisions = sqliteTable("mention_decisions", {
   personId: integer("person_id")
     .notNull()
     .references(() => people.id),
-  // reset (a decision taken back to waiting) since migration 0027.
+  // reset (a decision taken back to waiting).
   action: text("action", { enum: ["approve", "reject", "reset", "delete", "sweep"] }).notNull(),
   statusBefore: text("status_before", { enum: MENTION_STATUS }),
   statusAfter: text("status_after", { enum: MENTION_STATUS }),
@@ -202,14 +198,14 @@ export const itemDrafts = sqliteTable("item_drafts", {
   body: text("body").notNull(),
   baseVersion: text("base_version"),
   note: text("note").notNull().default(""),
-  // A JSON array of the text of each source a text draft drew on; null on drafts saved before sources were asked for.
+  // A JSON array of the text of each source a text draft drew on; null when none were given.
   sources: text("sources"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// Who made each preview link of a post (migration 0043): a link sends the post out, so it is recorded as a publish is.
+// Who made each preview link of a post: a link sends the post out, so it is recorded as a publish is.
 export const previewLinkRecords = sqliteTable("preview_link_records", {
   changeId: text("change_id").primaryKey(),
   ...recordOf(),
@@ -218,7 +214,7 @@ export const previewLinkRecords = sqliteTable("preview_link_records", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// A row of Home's "Needs you" a person set aside (migration 0033): hidden until `until`, or until the need's
+// A row of Home's "Needs you" a person set aside: hidden until `until`, or until the need's
 // title reads differently from the one kept here.
 export const needLater = sqliteTable(
   "need_later",
@@ -236,7 +232,7 @@ export const needLater = sqliteTable(
   (t) => [primaryKey({ columns: [t.personId, t.needId] })],
 );
 
-// The authorship record of each transcript put live (migration 0032), apart from changes: the versions are the
+// The authorship record of each transcript put live, apart from changes: the versions are the
 // transcript's own, and the item's version does not move.
 export const transcriptChanges = sqliteTable("transcript_changes", {
   id: text("id").primaryKey(),
@@ -315,7 +311,7 @@ export const authorship = sqliteTable("authorship", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
-  /** What the save counts toward the day: typed words only. Empty before 0012 and for an AI client's save. */
+  /** What the save counts toward the day: typed words only. Empty for an AI client's save. */
   wordsTyped: integer("words_typed"),
 });
 
@@ -385,7 +381,7 @@ export const googleTokens = sqliteTable("google_tokens", {
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   lastError: text("last_error"),
-  /** The folder Carrel made for new Docs, shared with the service account (migration 0038). */
+  /** The folder Carrel made for new Docs, shared with the service account. */
   folderId: text("folder_id"),
 });
 
@@ -409,11 +405,11 @@ export const manuscripts = sqliteTable("manuscripts", {
   createdTime: text("created_time"),
   modifiedTime: text("modified_time"),
   syncedAt: text("synced_at").notNull(),
-  /** Suggestions an AI laid in the Doc through Carrel that are still open (migration 0039). */
+  /** Suggestions an AI laid in the Doc through Carrel that are still open. */
   waiting: integer("waiting").notNull().default(0),
 });
 
-// The channel on which Google tells Carrel that a file changed (Drive changes.watch; migration 0039).
+// The channel on which Google tells Carrel that a file changed (Drive changes.watch).
 export const driveWatch = sqliteTable("drive_watch", {
   id: text("id").primaryKey(),
   resourceId: text("resource_id").notNull(),
@@ -424,7 +420,7 @@ export const driveWatch = sqliteTable("drive_watch", {
   refreshedAt: text("refreshed_at"),
 });
 
-// Every change an AI made in a Google Doc through Carrel (migration 0047): which AI, why, and the exact change.
+// Every change an AI made in a Google Doc through Carrel: which AI, why, and the exact change.
 // A suggestion or comment is decided on in Docs; a write, accept, reject, withdraw or undo is on Dustin's own ask, and
 // a write keeps the Doc's text before it so it can be taken back.
 export const docEdits = sqliteTable("doc_edits", {
@@ -464,7 +460,7 @@ export const docEdits = sqliteTable("doc_edits", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-// Dustin's per-Doc lock (migration 0036): suggest-only refuses direct writes and accepts, no-ai refuses every Docs tool.
+// Dustin's per-Doc lock: suggest-only refuses direct writes and accepts, no-ai refuses every Docs tool.
 export const docLocks = sqliteTable("doc_locks", {
   fileId: text("file_id").primaryKey(),
   lock: text("lock", { enum: ["suggest-only", "no-ai"] }).notNull(),
@@ -473,7 +469,7 @@ export const docLocks = sqliteTable("doc_locks", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
 
-/** The tabs Carrel made in a Google Sheet (migration 0041): the only tabs an AI may write cells on. */
+/** The tabs Carrel made in a Google Sheet: the only tabs an AI may write cells on. */
 export const sheetTabs = sqliteTable(
   "sheet_tabs",
   {
@@ -681,11 +677,9 @@ export const accessSync = sqliteTable("access_sync", {
   dropped: integer("dropped").notNull().default(0),
 });
 
-// Live co-editing (0022_coediting.sql, workers/doc-room.ts). `rooms` is each file's shared working copy as
-// Markdown, mirrored by its room after every change so the nightly backup holds it; the room's own
-// storage is the live copy. `comments` are the threads on a file, a reply naming its thread's first
-// comment. `change_contributors` is everyone who had a hand in the text one save wrote, beside the
-// person who pressed Save (`changes.person_id`).
+// Live co-editing (workers/doc-room.ts). `rooms` mirrors each file's shared working copy as Markdown after every change so
+// the nightly backup holds it. `comments` are a file's threads, a reply naming its thread's first comment.
+// `change_contributors` is everyone who had a hand in the text one save wrote, beside `changes.person_id`.
 export const rooms = sqliteTable(
   "rooms",
   {
@@ -740,7 +734,7 @@ export const aiSettings = sqliteTable("ai_settings", {
 export const aiUsage = sqliteTable("ai_usage", {
   id: integer("id").primaryKey(),
   feature: text("feature").notNull(),
-  // The effort the call ran at; null before 0037 and on calls another service metered.
+  // The effort the call ran at; null on calls another service metered.
   effort: text("effort"),
   model: text("model").notNull(),
   micros: integer("micros").notNull(),

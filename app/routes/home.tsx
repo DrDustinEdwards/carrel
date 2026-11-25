@@ -1,12 +1,9 @@
-// Home: the work queue. What waits on the person (Blocking first, then Waiting for you), each with one
-// main action and Later; then where to continue writing and what was typed today. No lists of projects or
-// tools, because the menu already has them. The needs that D1 knows are in the page; the mention counts are
+// Home: the work queue. What waits on the person (Blocking first, then Waiting for you), each with one main action and Later;
+// then where to continue writing and what was typed today. The needs that D1 knows are in the page; the mention counts are
 // asked of each site and arrive after, so a slow site never holds Home.
 //
-// The queue is Capsomer's NeedsList (attention-list): Later sets a row aside until 8 am tomorrow in the
-// person's time zone (capsomer/behavior/time laterUntil), or sooner when the need changes (desk.server.ts
-// setLater); the row leaves at once, focus moves to the next row, and the message offers Undo; the Later tab
-// lists what is set aside, with Bring back. j, k and l are the list's own keys.
+// The queue is Capsomer's NeedsList: Later sets a row aside until 8 am tomorrow in the person's time zone, or sooner when the
+// need changes (desk.server.ts setLater); the Later tab lists what is set aside, with Bring back.
 
 import { Suspense, useSyncExternalStore } from "react";
 import { Await, useSubmit } from "react-router";

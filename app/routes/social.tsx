@@ -1,4 +1,4 @@
-// Social (design section 5), queue first: the posts waiting on Dustin, the ones the lint held and
+// Social, queue first: the posts waiting on Dustin, the ones the lint held and
 // template posts to acknowledge; then, as link tabs, the record of every post, the accounts and their
 // switches, and the drafting routine's runs. The Owner's alone.
 // There is no reply, message, follow or like anywhere here, because there is none in the code.

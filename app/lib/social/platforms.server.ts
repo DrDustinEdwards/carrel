@@ -1,12 +1,9 @@
-// The two platforms Carrel posts to, and the one way out to them. There is no reply or direct-message
-// code (design section 5, "Social"), and a guard makes sure none can be reached: every request is
-// checked against an allowlist of the exact endpoints that create a session or an original post,
-// and a post body carrying a reply reference is refused before it is sent.
+// The two platforms Carrel posts to, and the one way out to them. There is no reply or direct-message code, and a guard
+// makes sure none can be reached: every request is checked against an allowlist of the exact endpoints that create a
+// session or an original post, and a post body carrying a reply reference is refused before it is sent.
 //
-// Bluesky: carried over from legacy Recova's lib/social/bluesky.ts (app-password session reused for
-// two hours, createRecord for the post), with its reply and search functions dropped and the session
-// kept per account. X: OAuth 1.0a user context for POST /2/tweets, signed here with Web Crypto
-// instead of Recova's twitter-api-v2 package.
+// Bluesky: an app-password session reused for two hours, createRecord for the post, one session per account. X: OAuth 1.0a
+// user context for POST /2/tweets, signed here with Web Crypto.
 
 import { timedFetch } from "@dustinedwards/site-runtime/http";
 import { toBase64, toHex } from "@dustinedwards/site-runtime/encoding";
@@ -85,7 +82,7 @@ async function blueskySession(
   now: number,
 ) {
   const cached = bskySessions.get(creds.handle);
-  // Re-authenticate when missing or within five minutes of expiry (Recova's rule).
+  // Re-authenticate when missing or within five minutes of expiry.
   if (cached && now < cached.expiresAt - 5 * 60 * 1000) return cached;
   const res = await send(fetcher, "POST", `${BSKY}/com.atproto.server.createSession`, {
     identifier: creds.handle,
@@ -217,7 +214,7 @@ export async function postOriginal(
     : postToX(creds, text, fetcher, now);
 }
 
-/** X's price per post since February 2026 (design section 5), in mills: $0.015, or $0.20 with a link. */
+/** X's price per post since February 2026, in mills: $0.015, or $0.20 with a link. */
 export function xCostMills(text: string): number {
   return /https?:\/\//.test(text) ? 200 : 15;
 }

@@ -1,4 +1,4 @@
-// The lint on every post (design section 5, "Social"), and the checks a post needs before it can go:
+// The lint on every post, and the checks a post needs before it can go:
 // it fits the platform, it is not a reply in disguise, it is not empty. A post with any finding is held
 // for Dustin; the lint flags and he decides.
 //

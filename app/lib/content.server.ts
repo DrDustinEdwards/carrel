@@ -408,7 +408,7 @@ export async function writeToSite(
   try {
     const doc = await client.get(itemId);
     await indexDoc(env.DB, project.id, doc);
-    // A piece going live is the one event social posts may announce (design decision 5).
+    // A piece going live is the one event social posts may announce.
     if (request.action === "publish" && doc.status === "published") {
       const connection = siteConnection(env, project.site);
       const url =

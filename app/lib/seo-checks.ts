@@ -1,20 +1,18 @@
-// The search and sharing checks on a post's text, and the link card it will make: the title a search
-// result shows, the description under it, images in the body with no alt text, and a post with no card
-// image. They flag; the writer decides. The one exception is alt text: an image without it blocks a
-// publish (Dustin approved), so writeToSite refuses one and the editor's gate shows why.
-// Pure, so the editor runs them as Dustin types and the MCP tools run the same code on a draft.
+// The search and sharing checks on a post's text, and the link card it will make: the title a search result shows, the
+// description under it, images in the body with no alt text, and a post with no card image. They flag; the writer decides,
+// except alt text, which blocks a publish (writeToSite refuses it and the editor's gate shows why). Pure, so the editor runs
+// them as Dustin types and the MCP tools run the same code on a draft.
 //
-// The limits are Prelum's (@drdustinedwards/site-helpers/head), the numbers the sites' own head tags and
-// site audit use, so a draft is held to what the published page is measured against. Prelum sets no
-// floor for a description; DESCRIPTION_MIN is Carrel's.
+// The limits are Prelum's (@drdustinedwards/site-helpers/head), the numbers the sites' own head tags and audit use. Prelum sets
+// no floor for a description; DESCRIPTION_MIN is Carrel's.
 //
-// Each site names these fields differently, so SOCIAL_FIELDS holds one entry per site, as FIGURE_SITES in
-// site-markdown.ts does: shared by the server and the browser. A site on site-api v0.17.0 lists the shared
-// search fields it renders (capabilities.searchFields), and a listed one comes before the site's own key.
+// Each site names these fields differently, so SOCIAL_FIELDS holds one entry per site, as FIGURE_SITES in site-markdown.ts
+// does. A site on site-api v0.17.0 lists the shared search fields it renders (capabilities.searchFields), and a listed one
+// comes before the site's own key.
 //
-// Two faults in those fields block a publish, like alt text in the body (searchFieldRefusal): a share
-// image with no alt text, and a canonical address that is not a full https one. Both are broken output,
-// not judgment; a title or description too wide for a result only warns.
+// Two faults in those fields block a publish, like alt text in the body (searchFieldRefusal): a share image with no alt text,
+// and a canonical address that is not a full https one. Both are broken output, not judgment; a title or description too wide
+// for a result only warns.
 
 import {
   absoluteUrl,

@@ -1,18 +1,14 @@
-// What Carrel's nightly dump must leave out and carry, for d1-dump's runCheckedBackup, which runs the
-// standard checks (not empty, nothing excluded present, every required table there), its credential-column check
-// and this one.
+// What Carrel's nightly dump must leave out and carry, for d1-dump's runCheckedBackup.
 //
-// What the dump covers is D1 alone. The rest of Carrel's storage, and why it is not backed up (B7):
-// - OAUTH_KV: the AI door's OAuth grants, tokens and client registrations. Live credentials, which a backup bucket must
-//   never carry; lost, each AI client signs in again, and nothing written is lost.
-// - DOC_ROOM (Durable Objects): each open file's shared working copy. Every room mirrors its text into D1's `rooms`
-//   after each change, and its comments are written to D1's `comments` (docs/coediting.md); the dump carries both.
-// - MCP_RATE_LIMIT (Durable Objects): per-person request counters that reset every minute. Nothing to keep.
-// - TOOL_CALL_LOG (Durable Objects): the AI door's append-only call log, an audit trail rather than writing. Every change
-//   an AI call made is in D1's `authorship` and `item_drafts`, which the dump requires; losing the log loses the trail
-//   only, and reading it out would need an export the door does not have.
-// - BACKUPS (R2) is where the dumps go. Carrel stores no files of its own: media lives on each site, and manuscripts in
-//   Google Drive and the private writing repository.
+// The dump covers D1 alone. Not backed up, and why:
+// - OAUTH_KV: the AI door's grants, tokens and registrations. Live credentials a backup bucket must never carry; lost, each
+//   AI client signs in again.
+// - DOC_ROOM (Durable Objects): each room mirrors its text into D1 `rooms` and its comments into `comments`, which the dump carries.
+// - MCP_RATE_LIMIT (Durable Objects): counters that reset every minute.
+// - TOOL_CALL_LOG (Durable Objects): the AI door's call log, an audit trail rather than writing; every change a call made is
+//   in D1 `authorship` and `item_drafts`.
+// - BACKUPS (R2) is where the dumps go. Carrel stores no files of its own: media lives on each site, manuscripts in Google
+//   Drive and the private writing repository.
 
 import type { DumpResult } from "@dustinedwards/d1-dump";
 

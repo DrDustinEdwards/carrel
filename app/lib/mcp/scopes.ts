@@ -1,14 +1,10 @@
-// Scopes (ruling capsid/rulings/mcp-2026-10-10.md, rule 12.3). The names are the family's one scheme, site-runtime's
-// mcpScopes("carrel"): carrel.read and carrel.write. Least scope first (checklist A11): every grant holds
-// read, and write only when the person ticks it on the consent page. The box starts ticked only when the client asked
-// for carrel.write; a client that asks for carrel.read, or names no Carrel scope at all, starts unticked, and the person
-// can tick it.
-// What a session may do is still decided by the person's role below this layer: a scope can only narrow that, never
-// widen it.
+// Scopes (ruling capsid/rulings/mcp-2026-10-10.md, rule 12.3): site-runtime's mcpScopes("carrel"), carrel.read and carrel.write.
+// Every grant holds read, and write only when the person ticks it on the consent page; the box starts ticked only when the
+// client asked for carrel.write. What a session may do is still decided by the person's role below this layer: a scope can
+// only narrow that.
 //
-// Grants are stored with the scope strings they were issued with, so the earlier names still count: "carrel:read" and
-// "carrel:write" (2026-10-10 to 2026-10-31) read as the new names, and "carrel" (before 2026-10-10, approved on a consent
-// page that named writing) reads as both, until each grant is replaced at its next sign-in.
+// Grants keep the scope strings they were issued with, so "carrel:read" and "carrel:write" read as the new names, and the
+// original "carrel" (approved on a consent page that named writing) reads as both, until the grant is replaced at its next sign-in.
 
 import { mcpScopes } from "@dustinedwards/site-runtime/mcp-server";
 
@@ -34,9 +30,8 @@ function current(scopes: readonly string[]): Set<string> {
 }
 
 /**
- * What the consent page offers. Read and write when the client asked for write (by today's name or an
- * earlier one, which a client that connected before may still send); otherwise, a request for read or
- * for no Carrel scope at all, reading only. The person's tick decides the grant.
+ * What the consent page offers: read and write when the client asked for write (by any of its names), otherwise reading
+ * only. The person's tick decides the grant.
  */
 export function grantScopes(
   requested: readonly string[],

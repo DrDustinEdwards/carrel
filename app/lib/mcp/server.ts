@@ -1,4 +1,4 @@
-// Carrel's MCP endpoint, inside the Carrel Worker (design decision 7): Carrel
+// Carrel's MCP endpoint, inside the Carrel Worker: Carrel
 // has several people with different roles, so it verifies each token itself and maps the identity to
 // its own people. The protocol is the official MCP SDK v2 through `agents`, stateless: no session is
 // kept between requests, and a fresh server answers each one.
@@ -96,11 +96,9 @@ function buildServer(env: Env, who: Who, deps: ToolDeps) {
       maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
       cacheHints: mcpCacheHints({ shared: ["server/discover"] }),
     });
-    // Only the tools this grant can call are listed (checklist T7, site-runtime's toolsForGrant over the scopes as
-    // scopes.ts reads them; the test key is listed the read tools), each with the server's icon (T9). site-runtime's
-    // registerTools does the same, but it sets its own scopeChallenge from the token's raw scopes, and a legacy
-    // "carrel" token must read as both. Every Carrel tool has a fixed scope, so a listed tool is always one the grant
-    // can call and no step-up is left to offer; invokeTool still checks the scope on every call.
+    // Only the tools this grant can call are listed (site-runtime's toolsForGrant over the scopes as scopes.ts reads them; the
+    // test key is listed the read tools), each with the server's icon. registerTools does the same but sets its own scopeChallenge
+    // from the token's raw scopes, and a legacy "carrel" token must read as both. invokeTool still checks the scope on every call.
     const listed = toolsForGrant(
       TOOLS,
       "probe" in who ? [SCOPE_READ] : who.session.scopes,
@@ -123,7 +121,7 @@ function buildServer(env: Env, who: Who, deps: ToolDeps) {
         async (args: unknown, ctx) => {
           const input = (args ?? {}) as Record<string, unknown>;
           // invokeTool refuses the test key on every call, before run; with no session there is nothing to run as.
-          // The request's abort signal (P11) reaches the tool and every outbound fetch it makes.
+          // The request's abort signal reaches the tool and every outbound fetch it makes.
           const run =
             "session" in who
               ? (signal?: AbortSignal) =>
@@ -178,12 +176,10 @@ export async function handleMcp(
     corsOptions: false as const,
   };
 
-  // The one legacy call site. Prior-era clients (Claude Code and claude.ai open with `initialize`, as
-  // last measured in dustinedwards-info's probe) go to the stateless shim, everything else, malformed
-  // envelopes included, to the modern-only handler. REMOVAL CONDITION: drop isLegacyRequest here when
-  // that probe (`mcp/scripts/probe-report.mjs`) shows them opening with `server/discover`; the
-  // condition and the shim are site-runtime's routeMcpEra. (The cast only drops the Workers-specific
-  // `cf` typing the SDK's signature does not know.)
+  // The one legacy call site: prior-era clients (Claude Code and claude.ai open with `initialize`) go to the stateless shim,
+  // everything else to the modern-only handler. REMOVAL CONDITION: drop isLegacyRequest here when dustinedwards-info's probe
+  // (`mcp/scripts/probe-report.mjs`) shows them opening with `server/discover`; the shim is site-runtime's routeMcpEra. (The
+  // cast only drops the Workers-specific `cf` typing the SDK's signature does not know.)
   return routeMcpEra(request, env, ctx, {
     factory,
     options,
@@ -192,11 +188,7 @@ export async function handleMcp(
   });
 }
 
-/**
- * Where Carrel's pages live, for links in email: the browser door, never the AI door. The var
- * CARREL_ORIGIN (in the example config) is read loosely, because a wrangler.jsonc from before stage 5
- * does not have it and its generated types would not either.
- */
+/** Where Carrel's pages live, for links in email: the browser door, never the AI door. CARREL_ORIGIN is read loosely because an older wrangler.jsonc lacks it. */
 export function carrelOrigin(env: Env): string {
   const configured = (env as { CARREL_ORIGIN?: string }).CARREL_ORIGIN?.trim();
   return (configured || "https://desk.dustinedwards.info").replace(/\/+$/, "");

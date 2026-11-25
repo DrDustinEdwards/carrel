@@ -1,17 +1,14 @@
-// A site's posts list over the content kit (site-api's admin half): Carrel and every site's own admin
-// run the same loader and the same intents, and the screen is Capsomer's PostsList. What Carrel adds is
-// supplied as the kit's hooks, so no rule here is a second copy of the kit's:
+// A site's posts list over the content kit (site-api's admin half): Carrel and every site's own admin run the same loader
+// and intents, and the screen is Capsomer's PostsList. What Carrel adds is supplied as the kit's hooks, so no rule here is a
+// second copy of the kit's:
 //
-// - Roles, from Carrel's: a Reader posts nothing, an Editor tags, duplicates, renames a draft and moves
-//   posts to the Trash and back, and only the Owner changes what the public sees (unpublish, reschedule,
-//   a live post's tags, address or Trash) or deletes for good. The kit refuses before the site hears it.
-// - The authorship record: every write the site carried out is one row in changes, under the change id
-//   Carrel sent, with the versions before and after, so the two histories join. A refused write writes
-//   nothing. A duplicate is recorded as the save that created the copy, so whoever made it is its Author.
-// - The index: each write is read back into Carrel's index of the site, which the editor's links and
-//   the AI tools search.
-// - Carrel's own state: a post with unsaved changes in Carrel is left alone by a tag change or a
-//   rename, a copy never takes an id Carrel already uses, and a row says when AI drafts wait on it.
+// - Roles, from Carrel's: a Reader posts nothing, an Editor tags, duplicates, renames a draft and moves posts to the Trash
+//   and back, and only the Owner changes what the public sees or deletes for good. The kit refuses before the site hears it.
+// - The authorship record: every write the site carried out is one row in changes, under the change id Carrel sent, with the
+//   versions before and after. A refused write writes nothing. A duplicate is recorded as the save that created the copy.
+// - The index: each write is read back into Carrel's index of the site.
+// - Carrel's own state: a post with unsaved changes in Carrel is left alone by a tag change or a rename, a copy never takes
+//   an id Carrel already uses, and a row says when AI drafts wait on it.
 
 import {
   runPostsIntent,

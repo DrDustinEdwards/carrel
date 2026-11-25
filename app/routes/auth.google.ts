@@ -1,4 +1,4 @@
-// Connect Google (setup step 9): /auth/google/start sends the Owner to Google's consent screen for
+// Connect Google: /auth/google/start sends the Owner to Google's consent screen for
 // drive.file alone; /auth/google/callback is where Google sends the browser back. Both sit behind
 // Access at the browser door, and the one-use state ties the callback to a start made here.
 

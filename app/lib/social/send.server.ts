@@ -53,7 +53,7 @@ export async function sendQueued(
   const creds = credentialsFor(env, account);
 
   for (const post of queued) {
-    // Recova's caps, per account: the daily cap and the gap between posts; X's monthly budget too.
+    // Caps per account: the daily cap and the gap between posts; X's monthly budget too.
     if (today >= account.dailyCap || now.getTime() - last < account.minGapMinutes * 60_000) {
       result.waitingOnCaps++;
       return;

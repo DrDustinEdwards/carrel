@@ -48,9 +48,9 @@ export const CRON_JOBS: Record<string, ScheduledJob[]> = {
   ],
   [BACKUP_CRON]: [
     { name: "backup", backup: true, everyMinutes: 1440, timeoutMs: 10 * MINUTE },
-    // Carrel's own 404 counts (workers/app.ts) are kept 90 days, site-runtime's default (N7).
+    // Carrel's own 404 counts (workers/app.ts) are kept 90 days, site-runtime's default.
     { name: "prune-404", everyMinutes: 1440, timeoutMs: 1 * MINUTE },
-    // The AI door's tool-call log copied to R2 and its copied rows past 90 days pruned (site-runtime's exportAuditLog, L6-L7).
+    // The AI door's tool-call log copied to R2 and its copied rows past 90 days pruned (site-runtime's exportAuditLog).
     { name: "tool-call-log-export", everyMinutes: 1440, timeoutMs: 2 * MINUTE },
     // The daily summary of AIs' direct writes in Google Docs, when that is Dustin's Docs email setting (docs.server.ts).
     { name: "docs-email", everyMinutes: 1440, timeoutMs: 1 * MINUTE },
