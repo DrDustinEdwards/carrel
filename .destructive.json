@@ -12,6 +12,7 @@
       "book.file.tsx:dismiss",
       "book.file.tsx:use-ai-draft",
       "book.file.tsx:bring-in-doc",
+      "book.settings.tsx:delete",
       "editor.tsx:discard",
       "editor.tsx:use-own-draft",
       "editor.tsx:drop-own-draft",

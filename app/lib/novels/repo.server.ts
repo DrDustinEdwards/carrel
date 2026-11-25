@@ -55,12 +55,14 @@ export interface NovelsRepo {
     },
   ): Promise<{ sha: string; commit: string }>;
   /**
-   * Renames several files in ONE commit on the branch. Each file must be at `sha` in the branch head
-   * and no file may already be at a `to` path that is not also moving away; otherwise GitConflict.
-   * The branch moves only forward: a head that moved while the commit was built is a GitConflict too.
+   * Renames and removes several files in ONE commit on the branch. Each file must be at `sha` in the
+   * branch head and no file may already be at a `to` path that is not also moving away; otherwise
+   * GitConflict. The branch moves only forward: a head that moved while the commit was built is a
+   * GitConflict too.
    */
   commitMany(input: {
     renames: Rename[];
+    removes?: { path: string; sha: string }[];
     message: string;
     author: { name: string; email: string };
   }): Promise<{ commit: string }>;
@@ -211,7 +213,8 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedF
     },
 
     async commitMany(input) {
-      if (input.renames.length === 0)
+      const removes = input.removes ?? [];
+      if (input.renames.length + removes.length === 0)
         throw new Error("A multi-file commit needs at least one change.");
       const json = async <T>(res: Response, what: string): Promise<T> => {
         if (!res.ok) throw new Error(`GitHub did not ${what} (${res.status}).`);
@@ -242,8 +245,18 @@ export function githubRepo(token: () => Promise<string>, fetcher: Fetch = timedF
         if (!entry || entry.sha !== r.sha) throw new GitConflict(entry?.sha ?? null);
         if (at.has(r.to) && !leaving.has(r.to)) throw new GitConflict(at.get(r.to)!.sha);
       }
+      for (const r of removes) {
+        const entry = at.get(r.path);
+        if (!entry || entry.sha !== r.sha) throw new GitConflict(entry?.sha ?? null);
+      }
       const arriving = new Set(input.renames.map((r) => r.to));
       const entries = [
+        ...removes.map((r) => ({
+          path: r.path,
+          mode: at.get(r.path)!.mode,
+          type: "blob",
+          sha: null,
+        })),
         ...input.renames
           .filter((r) => !arriving.has(r.from))
           .map((r) => ({ path: r.from, mode: at.get(r.from)!.mode, type: "blob", sha: null })),

@@ -9,7 +9,8 @@ import { nearestPassages, profileOf } from "@dustinedwards/site-runtime/prose";
 
 import { addFinding, saveAiDraft } from "~/lib/ai.server";
 import { saveTranscriptDraft } from "~/lib/transcripts.server";
-import { createBook, refreshBook, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
+import { createBook } from "~/lib/book-project.server";
+import { refreshBook, requireBookProject, saveBookAiDraft } from "~/lib/books.server";
 import { autosave, writeToSite } from "~/lib/content.server";
 import { refreshIndex } from "~/lib/index.server";
 import { finishAuth, startAuth } from "~/lib/google/oauth.server";

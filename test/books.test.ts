@@ -10,7 +10,6 @@ import {
   authorshipRecord,
   bookVoice,
   authorshipReport,
-  createBook,
   dismissFinding,
   exportGate,
   listFiles,
@@ -20,6 +19,7 @@ import {
   saveBookFile,
   wordDelta,
 } from "~/lib/books.server";
+import { createBook, deleteBook } from "~/lib/book-project.server";
 import { autosave, readDraft } from "~/lib/content.server";
 import { requireSiteProject } from "~/lib/projects.server";
 
@@ -94,6 +94,25 @@ describe("opening a book", () => {
     expect((await createBook(testEnv.DB, owner, { name: "Shared", folder: "shared" })).ok).toBe(
       false,
     );
+  });
+});
+
+describe("deleting a book", () => {
+  it("removes the whole folder in one commit and the project, for the Owner only", async () => {
+    const gh = seedRepo({ "other/book.md": "kept\n" });
+    const { project } = await as("owner@test.invalid");
+    const editor = await viewerFor("editor@test.invalid");
+    expect(await refusal(deleteBook(testEnv.DB, gh.repo, editor, project))).toBe(403);
+    expect(gh.commits).toHaveLength(0);
+    const owner = await viewerFor("owner@test.invalid");
+    expect(await deleteBook(testEnv.DB, gh.repo, owner, project)).toEqual({ ok: true });
+    expect(gh.commits).toHaveLength(1);
+    expect([...gh.files.keys()].filter((p) => p.startsWith(`${SLUG}/`))).toEqual([]);
+    expect(gh.files.has("other/book.md")).toBe(true);
+    expect(gh.files.has("shared/voice/dustin.md")).toBe(true);
+    expect(
+      await testEnv.DB.prepare("SELECT 1 FROM projects WHERE slug = ?").bind(SLUG).first(),
+    ).toBeNull();
   });
 });
 
