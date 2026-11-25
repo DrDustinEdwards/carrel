@@ -9,6 +9,7 @@
     "test/harness/*.ts"
   ],
   "ignoreDependencies": [
+    // Used by tooling and CI, never imported.
     "cloudflare",
     "@modelcontextprotocol/conformance"
   ],
