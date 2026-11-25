@@ -5,14 +5,12 @@ description: Use before committing or opening a pull request that changes what D
 
 # Verify a Desk change
 
-Tests prove what someone thought to test. This skill proves the change itself: run
-the real app, use the changed flow as Dustin would, and look at the result. Do it
-before every commit that changes a screen, and before the pull request.
+Do it before every commit that changes a screen, and before the pull request.
 
 ## 1. Boot the harness
 
 Carrel needs Node 26 (`engines`; there is no `.nvmrc`). If `node -v` is older, put
-Node 26 on PATH first (in the cloud, `~/.cache/capsid-node/node-v26.13.1-linux-x64/bin`).
+the Node 26 the SessionStart hook installs on PATH first.
 Then, from the repo root:
 
 ```sh
@@ -102,14 +100,10 @@ try {
 ```
 
 Run it from the scratchpad with `REPO=<repo> node drive.mjs http://127.0.0.1:5199`.
-Drive the whole flow, not just the page load: open the dialog, submit the form, see
-the row change, reload and see it hold. For a flow that has a driver in `SCREENS`
-(`scripts/lib/harness.mjs`, for example Home's `l` key to set a row aside, the header
-search on Ctrl+K, a post's editor), copy its selectors rather than inventing new ones.
-If the change is responsive or themed, repeat the end state at 390 px wide and in dark
-mode (`page.setViewportSize`, `page.emulateMedia({ colorScheme: "dark" })`). A write
-the harness accepts changes only its in-memory fakes; `persistState` is off, so a
-restart gives the seed back.
+Drive the whole flow (act, see the result, reload and see it hold). For a flow that
+has a driver in `SCREENS` (`scripts/lib/harness.mjs`), copy its selectors rather than
+inventing new ones. Repeat the end state at 390 px and dark when the change is
+responsive or themed.
 
 If launch fails with "Executable doesn't exist" (the repo's Playwright build does not
 match the container's Chromium), set `PW_CHROMIUM=/opt/pw-browsers/chromium`. Do not run `playwright install`.
@@ -130,31 +124,21 @@ session may share the machine.
 - A change to headers or the CSP: `npx vitest run test/csp.test.ts test/access.test.ts`.
 - `node scripts/screens.mjs <directory> <screen>` writes light and dark screenshots at
   desktop and phone widths of one screen, to look at. Write them outside the repo.
-- `npm run typecheck` and `npm run lint` before the commit; `npm run format:check`
-  covers this file and any Markdown you touch.
-
-CI runs the rest (`npm test`, `check:conformance`, `check:plants`, `check:bloat`); do
-not run the whole set here.
+- `npm run typecheck` and `npm run lint` before the commit.
 
 ## Rules
 
-- A failed step is a finding about the change. Fix the code, then run the same script
-  again. Never add a sleep, a retry or a looser selector to make it pass.
-- If a step fails sometimes, find out why before going on; a flaky check teaches the
-  next thread to re-run instead of fix.
-- Never edit an existing test to make it agree with new behavior unless the change is
-  meant to alter that behavior, and say so in the pull request.
-- Leave nothing behind: stop the server, and keep the scripts and screenshots in the
-  scratchpad. Nothing from this skill is committed.
+A failed step is a finding about the change: fix the code and rerun the same
+script; no sleeps, no looser selectors. Stop the server by the process id you
+started, never `pkill` by name.
 
 ## The report
 
 Put this in the reply and the pull request body:
 
 - First line: verified, partly verified (and what was not), or failed.
-- Each step's ok or FAIL line, verbatim, and the console errors line.
-- The end-state screenshot, attached (Dustin cannot open a scratchpad path).
-- The summary line of each check you ran.
+- Each step's ok or FAIL line, the console errors line, the end-state screenshot
+  attached, and the summary line of each check you ran.
 - Anything the harness cannot show, named as not verified: the real Cloudflare Access
   sign-in and the AI door's OAuth, live D1, R2 and Durable Object rooms under real
   load, the real site through site-api, GitHub and Google. The live check after a
