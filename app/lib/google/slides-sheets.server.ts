@@ -247,7 +247,7 @@ async function writeInSlides(
 }
 
 /** A Doc, a Slides file or a Sheet in the index, read as the tools show it. */
-export async function readFile(
+export async function readSheetFile(
   env: Env,
   viewer: Viewer,
   fileId: string,

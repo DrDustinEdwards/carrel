@@ -15,7 +15,7 @@ import {
 import { autosave, readDraft } from "~/lib/content.server";
 import { cloudflareContext, cspNonceContext, viewerContext } from "~/lib/context";
 import type { Viewer } from "~/lib/people.server";
-import { createAccount, recordPublication, setSwitches } from "~/lib/social/queue.server";
+import { createSocialAccount, recordPublication, setSwitches } from "~/lib/social/queue.server";
 import { action as fileAction, loader as fileLoader } from "~/routes/book.file";
 
 import { addPerson, addProject, share, sharedBook, testEnv } from "./env";
@@ -247,7 +247,7 @@ describe("carrel_draft_social_post", () => {
   async function socialAccount() {
     const projectId = await addProject("field-notes", "dustinedwards");
     const owner = await viewerFor("owner@test.invalid");
-    await createAccount(testEnv.DB, owner, {
+    await createSocialAccount(testEnv.DB, owner, {
       key: "example-bluesky",
       name: "Example Co",
       platform: "bluesky",

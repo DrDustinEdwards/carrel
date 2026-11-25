@@ -292,7 +292,7 @@ export function checkVoice(
   }));
 }
 
-export function checkFile(path: string, source: string, context: BookContext): Finding[] {
+export function checkNovelFile(path: string, source: string, context: BookContext): Finding[] {
   const kind = fileKindOf(path);
   const parsed = parseFile(source);
   const meta: Meta = readMeta(path, parsed.data, Object.keys(parsed.data).length > 0);
