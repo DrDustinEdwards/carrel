@@ -21,7 +21,6 @@ type RepoFile = { source: string; sha: string };
 /** One file renamed in a multi-file commit: its blob is kept, only its path changes. */
 type Rename = { from: string; to: string; sha: string };
 
-/** A commit that touched a path, newest first, as GitHub lists it. */
 type PathCommit = { sha: string; message: string; author: string; email: string; at: string };
 
 /** A write refused because the file is not at the version the writer expected. */

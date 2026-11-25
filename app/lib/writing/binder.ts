@@ -241,8 +241,7 @@ export function parseOrder(raw: string): ChapterOrder[] | null {
 
 /**
  * A site project's binder: its writing grouped by kind (posts, pages and the rest), newest first, each
- * with its state. Series join it when the site-api contract carries them (ruling point 5, build step
- * 7); until then there is nothing to order, so a site's binder only finds and opens.
+ * with its state. The site-api contract carries no series, so a site's binder only finds and opens.
  */
 export function siteBinderTree(
   items: { itemId: string; kind: string; title: string; status: string }[],

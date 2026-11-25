@@ -6,7 +6,6 @@
 // holds how Carrel names and credits an agent. What the agent may do comes from the person row "agent:<name>" in People,
 // never from the key.
 
-/** The shape of an agent's name: what follows the prefix, lower-cased. */
 const AGENT_NAME = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 
 export function isAgentName(name: string): boolean {

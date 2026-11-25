@@ -78,7 +78,6 @@ export function previewFailure(message: string): Response {
   );
 }
 
-/** A preview the site could not give: what it said, or that it did not answer. */
 export function failed(error: unknown, fields: Record<string, unknown>): Response {
   if (error instanceof SiteNotConnected) return previewFailure(error.detail);
   if (error instanceof SiteApiError && error.body)

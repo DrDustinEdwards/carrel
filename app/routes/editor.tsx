@@ -228,9 +228,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   // leaves the editor without them rather than failing the page.
   let mediaAccept: string | null = null;
   let canScheduleUpdate = false;
-  // The search fields the site renders (site-api v0.17.0), one box each in the editor.
   let searchFields: SearchField[] = [];
-  // The post fields the site renders (site-api v0.17.0, v0.22.0): only those get a box.
   let postFields: PostField[] = [];
   // The text of an update waiting on the live post, so its Author or the Owner can open it again.
   let pendingUpdate: { publishAt: string; source: string } | null = null;
@@ -292,7 +290,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     path: doc?.path ?? null,
     everPublished: Boolean(doc?.publishedAt),
     publishedAt: doc?.publishedAt ?? null,
-    // Where the post lives, for the publish controls' View link: the site's origin and the post's path.
     liveUrl:
       doc?.path && connection.state === "connected"
         ? new URL(doc.path, connection.origin).href
@@ -304,7 +301,6 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     version: doc?.version ?? null,
     source: opened?.source ?? doc?.source ?? "",
     baseVersion: opened ? opened.version : (doc?.version ?? null),
-    // The room's changes nobody has saved, and the person's own draft from before the room.
     unsaved: opened?.unsaved ?? false,
     ownDraft: opened?.ownDraft ?? null,
     // The site moved on since the room's copy was started: saving it would be refused as stale.
@@ -597,7 +593,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const { say } = useMessage();
   useTypingRecede();
 
-  // The item's room: one copy for everyone on the project, as they type.
   const editing = useRoomEditing(data);
   const { room } = editing;
   // The room's text when this person opened Publish; the publish is refused if it changed while the dialog was open.
@@ -662,7 +657,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     });
   };
 
-  // Results of the buttons Carrel owns are said in the message region; the gate says its own.
   const said = useRef<unknown>(null);
   const gated = held === true || (outcome !== null && held === outcome);
   useEffect(() => {
@@ -727,7 +721,6 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
           }
         : null,
   };
-  // The search and sharing checks, on the text as it is typed (none for a legal page or another kind).
   const seo = useMemo(
     () =>
       seoCheck(data.project.siteId, source, {

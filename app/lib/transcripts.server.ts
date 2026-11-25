@@ -41,7 +41,6 @@ function forbid(): never {
   throw new Response("Forbidden", { status: 403 });
 }
 
-/** The client a draft that keeps a replaced transcript is credited to. */
 const KEPT_CLIENT = "Carrel";
 
 /** The site's episode with its transcript and that transcript's version, or a refusal naming why it cannot be fixed. */

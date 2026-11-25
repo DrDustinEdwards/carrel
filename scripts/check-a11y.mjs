@@ -4,8 +4,6 @@
 // real app with a fake site, writing repository and Google, so this needs no Cloudflare credentials.
 //
 // Exit 0: no violation on any screen. Exit 1: violations, listed. Exit 2: the harness did not start.
-//
-// Run: npm run check:a11y
 
 import { AxeBuilder } from "@axe-core/playwright";
 

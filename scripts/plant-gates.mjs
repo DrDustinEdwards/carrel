@@ -8,8 +8,6 @@
 // write, the unknown-person refusal, the per-request person check) and run the test files that should notice.
 //
 // Exit 0: every plant caught. Exit 1: a plant was missed or did not land. Exit 2: a gate was red before anything was planted.
-//
-// Run: npm run check:plants (several minutes: it runs the conformance suite twice)
 
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";

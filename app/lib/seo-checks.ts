@@ -141,7 +141,6 @@ function withSearchFields(fields: SocialFields, listed: readonly SearchField[]):
   };
 }
 
-/** The keys a site keeps its search and card title and description under. */
 export const socialFieldsOf = (site: string): SocialFields => SOCIAL_FIELDS[site] ?? DEFAULT_FIELDS;
 
 export const titleSuffixOf = (site: string): string => SOCIAL_FIELDS[site]?.titleSuffix ?? "";
@@ -177,7 +176,6 @@ export function featureImageFault(
     : null;
 }
 
-/** Why a publish is refused for the post fields, or null when they are sound. */
 export function postFieldRefusal(source: string, listed: readonly PostField[]): string | null {
   const fault = featureImageFault(splitSource(normalizeNewlines(source)).front, listed);
   return fault
@@ -185,7 +183,6 @@ export function postFieldRefusal(source: string, listed: readonly PostField[]): 
     : null;
 }
 
-/** Why a publish is refused for the search fields, or null when they are sound. */
 export function searchFieldRefusal(source: string, listed: readonly SearchField[]): string | null {
   const faults = searchFieldFaults(splitSource(normalizeNewlines(source)).front, listed);
   return faults.length

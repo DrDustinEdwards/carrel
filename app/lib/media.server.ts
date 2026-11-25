@@ -45,7 +45,6 @@ const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
   "media-resize": "media-resize",
 };
 
-/** Where a place that uses a file opens in Carrel: a post opens in its editor. */
 export function usageHref(slug: string, use: { type: string; id: string }): string {
   return use.type === "post"
     ? `/p/${encodeURIComponent(slug)}/e/${encodeURIComponent(use.id)}`
@@ -117,7 +116,7 @@ export async function mediaBytes(
   return bytes.byteLength > limit ? null : { bytes, type: bareType(detail.contentType) };
 }
 
-/** A site that is not connected or cannot be reached, said plainly instead of a crash. null for anything else. */
+/** As siteUnreachable, and a site with no media library (501) says so. */
 export function unreachable(error: unknown): string | null {
   if (error instanceof SiteApiError && error.status === 501)
     return "This site has no media library yet.";
@@ -135,7 +134,6 @@ export async function runIntent(
   return answer(() => runMediaIntent(mediaSource(env, project, viewer), form), unreachable);
 }
 
-/** The most files one delete call takes; the kit's own per-request count holds too. */
 export const DELETE_LIMIT = 25;
 
 /**
@@ -193,7 +191,6 @@ export async function importMediaFile(
   );
 }
 
-/** The most files one list call returns, each with the pages that use it. */
 export const MEDIA_PAGE = 25;
 
 /** The lenses a list can open on (site-api's MEDIA_LENSES); the default is the files with no alt text. */

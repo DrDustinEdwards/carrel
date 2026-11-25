@@ -136,7 +136,6 @@ export async function checkLegalWrite(
   return prepared.ok ? { ok: true, source: prepared.source } : prepared;
 }
 
-/** Whether a page's body still matches what its shared sections now say, for the Legal tab. */
 export async function sectionsCurrent(db: D1Database, source: string): Promise<boolean> {
   const body = splitSource(source).body;
   return expandShared(body, await listSections(db), valuesOf(source)).text === body;

@@ -17,7 +17,6 @@ export const legalItemId = (type: LegalType) => `page.${type}`;
 const VARIABLES = ["site_name", "operator_name", "contact", "jurisdiction", "data_held"] as const;
 type Variable = (typeof VARIABLES)[number];
 
-/** Reads the frontmatter's `legal_type`, or null when the source is not a legal page. */
 export function legalTypeOf(source: string): LegalType | null {
   const { front } = splitSource(source);
   if (front === null) return null;
@@ -25,7 +24,6 @@ export function legalTypeOf(source: string): LegalType | null {
   return LEGAL_TYPES.find((t) => t === match?.[1]) ?? null;
 }
 
-/** The `path:` line of a source's frontmatter, or null. */
 export function pathOf(source: string): string | null {
   const { front } = splitSource(source);
   const match = front === null ? null : /^path:\s*["']?([^"'\r\n]*?)["']?\s*$/m.exec(front);
@@ -48,7 +46,6 @@ export type Expansion = {
   missingFields: string[];
 };
 
-/** The keys of the shared sections a body names, in order. */
 export function sectionsUsed(body: string): string[] {
   return [...body.matchAll(BLOCK)].map((m) => m[1]!);
 }
@@ -83,7 +80,6 @@ export function expandShared(
   return { text, unknownSections, missingFields };
 }
 
-/** The page's own facts, from its frontmatter, for the sections that name them. */
 export function valuesOf(source: string): Partial<Record<Variable, string>> {
   const front = splitSource(source).front;
   return Object.fromEntries(

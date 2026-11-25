@@ -11,8 +11,7 @@
 //   CARREL_MANUSCRIPTS_FOLDER_ID   optional: the Drive folder shared with the service account (the id in its URL)
 //   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   read by wrangler itself
 //
-// Every step stops the run on a nonzero exit: render, check the ids against the names in the account, build, migrations apply,
-// migrations list (nothing may be pending), wrangler deploy. The new code goes live only after the migrations are in.
+// Every step stops the run on a nonzero exit; the new code goes live only after the migrations are in.
 //
 // It overwrites wrangler.jsonc only when that file is absent or still the placeholder copy, so a local run can never replace
 // a real config. It also turns on the two custom-domain routes, which the example keeps commented out.
