@@ -63,23 +63,7 @@ await context.addCookies([
   { name: "harness-viewer", value: "dustin%40harness.invalid", url: origin },
 ]);
 const page = await context.newPage();
-const errors = [];
-page.on(
-  "console",
-  (m) => m.type() === "error" && !/Failed to load resource/.test(m.text()) && errors.push(m.text()),
-);
-page.on("pageerror", (e) => errors.push(String(e)));
-const log = [];
-async function step(name, fn) {
-  try {
-    await fn();
-    log.push(`ok   ${name}`);
-  } catch (e) {
-    log.push(`FAIL ${name}: ${e.message.split("\n")[0]}`);
-    await page.screenshot({ path: "fail.png", fullPage: true });
-    throw e;
-  }
-}
+// errors, log and step(): the helpers in devkit docs/verify.md
 try {
   await step("open Home as the Owner", async () => {
     const r = await page.goto(origin);
@@ -111,9 +95,6 @@ mode (`page.setViewportSize`, `page.emulateMedia({ colorScheme: "dark" })`). A w
 the harness accepts changes only its in-memory fakes; `persistState` is off, so a
 restart gives the seed back.
 
-If launch fails with "Executable doesn't exist" (the repo's Playwright build does not
-match the container's Chromium), set `PW_CHROMIUM=/opt/pw-browsers/chromium`. Do not run `playwright install`.
-
 ## 3. Run the checks that cover the area
 
 Stop the step 1 server first: the checks start their own harness on 5199 and refuse
@@ -136,25 +117,10 @@ session may share the machine.
 CI runs the rest (`npm test`, `check:conformance`, `check:plants`, `check:bloat`); do
 not run the whole set here.
 
-## Rules
+## Rules and report
 
-- A failed step is a finding about the change. Fix the code, then run the same script
-  again. Never add a sleep, a retry or a looser selector to make it pass.
-- If a step fails sometimes, find out why before going on; a flaky check teaches the
-  next thread to re-run instead of fix.
-- Never edit an existing test to make it agree with new behavior unless the change is
-  meant to alter that behavior, and say so in the pull request.
-- Leave nothing behind: stop the server, and keep the scripts and screenshots in the
-  scratchpad. Nothing from this skill is committed.
+Follow the Rules and the report in [devkit's docs/verify.md](https://github.com/DrDustinEdwards/devkit/blob/main/docs/verify.md). For this repo:
 
-## The report
-
-Put this in the reply and the pull request body:
-
-- First line: verified, partly verified (and what was not), or failed.
-- Each step's ok or FAIL line, verbatim, and the console errors line.
-- The end-state screenshot, attached (Dustin cannot open a scratchpad path).
-- The summary line of each check you ran.
 - Anything the harness cannot show, named as not verified: the real Cloudflare Access
   sign-in and the AI door's OAuth, live D1, R2 and Durable Object rooms under real
   load, the real site through site-api, GitHub and Google. The live check after a
