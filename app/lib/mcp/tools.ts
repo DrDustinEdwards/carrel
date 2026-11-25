@@ -49,7 +49,12 @@ import {
   type ReviewAction,
 } from "~/lib/google/docs.server";
 import { GoogleNotConnected } from "~/lib/google/service-account.server";
-import { changeInFile, commentOnFile, fileKind, readSheetFile } from "~/lib/google/slides-sheets.server";
+import {
+  changeInFile,
+  commentOnFile,
+  fileKind,
+  readSheetFile,
+} from "~/lib/google/slides-sheets.server";
 import { keyMomentProblems } from "~/lib/transcript";
 import { readMentions, runIntent as runMentionsIntent } from "~/lib/mentions.server";
 import {
