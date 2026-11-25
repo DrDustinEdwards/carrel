@@ -1,6 +1,4 @@
-// The editor and AI draft screens' behavior behind the UX pass: "Use as my draft" writes the
-// person's working copy in Carrel and nothing to the site, the AI draft's rendered view is private
-// to its owner, and the save line says a draft on the site is not live.
+// The AI draft's rendered view: rendered through the site for its owner, never shown to anyone else.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

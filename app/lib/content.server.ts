@@ -19,7 +19,6 @@ import { siteClient, siteConnection } from "~/lib/sites.server";
 import { recordPublication, summaryFrom } from "~/lib/social/queue.server";
 import { logEvent } from "@dustinedwards/site-runtime/log";
 
-/** The rows of one person's working copy of one item. */
 export const draftOf = (projectId: number, itemId: string, personId: number) =>
   and(eq(drafts.projectId, projectId), eq(drafts.itemId, itemId), eq(drafts.personId, personId));
 
@@ -283,7 +282,7 @@ export async function writeToSite(
   if ("source" in request && request.source !== undefined)
     request = { ...request, source: legal.source };
 
-  // An image with no alt text blocks the text going out (Dustin approved): a publish, a
+  // An image with no alt text blocks the text going out: a publish, a
   // schedule, or a save to a post the public already sees. The refusal names each image. So do the two
   // broken search fields (a share image with no alt text, a canonical that is not a full https address)
   // and a feature image with no alt text that is not marked decorative.
@@ -445,7 +444,6 @@ const OWN_DRAFTS = (project: ProjectRole, viewer: Viewer, itemId: string, kind: 
 
 export type ItemDraftKind = (typeof itemDrafts.$inferSelect)["kind"];
 
-/** The drafts a person's own AI sessions saved of one kind for this item, newest first. Private to the person. */
 export async function listItemDrafts(
   db: D1Database,
   project: ProjectRole,

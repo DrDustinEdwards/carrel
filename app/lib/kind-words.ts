@@ -16,5 +16,4 @@ export function kindPlural(kind: string | null | undefined): string {
   return `${word}s`;
 }
 
-/** The kind inside a sentence: "this recipe". */
 export const kindNoun = (kind: string | null | undefined) => (kind || "post").toLowerCase();

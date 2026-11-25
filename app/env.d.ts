@@ -6,17 +6,11 @@ type SiteSecrets = import("@dustinedwards/site-runtime/worker").SiteSecrets;
 interface CarrelSecrets extends SiteSecrets {
   /** dustinedwards.info's Carrel key, the same value the site holds. Absent until the site is connected. */
   SITE_DUSTINEDWARDS_KEY?: string;
-  /** germomics's Carrel key, the same value the site holds as CARREL_SITE_KEY. */
   SITE_GERMOMICS_KEY?: string;
-  /** Foxhound's Carrel key, the same value the site holds as CARREL_SITE_KEY. */
   SITE_FOXHOUND_KEY?: string;
-  /** Foxing's Carrel key, the same value the site holds as CARREL_SITE_KEY. */
   SITE_FOXING_KEY?: string;
-  /** txasm's Carrel key, the same value the site holds as CARREL_SITE_KEY. */
   SITE_TXASM_KEY?: string;
-  /** julieedwards.info's Carrel key, the same value the site holds as CARREL_SITE_KEY. */
   SITE_JULIEEDWARDS_KEY?: string;
-  /** BioScience Writers' Carrel key, the same value the site holds as CARREL_SITE_KEY. */
   SITE_BSW_KEY?: string;
   /** The GitHub App `carrel-writer`, installed on DrDustinEdwards/writing only; the key is the .pem as downloaded. Absent until it exists: books then open read-only from the index. */
   NOVELS_APP_ID?: string;

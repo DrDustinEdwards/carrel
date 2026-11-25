@@ -285,7 +285,6 @@ export type TickResult = {
 
 export type Account = typeof socialAccounts.$inferSelect;
 
-/** The voice excerpts of the project a post announces, for its lint. */
 async function excerptsFor(db: D1Database, eventId: number): Promise<string[]> {
   const event = await drizzle(db)
     .select({ projectId: socialEvents.projectId })
@@ -295,7 +294,6 @@ async function excerptsFor(db: D1Database, eventId: number): Promise<string[]> {
   return event ? packExcerpts(db, event.projectId) : [];
 }
 
-/** Lints a drafted post and routes it by the account's switch. */
 async function route(db: D1Database, post: typeof socialPosts.$inferSelect, account: Account) {
   const findings = lintPost(post.text, account.platform, await excerptsFor(db, post.eventId));
   const status = findings.length ? "held" : account.mode === "auto" ? "queued" : "awaiting";
@@ -669,7 +667,6 @@ export async function decidePost(
   }
 }
 
-/** One post's columns changed. */
 export const updatePost = (
   db: D1Database,
   id: number,
@@ -701,7 +698,6 @@ export async function socialOverview(db: D1Database, viewer: Viewer) {
   return { accounts, posts, runs };
 }
 
-/** Template posts that went out and Dustin has not yet marked seen: the health check's alert. */
 export async function unseenTemplates(db: D1Database) {
   return drizzle(db)
     .select({ id: socialPosts.id, accountKey: socialAccounts.key, text: socialPosts.text })

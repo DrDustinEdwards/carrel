@@ -27,7 +27,6 @@ export function roomViewer(
   };
 }
 
-/** The name of the room for one file: its project and the item's id (a post's id, or a book file's path). */
 export function roomName(projectId: number, itemId: string): string {
   return `${projectId}/${itemId}`;
 }

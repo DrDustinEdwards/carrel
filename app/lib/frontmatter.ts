@@ -7,10 +7,8 @@ import type { FieldSpec } from "capsomer/react/frontmatter-fields";
 /** The one word the banner field holds; turning it off removes the key. */
 export const BANNER_WORD = "Draft";
 
-/** Which items show a field: a post, a legal page, or both. */
 export type FieldOn = "all" | "post" | "legal";
 
-/** The fields the editor shows, in order, with the help the editor gives each. */
 export const FIELDS: readonly (FieldSpec & { on: FieldOn })[] = [
   { key: "title", label: "Title", box: "line", on: "all" },
   { key: "description", label: "Description", box: "text", on: "all" },

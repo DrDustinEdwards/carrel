@@ -3,7 +3,6 @@
 
 export type Role = "reader" | "editor" | "author" | "owner";
 
-/** The roles the Owner grants on a project, lowest first. The Owner's own role is never granted. */
 const MEMBER_ROLES = ["reader", "editor", "author"] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
 

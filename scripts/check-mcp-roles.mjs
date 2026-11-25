@@ -8,8 +8,6 @@
 // Deterministic, not judgment: comments are stripped, then each file is searched for the shapes a
 // role decision takes. A hit exits 1 and names the file, line and shape. Finding no files at all
 // exits 2, because a check that looked at nothing has not passed.
-//
-// Run: npm run check:mcp-roles
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";

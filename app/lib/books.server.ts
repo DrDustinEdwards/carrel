@@ -53,7 +53,6 @@ function requireCan(project: BookProject, action: Action) {
   if (!can(project.role, action)) forbid();
 }
 
-/** As requireSiteProject: a book that does not exist, is not shared, or is not a book all answer 404. */
 export async function requireBookProject(
   db: D1Database,
   viewer: Viewer,
@@ -270,7 +269,6 @@ async function recordFindings(db: D1Database, projectId: number, byPath: Map<str
   }
 }
 
-/** Runs the checks over the given files (every scene when `paths` is "all") and records what they find. */
 export async function recheck(db: D1Database, projectId: number, paths: string[] | "all") {
   if (paths !== "all" && paths.length === 0) return new Map<string, Finding[]>();
   const context = await bookContext(db, projectId);
@@ -577,7 +575,6 @@ export async function saveBookFile(
   };
 }
 
-/** The checks on text that has not been saved: nothing is recorded, nothing is committed. */
 export async function checkDraft(
   db: D1Database,
   project: BookProject,
@@ -634,7 +631,6 @@ export type Assembled = {
   chapters: { slug: string; title: string; scenes: { path: string; body: string }[] }[];
 };
 
-/** The book in reading order, from the index (refresh first to export what Git holds). */
 export async function assembleBook(
   db: D1Database,
   project: BookProject,
@@ -703,7 +699,6 @@ export async function authorshipRecord(
   return rows.map(({ name, email, ...r }) => ({ ...r, who: name || email }));
 }
 
-/** The record as a readable Markdown report: totals per person or AI client, then every change. */
 export function authorshipReport(
   project: BookProject,
   rows: AuthorshipRow[],
@@ -742,7 +737,6 @@ export function authorshipReport(
   return lines.join("\n");
 }
 
-/** The Carrel drafts people are working on in this book, so the book view can show them before Git has them. */
 export async function draftPaths(
   db: D1Database,
   project: BookProject,
@@ -789,7 +783,6 @@ export async function saveBookAiDraft(
   return { id: row!.id, baseVersion: base?.sha ?? null };
 }
 
-/** What every tab of a book's page shows in its head: the name, Git's state and whether export is open. */
 export async function bookHead(env: Env, project: BookProject) {
   const canPublish = can(project.role, "publish");
   const gate = canPublish ? await exportGate(env.DB, project) : null;

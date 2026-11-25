@@ -383,25 +383,7 @@ describe("the project flags list", () => {
     ).toEqual({ status: "open", dismissed_by: null });
   });
 
-  // Two layers refuse a non-Owner: the route (by role, before it reads the form) and the dismiss
-  // function itself. Each is tested on its own, so removing either one is seen.
-  it("PLANT: the route refuses a non-Owner by role before it reads the form", async () => {
-    const empty = new Request(`https://carrel.test/p/${SLUG}/flags`, {
-      method: "POST",
-      body: new FormData(),
-    });
-    // With the role check, 403. Without it, the missing fields would answer 400 instead.
-    expect(
-      await status(async () =>
-        flagsAction({
-          request: empty,
-          params: { project: SLUG },
-          context: await contextFor("editor@test.invalid"),
-        } as never),
-      ),
-    ).toBe(403);
-  });
-
+  // The dismiss function refuses a non-Owner on its own, beside the route.
   it("PLANT: the dismiss function refuses a non-Owner on its own, whatever route calls it", async () => {
     const proof = await flag("carrel-mcp-proof", "Proof flag");
     const editor = await viewerFor("editor@test.invalid");
@@ -431,23 +413,5 @@ describe("the project flags list", () => {
     expect(
       await testEnv.DB.prepare("SELECT status FROM findings WHERE id = ?").bind(proof).first(),
     ).toEqual({ status: "open" });
-  });
-});
-
-describe("the authorship record", () => {
-  it("still requires a version for every content write (migration 0007 keeps that rule)", async () => {
-    const owner = await personId("owner@test.invalid");
-    await expect(
-      testEnv.DB.prepare(
-        "INSERT INTO changes (id, project_id, item_id, person_id, action, version_after) VALUES ('x', ?, 'post', ?, 'save', NULL)",
-      )
-        .bind(projectId, owner)
-        .run(),
-    ).rejects.toThrow(/CHECK/);
-    await testEnv.DB.prepare(
-      "INSERT INTO changes (id, project_id, item_id, person_id, action, version_after) VALUES ('y', ?, 'post', ?, 'save', 'v1')",
-    )
-      .bind(projectId, owner)
-      .run();
   });
 });

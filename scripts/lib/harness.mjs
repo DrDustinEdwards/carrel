@@ -1,6 +1,5 @@
 // Starts the screen harness (vite dev over test/harness) and opens screens in headless Chromium.
 // Shared by check-a11y.mjs (the accessibility scan) and screens.mjs (screenshots for a human to look at).
-// Nothing here reaches the network or needs Cloudflare credentials.
 
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";

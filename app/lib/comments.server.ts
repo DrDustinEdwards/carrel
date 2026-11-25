@@ -1,4 +1,4 @@
-// The comment threads on a file (ruling build step 5), read for a page and by the file's room, which
+// The comment threads on a file, read for a page and by the file's room, which
 // writes them (workers/doc-room.ts). A deleted comment is marked, never removed. And the names of the
 // people who may be in a project's rooms, for the suggestions a page lists by person.
 

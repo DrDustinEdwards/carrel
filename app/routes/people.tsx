@@ -93,7 +93,6 @@ export async function action({ request, context }: Route.ActionArgs): Promise<Ac
         );
         return { ok: true, intent, access: await syncAccess(env, change) };
       }
-      // A row's Save with no script: every project's role for one person, set one by one.
       case "roles": {
         const removed: string[] = [];
         for (const [key, value] of form) {

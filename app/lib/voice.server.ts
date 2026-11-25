@@ -34,7 +34,6 @@ export const PACK_POSTS = 40;
 /** Excerpts handed to a session: the research's few-shot range, and short enough to read in full. */
 const PACK_EXCERPTS = 6;
 
-/** Where the excerpts came from: the author's own writing pasted on the Voice page, or the published posts. */
 type VoiceSource = "own" | "posts";
 
 export type VoicePack = {

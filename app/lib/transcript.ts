@@ -27,7 +27,6 @@ const words = (s: string) =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
-/** The fewest words a quote needs to point at one place. */
 const MIN_WORDS = 3;
 
 /**
@@ -106,7 +105,6 @@ export function keyMomentProblems(source: string, vtt: string): string[] {
   return problems;
 }
 
-/** One cue as written: its timing line exactly, and its text lines joined. */
 type WrittenCue = { timing: string; start: number; text: string };
 
 const TIMING = /^((\d{2,}):)?(\d{2}):(\d{2})\.(\d{3}) --> \S+/;

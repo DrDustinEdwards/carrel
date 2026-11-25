@@ -59,7 +59,6 @@ function run(block: string, strict: boolean): Run {
   return { refused: null, warnings, summary: summary ? decode(summary) : null };
 }
 
-/** A message without the `:::chart "type": ` Prelum puts before it. */
 const unprefixed = (message: string) => message.replace(/^:::chart "[^"]*": /, "");
 
 const decode = (text: string) =>

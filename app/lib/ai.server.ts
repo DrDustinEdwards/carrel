@@ -1,6 +1,5 @@
-// What AI sessions may do beyond what the buttons do, and the rules around it (design decision 2 and
-// section 5, "MCP tools"). The writes still go through content.server.ts, the same functions as the
-// buttons, so every role rule applies unchanged; this adds the AI-only rules on top:
+// What AI sessions may do beyond what the buttons do, and the rules around it. The writes
+// still go through content.server.ts, the same functions as the buttons, so every role rule applies unchanged; this adds the AI-only rules on top:
 //
 // - an AI session is an AI client acting for a person, known by the door it came through;
 // - a reviewer (another company's agent) reads and flags, and never writes text or publishes;
@@ -39,7 +38,6 @@ import { errorMessage, logEvent } from "@dustinedwards/site-runtime/log";
  */
 export type AiSession = { viewer: Viewer; client: string };
 
-/** A refusal an AI tool reports back to the client as its answer, never a crash. */
 export class AiRefusal extends Error {
   constructor(message: string) {
     super(message);
@@ -475,7 +473,6 @@ export async function aiPublishTranscript(
   return { changeId: published.changeId, emailed };
 }
 
-/** The last AI publish of an item, for the editor to show who published it. */
 export async function lastAiPublication(db: D1Database, project: SiteProject, itemId: string) {
   return (
     (await drizzle(db)

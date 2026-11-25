@@ -32,8 +32,8 @@ import { fakeNovels, githubStyleKey } from "../novels";
 import { fakeSite, kindedAdapter, SITE_KEY, SITE_ORIGIN } from "../site";
 
 export const HARNESS_OWNER = "dustin@harness.invalid";
-export const HARNESS_EDITOR = "rosa@harness.invalid";
-export const HARNESS_READER = "sam@harness.invalid";
+const HARNESS_EDITOR = "rosa@harness.invalid";
+const HARNESS_READER = "sam@harness.invalid";
 
 const SITE_SLUG = "dustinedwards-info";
 const BOOK = "paluxy-portal";
@@ -64,7 +64,7 @@ async function migrate(db: D1Database) {
   }
 }
 
-/** A post as dustinedwards.info writes one, with site-api v0.17.0's post fields (the excerpt and the authors, as JSON) where it has them. */
+/** A post as dustinedwards.info writes one, with the site's post fields (the excerpt and the authors, as JSON) where it has them. */
 function post(
   title: string,
   slug: string,
@@ -179,9 +179,9 @@ async function build(base: Env): Promise<World> {
   const db = base.DB;
   await migrate(db);
 
-  // The site renders all six search fields (site-api v0.17.0), so the editor shows every box.
+  // The site renders all six search fields, so the editor shows every box.
   const adapter = kindedAdapter(memoryAdapter({ notFound: NOT_FOUND }));
-  // It renders every post field too (v0.17.0, v0.22.0), so the editor shows the post fields box whole.
+  // It renders every post field too, so the editor shows the post fields box whole.
   adapter.content = { ...adapter.content, searchFields: SEARCH_FIELDS, postFields: POST_FIELDS };
   const [site, gh, saKey, appKey] = [
     fakeSite(adapter),
@@ -289,7 +289,6 @@ async function build(base: Env): Promise<World> {
   } as Env;
   clearTokenCache();
 
-  // People and projects.
   const person = async (email: string, name: string, owner = 0) =>
     (await db
       .prepare("INSERT INTO people (email, name, is_owner) VALUES (?, ?, ?) RETURNING id")
@@ -933,7 +932,6 @@ async function build(base: Env): Promise<World> {
     baseVersion: null,
   });
 
-  // Manuscripts, Google, social.
   await refreshManuscripts(env, google.fetch);
   // What AIs did in a Doc through Carrel (the Docs activity page).
   for (const [client, model, mode, reason, ids, labeled] of [
@@ -1022,7 +1020,7 @@ async function build(base: Env): Promise<World> {
       )
       .run();
   }
-  // A transcript fix beside an episode's machine-made transcript (site-api v0.36.0): the transcript draft page.
+  // A transcript fix beside an episode's machine-made transcript: the transcript draft page.
   site.adapter.transcripts.set(
     "alerts-wait",
     [
