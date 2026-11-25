@@ -53,7 +53,7 @@ export type AccountInput = {
   projectId: number | null;
 };
 
-export async function createAccount(db: D1Database, viewer: Viewer, input: AccountInput) {
+export async function createSocialAccount(db: D1Database, viewer: Viewer, input: AccountInput) {
   requireOwner(viewer);
   if (!isSlug(input.key))
     return {

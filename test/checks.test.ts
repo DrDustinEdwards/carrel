@@ -7,7 +7,7 @@ import { chartBlock } from "@drdustinedwards/site-helpers/source";
 import { checkCharts } from "~/lib/chart-check.client";
 import {
   checkContinuity,
-  checkFile,
+  checkNovelFile,
   checkRuleFile,
   checkTimeline,
   checkVoice,
@@ -247,14 +247,14 @@ describe("PLANT: the voice scan", () => {
   });
 });
 
-describe("the header and checkFile", () => {
+describe("the header and checkNovelFile", () => {
   const context: BookContext = { bible: BIBLE, scenes: [], examples: [] };
 
   it("PLANT: a scene with no header is flagged, and so is a missing field", () => {
     expect(
-      checkFile("chapters/01-a/01-b.md", "Just prose.\n", context).map((f) => f.check),
+      checkNovelFile("chapters/01-a/01-b.md", "Just prose.\n", context).map((f) => f.check),
     ).toContain("header");
-    const found = checkFile(
+    const found = checkNovelFile(
       "chapters/01-a/01-b.md",
       scene({ ...FULL, location: "", outcome: "" }),
       context,

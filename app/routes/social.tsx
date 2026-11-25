@@ -23,7 +23,12 @@ import { TabsNav } from "capsomer/react/tabs";
 import { getEnv, getViewer } from "~/lib/context";
 import { visibleProjects } from "~/lib/people.server";
 import { routineConfig } from "~/lib/social/routine.server";
-import { createAccount, decidePost, setSwitches, socialOverview } from "~/lib/social/queue.server";
+import {
+  createSocialAccount,
+  decidePost,
+  setSwitches,
+  socialOverview,
+} from "~/lib/social/queue.server";
 import { xCostMills } from "~/lib/social/platforms.server";
 import { readForm } from "~/lib/form.server";
 
@@ -73,7 +78,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   switch (intent) {
     case "add-account": {
       const project = Number(form.get("projectId"));
-      return createAccount(env.DB, viewer, {
+      return createSocialAccount(env.DB, viewer, {
         key: String(form.get("key") ?? "").trim(),
         name: String(form.get("name") ?? ""),
         platform: form.get("platform") === "x" ? "x" : "bluesky",

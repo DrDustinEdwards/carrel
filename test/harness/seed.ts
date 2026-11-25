@@ -20,7 +20,7 @@ import { findViewer } from "~/lib/people.server";
 import { requireSiteProject } from "~/lib/projects.server";
 import { clearTokenCache, novelsRepo } from "~/lib/novels/repo.server";
 import {
-  createAccount,
+  createSocialAccount,
   draftSocialPost,
   recordPublication,
   setSwitches,
@@ -961,7 +961,7 @@ async function build(base: Env): Promise<World> {
     google.fetch,
   );
 
-  await createAccount(db, owner, {
+  await createSocialAccount(db, owner, {
     key: "example-bluesky",
     name: "Example Co",
     platform: "bluesky",
@@ -969,7 +969,7 @@ async function build(base: Env): Promise<World> {
     handle: "example.bsky.social",
     projectId: siteId,
   });
-  await createAccount(db, owner, {
+  await createSocialAccount(db, owner, {
     key: "dustin-bluesky",
     name: "Dustin Edwards",
     platform: "bluesky",

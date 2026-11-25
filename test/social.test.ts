@@ -19,7 +19,7 @@ import {
 } from "~/lib/social/platforms.server";
 import {
   BATCH_DELAY_MS,
-  createAccount,
+  createSocialAccount,
   decidePost,
   draftSocialPost,
   processSocial,
@@ -117,7 +117,7 @@ async function account(
   } = {},
 ) {
   const o = await owner();
-  const created = await createAccount(testEnv.DB, o, {
+  const created = await createSocialAccount(testEnv.DB, o, {
     key,
     name: key,
     platform: opts.platform ?? "bluesky",
@@ -532,7 +532,7 @@ describe("switches and caps", () => {
 
   it("PLANT: the personal account is never automatic", async () => {
     const o = await owner();
-    await createAccount(testEnv.DB, o, {
+    await createSocialAccount(testEnv.DB, o, {
       key: "dustin-x",
       name: "Dustin",
       platform: "x",
@@ -582,7 +582,7 @@ describe("switches and caps", () => {
 
   it("holds an X post that would pass the month's budget, and signs the ones within it", async () => {
     const o = await owner();
-    await createAccount(testEnv.DB, o, {
+    await createSocialAccount(testEnv.DB, o, {
       key: "dustin-x",
       name: "Dustin",
       platform: "x",

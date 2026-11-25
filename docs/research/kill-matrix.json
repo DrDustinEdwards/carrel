@@ -2458,7 +2458,7 @@
  },
  {
   "file": "test/checks.test.ts",
-  "name": "the header and checkFile PLANT: a scene with no header is flagged, and so is a missing field",
+  "name": "the header and checkNovelFile PLANT: a scene with no header is flagged, and so is a missing field",
   "kills": 166,
   "unique": 11,
   "covered": 401,
@@ -2467,7 +2467,7 @@
  },
  {
   "file": "test/checks.test.ts",
-  "name": "the header and checkFile CLEAN TWIN: a complete, clean scene has no findings",
+  "name": "the header and checkNovelFile CLEAN TWIN: a complete, clean scene has no findings",
   "kills": 139,
   "unique": 0,
   "covered": 369,
@@ -2476,7 +2476,7 @@
  },
  {
   "file": "test/checks.test.ts",
-  "name": "the header and checkFile does not check a bible entry or an outline as prose",
+  "name": "the header and checkNovelFile does not check a bible entry or an outline as prose",
   "kills": 22,
   "unique": 0,
   "covered": 183,
@@ -2485,7 +2485,7 @@
  },
  {
   "file": "test/checks.test.ts",
-  "name": "the header and checkFile gives repeats of the same finding their own fingerprints",
+  "name": "the header and checkNovelFile gives repeats of the same finding their own fingerprints",
   "kills": 36,
   "unique": 0,
   "covered": 198,

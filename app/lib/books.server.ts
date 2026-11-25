@@ -21,7 +21,7 @@ import { AiRefusal, type AiSession } from "~/lib/ai.server";
 import type { Viewer } from "~/lib/people.server";
 import { projectBySlug } from "~/lib/projects.server";
 import { can, type Action, type Role } from "~/lib/roles";
-import { checkFile, fingerprints, type BookContext, type Finding } from "~/lib/novels/checks";
+import { checkNovelFile, fingerprints, type BookContext, type Finding } from "~/lib/novels/checks";
 import { parseFile } from "~/lib/novels/frontmatter";
 import {
   describe,
@@ -283,7 +283,7 @@ export async function recheck(db: D1Database, projectId: number, paths: string[]
     )
     .all();
   const byPath = new Map<string, Finding[]>();
-  for (const row of rows) byPath.set(row.path, checkFile(row.path, row.source, context));
+  for (const row of rows) byPath.set(row.path, checkNovelFile(row.path, row.source, context));
   await recordFindings(db, projectId, byPath);
   return byPath;
 }
@@ -584,7 +584,7 @@ export async function checkDraft(
   requireCan(project, "read");
   if (!isBookPath(path)) throw new Response("Not found", { status: 404 });
   const context = await bookContext(db, project.id);
-  return checkFile(path, source, context);
+  return checkNovelFile(path, source, context);
 }
 
 /** What scripts/import-docx.mjs writes where it could not convert something. */
