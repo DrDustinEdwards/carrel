@@ -9,7 +9,7 @@ import { Field, SlugField } from "capsomer/react/field";
 import { Panel } from "capsomer/react/panel";
 import { PageHead } from "capsomer/react/page-head";
 
-import { createBook } from "~/lib/books.server";
+import { createBook } from "~/lib/book-project.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { readForm } from "~/lib/form.server";
 

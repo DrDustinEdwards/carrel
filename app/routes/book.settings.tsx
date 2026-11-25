@@ -1,11 +1,12 @@
 // A book's Settings tab: the scene status list the outliner and the corkboard use, sharing the book
 // with a coauthor, the authorship record, and where the book lives in Git.
 
-import { Form, useNavigation } from "react-router";
+import { Form, redirect, useFetcher, useNavigation } from "react-router";
 import { Link } from "capsomer/react/link";
 import { Alert, Banner } from "capsomer/react/banner";
 import { Button } from "capsomer/react/button";
 import { Disclosure } from "capsomer/react/disclosure";
+import { ConfirmDialog, useConfirmAction } from "capsomer/react/confirm-dialog";
 import { Panel } from "capsomer/react/panel";
 
 import { BookHead } from "~/components/book-head";
@@ -13,6 +14,7 @@ import { SharePanel } from "~/components/share-panel";
 import { LabelColorList } from "capsomer/react/label-color-list";
 import { LabelColorEditor } from "capsomer/react/label-color-editor";
 
+import { deleteBook } from "~/lib/book-project.server";
 import { bookHead, bookRepo, requireBookProject } from "~/lib/books.server";
 import { getEnv, getViewer } from "~/lib/context";
 import { shareFromForm } from "~/lib/people-admin.server";
@@ -20,6 +22,7 @@ import { can } from "~/lib/roles";
 import { saveStatusList, statusList } from "~/lib/writing.server";
 import { rowsFromForm } from "capsomer/behavior/label-color-list";
 import { readForm } from "~/lib/form.server";
+import { confirmationRequired, confirmationSatisfied } from "@dustinedwards/site-runtime/confirm";
 
 import type { Route } from "./+types/book.settings";
 
@@ -35,6 +38,7 @@ export async function loader({ params, context }: Route.LoaderArgs) {
     head,
     canEdit: can(project.role, "edit"),
     canShare: can(project.role, "manage"),
+    canDelete: getViewer(context).isOwner,
     connectionDetail: bookRepo(env).detail,
     labels: status.labels,
   };
@@ -49,6 +53,14 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     const project = await requireBookProject(env.DB, viewer, params.project, "read");
     return { share: await shareFromForm(env, viewer, project.id, form) };
   }
+  if (intent === "delete") {
+    if (!confirmationSatisfied(form)) throw confirmationRequired();
+    const project = await requireBookProject(env.DB, viewer, params.project, "manage");
+    const { repo, detail } = bookRepo(env);
+    if (!repo) return { deleted: false, error: detail };
+    const done = await deleteBook(env.DB, repo, viewer, project);
+    return done.ok ? redirect("/books") : { deleted: false, error: done.error };
+  }
   if (intent !== "labels") throw new Response("Bad request", { status: 400 });
   const project = await requireBookProject(env.DB, viewer, params.project, "edit");
   const saved = await saveStatusList(
@@ -60,11 +72,14 @@ export async function action({ params, request, context }: Route.ActionArgs) {
 }
 
 export default function BookSettings({ loaderData, actionData }: Route.ComponentProps) {
-  const { head, canEdit, canShare, connectionDetail, labels } = loaderData;
+  const { head, canEdit, canShare, canDelete, connectionDetail, labels } = loaderData;
+  const remover = useFetcher<typeof action>();
+  const removing = useConfirmAction<true>();
   const navigation = useNavigation();
   const saving = navigation.state !== "idle" && navigation.formData?.get("intent") === "labels";
   const base = `/b/${head.slug}`;
   const result = actionData && "saved" in actionData ? actionData : null;
+  const deleteError = remover.data && "deleted" in remover.data ? remover.data.error : null;
 
   return (
     <div className="cap-admin-page">
@@ -137,6 +152,31 @@ export default function BookSettings({ loaderData, actionData }: Route.Component
       </div>
 
       {canShare ? <SharePanel site={false} /> : null}
+
+      {canDelete ? (
+        <Panel title="Delete book">
+          <div className="cap-stack" data-gap="4">
+            {deleteError ? <Alert tone="crit">{deleteError}</Alert> : null}
+            <div className="cap-cluster" data-gap="3">
+              <Button variant="danger" onClick={(event) => removing.ask(true, event.currentTarget)}>
+                Delete book
+              </Button>
+            </div>
+          </div>
+          <ConfirmDialog
+            {...removing.props}
+            open={removing.subject !== null}
+            title={`Delete ${head.name}?`}
+            lead="Its folder is removed from the writing repository in one commit. Git keeps the history, so it can be brought back."
+            body={[]}
+            action="Delete book"
+            typeToConfirm={head.book}
+            perform={async () => {
+              await remover.submit({ intent: "delete", confirmed: "1" }, { method: "post" });
+            }}
+          />
+        </Panel>
+      ) : null}
     </div>
   );
 }
