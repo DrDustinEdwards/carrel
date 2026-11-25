@@ -62,7 +62,7 @@ export function previewResponse(html: string, siteOrigin: string): Response {
 export function previewFailure(message: string): Response {
   const escaped = message.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
   return new Response(
-    `<!doctype html><html><head><meta charset="utf-8"><title>Preview unavailable</title></head><body><p>${escaped}</p></body></html>`,
+    `<!doctype html><html><head><meta charset="utf-8"><title>Preview unavailable</title></head><body><h1>${escaped}</h1></body></html>`,
     {
       status: 200,
       headers: {

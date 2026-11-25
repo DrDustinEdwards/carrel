@@ -385,11 +385,6 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
         src="A disabled person is refused at both doors on their next request. Roles are kept."
         flush
       >
-        <p className="cap-muted app-note cap-panel-pad">
-          A Reader reads and comments. An Editor also writes and saves drafts. An Author on a site's
-          project also publishes, schedules and unpublishes the posts they wrote in Carrel. Only the
-          Owner publishes anyone else's post, sends anything else outside Carrel and manages people.
-        </p>
         <RoleGrid
           people={people.map(gridPerson)}
           scopes={projects.map((p) => ({ id: String(p.id), name: p.name }))}
