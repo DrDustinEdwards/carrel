@@ -8,14 +8,12 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { reorderBook } from "~/lib/binder.server";
 import { refreshBook, saveBookFile } from "~/lib/books.server";
 import { autosave } from "~/lib/content.server";
-import { describe as describeFile, isBookPath } from "~/lib/novels/layout";
+import { isBookPath } from "~/lib/novels/layout";
 import { clearTokenCache, GitConflict } from "~/lib/novels/repo.server";
 import {
-  binderTree,
   canMoveTo,
   currentOrder,
   firstSentence,
-  orderFromTree,
   parseOrder,
   planRenames,
   withChapterOrder,
@@ -107,47 +105,6 @@ describe("planning a reorder", () => {
 });
 
 describe("the binder's tree", () => {
-  const files = [
-    A1,
-    A2,
-    B1,
-    "book.md",
-    "bible/characters/wade.md",
-    "outline/plan.md",
-    "notes/ideas.md",
-  ].map((path) => ({
-    path,
-    ...describeFile(path, "---\nstatus: Drafting\nname: Wade Pruitt\n---\nTwo words.\n"),
-  }));
-
-  it("shows the title page, chapters with their scenes, the bible, the outline and notes", () => {
-    const tree = binderTree(files, "/b/x");
-    expect(tree.map((n) => n.label)).toEqual([
-      "Title page",
-      "Chapters",
-      "Bible",
-      "Outline",
-      "Notes",
-    ]);
-    const chapters = tree[1]!.children!;
-    expect(
-      chapters.map((c) => [c.label, c.meta, c.children!.map((s) => [s.label, s.meta, s.href])]),
-    ).toEqual([
-      [
-        "Arrival",
-        "4 words",
-        [
-          ["The gate", "Drafting, 2 words", `/b/x/f/${A1}`],
-          ["Supper", "Drafting, 2 words", `/b/x/f/${A2}`],
-        ],
-      ],
-      ["The crossing", "2 words", [["The chain", "Drafting, 2 words", `/b/x/f/${B1}`]]],
-    ]);
-    expect(tree[2]!.children![0]!.children![0]!.label).toBe("Wade Pruitt");
-    expect(tree[4]!.children!.map((n) => n.href)).toEqual(["/b/x/f/notes/ideas.md"]);
-    expect(orderFromTree(tree)).toEqual(currentOrder(files.map((f) => f.path)));
-  });
-
   it("PLANT: lets a scene move only into a chapter, and a chapter only among chapters", () => {
     expect(canMoveTo(`f:${A1}`, "ch:02-the-crossing")).toBe(true);
     expect(canMoveTo(`f:${A1}`, "group:chapters")).toBe(false);

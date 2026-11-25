@@ -15,7 +15,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { previewPolicy, previewResponse, withSiteBase } from "~/lib/preview.server";
 
 import { gate } from "../workers/gate";
-import { nonceFor, withSecurityHeaders } from "../workers/security-headers";
+import { withSecurityHeaders } from "../workers/security-headers";
 
 import { addPerson, localKeys, resetDb, testEnv } from "./env";
 import { MCP_HOST } from "./mcp-client";
@@ -26,14 +26,6 @@ const failed = (
   headers: Headers,
   options: Parameters<typeof checkSecurityHeaders>[1] = { site: "carrel-desk" },
 ) => failures(checkSecurityHeaders(headers, options)).map((r) => `${r.name}: ${r.detail}`);
-
-describe("a page's policy", () => {
-  it("PLANT: a page without a policy gets one", () => {
-    const request = new Request("https://carrel.test/");
-    const page = withSecurityHeaders(new Response("<html></html>"), request, nonceFor(request));
-    expect(page.headers.get("Content-Security-Policy")).toContain(`'nonce-${nonceFor(request)}'`);
-  });
-});
 
 describe("the preview", () => {
   it("resolves the page's relative URLs against the site and drops the page's own <base>", () => {

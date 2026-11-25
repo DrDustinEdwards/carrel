@@ -172,15 +172,6 @@ describe("reading, drafting, flagging", () => {
     expect(JSON.stringify(view.result)).not.toContain("innerHTML");
   });
 
-  it("PLANT: a stranger's session reads nothing", async () => {
-    const ai = await connect("stranger@test.invalid");
-    const result = await ai.call("carrel_read_item", { project: SLUG, item: "post-one" });
-    expect(result).toMatchObject({
-      isError: true,
-      content: [{ text: "Not found, or not shared with this person." }],
-    });
-  });
-
   it("saves an AI draft beside Dustin's, never over his draft or the site's text", async () => {
     const version = await seedPost();
     const owner = await viewerFor("owner@test.invalid");

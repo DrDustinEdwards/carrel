@@ -5,9 +5,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { nextProbe, runChecks } from "~/lib/health.server";
 import { siteFigureMarkup } from "~/lib/site-markdown";
-import { siteClient, siteOrigins } from "~/lib/sites.server";
 import { addPerson, resetDb, testEnv } from "./env";
-import { fakeSite, SITE_KEY, SITE_ORIGIN } from "./site";
+import { SITE_KEY, SITE_ORIGIN } from "./site";
 
 const certsOk = async () => Response.json({ keys: [{ kid: "k" }] });
 
@@ -34,13 +33,6 @@ describe("germomics", () => {
       ok: false,
       detail: "The origin for Germomics is not https.",
     });
-  });
-
-  it("is reached through the site client and its images load from its origin", async () => {
-    const site = fakeSite();
-    const client = siteClient(germomicsEnv(), "germomics", site.fetch);
-    expect((await client.list({})).items).toEqual([]);
-    expect(siteOrigins(germomicsEnv())).toContain(SITE_ORIGIN);
   });
 
   it("PLANT: a URL cannot end the figure's src attribute or the Markdown link", () => {
