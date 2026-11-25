@@ -328,7 +328,7 @@ export async function action({
     }
     case "send-to-doc":
       try {
-        return { intent, sent: await sendToDoc(env, project, viewer, path) };
+        return { intent, sent: await sendToDoc(env, project, { viewer, client: "Desk" }, path) };
       } catch (error) {
         return { intent, refused: refusalOf(error) };
       }

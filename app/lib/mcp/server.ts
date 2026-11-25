@@ -29,7 +29,8 @@ import { createMcpHandler } from "agents/mcp/server";
 
 import { APP_MIME_TYPE, POST_APP_HTML, POST_APP_TOOL, POST_APP_URI } from "./post-app";
 import { SCOPE_READ, SCOPE_WRITE } from "./scopes";
-import { type McpSession, outputSchemaOf, runTool, TOOLS, type ToolDeps } from "./tools";
+import type { McpSession, ToolDeps } from "./kit";
+import { outputSchemaOf, runTool, TOOLS } from "./tools";
 
 /** The AI door's one path, on its own hostname (door.ts). */
 export const MCP_ROUTE = "/mcp";
