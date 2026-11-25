@@ -1,17 +1,13 @@
 // check:plants. Proves each gate fails. A gate never seen failing has not been verified.
 //
-// For every gate the MCP rebuild relies on (typecheck, build, tests, check:mcp-roles,
-// check:conformance), one or more planted violations: the plant is applied to a file, confirmed to
-// have landed, the gate is run and must exit non-zero, and the file is restored byte for byte from a
-// snapshot taken before the plant. Snapshots, not git: a checkout would also throw away uncommitted
-// work, and would not restore an untracked file.
+// For every gate the MCP rebuild relies on (typecheck, build, tests, check:mcp-roles, check:conformance), one or more planted
+// violations: the plant is applied to a file, confirmed to have landed, the gate is run and must exit non-zero, and the file is
+// restored byte for byte from a snapshot taken before the plant (not git: a checkout would also throw away uncommitted work).
 //
-// The test plants each remove one guard the design names (Owner-only publish, publish refused on an
-// open flag, reviewers never write, the unknown-person refusal, the per-request
-// person check) and run the test files that should notice.
+// The test plants each remove one guard the design names (Owner-only publish, publish refused on an open flag, reviewers never
+// write, the unknown-person refusal, the per-request person check) and run the test files that should notice.
 //
-// Exit 0: every plant caught. Exit 1: a plant was missed or did not land. Exit 2: a gate was red
-// before anything was planted.
+// Exit 0: every plant caught. Exit 1: a plant was missed or did not land. Exit 2: a gate was red before anything was planted.
 //
 // Run: npm run check:plants (several minutes: it runs the conformance suite twice)
 
@@ -285,8 +281,7 @@ const PLANTS = [
 function run(gate, extra) {
   const [cmd, args] = gate === "tests" ? [NPX, ["vitest", "run", ...extra]] : GATES[gate];
   // A shell only for npm and npx, which are .cmd files on Windows. Node itself runs without one: under
-  // cmd.exe its path, C:\Program Files\..., splits at the space and exits 1 before any gate runs,
-  // which once read here as a caught plant.
+  // cmd.exe its path, C:\Program Files\..., splits at the space and exits 1 before any gate runs.
   const shell = process.platform === "win32" && (cmd === NPM || cmd === NPX);
   const result = spawnSync(cmd, args, {
     cwd: ROOT,
@@ -299,8 +294,7 @@ function run(gate, extra) {
 }
 
 // Every gate must be green on the unplanted tree first. A gate that is already red "catches" any
-// plant, so its result would mean nothing (measured here: typecheck was red on an unrelated error,
-// and its plant read as caught).
+// plant, so its result would mean nothing.
 for (const gate of new Set(PLANTS.map((p) => p.gate))) {
   const { code, out } = run(gate, MCP_TESTS);
   if (code !== 0) {

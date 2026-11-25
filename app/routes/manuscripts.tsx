@@ -1,4 +1,4 @@
-// Manuscripts (design section 5, "for finding research writing"): the Drive folder Dustin shares with
+// Manuscripts: the Drive folder Dustin shares with
 // the service account, listed from Carrel's metadata index and searched through Drive's own full-text
 // search. Open goes to Google Docs; Carrel never holds a manuscript's text. AIs change a Doc only through the Docs
 // tools (docs.server.ts), and here Dustin sets each Doc's lock against them and how he hears of a direct write.

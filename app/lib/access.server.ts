@@ -1,10 +1,8 @@
 // Identity comes only from the Access token Cloudflare puts on every request it lets through.
 //
-// NOT ctx.access. A Worker with Static Assets (the Vite plugin adds them for React Router) runs
-// behind a router Worker that does not pass ctx.access through, so this Worker verifies the
-// Cf-Access-Jwt-Assertion header itself. The check (signature by the team's keys, issuer, AUD,
-// RS256, 60 s skew) is @dustinedwards/site-runtime/access, the family's one copy; what is Carrel's
-// is reading a person's email from the verified claims.
+// Not ctx.access: a Worker with Static Assets runs behind a router Worker that does not pass it through, so this Worker
+// verifies the Cf-Access-Jwt-Assertion header itself, with site-runtime/access (the family's one copy). Carrel's part is
+// reading a person's email from the verified claims.
 
 import { verifyAccessRequest, type AccessRefusal } from "@dustinedwards/site-runtime/access";
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";

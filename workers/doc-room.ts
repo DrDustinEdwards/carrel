@@ -1,11 +1,9 @@
-// The room for one file: site-runtime's ./doc-room (the shared copy on y-partyserver, the suggest gate,
-// presence, the access recheck and the comment rules), given Carrel's parts: the document model, a
-// person's role on the project from D1, the comment threads in D1 `comments`, and the Markdown mirrored
-// into D1 `rooms`, which the nightly backup carries (ruling point 3, build step 10).
+// The room for one file: site-runtime's ./doc-room, given Carrel's parts: the document model, a person's role on the project
+// from D1, the comment threads in D1 `comments`, and the Markdown mirrored into D1 `rooms`, which the nightly backup carries.
 //
-// Nobody reaches it but the browser door (workers/app.ts, behind Access): lib/rooms.server.ts checks the
-// person's role and forwards the WebSocket with `viewerRequest`. A save is the editor route's
-// (rooms.server.ts `saveRoom`): Git and the sites stay the store.
+// Nobody reaches it but the browser door (workers/app.ts, behind Access): lib/rooms.server.ts checks the person's role and
+// forwards the WebSocket with `viewerRequest`. A save is the editor route's (rooms.server.ts `saveRoom`): Git and the sites
+// stay the store.
 
 import { DocRoom as Room, type CommentStore } from "@dustinedwards/site-runtime/doc-room";
 import { and, eq, isNull } from "drizzle-orm";

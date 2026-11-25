@@ -1,15 +1,13 @@
-// The browser door's side of live co-editing: opening a file's room for a page, the WebSocket into
-// it, and saving from it. The room itself is workers/doc-room.ts.
+// The browser door's side of live co-editing: opening a file's room for a page, the WebSocket into it, and saving from it.
+// The room itself is workers/doc-room.ts.
 //
-// A page's loader opens the room before it renders: the first time anyone opens the file, the room
-// starts from the opener's own earlier draft if they have one, else from what the site or Git holds.
-// After that the room is the working copy for everyone, and the loader only reads it. When the site
-// or Git moved on (a save through the AI door, another tool) and nobody has unsaved changes in the
-// room, the room follows; with unsaved changes it stays, and the page says it is behind.
+// A page's loader opens the room before it renders: the first time anyone opens the file, the room starts from the opener's
+// own earlier draft if they have one, else from what the site or Git holds. After that the room is the working copy for
+// everyone. When the site or Git moved on and nobody has unsaved changes in the room, the room follows; with unsaved changes
+// it stays, and the page says it is behind.
 //
-// A save takes the room's text at that moment, never the browser's: what everyone in the room sees is
-// what is written. The version it is checked against is the room's too. After the write, the room is
-// told the new version, and everyone who had a hand in the text goes into the authorship record.
+// A save takes the room's text at that moment, never the browser's, checked against the room's version. After the write the
+// room is told the new version, and everyone who had a hand in the text goes into the authorship record.
 
 import { viewerRequest, type ReplaceInput } from "@dustinedwards/site-runtime/doc-room";
 import { getServerByName } from "partyserver";

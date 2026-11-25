@@ -1,12 +1,9 @@
-// The browser door. Nothing renders until Access has vouched for the request and the email it
-// carries belongs to an active person in Carrel. Kept apart from app.ts so tests can drive it without
-// the React Router build.
+// The browser door. Nothing renders until Access has vouched for the request and the email it carries belongs to an active
+// person in Carrel. Kept apart from app.ts so tests can drive it without the React Router build.
 //
-// This is the only door on desk.dustinedwards.info. The AI door is a different hostname,
-// carrel-mcp.dustinedwards.info, served by app/lib/mcp/door.ts and chosen in app.ts by the host
-// alone (design decision 7). So a browser session is never treated as AI, and
-// an AI session never reaches the buttons: /mcp here is just a page that does not exist, behind
-// Access like every other.
+// This is the only door on desk.dustinedwards.info. The AI door is a different hostname, chosen in app.ts by the host alone, so a
+// browser session is never treated as AI, and an AI session never reaches the buttons: /mcp here is just a page that does not
+// exist, behind Access like every other.
 
 import type { KeySource } from "@dustinedwards/site-runtime/access-login";
 import {

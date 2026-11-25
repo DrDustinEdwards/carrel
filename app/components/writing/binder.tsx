@@ -1,4 +1,4 @@
-// The binder beside the editor (design 4.1): the whole book as Capsomer's tree, the open file chosen.
+// The binder beside the editor: the whole book as Capsomer's tree, the open file chosen.
 // A scene moves within its chapter or into another, and a chapter among the chapters, by dragging or
 // with Alt and the arrow keys. The tree shows the move at once; the book page's action turns the new
 // order into one commit of renames. If Git refuses, the tree goes back and says why. When the open

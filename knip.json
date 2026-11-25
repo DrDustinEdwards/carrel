@@ -2,7 +2,6 @@
   "$schema": "https://unpkg.com/knip@6.39.0/schema.json",
   "entry": [
     "scripts/*.mjs",
-    "www/build.mjs",
     "www/worker.mjs",
     "test/**/*.test.ts",
     "test/entry.ts",
@@ -10,11 +9,9 @@
     "test/harness/*.ts"
   ],
   "ignoreDependencies": [
+    // Used by tooling and CI, never imported.
     "cloudflare",
-    "@modelcontextprotocol/conformance",
-    "@observablehq/plot",
-    "hast-util-to-string",
-    "linkedom"
+    "@modelcontextprotocol/conformance"
   ],
   "project": [
     "app/**/*.{ts,tsx,mjs}",

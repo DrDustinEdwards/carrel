@@ -1,4 +1,4 @@
-// Assembly and export (design section 5, "for sending a book out"): ePub (zipped XHTML) and Word
+// Assembly and export: ePub (zipped XHTML) and Word
 // built in the Worker, and PDF from the print page in the browser. Scenes are prose, so the Markdown
 // they use is small: paragraphs, headings, block quotes, scene breaks, *emphasis* and **strong**.
 // Anything else passes through as text rather than being guessed at.

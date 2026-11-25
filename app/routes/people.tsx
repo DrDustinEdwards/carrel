@@ -1,15 +1,11 @@
-// The people page (Owner only): who is in Carrel, their role on each project as one grid of selects
-// that save on change, and adding (in dialogs), sharing and disabling. Every change goes through app/lib/people-admin.server.ts, which checks the Owner.
+// The people page (Owner only): who is in Carrel, their role on each project as one grid of selects that save on change, and
+// adding (in dialogs), sharing and disabling. Every change goes through app/lib/people-admin.server.ts, which checks the Owner.
 //
-// Carrel decides what a person may do once they are in; Cloudflare Access decides whether they get
-// in at all. With CAPSID_AGENT_KEY set, every change to a role or to disabled is synced to Desk's
-// Access group through Capsid (access-sync.server.ts, docs/coauthors.md), and the page says whether
-// Access is in step. Without it, after an add the page says where the same email must also be
-// allowed by hand. The dashboard paths are from Cloudflare's docs: developers.cloudflare.com/workers/
-// configuration/cloudflare-access/ (the Worker's Access tab offers only "Cloudflare account" and
-// "Email domain"; anything more is edited in Zero Trust), .../cloudflare-one/access-controls/policies/
-// policy-management/ (Zero Trust > Access controls > Policies), and .../cloudflare-one/integrations/
-// identity-providers/one-time-pin/ (Zero Trust > Integrations > Identity providers).
+// Carrel decides what a person may do once they are in; Cloudflare Access decides whether they get in at all. With
+// CAPSID_AGENT_KEY set, every change to a role or to disabled is synced to Desk's Access group through Capsid
+// (access-sync.server.ts, docs/coauthors.md), and the page says whether Access is in step. Without it, after an add the page
+// says where the same email must also be allowed by hand (Zero Trust > Access controls > Policies; the Worker's own Access
+// tab offers only "Cloudflare account" and "Email domain").
 
 import { useEffect } from "react";
 import { enhance } from "capsomer/behavior/field";

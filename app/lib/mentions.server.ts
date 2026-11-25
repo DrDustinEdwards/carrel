@@ -1,16 +1,12 @@
-// Webmentions on a site project over the content kit (site-api's admin half): Carrel and every site's
-// own admin run the same loader and the same intents, and the screen is Capsomer's MentionsList.
-// Mentions are text strangers chose, so the list shows them as text; each decision is one site write,
-// in order, and one failing never stops the rest.
+// Webmentions on a site project over the content kit (site-api's admin half), the screen being Capsomer's MentionsList.
+// Mentions are text strangers chose, so the list shows them as text; each decision is one site write, in order, and one
+// failing never stops the rest.
 //
-// Roles: the inbox belongs to Dustin alone (his design decision), so reading the queue
-// (read_mentions) and deciding (decide_mention) are both the Owner's, refused before the site is asked.
-// Change roles.ts, not this file, to open it wider.
+// Roles: the inbox belongs to Dustin alone, so reading the queue (read_mentions) and deciding (decide_mention) are both the
+// Owner's, refused before the site is asked. Change roles.ts, not this file, to open it wider.
 //
-// Authorship: every write the site carried out writes one row in mention_decisions (migration 0011),
-// with the change id Carrel sent the site so the two histories join, and the status it left the
-// mention in. A refused write writes nothing. The write and the site's cache purge are one unit on the
-// site's side; Carrel reports its answer.
+// Authorship: every write the site carried out is one row in mention_decisions, under the change id Carrel sent the site so
+// the two histories join, with the status it left the mention in. A refused write writes nothing.
 
 import {
   loadMentions,

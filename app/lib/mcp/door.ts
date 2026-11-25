@@ -1,28 +1,24 @@
-// The AI door: everything on carrel-mcp.dustinedwards.info (design decision 7).
+// The AI door: everything on carrel-mcp.dustinedwards.info.
 //
-// That hostname is exempt from Desk's Access (a hostname Bypass app, setup in the PR),
-// because an MCP client must reach the OAuth endpoints before anyone has signed in. So nothing here
-// trusts Access's own header. Instead this door is an OAuth 2.1 authorization server of its own
-// (@cloudflare/workers-oauth-provider): CIMD for Claude, Claude Code and ChatGPT, a tightened
-// registration for Grok and Gemini, and the person signs in upstream through Cloudflare Access for
-// SaaS. The consent page, the sign-in and the registration check are site-runtime's mcp-login, the
-// same code every family MCP server runs. The verified email must belong to an active person in
-// Carrel, checked when the grant is made and again on every request.
+// That hostname is exempt from Desk's Access, because an MCP client must reach the OAuth endpoints before anyone has signed
+// in, so nothing here trusts Access's own header. This door is an OAuth 2.1 authorization server of its own
+// (@cloudflare/workers-oauth-provider): CIMD for Claude, Claude Code and ChatGPT, a tightened registration for Grok and
+// Gemini, and the person signs in upstream through Cloudflare Access for SaaS. The consent page, sign-in and registration
+// check are site-runtime's mcp-login. The verified email must belong to an active person in Carrel, checked when the grant
+// is made and again on every request.
 //
-// Every request through this door is an AI session, told apart by the hostname it arrived on, never
-// by email. The pages are never served here, and this door is never served on the browser's host.
+// Every request through this door is an AI session, told apart by the hostname it arrived on, never by email. The pages
+// are never served here, and this door is never served on the browser's host.
 //
 // Routes on this host, outermost first:
-//   /mcp                          a foreign Origin is refused first (403, before any token is read); a
-//                                 named agent key (agent-keys.server.ts) goes straight to agentHandler;
-//                                 anything else: the provider checks the bearer token, then apiHandler
-//                                 finds the person and hands the request to server.ts. Each person (or
-//                                 agent) has 30 requests a minute.
+//   /mcp                          a foreign Origin is refused first (403); a named agent key goes straight to agentHandler;
+//                                 otherwise the provider checks the bearer token, then apiHandler finds the person and hands
+//                                 the request to server.ts. Each person (or agent) has 30 requests a minute.
 //   /authorize  /callback         the consent page and the Access sign-in (site-runtime's loginHandler)
-//   /owner                        the owner page: your grants with Revoke, and for the Owner the tool-call log (loginHandler)
+//   /owner                        your grants with Revoke, and for the Owner the tool-call log (loginHandler)
 //   /register                     tightened registration, rate limited here, then the provider
 //   /token, /.well-known/*        served by the provider
-//   /health                       the shared /health (health.server.ts), whose sha the deploy's live gate waits for
+//   /health                       the shared /health (health.server.ts)
 //   /reports/conformance.json     each site's latest conformance, public, for devkit's scoreboard
 //   /reports/signed-in-security.json  Desk's signed-in pages graded in-process (signed-in-crawl.server.ts), public
 //   anything else                 404
@@ -77,10 +73,7 @@ type DoorProps = {
 
 type DoorEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
-/**
- * The AI door's origin. Read loosely, like CARREL_ORIGIN, because a wrangler.jsonc from before this
- * change has no CARREL_MCP_ORIGIN and its generated types would not either.
- */
+/** The AI door's origin, read loosely like CARREL_ORIGIN because an older wrangler.jsonc lacks CARREL_MCP_ORIGIN. */
 export function mcpOrigin(env: Env): string {
   const configured = (env as { CARREL_MCP_ORIGIN?: string }).CARREL_MCP_ORIGIN?.trim();
   return (configured || "https://carrel-mcp.dustinedwards.info").replace(/\/+$/, "");
@@ -122,11 +115,9 @@ async function rateLimited(env: Env, personId: number, caller: string): Promise<
 }
 
 /**
- * Grok and Gemini still register (ruling capsid/rulings/mcp-2026-10-10.md, rule 13).
- * A registration names only callbacks listed exactly: the ones every user shares (DCR_CALLBACKS) and
- * any exact https callback in DCR_REDIRECT_URIS (a per-connector id), read loosely because an older
- * wrangler.jsonc has no such var. Registration grants nothing: the consent page, Access and the
- * person check still decide. REMOVAL CONDITION: drop it when Grok and Gemini sign in by CIMD, and at
+ * Grok and Gemini still register (ruling capsid/rulings/mcp-2026-10-10.md, rule 13). A registration names only callbacks listed
+ * exactly: the shared ones (DCR_CALLBACKS) and any exact https callback in DCR_REDIRECT_URIS. It grants nothing: the consent
+ * page, Access and the person check still decide. REMOVAL CONDITION: drop it when Grok and Gemini sign in by CIMD, and at
  * the latest when the MCP specification removes registration (after summer 2027).
  */
 const REGISTER_PATH = "/register";
@@ -146,7 +137,7 @@ const login = loginHandler<DoorEnv>({
   admits: {
     refusal: "This person is not in Carrel.",
   },
-  // Access let them in, but Carrel must know them too: no row, no access (design section 3). The
+  // Access let them in, but Carrel must know them too: no row, no access. The
   // person's id travels with the grant and is checked again on every request.
   admit: async (env, { email }) => {
     const viewer = await findViewer(env.DB, env, email);

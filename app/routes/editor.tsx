@@ -1,5 +1,5 @@
 // The editor for one site item: the formatted editor (or Markdown) in a prose layout, in the item's
-// live room, where everyone on the project works on one copy at once (ruling point 3, build step 10),
+// live room, where everyone on the project works on one copy at once,
 // with comments and suggestions; the site's own render in a sandboxed preview; and the writes the
 // viewer's role allows, each sending the room's text through site-api's version check.
 
@@ -523,7 +523,7 @@ export async function action({
       if (current && !current.publishedAt && form.get("confirm") !== "first-publish")
         return { intent, needsConfirm: true };
       // The text the publisher was shown when they opened Publish, as a hash: anyone typing in the room after that is
-      // not published under their name unseen (the publishing review, finding 4).
+      // not published under their name unseen.
       const shown = form.get("shown");
       return {
         intent: "write",
@@ -826,7 +826,7 @@ function Editor({ data }: { data: Route.ComponentProps["loaderData"] }) {
     });
   }
 
-  // The chart check (E4): Prelum's strictCharts problems and its warnings, one advisory line each.
+  // The chart check: Prelum's strictCharts problems and its warnings, one advisory line each.
   for (const [i, f] of chartFindings.entries()) {
     gateChecks.push({
       id: `chart-${i}`,

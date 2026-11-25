@@ -269,8 +269,8 @@ export type AiPublishResult =
   | { ok: false; message: string };
 
 /**
- * The line the record, the email and the editor all use (decision 2c), naming the person whose instruction it was by
- * their first name, so a co-owner's publish never reads as Dustin's (the publishing review, finding 6).
+ * The line the record, the email and the editor all use, naming the person whose instruction it was by
+ * their first name, so a co-owner's publish never reads as Dustin's.
  */
 export function publishedByLine(client: string, person: string): string {
   return `Published by ${client} on ${person.trim().split(/\s+/)[0] || person}'s instruction.`;

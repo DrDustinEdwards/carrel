@@ -178,7 +178,7 @@ export type SiteConnection =
   | { state: "misconfigured"; detail: string };
 
 /**
- * No key is "not connected": the site's stage has not arrived (setup step 10). A key without an
+ * No key is "not connected": the site's stage has not arrived. A key without an
  * origin, a short key, or a malformed origin is misconfigured, which the health check reports.
  */
 export function siteConnection(env: Env, id: SiteId): SiteConnection {

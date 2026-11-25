@@ -1,7 +1,6 @@
 // The head of a page that shows one draft kept beside the person's own (routes/ai-draft.tsx, routes/transcript-draft.tsx):
 // where it sits, who saved it and when, and the one step that uses it, asked once in a confirm before the form posts.
-// The confirm loads when the step is first pointed at or focused: most visits only read the draft, and it was the
-// largest part of these pages' first load.
+// The confirm loads when the step is first pointed at or focused, to keep the first load small.
 
 import { routerRenderLink } from "capsomer/react/link";
 import { Suspense, lazy, useRef, useState, type ReactNode } from "react";

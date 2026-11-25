@@ -1,4 +1,4 @@
-// The checks on save (design section 5): deterministic, inside the app, and for catching errors
+// The checks on save: deterministic, inside the app, and for catching errors
 // early, never for deciding. Each takes a file and the book's context and returns findings; none
 // refuses anything. A finding names the file's own line, so the editor can point at it.
 

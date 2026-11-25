@@ -1,10 +1,9 @@
-// Keeping Cloudflare Access in step with Carrel's people (coauthor accounts scoped to one project). Carrel never holds a Cloudflare token: it posts its whole
-// allow list to Capsid's POST /ops/access-sync with its own Capsid agent key (CAPSID_AGENT_KEY), and
-// Capsid makes the Access group pinned for namespace "carrel" hold exactly those emails (capsid
-// src/access-sync.ts). Each sync sends the whole list, so a missed one is mended by the next.
+// Keeps Cloudflare Access in step with Carrel's people. Carrel holds no Cloudflare token: it posts its whole allow list to
+// Capsid's POST /ops/access-sync with CAPSID_AGENT_KEY, and Capsid makes the Access group for namespace "carrel" hold
+// exactly those emails. Each sync sends the whole list, so a missed one is mended by the next.
 //
-// The outcome is kept in one row (drizzle/0023_access_sync.sql) for the People page to show. A sync
-// never throws to the page: a refusal or a network failure is recorded, and Retry sends it again.
+// The outcome is kept in one row for the People page. A sync never throws to the page: a refusal or a network failure is
+// recorded, and Retry sends it again.
 
 import { and, eq, exists, isNull, not, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";

@@ -1,4 +1,4 @@
-// The corkboard (design 4.2), a view of a book's Manuscript tab: the book's chapters in order, then
+// The corkboard, a view of a book's Manuscript tab: the book's chapters in order, then
 // each chapter's scenes as compact cards with the summary, point of view, status and words. Chapters
 // and cards move by dragging a grip, by the keyboard, or by Move up and Move down; a card's menu also
 // moves it to another chapter. Every move is renames of numbered files in one commit

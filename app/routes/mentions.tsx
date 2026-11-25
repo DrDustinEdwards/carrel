@@ -1,9 +1,6 @@
-// The webmention queue for a site: Capsomer's MentionsList over the content kit (lib/mentions.server.ts),
-// the same screen and the same intents as each site's own admin. Tabs by state with the site's counts,
-// each row's decisions, the bulk bar with an outcome per mention, Undo where the site can reverse a
-// decision, paging, and delete and the retention sweep behind a confirm. Everything a stranger sent is
-// drawn as text: the source address is never a link. Every action is a form post, so it all works with
-// no script; with script the posts go through the mentions endpoint and answer in place.
+// The webmention queue for a site: Capsomer's MentionsList over the content kit (lib/mentions.server.ts), the same screen and
+// intents as each site's own admin. Everything a stranger sent is drawn as text: the source address is never a link. Every
+// action is a form post, so it all works with no script; with script the posts go through the mentions endpoint.
 
 import { loadMentions, readMentionsQuery } from "@dustinedwards/site-api/admin";
 import { kitMentionsSearch, mentionsDataOfKit } from "capsomer/behavior/mentions-list";

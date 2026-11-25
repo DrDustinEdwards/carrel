@@ -1,17 +1,14 @@
-// The social queue (design decision 5). A piece going live is the only thing a post can announce.
-// For each account that announces that project, the post comes from, in order:
+// The social queue. A piece going live is the only thing a post can announce. For each account that
+// announces that project, the post comes from, in order:
 //
 //   1. a draft stored ahead by the session that finished the piece (draftSocialPost);
-//   2. else the AI switch's engine: a Claude Code routine Carrel fires, batching every waiting item into one run (the
-//      routine stores its drafts the same way), or the Claude API drafting them in the same pass, with a nightly sweep;
-//   3. else, when the routine fails or its daily cap is reached, or it drafted nothing in time, a
-//      template post, which the health check reports to Dustin.
+//   2. else the AI switch's engine (ai-engine.server.ts): a Claude Code routine Carrel fires, batching every waiting item into
+//      one run, or the Claude API drafting them in the same pass, with a nightly sweep;
+//   3. else, when the routine fails, its daily cap is reached or it drafted nothing in time, a template post, which the
+//      health check reports to Dustin.
 //
-// Every post is linted; a finding holds it for Dustin. Then each account's switch decides: approval
-// (Dustin approves each post) or auto (it goes when the caps allow). The only AI is the drafting step, on the engine the
-// AI switch names (ai-engine.server.ts). The
-// loop over accounts, the daily cap, the gap between posts and the record of every post are carried
-// over from legacy Recova's social-poster cron.
+// Every post is linted; a finding holds it for Dustin. Then each account's switch decides: approval (Dustin approves each
+// post) or auto (it goes when the caps allow). The only AI is the drafting step.
 
 import { inList } from "@dustinedwards/site-runtime/d1";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte } from "drizzle-orm";
@@ -36,7 +33,7 @@ export type Fetch = typeof fetch;
 export const BATCH_DELAY_MS = 30 * 60_000;
 /** How long the routine has to store its drafts before the template is used. */
 export const ROUTINE_WAIT_MS = 3 * 60 * 60_000;
-/** Routine runs a day: one to three, under the subscription's routine cap (design decision 5). */
+/** Routine runs a day: one to three, under the subscription's routine cap. */
 const ROUTINE_DAILY_CAP = 3;
 /** The nightly sweep's hour, UTC (3 a.m. Central in daylight time). */
 const NIGHTLY_HOUR_UTC = 8;

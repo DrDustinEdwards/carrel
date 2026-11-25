@@ -1,10 +1,7 @@
-// Builds Carrel's public site at https://carrel.dustinedwards.info into www/dist (or the directory named): one page
-// saying what Carrel is, in the NASA manual theme the family's public sites share (Capsomer's manual.css) in Carrel's
-// olive, and the family footer. Static files only; the one script is Capsomer's theme switch, served as files from this
-// origin (/theme.js before first paint, /site.js for the letterhead's theme button). The writing app itself is Desk, at
-// https://desk.dustinedwards.info, behind Cloudflare Access; nothing here reaches it.
-//
-//   node www/build.mjs [outDir]
+// Builds Carrel's public site at https://carrel.dustinedwards.info into www/dist (or the directory named): one page saying what
+// Carrel is, in the family's NASA manual theme (Capsomer's manual.css) in Carrel's olive, and the family footer. Static files
+// only; the one script is Capsomer's theme switch, served as files from this origin. The writing app itself is Desk, behind
+// Cloudflare Access; nothing here reaches it.
 
 import { execFileSync } from "node:child_process";
 import {
@@ -137,13 +134,13 @@ function heroHtml() {
 }
 
 /** The sites Carrel publishes to on Dustin's Desk, read from app/lib/sites.server.ts at build time so the page
- *  cannot fall behind it (it said 6 when the Desk had 7). */
+ *  cannot fall behind it. */
 const SITES = [
   ...readFileSync(join(HERE, "..", "app", "lib", "sites.server.ts"), "utf8").matchAll(
     /^    name: "([^"]+)",$/gm,
   ),
 ].map((m) => /** @type {string} */ (m[1]));
-/** The tools Carrel's MCP server gives an AI client, counted in app/lib/mcp/tools.ts (it said 16 when there were 23). */
+/** The tools Carrel's MCP server gives an AI client, counted in app/lib/mcp/tools.ts. */
 const TOOL_COUNT = [
   ...readFileSync(join(HERE, "..", "app", "lib", "mcp", "tools.ts"), "utf8").matchAll(
     /^    name: "carrel_[a-z_]+",$/gm,

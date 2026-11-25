@@ -1,17 +1,13 @@
-// The voice pack of a site project: what an AI session reads before it drafts a post, and what its draft
-// is scanned against. Real examples copy a voice better than a description of it (Wang et al., Findings
-// of EMNLP 2025), so the pack is the Owner's guide and excerpts of the author's own writing, chosen to
-// hold one of their long sentences and one of their short ones. The writing is what the Owner pastes on
-// the Voice page when there is any, and the published posts only when there is none: a published post
-// may have been drafted by a model, and excerpts of it would teach a session a model's voice. No measured averages go to a
-// session (an average sentence length is a length a model then writes every time) and no word lists.
+// The voice pack of a site project: what an AI session reads before it drafts a post, and what its draft is scanned against.
+// Real examples copy a voice better than a description of it (Wang et al., Findings of EMNLP 2025), so the pack is the
+// Owner's guide and excerpts of the author's own writing, chosen to hold one of their long sentences and one of their short
+// ones. The writing is what the Owner pastes on the Voice page, and the published posts only when there is none: a published
+// post may have been drafted by a model. No measured averages go to a session (a model then writes every sentence that
+// length) and no word lists.
 //
-// After a draft, site-runtime's slopScan names the spans that read unlike the excerpts: sentence length
-// against the author's own spread, a model's filler, a model's words the excerpts never use, joiner
-// dashes. It flags, with one instruction to edit those spans in place; it never rewrites, and it never
-// holds a save or a publish. The author decides.
-//
-// Nothing here scores a draft against an AI detector. The aim is a post that reads like its author.
+// After a draft, site-runtime's slopScan names the spans that read unlike the excerpts. It flags, with one instruction to
+// edit those spans in place; it never rewrites and never holds a save or a publish. The author decides. Nothing here scores a
+// draft against an AI detector.
 
 import {
   copiedRuns,

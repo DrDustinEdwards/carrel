@@ -1,17 +1,12 @@
-// The media library over the site API's media group, through the content kit (site-api's admin
-// half): Carrel and every site's own admin run the same loader and the same intents, and the screen
-// is Capsomer's MediaLibrary. Files stay in the site's own storage and are served by the site; the
-// site's reference check decides every delete, and Carrel shows its answer.
+// The media library over the site API's media group, through the content kit (site-api's admin half): Carrel and every
+// site's own admin run the same loader and intents, and the screen is Capsomer's MediaLibrary. Files stay in the site's own
+// storage; the site's reference check decides every delete.
 //
-// Roles, as the kit reads them from Carrel's: a Reader browses (and sees live what others changed),
-// an Editor also uploads or imports from a web address (and inserts into a post), edits alt text,
-// caption, credit and license, tags and the focal point, and moves files to the trash and back (all
-// reversible), and only the Owner deletes for good, empties the trash, or changes a file's bytes under
-// its address: replace, turn or mirror, go back to an earlier version, shrink (each changes every page
-// that shows it). The kit refuses a step the person may not take before the site hears anything.
-// The site's model suggests tags and alt text only when an Editor or the Owner asks (Suggest, the
-// query's suggest=1), and each suggestion is applied only when the person accepts it, as an ordinary
-// tag-add or alt post: nothing the model says is written unasked.
+// Roles, as the kit reads them from Carrel's: a Reader browses; an Editor also uploads, imports, edits metadata and moves
+// files to the trash and back (all reversible); only the Owner deletes for good, empties the trash, or changes a file's
+// bytes under its address (each changes every page that shows it). The kit refuses a step the person may not take before
+// the site hears anything. The site's model suggests tags and alt text only when asked, and each suggestion is applied
+// only when the person accepts it: nothing the model says is written unasked.
 
 import {
   runMediaIntent,
@@ -30,7 +25,7 @@ import { requireSiteProject, type SiteProject } from "~/lib/projects.server";
 import { siteClient, siteUnreachable } from "~/lib/sites.server";
 import { absoluteUrl } from "@drdustinedwards/site-helpers/head";
 
-/** The authorship record's action for each kind the kit records (migration 0007 and later; site-api v0.13's in 0024). */
+/** The authorship record's action for each kind the kit records. */
 const ACTIONS: Record<string, (typeof changes.$inferInsert)["action"]> = {
   "media-upload": "media-upload",
   "media-delete": "media-delete",

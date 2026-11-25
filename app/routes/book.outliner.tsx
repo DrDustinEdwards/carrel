@@ -1,4 +1,4 @@
-// The outliner (ruling, build step 1), a view of a book's Manuscript tab: every scene of the book as
+// The outliner, a view of a book's Manuscript tab: every scene of the book as
 // one table, in reading order, with the header keys a writer plans by (status, summary, point of view,
 // words against the target or limit), filtered by status chips that are links. It reads Carrel's index
 // and stores nothing of its own. The status list itself is edited on the book's Settings tab.
