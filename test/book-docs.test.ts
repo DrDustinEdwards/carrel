@@ -154,7 +154,13 @@ describe("a book file and its Google Doc", () => {
       .bind("k1", projectId, FILE, ids.editor, "Which nets?", "Nets", "2999-01-01T00:00:00Z")
       .run();
 
-    const sent = await sendToDoc(env, where(), owner, FILE, google.fetch);
+    const sent = await sendToDoc(
+      env,
+      where(),
+      { viewer: owner, client: "Desk" },
+      FILE,
+      google.fetch,
+    );
     expect(sent).toMatchObject({ accepted: 1, rejected: 0, undecided: 0, commented: 1 });
     expect(sent.suggested).toBe(1);
     const doc = google.docApi.get(DOC)!;

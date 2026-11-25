@@ -48,6 +48,9 @@ const CALLS: Record<string, Record<string, unknown>> = {
   carrel_check_book_text: { project: BOOK, path: SCENE, source: "x" },
   carrel_save_book_draft: { project: BOOK, path: SCENE, source: "x" },
   carrel_add_book_finding: { project: BOOK, path: SCENE, message: "m" },
+  carrel_write_book_file: { project: BOOK, path: SCENE, source: "x" },
+  carrel_sync_book_doc: { project: BOOK, path: SCENE, direction: "send" },
+  carrel_delete_book: { project: BOOK },
   carrel_draft_social_post: {
     account: "example-bluesky",
     project: SITE,

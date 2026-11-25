@@ -8,7 +8,7 @@ import { expect } from "vitest";
 
 import { SCOPE_READ, SCOPE_WRITE } from "~/lib/mcp/scopes";
 import { handleMcp } from "~/lib/mcp/server";
-import type { ToolDeps } from "~/lib/mcp/tools";
+import type { ToolDeps } from "~/lib/mcp/kit";
 
 import { testEnv } from "./env";
 import { viewerFor } from "./site";

@@ -19,7 +19,6 @@ import { SiteApiError } from "@dustinedwards/site-api/client";
 import { outsideResult } from "@dustinedwards/site-runtime/mcp-server";
 
 import {
-  addFinding,
   aiDraftSocialPost,
   AiRefusal,
   aiPublish,
@@ -27,18 +26,8 @@ import {
   itemFindings,
   listAiDrafts,
   saveAiDraft,
-  type AiSession,
 } from "~/lib/ai.server";
-import {
-  bookVoice,
-  checkDraft,
-  indexedFile,
-  listFiles,
-  listFindings,
-  requireBookProject,
-  saveBookAiDraft,
-} from "~/lib/books.server";
-import { readDoc, readDraft, type ProjectRole } from "~/lib/content.server";
+import { readDoc, readDraft } from "~/lib/content.server";
 import { writeInDoc } from "~/lib/ai-write.server";
 import {
   CARREL_FOLDER,
@@ -73,7 +62,6 @@ import {
   setMediaAlt,
 } from "~/lib/media.server";
 import { searchItemsPage } from "~/lib/index.server";
-import { isBookPath } from "~/lib/novels/layout";
 import { visibleProjects } from "~/lib/people.server";
 import {
   briefOf,
@@ -93,52 +81,32 @@ import {
 } from "~/lib/transcripts.server";
 import { logEvent } from "@dustinedwards/site-runtime/log";
 
-export type ToolDeps = { fetcher?: typeof fetch; carrelOrigin: string };
+import { BOOK_TOOLS } from "./book-tools";
+import {
+  ADD_HERE,
+  ANY,
+  CHANGE_GOOGLE,
+  DOC,
+  flag,
+  FLAGGED,
+  ID,
+  type JsonSchema,
+  LIST,
+  MAX,
+  READ,
+  RULE,
+  SET_HERE,
+  shape,
+  str,
+  TEXT,
+  type Tool,
+  type ToolContext,
+  type ToolResult,
+  WRITE_GOOGLE,
+  WRITE_SITE,
+  YES,
+} from "./kit";
 
-/** The session as the door found it, with the scopes its grant carries (scopes.ts) and its OAuth client id. */
-export type McpSession = AiSession & { scopes: readonly string[]; clientId?: string };
-
-/** `signal` is the request's abort signal (P11); server.ts also hands it to `deps.fetcher`, so a closed stream stops the outbound calls. */
-type ToolContext = { env: Env; session: McpSession; deps: ToolDeps; signal?: AbortSignal };
-
-type JsonSchema = {
-  type: "object";
-  properties: Record<string, unknown>;
-  required?: string[];
-  additionalProperties?: false;
-};
-
-export type ToolResult = {
-  content: { type: "text"; text: string }[];
-  structuredContent?: Record<string, unknown>;
-  isError?: boolean;
-};
-
-type Tool = {
-  name: string;
-  title: string;
-  description: string;
-  inputSchema: JsonSchema;
-  /** The structured answer's shape: the fields a client can rely on (the notice is added for outside text). */
-  outputSchema: JsonSchema;
-  /** The scope a call needs, declared here and never read from an annotation (site-runtime's toolScope). */
-  scope: "read" | "write";
-  /** All four, set honestly, so a client can confirm before acting (rule 6). */
-  annotations: {
-    readOnlyHint: boolean;
-    destructiveHint: boolean;
-    idempotentHint: boolean;
-    openWorldHint: boolean;
-  };
-  /**
-   * The answer carries text from outside Carrel: the site's posts, the novels repository, flags and
-   * drafts other sessions wrote. It goes back marked as data (rule 12.5).
-   */
-  outside: boolean;
-  run: (args: Record<string, unknown>, ctx: ToolContext) => Promise<unknown>;
-};
-
-const RULE = "AI never rewrites Dustin's prose unasked.";
 /** The most preview HTML a tool returns; a post's page is far smaller. */
 const PREVIEW_LIMIT = 200_000;
 
@@ -154,65 +122,6 @@ const PAGE_MAX = 100;
 /** The most of an exported Doc's text one answer carries, as carrel_read_doc does. */
 const EXPORT_TEXT_LIMIT = 100_000;
 
-/** Longest accepted inputs, in characters: a whole file or post, a finding's message and excerpt, a draft's note, a path or id. */
-const MAX = {
-  source: 500_000,
-  transcript: 500_000,
-  edits: 200,
-  message: 2000,
-  excerpt: 1000,
-  note: 500,
-  path: 200,
-  sources: 20,
-} as const;
-
-/** Read-only, and nothing outside Carrel changes. */
-const READ = {
-  readOnlyHint: true,
-  destructiveHint: false,
-  idempotentHint: true,
-  openWorldHint: false,
-};
-
-const ADD_HERE = {
-  readOnlyHint: false,
-  destructiveHint: false,
-  idempotentHint: false,
-  openWorldHint: false,
-};
-
-const SET_HERE = { ...ADD_HERE, idempotentHint: true };
-
-/** A write to the site that undoes cleanly: not destructive, repeatable, and it reaches past Carrel. */
-const WRITE_SITE = {
-  readOnlyHint: false,
-  destructiveHint: false,
-  idempotentHint: true,
-  openWorldHint: true,
-};
-
-/** A change in a Google Doc: it reaches past Carrel, never destroys (a suggestion or comment is taken back in Docs), and repeating it adds another. */
-const WRITE_GOOGLE = {
-  readOnlyHint: false,
-  destructiveHint: false,
-  idempotentHint: false,
-  openWorldHint: true,
-};
-/** A Docs tool that can change Dustin's text itself (a direct write, an accept, an undo): a client confirms first. */
-const CHANGE_GOOGLE = { ...WRITE_GOOGLE, destructiveHint: true };
-
-/** An answer's shape: the fields always present, then those that may be null or absent. */
-function shape(
-  always: Record<string, unknown>,
-  sometimes: Record<string, unknown> = {},
-): JsonSchema {
-  return { type: "object", properties: { ...always, ...sometimes }, required: Object.keys(always) };
-}
-const ANY = {};
-const LIST = { type: "array" };
-const YES = { type: "boolean" };
-const ID = { type: "integer" };
-const TEXT = { type: "string" };
 /** What "Carrel writes it" adds to a Docs answer: which engine did it, with what model, and what it could not place. */
 const CARREL_WROTE = { engine: TEXT, model: TEXT, note: TEXT, skipped: LIST, sessionUrl: ANY };
 
@@ -249,7 +158,6 @@ async function carrelWrites(
   const { ok: _ok, ...rest } = ran;
   return rest;
 }
-const FLAGGED = shape({ flagged: YES, findingId: ID, alreadyFlagged: YES });
 
 /** The outputSchema a client sees: an answer carrying outside text also carries the notice. */
 export function outputSchemaOf(tool: Tool): JsonSchema {
@@ -268,20 +176,6 @@ const ITEM = {
   type: "string",
   description: "The post's id (its slug on the site), from carrel_search_items.",
 };
-const BOOK = {
-  type: "string",
-  description: "The book's project slug, from carrel_list_projects (kind book).",
-};
-const DOC = {
-  type: "string",
-  description: "The file's id, from carrel_list_docs.",
-};
-const BOOK_PATH = {
-  type: "string",
-  description:
-    "The file's path in the book, such as chapters/01-arrival/01-the-gate.md, from carrel_list_book_files.",
-};
-
 /** An opaque cursor: the offset of the next page, so a client never builds one itself. */
 function encodeOffsetCursor(offset: number): string {
   return btoa(`o:${offset}`).replace(/=+$/, "");
@@ -300,22 +194,6 @@ function decodeOffsetCursor(cursor: string): number {
       "cursor is not one this tool gave. Leave it out to start from the first page.",
     );
   return Number(match[1]);
-}
-
-function str(
-  args: Record<string, unknown>,
-  key: string,
-  opts: { optional?: boolean; max?: number } = {},
-): string {
-  const value = args[key];
-  if (value === undefined || value === null || value === "") {
-    if (opts.optional) return "";
-    throw new AiRefusal(`${key} is required.`);
-  }
-  if (typeof value !== "string") throw new AiRefusal(`${key} must be a string.`);
-  if (opts.max && value.length > opts.max)
-    throw new AiRefusal(`${key} is longer than ${opts.max} characters.`);
-  return value;
 }
 
 /** A list of strings, each at most `max` characters, at most `limit` of them. */
@@ -384,24 +262,6 @@ async function project(ctx: ToolContext, args: Record<string, unknown>, action: 
 async function packFor(ctx: ToolContext, p: SiteProject): Promise<VoicePack> {
   const pack = await readVoicePack(ctx.env.DB, p);
   return pack.builtAt ? pack : buildVoicePack(ctx.env, p, ctx.deps.fetcher);
-}
-
-async function book(ctx: ToolContext, args: Record<string, unknown>, action: Action) {
-  return requireBookProject(ctx.env.DB, ctx.session.viewer, str(args, "project"), action);
-}
-
-/** Flags `itemId` on a project for the session: the same flag twice is one flag (alreadyFlagged). */
-async function flag(
-  ctx: ToolContext,
-  args: Record<string, unknown>,
-  target: ProjectRole,
-  itemId: string,
-) {
-  const added = await addFinding(ctx.env.DB, target, ctx.session, itemId, {
-    message: str(args, "message", { max: MAX.message }),
-    excerpt: str(args, "excerpt", { optional: true, max: MAX.excerpt }) || null,
-  });
-  return { flagged: true, findingId: added.id, alreadyFlagged: added.duplicate };
 }
 
 export const TOOLS: Tool[] = [
@@ -1262,175 +1122,7 @@ export const TOOLS: Tool[] = [
     },
   },
 
-  {
-    name: "carrel_list_book_files",
-    title: "List a book's files",
-    scope: "read",
-    description: `A book's chapters, scenes, bible and outline files from Carrel's index of the writing repository, with each scene's header and open flags. ${RULE}`,
-    inputSchema: {
-      type: "object",
-      properties: { project: BOOK },
-      required: ["project"],
-      additionalProperties: false,
-    },
-    annotations: READ,
-    outputSchema: shape({ files: LIST }),
-    outside: true,
-    run: async (args, ctx) => {
-      const b = await book(ctx, args, "read");
-      const [files, open] = await Promise.all([
-        listFiles(ctx.env.DB, b),
-        listFindings(ctx.env.DB, b, { status: "open" }),
-      ]);
-      return {
-        files: files.map((f) => ({
-          path: f.path,
-          kind: f.kind,
-          words: f.words,
-          header: f.meta.kind === "scene" ? f.meta.header : undefined,
-          openFlags: open.filter((o) => o.path === f.path).length,
-        })),
-      };
-    },
-  },
-  {
-    name: "carrel_read_book_file",
-    title: "Read a book file",
-    scope: "read",
-    description: `A scene, bible entry or outline file as the index last had it from Git, with its version, its flags, the AI drafts saved beside it, and excerpts of Dustin's own writing (his shared/voice/ passages and this book's finished scenes, among them a long sentence of his and a short one). Before drafting a scene, read the excerpts and write from them; then run carrel_check_book_text and fix only the spans its voice findings name. ${RULE}`,
-    inputSchema: {
-      type: "object",
-      properties: { project: BOOK, path: BOOK_PATH },
-      required: ["project", "path"],
-      additionalProperties: false,
-    },
-    annotations: READ,
-    outputSchema: shape(
-      { path: TEXT, source: TEXT, flags: LIST, aiDrafts: LIST },
-      { version: ANY, voice: ANY },
-    ),
-    outside: true,
-    run: async (args, ctx) => {
-      const b = await book(ctx, args, "read");
-      const path = str(args, "path", { max: MAX.path });
-      const [file, flags, aiDrafts] = await Promise.all([
-        indexedFile(ctx.env.DB, b, path),
-        listFindings(ctx.env.DB, b, { path }),
-        listAiDrafts(ctx.env.DB, b, ctx.session.viewer, path),
-      ]);
-      if (!file)
-        throw new AiRefusal(
-          `There is no ${path} in this book's index. List the files with carrel_list_book_files, or ask Dustin to refresh the book from Git.`,
-        );
-      return {
-        path,
-        source: file.source,
-        version: file.sha,
-        flags,
-        aiDrafts,
-        voice: await bookVoice(ctx.env.DB, b, path),
-      };
-    },
-  },
-  {
-    name: "carrel_check_book_text",
-    title: "Run the checks on text",
-    scope: "read",
-    description: `Runs the checks on save (header, continuity, timeline, world rules, and the voice scan against Dustin's own excerpts) on the given text for a book file, without saving or recording anything. The checks flag; Dustin decides. ${RULE}`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        project: BOOK,
-        path: BOOK_PATH,
-        source: { type: "string", description: "The whole file, header included." },
-      },
-      required: ["project", "path", "source"],
-      additionalProperties: false,
-    },
-    // Runs the checks on the text given, and saves or records nothing.
-    annotations: READ,
-    outputSchema: shape({ findings: LIST }),
-    outside: false,
-    run: async (args, ctx) => {
-      const b = await book(ctx, args, "read");
-      return {
-        findings: await checkDraft(
-          ctx.env.DB,
-          b,
-          str(args, "path", { max: MAX.path }),
-          str(args, "source", { max: MAX.source }),
-        ),
-      };
-    },
-  },
-  {
-    name: "carrel_save_book_draft",
-    title: "Save an AI draft of a book file",
-    scope: "write",
-    description: `Saves your version of a book file as a new AI draft beside Dustin's own. It never replaces his draft and is never committed to Git; he reads it in Carrel's editor and decides. ${RULE} Save one only when he asked for it.`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        project: BOOK,
-        path: BOOK_PATH,
-        source: { type: "string", description: "The whole file, header included." },
-        note: {
-          type: "string",
-          description: "One line for Dustin on what this draft changes and why.",
-        },
-      },
-      required: ["project", "path", "source"],
-      additionalProperties: false,
-    },
-    annotations: ADD_HERE,
-    outputSchema: shape({ saved: YES, aiDraftId: ID, where: TEXT }, { basedOnVersion: ANY }),
-    outside: false,
-    run: async (args, ctx) => {
-      const b = await book(ctx, args, "read");
-      const saved = await saveBookAiDraft(
-        ctx.env.DB,
-        b,
-        ctx.session,
-        str(args, "path", { max: MAX.path }),
-        {
-          source: str(args, "source", { max: MAX.source }),
-          note: str(args, "note", { optional: true, max: MAX.note }),
-        },
-      );
-      return {
-        saved: true,
-        aiDraftId: saved.id,
-        basedOnVersion: saved.baseVersion,
-        where: "Beside Dustin's draft in the book file's editor, under AI drafts.",
-      };
-    },
-  },
-  {
-    name: "carrel_add_book_finding",
-    title: "Flag a problem in a book file",
-    scope: "write",
-    description: `Flags a problem in a book file for Dustin: a continuity slip, a timeline error, a sentence that says something other than it means. A flag is a question, never a decision; quote the words. It holds export until Dustin fixes the text or dismisses it. ${RULE}`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        project: BOOK,
-        path: BOOK_PATH,
-        message: { type: "string", description: "What the problem is, in a sentence or two." },
-        excerpt: { type: "string", description: "The words the flag is about, quoted exactly." },
-      },
-      required: ["project", "path", "message"],
-      additionalProperties: false,
-    },
-    annotations: SET_HERE,
-    outputSchema: FLAGGED,
-    outside: false,
-    run: async (args, ctx) => {
-      const b = await book(ctx, args, "read");
-      const path = str(args, "path", { max: MAX.path });
-      if (!isBookPath(path)) throw new AiRefusal(`${path} is not a file in the novels layout.`);
-      return flag(ctx, args, b, path);
-    },
-  },
+  ...BOOK_TOOLS,
 
   {
     name: "carrel_list_docs",

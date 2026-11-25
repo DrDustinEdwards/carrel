@@ -14,6 +14,7 @@ import { loader as exportLoader } from "~/routes/book.export";
 import { loader as booksLoader } from "~/routes/books";
 
 import { sharedBook, testEnv } from "./env";
+import { connectAs } from "./mcp-client";
 import { fakeNovels, githubStyleKey } from "./novels";
 import { typeIn } from "./room";
 import { routeContext, settle } from "./site";
@@ -349,5 +350,52 @@ describe("home and new books", () => {
         )) as Response
       ).status,
     ).toBe(404);
+  });
+});
+
+// A book an AI makes through the door is its own: it writes the files to Git and deletes it. A book made in Desk
+// refuses both, because its prose is Dustin's.
+const AI_TEXT = "---\npov: Wade\n---\n\nWade opened the gate.\n";
+
+describe("a book an AI made", () => {
+  it("is created, written to Git as the AI and deleted through the door; a Desk book refuses", async () => {
+    const owner = await connectAs("owner@test.invalid", "Claude", { env });
+    const made = await owner.call("carrel_create_book", { name: "Scratch", folder: "scratch" });
+    expect(made.structuredContent).toEqual({ project: "scratch" });
+
+    const written = await owner.call("carrel_write_book_file", {
+      project: "scratch",
+      path: SCENE,
+      source: AI_TEXT,
+    });
+    expect(written.structuredContent).toMatchObject({ saved: true });
+    expect(gh.files.get(`scratch/${SCENE}`)?.source).toBe(AI_TEXT);
+    const credit = await testEnv.DB.prepare(
+      "SELECT a.client FROM authorship a JOIN projects p ON p.id = a.project_id WHERE p.slug = 'scratch'",
+    ).first<{ client: string }>();
+    expect(credit?.client).toBe("Claude");
+
+    for (const [tool, args] of [
+      ["carrel_write_book_file", { project: SLUG, path: SCENE, source: AI_TEXT }],
+      ["carrel_delete_book", { project: SLUG }],
+    ] as const) {
+      const refused = await owner.call(tool, args);
+      expect(refused.isError, tool).toBe(true);
+      expect(refused.content[0]?.text).toContain("carrel_save_book_draft");
+    }
+    expect(gh.files.get(`${SLUG}/${SCENE}`)?.source).toContain("Wade opened the gate. <script>");
+
+    const editor = await connectAs("editor@test.invalid", "Claude", { env });
+    expect(
+      (await editor.call("carrel_create_book", { name: "Mine", folder: "mine" })).isError,
+    ).toBe(true);
+
+    expect(
+      (await owner.call("carrel_delete_book", { project: "scratch" })).structuredContent,
+    ).toEqual({ deleted: true });
+    expect([...gh.files.keys()].filter((p) => p.startsWith("scratch/"))).toEqual([]);
+    expect(
+      await testEnv.DB.prepare("SELECT 1 FROM projects WHERE slug = 'scratch'").first(),
+    ).toBeNull();
   });
 });
