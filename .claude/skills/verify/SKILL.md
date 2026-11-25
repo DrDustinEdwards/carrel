@@ -5,14 +5,12 @@ description: Use before committing or opening a pull request that changes what D
 
 # Verify a Desk change
 
-Tests prove what someone thought to test. This skill proves the change itself: run
-the real app, use the changed flow as Dustin would, and look at the result. Do it
-before every commit that changes a screen, and before the pull request.
+Do it before every commit that changes a screen, and before the pull request.
 
 ## 1. Boot the harness
 
 Carrel needs Node 26 (`engines`; there is no `.nvmrc`). If `node -v` is older, put
-Node 26 on PATH first (in the cloud, `~/.cache/capsid-node/node-v26.13.1-linux-x64/bin`).
+the Node 26 the SessionStart hook installs on PATH first.
 Then, from the repo root:
 
 ```sh
@@ -86,14 +84,10 @@ try {
 ```
 
 Run it from the scratchpad with `REPO=<repo> node drive.mjs http://127.0.0.1:5199`.
-Drive the whole flow, not just the page load: open the dialog, submit the form, see
-the row change, reload and see it hold. For a flow that has a driver in `SCREENS`
-(`scripts/lib/harness.mjs`, for example Home's `l` key to set a row aside, the header
-search on Ctrl+K, a post's editor), copy its selectors rather than inventing new ones.
-If the change is responsive or themed, repeat the end state at 390 px wide and in dark
-mode (`page.setViewportSize`, `page.emulateMedia({ colorScheme: "dark" })`). A write
-the harness accepts changes only its in-memory fakes; `persistState` is off, so a
-restart gives the seed back.
+Drive the whole flow (act, see the result, reload and see it hold). For a flow that
+has a driver in `SCREENS` (`scripts/lib/harness.mjs`), copy its selectors rather than
+inventing new ones. Repeat the end state at 390 px and dark when the change is
+responsive or themed.
 
 ## 3. Run the checks that cover the area
 
@@ -111,11 +105,7 @@ session may share the machine.
 - A change to headers or the CSP: `npx vitest run test/csp.test.ts test/access.test.ts`.
 - `node scripts/screens.mjs <directory> <screen>` writes light and dark screenshots at
   desktop and phone widths of one screen, to look at. Write them outside the repo.
-- `npm run typecheck` and `npm run lint` before the commit; `npm run format:check`
-  covers this file and any Markdown you touch.
-
-CI runs the rest (`npm test`, `check:conformance`, `check:plants`, `check:bloat`); do
-not run the whole set here.
+- `npm run typecheck` and `npm run lint` before the commit.
 
 ## Rules and report
 

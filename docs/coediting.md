@@ -1,6 +1,6 @@
 # Co-editing
 
-Every post and book file has one shared working copy, and everyone with a role on the project edits it at the same time. There are no edit locks. This is build step 10 of Dustin's writing-tools ruling of 2026-10-10 (Capsid `carrel/rulings/writing-tools-2026-10-10.md`, coauthoring stages b and c).
+Every post and book file has one shared working copy, and everyone with a role on the project edits it at the same time. There are no edit locks. This is build step 10 of Dustin's writing-tools ruling of 2026-10-10.
 
 ## Desk's Access: by hostname
 
