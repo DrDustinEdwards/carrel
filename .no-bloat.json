@@ -4,7 +4,7 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "65614c1",
+    "measured_at": "2cd2596",
     "knip": {},
     "jscpd": {
       "clones": 39,
@@ -21,33 +21,33 @@
     },
     "size": {
       "app/app.css": 526,
-      "app/db/schema.ts": 753,
+      "app/db/schema.ts": 752,
       "app/lib/ai-engine.server.ts": 616,
       "app/lib/ai-write.server.ts": 505,
-      "app/lib/ai.server.ts": 526,
-      "app/lib/books.server.ts": 805,
+      "app/lib/ai.server.ts": 523,
+      "app/lib/books.server.ts": 798,
       "app/lib/google/book-docs.server.ts": 551,
       "app/lib/google/docs.server.ts": 1452,
       "app/lib/google/drive.server.ts": 501,
       "app/lib/health.server.ts": 649,
       "app/lib/mcp/tools.ts": 1692,
-      "app/lib/social/queue.server.ts": 718,
-      "app/routes/book.file.tsx": 954,
-      "app/routes/editor.tsx": 1404,
-      "scripts/lib/harness.mjs": 887,
+      "app/lib/social/queue.server.ts": 714,
+      "app/routes/book.file.tsx": 949,
+      "app/routes/editor.tsx": 1397,
+      "scripts/lib/harness.mjs": 886,
       "test/door.test.ts": 975,
       "test/google.ts": 939,
-      "test/harness/seed.ts": 1074,
+      "test/harness/seed.ts": 1072,
       "www/build.mjs": 580
     },
     "tests": {
       "files": 51,
-      "cases": 471
+      "cases": 469
     },
     "comments": {
-      "lines": 3864,
-      "code": 47856,
-      "percentage": 7.47
+      "lines": 3788,
+      "code": 47824,
+      "percentage": 7.34
     }
   }
 }

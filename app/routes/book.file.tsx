@@ -132,7 +132,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const source = opened?.source ?? file?.source ?? "";
 
   const indexed = await listFiles(env.DB, project);
-  // The bible entries a scene names, and every world rule, for the side panel.
   let bible: { path: string; name: string; kind: string; body: string }[] = [];
   if (kind === "scene") {
     const { data } = parseFile(source);
@@ -161,7 +160,6 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     );
   }
 
-  // The Owner's Google Docs, to bring one in as this file's working copy, and the Doc it came from.
   const docs =
     viewer.isOwner && canEdit && opened
       ? (await listManuscripts(env.DB, viewer))
@@ -391,7 +389,6 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
   useTypingRecede();
   const base = `/b/${data.project.slug}`;
 
-  // The file's room: one copy for everyone on the book, as they type.
   const editing = useRoomEditing(data);
   const { room } = editing;
   const source = data.room ? room.source : data.source;
@@ -427,7 +424,6 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
       untyped.current = 0;
   }, [writer.state, writer.data]);
 
-  // Said once in the message region, as each save finishes.
   const said = useRef<unknown>(null);
   useEffect(() => {
     if (!outcome?.ok || writer.state !== "idle" || said.current === outcome) return;
@@ -437,7 +433,6 @@ function BookFile({ data }: { data: Route.ComponentProps["loaderData"] }) {
     );
   }, [outcome, writer.state, say]);
 
-  // A Doc brought in or sent back, said once as it finishes.
   const docs = useFetcher<ActionResult>();
   const [chosen, setChosen] = useState(data.docLink?.id ?? "");
   const docSaid = useRef<unknown>(null);
