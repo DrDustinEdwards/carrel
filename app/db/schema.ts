@@ -25,6 +25,7 @@ export const projects = sqliteTable("projects", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   site: text("site"),
   book: text("book"),
+  madeBy: text("made_by"), // the AI that made the book (carrel_create_book); null when made in Desk
 });
 
 export const projectMembers = sqliteTable(
@@ -116,8 +117,7 @@ export const changes = sqliteTable("changes", {
   // Media actions since migration 0007: item_id is then the site's media id, and a file has no version.
   // content-delete since migration 0009: item_id is the post's id, version_before the version deleted, version_after null.
   // media-alt, media-tags, media-trash and media-restore since migration 0010: version_before and version_after are the file's metadata versions.
-  // unschedule, media-focus, media-caption and media-replace since migration 0021.
-  // media-import, media-credit, media-transform, media-revert and media-resize since migration 0024.
+  // unschedule, media-focus, -caption and -replace since 0021; media-import, -credit, -transform, -revert, -resize since 0024.
   // content-trash, content-restore and content-rename since migration 0027; a rename's row is under the new id.
   action: text("action", {
     enum: [

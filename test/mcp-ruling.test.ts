@@ -81,6 +81,10 @@ describe("names and hints", () => {
       "carrel_review_doc",
       "carrel_undo_doc",
       "carrel_create_doc",
+      "carrel_create_book",
+      "carrel_write_book_file",
+      "carrel_sync_book_doc",
+      "carrel_delete_book",
     ];
     for (const tool of tools)
       expect(hints[tool.name]!.readOnlyHint, tool.name).toBe(!writes.includes(tool.name));
@@ -122,6 +126,10 @@ describe("names and hints", () => {
           "carrel_undo_doc",
           "carrel_create_doc",
           "carrel_export_doc",
+          // An AI's own book reaches Git; bringing a Doc in replaces the working copy, and a delete takes the folder.
+          "carrel_write_book_file",
+          "carrel_sync_book_doc",
+          "carrel_delete_book",
         ].includes(t.name),
     )) {
       expect(hints[tool.name]!.destructiveHint, tool.name).toBe(false);
@@ -135,7 +143,17 @@ describe("names and hints", () => {
       "carrel_export_doc",
     ])
       expect(hints[tool], tool).toMatchObject({ destructiveHint: false, openWorldHint: true });
-    for (const tool of ["carrel_change_doc", "carrel_review_doc", "carrel_undo_doc"])
+    expect(hints.carrel_write_book_file).toMatchObject({
+      destructiveHint: false,
+      openWorldHint: true,
+    });
+    for (const tool of [
+      "carrel_change_doc",
+      "carrel_review_doc",
+      "carrel_undo_doc",
+      "carrel_sync_book_doc",
+      "carrel_delete_book",
+    ])
       expect(hints[tool], tool).toMatchObject({ destructiveHint: true, openWorldHint: true });
     // A flag twice is one flag; a draft twice is two drafts.
     expect(hints.carrel_add_finding!.idempotentHint).toBe(true);

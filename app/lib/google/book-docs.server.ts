@@ -416,17 +416,17 @@ export async function bringInDoc(
 export async function sendToDoc(
   env: Env,
   project: Where,
-  viewer: Viewer,
+  session: AiSession,
   itemId: string,
   fetcher?: Fetch,
 ) {
+  const { viewer } = session;
   requireDocs(project, viewer);
   const link = await readDocLink(env.DB, project.id, itemId);
   if (!link) throw new AiRefusal("This file did not come from a Google Doc. Bring one in first.");
   await indexed(env, viewer, link.docId, "suggest");
   const current = await roomDocument(env, project, itemId);
   if (!current) throw new Response("Open the file before sending it.", { status: 409 });
-  const session: AiSession = { viewer, client: "Desk" };
   const reason = `from the book file ${itemId}`;
   const { blocks, pending } = proposedText(current);
   const whole = blocks.join("\n");
