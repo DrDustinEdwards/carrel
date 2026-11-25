@@ -61,23 +61,7 @@ await context.addCookies([
   { name: "harness-viewer", value: "dustin%40harness.invalid", url: origin },
 ]);
 const page = await context.newPage();
-const errors = [];
-page.on(
-  "console",
-  (m) => m.type() === "error" && !/Failed to load resource/.test(m.text()) && errors.push(m.text()),
-);
-page.on("pageerror", (e) => errors.push(String(e)));
-const log = [];
-async function step(name, fn) {
-  try {
-    await fn();
-    log.push(`ok   ${name}`);
-  } catch (e) {
-    log.push(`FAIL ${name}: ${e.message.split("\n")[0]}`);
-    await page.screenshot({ path: "fail.png", fullPage: true });
-    throw e;
-  }
-}
+// errors, log and step(): the helpers in devkit docs/verify.md
 try {
   await step("open Home as the Owner", async () => {
     const r = await page.goto(origin);
@@ -105,9 +89,6 @@ has a driver in `SCREENS` (`scripts/lib/harness.mjs`), copy its selectors rather
 inventing new ones. Repeat the end state at 390 px and dark when the change is
 responsive or themed.
 
-If launch fails with "Executable doesn't exist" (the repo's Playwright build does not
-match the container's Chromium), set `PW_CHROMIUM=/opt/pw-browsers/chromium`. Do not run `playwright install`.
-
 ## 3. Run the checks that cover the area
 
 Stop the step 1 server first: the checks start their own harness on 5199 and refuse
@@ -126,19 +107,10 @@ session may share the machine.
   desktop and phone widths of one screen, to look at. Write them outside the repo.
 - `npm run typecheck` and `npm run lint` before the commit.
 
-## Rules
+## Rules and report
 
-A failed step is a finding about the change: fix the code and rerun the same
-script; no sleeps, no looser selectors. Stop the server by the process id you
-started, never `pkill` by name.
+Follow the Rules and the report in [devkit's docs/verify.md](https://github.com/DrDustinEdwards/devkit/blob/main/docs/verify.md). For this repo:
 
-## The report
-
-Put this in the reply and the pull request body:
-
-- First line: verified, partly verified (and what was not), or failed.
-- Each step's ok or FAIL line, the console errors line, the end-state screenshot
-  attached, and the summary line of each check you ran.
 - Anything the harness cannot show, named as not verified: the real Cloudflare Access
   sign-in and the AI door's OAuth, live D1, R2 and Durable Object rooms under real
   load, the real site through site-api, GitHub and Google. The live check after a
