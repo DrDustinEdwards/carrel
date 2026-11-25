@@ -118,8 +118,7 @@ export function Binder({
       {problem ? <Alert tone="crit">{problem}</Alert> : null}
       {canEdit ? (
         <p className="cap-muted app-note">
-          Drag a scene or a chapter, or press Alt with an arrow key. The corkboard has buttons for
-          each move.
+          Alt with an arrow key moves the selected scene or chapter.
         </p>
       ) : null}
     </div>
