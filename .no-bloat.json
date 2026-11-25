@@ -4,7 +4,7 @@
     "jscpd": "jscpd@5.4.0"
   },
   "baseline": {
-    "measured_at": "c1b2cd4",
+    "measured_at": "65614c1",
     "knip": {},
     "jscpd": {
       "clones": 39,
@@ -21,7 +21,7 @@
     },
     "size": {
       "app/app.css": 526,
-      "app/db/schema.ts": 747,
+      "app/db/schema.ts": 753,
       "app/lib/ai-engine.server.ts": 616,
       "app/lib/ai-write.server.ts": 505,
       "app/lib/ai.server.ts": 526,
@@ -45,9 +45,9 @@
       "cases": 471
     },
     "comments": {
-      "lines": 3859,
-      "code": 47855,
-      "percentage": 7.46
+      "lines": 3864,
+      "code": 47856,
+      "percentage": 7.47
     }
   }
 }
